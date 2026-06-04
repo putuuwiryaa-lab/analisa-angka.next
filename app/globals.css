@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+/* ============================================================
+   THEME — sumber tunggal warna & token (purple premium)
+   Nama token = warna sebenarnya (tidak ada lagi --gold yang isinya pink).
+   ============================================================ */
+@theme {
+  /* Surface & background */
+  --color-bg: #0d0a1a;
+  --color-bg-deep: #080611;
+  --color-surface: #151025;
+  --color-surface-2: #18122d;
+  --color-surface-pressed: #20183a;
+
+  /* Teks */
+  --color-text: #f5f0ff;
+  --color-text-muted: #b9acd3;
+  --color-text-soft: #82749f;
+  --color-text-faint: #5b4a78;
+
+  /* Aksen utama web */
+  --color-primary: #7c4dff;
+  --color-primary-soft: #a98cff;
+  --color-accent: #28d7ff;
+  --color-success: #79f2bb;
+  --color-danger: #ff6b8a;
+
+  /* Border */
+  --color-border: rgba(255, 255, 255, 0.13);
+  --color-border-soft: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.2);
+
+  /* Warna per-mode analisa (dipasang lewat [data-mode]) */
+  --color-mode-ai: #f3c14b;
+  --color-mode-bbfs: #ff9f43;
+  --color-mode-mati: #ff647c;
+  --color-mode-jumlah: #14b8a6;
+  --color-mode-shio: #28d7ff;
+  --color-mode-rekap: #6ea8ff;
+
+  /* Radius */
+  --radius-lg: 1rem;
+  --radius-xl: 1.35rem;
+  --radius-2xl: 1.75rem;
+
+  /* Motion */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Font dari next/font (lihat app/layout.tsx) — referensi, bukan salin nilai */
+@theme inline {
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+
+  /* Tap target minimum di mobile */
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+@layer utilities {
+  /* Angka: monospace + rata kolom (tabular) */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums slashed-zero;
+    letter-spacing: 0.04em;
+  }
+
+  /* Judul display: weight tebal + sedikit melebar */
+  .display {
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  /* Kartu/komponen ber-mode: pakai var(--accent) dari [data-mode] */
+  .accent-text {
+    color: var(--accent, var(--color-primary));
+  }
+  .accent-bg-soft {
+    background-color: color-mix(in srgb, var(--accent, var(--color-primary)) 16%, transparent);
+  }
+  .accent-border {
+    border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 40%, transparent);
+  }
+}
+
+/* ============================================================
+   MODE ACCENT — set satu variabel, seluruh subtree ikut bertema
+   ============================================================ */
+[data-mode] {
+  --accent: var(--color-primary);
+}
+[data-mode="ai"] {
+  --accent: var(--color-mode-ai);
+}
+[data-mode="bbfs"] {
+  --accent: var(--color-mode-bbfs);
+}
+[data-mode="mati"] {
+  --accent: var(--color-mode-mati);
+}
+[data-mode="jumlah"] {
+  --accent: var(--color-mode-jumlah);
+}
+[data-mode="shio"] {
+  --accent: var(--color-mode-shio);
+}
+[data-mode="rekap"] {
+  --accent: var(--color-mode-rekap);
+}
+
+/* ============================================================
+   MOTION — satu pola, hormati prefers-reduced-motion
+   ============================================================ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer utilities {
+  .animate-rise {
+    animation: rise 0.32s var(--ease-out-soft) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
