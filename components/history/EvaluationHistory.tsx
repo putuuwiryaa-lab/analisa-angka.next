@@ -1,11 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 type EvaluationMode = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
 type EvaluationPosition = "all" | "as" | "kop" | "kepala" | "ekor";
 type TargetPair = "depan" | "tengah" | "belakang";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
+
+const EVALUATIONS_STALE_TIME = 2 * 60 * 1000;
+const EVALUATIONS_GC_TIME = 15 * 60 * 1000;
 
 function safeDecode(value: string) {
   try {
@@ -70,9 +73,7 @@ function StateBox({ text, tone = "neutral" }: { text: string; tone?: "neutral" |
   return (
     <div
       className={`animate-soft-pop rounded-3xl border p-4 text-center text-[11px] font-black uppercase tracking-wide ${
-        tone === "error"
-          ? "border-danger/25 bg-danger/10 text-danger"
-          : "border-border-soft bg-surface-2 text-text-muted"
+        tone === "error" ? "border-danger/25 bg-danger/10 text-danger" : "depth-2 text-text-muted"
       }`}
     >
       {tone === "loading" && <div className="mx-auto mb-3 h-2 w-16 rounded-full bg-white/10 animate-pulse" />}
@@ -101,22 +102,40 @@ export function EvaluationHistory({
   const normalizedMarketId = normalizeMarketId(marketId);
   const showAi2DigitNote = mode === "ai" && param === 2;
 
-  const { data: rows = [], isLoading, error } = useQuery({
+  const {
+    data: rows = [],
+    isPending,
+    isFetching,
+    error,
+  } = useQuery({
     queryKey: ["evaluations", normalizedMarketId, mode, param, position, targetPair, analysisScope],
     queryFn: () => fetchEvaluations(normalizedMarketId, mode, param, position, targetPair, analysisScope),
     enabled: Boolean(normalizedMarketId && mode && param),
+    staleTime: EVALUATIONS_STALE_TIME,
+    gcTime: EVALUATIONS_GC_TIME,
+    placeholderData: keepPreviousData,
   });
 
-  if (isLoading) return <StateBox text="Memuat riwayat…" tone="loading" />;
-  if (error) return <StateBox text={error instanceof Error ? error.message : "Gagal memuat riwayat evaluasi"} tone="error" />;
-  if (!rows.length) return <StateBox text="Riwayat evaluasi belum ada" />;
+  const hasRows = rows.length > 0;
+
+  if (isPending && !hasRows) return <StateBox text="Memuat riwayat…" tone="loading" />;
+  if (error && !hasRows) return <StateBox text={error instanceof Error ? error.message : "Gagal memuat riwayat evaluasi"} tone="error" />;
+  if (!hasRows) return <StateBox text="Riwayat evaluasi belum ada" />;
 
   return (
     <div className="animate-rise space-y-3">
       <div className="flex items-center justify-between px-1">
         <span className="display text-xs text-text">{title}</span>
-        <span className="text-[11px] font-bold uppercase tracking-wide text-text-soft">15 Terbaru</span>
+        <span className="text-[11px] font-bold uppercase tracking-wide text-text-soft">
+          {isFetching ? "Memperbarui…" : "15 Terbaru"}
+        </span>
       </div>
+
+      {error && (
+        <div className="rounded-2xl border border-danger/25 bg-danger/10 px-3 py-2 text-center text-[11px] font-bold text-danger">
+          Riwayat gagal diperbarui. Data lama tetap ditampilkan.
+        </div>
+      )}
 
       {showAi2DigitNote && (
         <div className="animate-soft-pop rounded-2xl border border-mode-ai/20 bg-mode-ai/[0.08] px-3 py-2 text-[11px] font-bold leading-relaxed text-mode-ai">
@@ -131,7 +150,7 @@ export function EvaluationHistory({
           return (
             <div
               key={row.id}
-              className="animate-soft-pop rounded-2xl border border-border-soft bg-surface-2 p-2 text-center"
+              className="animate-soft-pop depth-2 rounded-2xl border p-2 text-center"
               style={{ animationDelay: `${Math.min(index, 12) * 20}ms` }}
             >
               <div className="num text-[11px] font-black text-text">
