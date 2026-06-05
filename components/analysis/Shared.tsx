@@ -21,7 +21,7 @@ export function DetailToggle({ open, onClick }: { open: boolean; onClick: () => 
     <button
       type="button"
       onClick={onClick}
-      className="accent-bg-soft accent-border accent-text inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide"
+      className="pressable accent-border accent-text inline-flex items-center gap-1.5 rounded-full border bg-white/[0.035] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide hover:bg-white/[0.06]"
       aria-label={open ? "Tutup" : "Buka"}
     >
       {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -49,7 +49,7 @@ export function ShioChip({ value }: { value: string | number }) {
     : String(value ?? "-");
   const emoji = safe ? SHIO_EMOJI[safe] : "🐾";
   return (
-    <span className="inline-flex items-center gap-1 rounded-2xl border border-accent/35 bg-accent/15 px-3 py-2 text-[13px] font-black text-accent">
+    <span className="inline-flex items-center gap-1 rounded-2xl border border-accent/30 bg-accent/12 px-3 py-2 text-[13px] font-black text-accent">
       {emoji} {label}
     </span>
   );
@@ -71,10 +71,10 @@ export function LineBox({ label, lines }: { label: string; lines: string[] }) {
       </div>
       <button
         onClick={() => navigator.clipboard?.writeText(copyPayload)}
-        className="accent-bg-soft accent-text mt-3 flex w-full items-center justify-center gap-2 rounded-2xl p-3.5 text-xs font-black uppercase tracking-wider"
+        className="pressable accent-bg-soft accent-text mt-3 flex w-full items-center justify-center gap-2 rounded-2xl p-3.5 text-xs font-black uppercase tracking-wider"
       >
         <Copy size={16} /> Copy Semua
       </button>
     </div>
   );
-      }
+}
