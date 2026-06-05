@@ -16,16 +16,25 @@ import {
   TargetPairSelector,
 } from "@/components/analysis/ScopeSelectors";
 
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export default function AnalyzeModePage({
   params,
 }: {
   params: Promise<{ marketId: string; mode: string }>;
 }) {
   const { marketId, mode } = use(params);
+  const decodedMarketId = safeDecode(marketId);
   const type = isModeKey(mode) ? mode : "ai";
   const { title, emoji } = MODES[type];
 
-  const { state, flags, handlers, custom } = useAnalysisController({ type, marketId });
+  const { state, flags, handlers, custom } = useAnalysisController({ type, marketId: decodedMarketId });
   const { param, targetPair, analysisScope, loading, result, error, customFocus } = state;
 
   return (
@@ -33,7 +42,7 @@ export default function AnalyzeModePage({
       <AnalysisPageChrome
         title={title}
         icon={emoji}
-        marketId={marketId}
+        marketId={decodedMarketId}
         isAI={flags.isAI}
         isBBFS={flags.isBBFS}
         isRekapCustom={flags.isRekapCustom}
@@ -68,7 +77,7 @@ export default function AnalyzeModePage({
       {customFocus && (
         <CustomDigitBuilder
           show={flags.showCustomDigitBuilder}
-          marketId={marketId}
+          marketId={decodedMarketId}
           customFocus={customFocus}
           onGenerate={handlers.handleCustomDigitGenerate}
           {...custom}
@@ -87,7 +96,7 @@ export default function AnalyzeModePage({
           type={type}
           result={result}
           param={param}
-          marketId={marketId}
+          marketId={decodedMarketId}
           label={typeMeta[type]?.label || ""}
           targetPair={targetPair || "belakang"}
           analysisScope={analysisScope || "default"}
@@ -99,4 +108,4 @@ export default function AnalyzeModePage({
       )}
     </div>
   );
- }
+}
