@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 
 function StatusPill({ label, value, onReset }: { label: string; value: string; onReset: () => void }) {
   return (
-    <div className="animate-rise mt-3 flex items-center justify-between gap-3 rounded-2xl border border-border-soft bg-surface-2 p-3">
+    <div className="animate-rise depth-2 mt-3 flex items-center justify-between gap-3 rounded-2xl border p-3">
       <div className="min-w-0 text-left">
         <span className="mr-2 text-[11px] font-bold uppercase tracking-wide text-text-soft">
           {label}:
@@ -69,21 +69,21 @@ export function AnalysisPageChrome({
         <ArrowLeft size={16} /> Kembali
       </Button>
 
-      <div className="animate-rise relative mb-4 overflow-hidden rounded-2xl border border-border-soft bg-surface p-4">
+      <div className="animate-rise depth-1 relative mb-4 overflow-hidden rounded-3xl border p-4">
         <div className="accent-bg-soft absolute -right-12 -top-12 h-28 w-28 rounded-full blur-3xl" />
         <div className="relative mb-4 flex items-center gap-3">
-          <div className="accent-border accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-white/[0.03] text-lg">
+          <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-lg">
             {icon}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="accent-bg-soft accent-text mb-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
+            <div className="depth-3 accent-text mb-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
               <Sparkles size={10} /> Mode Analisa
             </div>
             <h2 className="display truncate text-base text-text">{title}</h2>
           </div>
         </div>
 
-        <div className="flex min-h-[72px] items-center justify-center rounded-2xl border border-border-soft bg-surface-2 px-4 py-4 text-center">
+        <div className="depth-2 flex min-h-[72px] items-center justify-center rounded-2xl border px-4 py-4 text-center">
           <p className="display break-words text-2xl leading-tight text-text sm:text-[28px]">
             {marketId}
           </p>
