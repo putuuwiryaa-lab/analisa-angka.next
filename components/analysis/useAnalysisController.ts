@@ -106,7 +106,6 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   const resetBeforeAnalyze = () => {
     setLoading(true);
     setError("");
-    setResult(null);
     setDetailValidationOpen(false);
     setAngkaJadiOpen(false);
   };
@@ -336,7 +335,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
           !this.showRekapFocusSelector
         );
       },
-      canStartAnalyze: !result && !loading && param !== 0 && !isRekapCustom && !autoMode,
+      canStartAnalyze: !loading && param !== 0 && !isRekapCustom && !autoMode,
     },
     handlers: {
       handleBack,
