@@ -24,15 +24,15 @@ export function CustomDigitOptionButton({
       className={cn(
         "pressable relative min-h-14 rounded-2xl border p-4 text-center",
         active
-          ? "accent-bg-soft accent-border accent-text shadow-[0_10px_28px_rgba(0,0,0,0.16)]"
+          ? "depth-accent accent-text"
           : recommended
-            ? "accent-border bg-white/[0.045] text-text hover:bg-white/[0.065]"
-            : "border-border-soft bg-white/[0.035] text-text-muted hover:border-border hover:bg-white/[0.055]",
+            ? "depth-3 accent-text hover:border-border hover:bg-white/[0.065]"
+            : "depth-3 text-text-muted hover:border-border hover:bg-white/[0.055]",
         extraClass,
       )}
     >
       {badge && (
-        <span className="absolute right-2.5 top-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/10 bg-black/20 px-1 text-[13px] leading-none shadow-sm">
+        <span className="depth-2 absolute right-2.5 top-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full border px-1 text-[13px] leading-none">
           {badge === "fire" ? "🔥" : "👍"}
         </span>
       )}
@@ -43,7 +43,7 @@ export function CustomDigitOptionButton({
 
 export function CustomDigitSection({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
-    <section className="animate-soft-pop space-y-2 rounded-3xl border border-border-soft bg-surface-2 p-3">
+    <section className="animate-soft-pop depth-2 space-y-2 rounded-3xl border p-3">
       <MiniLabel>{label}</MiniLabel>
       {children}
     </section>
