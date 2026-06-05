@@ -53,11 +53,11 @@ function SubMenuCard({
     <Link
       href={`/analyze/${encodeURIComponent(safeDecode(marketId))}/${mode}`}
       data-mode={mode}
-      className="pressable animate-soft-pop group relative flex min-h-[72px] w-full items-center gap-3 overflow-hidden rounded-3xl border border-border-soft bg-surface px-4 py-3 text-left hover:border-border hover:bg-surface-2"
+      className="pressable animate-soft-pop depth-1 group relative flex min-h-[72px] w-full items-center gap-3 overflow-hidden rounded-3xl border px-4 py-3 text-left hover:border-border"
       style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
     >
-      <div className="accent-bg-soft absolute inset-y-5 left-0 w-1 rounded-r-full" />
-      <div className="accent-border accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-white/[0.035] transition-transform duration-150 group-hover:scale-[1.035]">
+      <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-[var(--accent)] opacity-70" />
+      <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-150 group-hover:scale-[1.035]">
         <Icon size={20} strokeWidth={1.9} />
       </div>
       <span className="accent-text display flex-1 text-[13px]">{label}</span>
@@ -83,20 +83,26 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
         <ArrowLeft size={16} /> Beranda
       </Button>
 
-      <div className="animate-soft-pop mb-5 rounded-3xl border border-border-soft bg-surface p-4">
-        <div className="rounded-3xl border border-border-soft bg-black/15 px-4 py-7 text-center">
+      <div className="animate-soft-pop depth-1 mb-5 rounded-3xl border p-4">
+        <div className="depth-2 rounded-3xl border px-4 py-7 text-center">
           <h3 className="display break-words text-2xl text-text sm:text-3xl">{marketName}</h3>
         </div>
       </div>
 
-      <p className="mb-3 px-1 text-[11px] font-black uppercase tracking-wider text-text-soft">Pilih Analisa</p>
+      <div className="mb-3 flex items-center gap-3 px-1">
+        <p className="text-[11px] font-black uppercase tracking-wider text-text-soft">Pilih Analisa</p>
+        <span className="h-px flex-1 bg-white/10" />
+      </div>
       <div className="grid grid-cols-1 gap-3">
         {ANALYSIS_MENU.map((item, index) => (
           <SubMenuCard key={item.mode} label={item.label} mode={item.mode} marketId={decodedMarketId} index={index} />
         ))}
       </div>
 
-      <p className="mb-3 mt-5 px-1 text-[11px] font-black uppercase tracking-wider text-text-soft">Racik Angka</p>
+      <div className="mb-3 mt-5 flex items-center gap-3 px-1">
+        <p className="text-[11px] font-black uppercase tracking-wider text-text-soft">Racik Angka</p>
+        <span className="h-px flex-1 bg-white/10" />
+      </div>
       <div className="grid grid-cols-1 gap-3">
         {CUSTOM_MENU.map((item, index) => (
           <SubMenuCard
