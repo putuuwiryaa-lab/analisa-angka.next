@@ -15,11 +15,17 @@ export function AngkaJadiPanel({
 }) {
   if (!result || !angkaJadiModes.has(type)) return null;
   const data = buildAngkaJadi(type, result);
+  const totalLines = data.sections.reduce((acc, section) => acc + section.lines.length, 0);
 
   return (
-    <div className="animate-rise space-y-3 rounded-2xl border border-border-soft bg-surface p-4">
+    <div className="animate-soft-pop space-y-3 rounded-3xl border border-border-soft bg-surface p-4">
       <div className="flex items-center justify-between gap-3">
-        <SectionTitle title="Angka Jadi" />
+        <div className="min-w-0">
+          <SectionTitle title="Angka Jadi" />
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-text-soft">
+            {data.sections.length} bagian · {totalLines} line
+          </p>
+        </div>
         <DetailToggle open={open} onClick={() => setOpen((v) => !v)} />
       </div>
       {open && (
