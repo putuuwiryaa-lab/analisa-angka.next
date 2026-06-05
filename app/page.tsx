@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Database, Plus, RefreshCw, Search } from "lucide-react";
+import { Clock3, Database, Plus, RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -29,13 +29,12 @@ function getLastResult(historyData: string | null | undefined) {
 }
 
 function formatMarketUpdatedAt(value: string | null) {
-  if (!value) return "Belum ada info update";
+  if (!value) return "Belum ada info";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Info update tidak valid";
+  if (Number.isNaN(date.getTime())) return "Info tidak valid";
   return date.toLocaleString("id-ID", {
     day: "2-digit",
     month: "short",
-    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -76,7 +75,8 @@ export default function DashboardPage() {
   }, [markets]);
 
   const filteredMarkets = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = search.toLowerCase().trim();
+    if (!q) return markets;
     return markets.filter(
       (m) => m.id.toLowerCase().includes(q) || (m.name && m.name.toLowerCase().includes(q)),
     );
@@ -86,19 +86,25 @@ export default function DashboardPage() {
 
   return (
     <div className="animate-rise">
-      <div className="mb-4 flex items-center justify-between gap-3 px-1">
-        <div className="inline-flex min-w-0 rounded-full border border-border-soft bg-white/[0.04] px-3 py-2">
-          <span className="truncate text-[11px] font-bold uppercase tracking-wide text-accent">
-            Data pasar diperbarui: {formatMarketUpdatedAt(latestMarketUpdate)}
-          </span>
+      <div className="mb-4 rounded-3xl border border-border-soft bg-surface/80 p-3 shadow-xl shadow-black/10">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-accent">
+              <Clock3 size={14} />
+              <span className="truncate">Update {formatMarketUpdatedAt(latestMarketUpdate)}</span>
+            </div>
+            <p className="mt-1 text-xs font-semibold text-text-muted">
+              {markets.length} pasaran tersedia{search ? ` · ${filteredMarkets.length} cocok` : ""}
+            </p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border-soft bg-white/[0.045] text-text-muted active:scale-95"
+            aria-label="Refresh data pasaran"
+          >
+            <RefreshCw size={18} className={isFetching ? "animate-spin" : ""} />
+          </button>
         </div>
-        <button
-          onClick={() => refetch()}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border-soft text-text-muted active:scale-95"
-          aria-label="Refresh data pasaran"
-        >
-          <RefreshCw size={18} className={isFetching ? "animate-spin" : ""} />
-        </button>
       </div>
 
       {errorMessage && (
@@ -107,33 +113,34 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="relative mb-5">
+      <div className="relative mb-4">
         <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
         <Input
           type="text"
           placeholder="Cari pasaran…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-14 pl-12 font-bold"
+          className="h-14 rounded-3xl pl-12 font-bold"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3 pb-6 sm:grid-cols-3">
         {isLoading ? (
-          Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[104px] rounded-2xl" />)
+          Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-3xl" />)
         ) : (
           <>
             {filteredMarkets.map((m) => (
               <Link
                 key={m.id}
                 href={`/analyze/${encodeURIComponent(m.id)}`}
-                className="flex h-[104px] flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface text-center transition active:scale-[0.985] hover:border-border"
+                className="group flex h-[112px] flex-col overflow-hidden rounded-3xl border border-border-soft bg-surface text-center transition active:scale-[0.985] hover:border-border"
               >
-                <div className="border-b border-border-soft bg-white/[0.02] px-2 py-2.5">
-                  <span className="display block truncate text-[12px] text-text">{m.name || m.id}</span>
+                <div className="flex min-h-[48px] items-center justify-center border-b border-border-soft bg-white/[0.025] px-3">
+                  <span className="display line-clamp-2 text-[12px] leading-4 text-text">{m.name || m.id}</span>
                 </div>
-                <div className="flex flex-1 items-center justify-center">
-                  <span className="num text-lg font-black text-accent">{m.lastResult || "----"}</span>
+                <div className="flex flex-1 flex-col items-center justify-center gap-1">
+                  <span className="num text-2xl font-black tracking-[0.08em] text-accent">{m.lastResult || "----"}</span>
+                  <span className="text-[9px] font-black uppercase tracking-wide text-text-soft">Result terakhir</span>
                 </div>
               </Link>
             ))}
@@ -142,7 +149,7 @@ export default function DashboardPage() {
               href={requestMarketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-[104px] flex-col items-center justify-center rounded-2xl border border-border-soft bg-surface text-center transition active:scale-[0.985] hover:border-border"
+              className="flex h-[112px] flex-col items-center justify-center rounded-3xl border border-dashed border-border-soft bg-surface/70 text-center transition active:scale-[0.985] hover:border-border"
               aria-label="Request penambahan pasaran via WhatsApp"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/[0.06] text-primary-soft">
@@ -155,7 +162,7 @@ export default function DashboardPage() {
             </a>
 
             {filteredMarkets.length === 0 && (
-              <div className="col-span-2 rounded-2xl border border-dashed border-border bg-white/5 py-12 text-center sm:col-span-3">
+              <div className="col-span-2 rounded-3xl border border-dashed border-border bg-white/5 py-12 text-center sm:col-span-3">
                 <Database className="mx-auto mb-3 text-text-soft" />
                 <p className="text-xs uppercase tracking-wide text-text-muted">Pasaran tidak ditemukan</p>
               </div>
