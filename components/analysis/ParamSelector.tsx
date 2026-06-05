@@ -42,7 +42,7 @@ export function ParamSelector({
   const isGridThree = isAiMode || type === "bbfs" || type === "mati" || type === "jumlah" || type === "shio";
 
   return (
-    <div className="animate-soft-pop mt-4 rounded-3xl border border-border-soft bg-surface p-4">
+    <div className="animate-soft-pop depth-1 mt-4 rounded-3xl border p-4">
       <div className="mb-4 text-center">
         <div className="display accent-text text-sm">{cfg.title}</div>
         <p className="mt-1.5 text-xs font-medium text-text-muted">Pilih parameter untuk memulai analisa.</p>
@@ -59,7 +59,7 @@ export function ParamSelector({
               key={value}
               onClick={() => onAnalyze(value)}
               className={cn(
-                "pressable animate-soft-pop accent-border accent-text rounded-3xl border bg-white/[0.035] text-center hover:bg-white/[0.06]",
+                "pressable animate-soft-pop depth-3 accent-text rounded-3xl border text-center hover:border-border hover:bg-white/[0.06]",
                 isSpecial ? "col-span-3 min-h-[88px] p-4" : isGridThree ? "min-h-[88px] p-3" : "p-5",
               )}
               style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}
