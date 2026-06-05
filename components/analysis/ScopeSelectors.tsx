@@ -64,7 +64,7 @@ function SelectorPanel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="animate-soft-pop mt-4 space-y-4 rounded-3xl border border-border-soft bg-surface p-4">
+    <div className="animate-soft-pop depth-1 mt-4 space-y-4 rounded-3xl border p-4">
       <div className="text-center">
         <div className="display accent-text text-sm">{title}</div>
         <p className="mt-1.5 text-xs font-medium text-text-muted">{subtitle}</p>
@@ -79,7 +79,7 @@ function SelectorButton({ option, onClick, index = 0 }: { option: SelectOption; 
     <button
       type="button"
       onClick={onClick}
-      className="pressable animate-soft-pop accent-border accent-text min-h-16 w-full rounded-3xl border bg-white/[0.035] px-5 py-4 text-center hover:bg-white/[0.06]"
+      className="pressable animate-soft-pop depth-3 accent-text min-h-16 w-full rounded-3xl border px-5 py-4 text-center hover:border-border hover:bg-white/[0.06]"
       style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}
     >
       <span className="display block text-[15px]">{option.title}</span>
