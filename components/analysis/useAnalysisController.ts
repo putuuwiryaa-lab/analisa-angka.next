@@ -2,8 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/auth/auth-context";
 import { bbfsScopeToTargetPair, type CustomFocus, type TargetPair } from "@/lib/analysis/customDigit";
+import {
+  MARKETS_QUERY_KEY,
+  MARKETS_STALE_TIME,
+  extractHistoryData,
+  fetchMarkets,
+  findMarketByIdOrName,
+  parseHistoryTokens,
+  type Market,
+} from "@/lib/markets/client";
 import { BBFS_SCOPE_OPTIONS, type AnalysisScope } from "./ScopeSelectors";
 import {
   hasAnyCustomFilter,
@@ -16,17 +26,6 @@ import {
 
 const VALID_TARGET_PAIRS: TargetPair[] = ["depan", "tengah", "belakang"];
 type ResultData = Record<string, any>;
-
-type MarketRecord = {
-  id?: string;
-  name?: string;
-  history_data?: string | null;
-  historyData?: string | null;
-  history?: string | null;
-  data?: string | null;
-  results?: string | null;
-  result?: string | null;
-};
 
 function parseTargetPair(value: string | null): TargetPair {
   return VALID_TARGET_PAIRS.includes(value as TargetPair) ? (value as TargetPair) : "belakang";
@@ -44,23 +43,10 @@ function requestScopeForAnalyze(type: string, scope: AnalysisScope): AnalysisSco
   if (type === "ai" && isAi2DScope(scope)) return "default";
   return scope;
 }
-function normalizeId(value: string) {
-  return decodeURIComponent(value).trim().toLowerCase();
-}
-function extractHistoryData(market: MarketRecord) {
-  return String(
-    market.history_data ?? market.historyData ?? market.history ?? market.data ?? market.results ?? market.result ?? "",
-  );
-}
-function parseHistoryTokens(historyData: string) {
-  return historyData
-    .split(/[\s\n\r\t,;|]+/)
-    .map((token) => token.trim())
-    .filter((token) => /^\d{4}$/.test(token));
-}
 
 export function useAnalysisController({ type, marketId }: { type: string; marketId: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { token } = useAuth();
   const searchParams = useSearchParams();
   const autoStartedRef = useRef(false);
@@ -125,23 +111,19 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setAngkaJadiOpen(false);
   };
 
-  const getMarketData = async () => {
-    const response = await fetch("/api/markets", { cache: "no-store" });
-    const json = await response.json();
-
-    if (!response.ok) {
-      throw new Error(json?.error || "Gagal membaca data pasaran dari server.");
-    }
-    if (!Array.isArray(json)) {
-      throw new Error("Format data pasaran dari server tidak valid.");
-    }
-
-    const requestedId = normalizeId(marketId);
-    const current = json.find((market: MarketRecord) => {
-      const id = market.id ? normalizeId(String(market.id)) : "";
-      const name = market.name ? normalizeId(String(market.name)) : "";
-      return id === requestedId || name === requestedId;
+  const getMarkets = async () => {
+    const cached = queryClient.getQueryData<Market[]>(MARKETS_QUERY_KEY);
+    if (cached?.length) return cached;
+    return queryClient.fetchQuery({
+      queryKey: MARKETS_QUERY_KEY,
+      queryFn: fetchMarkets,
+      staleTime: MARKETS_STALE_TIME,
     });
+  };
+
+  const getMarketData = async () => {
+    const markets = await getMarkets();
+    const current = findMarketByIdOrName(markets, marketId);
 
     if (!current) throw new Error(`Data histori ${decodeURIComponent(marketId)} belum disetup oleh Admin!`);
 
@@ -152,7 +134,6 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     return data;
   };
 
-  // Engine membungkus { success, data } → client wajib membuka json.data.
   const postAnalyze: PostAnalyze = async (
     analysisType,
     data,
