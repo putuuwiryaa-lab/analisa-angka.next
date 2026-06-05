@@ -4,18 +4,18 @@
    THEME — sumber tunggal warna & token (purple premium)
    ============================================================ */
 @theme {
-  /* Surface & background: dinaikkan sedikit agar tidak terlalu suram */
-  --color-bg: #110d20;
-  --color-bg-deep: #0d0a18;
-  --color-surface: #1c1530;
-  --color-surface-2: #21193a;
-  --color-surface-pressed: #2a2148;
+  /* Surface & background: ungu tetap utama, slate jadi undertone kedalaman */
+  --color-bg: #100f1f;
+  --color-bg-deep: #090b14;
+  --color-surface: #1b1530;
+  --color-surface-2: #1d2438;
+  --color-surface-pressed: #27314a;
 
   /* Teks */
   --color-text: #f6f1ff;
-  --color-text-muted: #c4b8dc;
-  --color-text-soft: #9587b0;
-  --color-text-faint: #695988;
+  --color-text-muted: #c5bdd9;
+  --color-text-soft: #928baa;
+  --color-text-faint: #66617f;
 
   /* Aksen utama web: cyan diturunkan saturasi/brightness */
   --color-primary: #7c4dff;
@@ -63,7 +63,9 @@
 
   body {
     background:
-      radial-gradient(circle at 85% 8%, rgba(124, 77, 255, 0.16), transparent 30%),
+      radial-gradient(circle at 86% 6%, rgba(124, 77, 255, 0.15), transparent 30%),
+      radial-gradient(circle at 8% 18%, rgba(69, 200, 223, 0.055), transparent 28%),
+      radial-gradient(circle at 76% 78%, rgba(34, 184, 168, 0.05), transparent 34%),
       linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-deep) 100%);
     color: var(--color-text);
     font-family: var(--font-sans);
@@ -119,22 +121,34 @@
   }
 
   .depth-1 {
-    background: color-mix(in srgb, var(--color-surface) 92%, white 8%);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-surface) 92%, white 8%),
+      color-mix(in srgb, var(--color-surface) 96%, var(--color-bg-deep) 4%)
+    );
     border-color: var(--color-border-soft);
     box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
   }
   .depth-2 {
-    background: color-mix(in srgb, var(--color-surface-2) 92%, white 5%);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-surface-2) 92%, white 5%),
+      color-mix(in srgb, var(--color-surface-2) 96%, black 4%)
+    );
+    border-color: rgba(255, 255, 255, 0.115);
   }
   .depth-3 {
-    background: rgba(255, 255, 255, 0.045);
-    border-color: rgba(255, 255, 255, 0.13);
+    background: rgba(226, 232, 255, 0.045);
+    border-color: rgba(226, 232, 255, 0.13);
   }
   .depth-accent {
-    background: color-mix(in srgb, var(--accent, var(--color-primary)) 13%, var(--color-surface));
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent, var(--color-primary)) 14%, var(--color-surface)),
+      color-mix(in srgb, var(--accent, var(--color-primary)) 8%, var(--color-surface-2))
+    );
     border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 34%, transparent);
-    box-shadow: 0 16px 38px color-mix(in srgb, var(--accent, var(--color-primary)) 14%, transparent);
+    box-shadow: 0 16px 38px color-mix(in srgb, var(--accent, var(--color-primary)) 13%, transparent);
   }
   .depth-glow-soft {
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16), 0 0 34px rgba(124, 77, 255, 0.08);
