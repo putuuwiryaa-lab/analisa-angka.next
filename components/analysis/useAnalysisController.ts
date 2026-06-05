@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/auth/auth-context";
 import { bbfsScopeToTargetPair, type CustomFocus, type TargetPair } from "@/lib/analysis/customDigit";
+import { analysisCacheKey, readAnalysisCache, writeAnalysisCache } from "@/lib/analysis/sessionCache";
 import {
   MARKETS_QUERY_KEY,
   MARKETS_STALE_TIME,
@@ -251,12 +252,32 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     const finalTargetPair =
       isBBFS || isAI ? targetPairFromScope(selectedScope) : selectedTargetPair || targetPair || "belakang";
     if (needsTargetPair && !finalTargetPair) return setError("Pilih fokus 2D dulu.");
+
     setTargetPair(finalTargetPair);
     setParam(selectedParam);
+    setError("");
+
+    const cacheKey = analysisCacheKey({
+      marketId,
+      type,
+      param: selectedParam,
+      targetPair: finalTargetPair,
+      analysisScope: selectedScope,
+    });
+    const cached = result ? null : readAnalysisCache(cacheKey);
+    if (cached) {
+      setResult(cached);
+      setDetailValidationOpen(false);
+      setAngkaJadiOpen(false);
+      return;
+    }
+
     resetBeforeAnalyze();
     try {
       const data = await getMarketData();
-      setResult(await postAnalyze(type, data, selectedParam, finalTargetPair, requestScope));
+      const nextResult = await postAnalyze(type, data, selectedParam, finalTargetPair, requestScope);
+      setResult(nextResult);
+      writeAnalysisCache(cacheKey, nextResult);
       setDetailValidationOpen(false);
     } catch (e: any) {
       setError(e.message || "Error koneksi server");
