@@ -18,7 +18,7 @@ export function AngkaJadiPanel({
   const totalLines = data.sections.reduce((acc, section) => acc + section.lines.length, 0);
 
   return (
-    <div className="animate-soft-pop space-y-3 rounded-3xl border border-border-soft bg-surface p-4">
+    <div className="animate-soft-pop depth-1 space-y-3 rounded-3xl border p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <SectionTitle title="Angka Jadi" />
