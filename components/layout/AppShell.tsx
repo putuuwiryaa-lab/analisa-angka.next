@@ -80,22 +80,22 @@ function HeroHeader() {
 function BottomNav({ onOpenAccount }: { onOpenAccount: () => void }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-3xl items-center justify-around px-6 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+      <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2.5">
         <Link
           href="/pantauan-rekap"
-          className="flex h-14 flex-1 flex-col items-center justify-center gap-1 text-text-muted active:scale-95"
+          className="flex h-15 flex-[1.45] items-center justify-center gap-2 rounded-2xl border border-emerald-400/35 bg-emerald-500/15 px-4 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] active:scale-95"
           aria-label="Statistik Pasaran"
         >
-          <BarChart3 size={20} />
-          <span className="text-xs font-semibold">Statistik</span>
+          <BarChart3 size={21} />
+          <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
         </Link>
         <button
           type="button"
           onClick={onOpenAccount}
-          className="flex h-14 flex-1 flex-col items-center justify-center gap-1 text-text-muted active:scale-95"
+          className="flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-white/[0.035] text-text-muted active:scale-95"
           aria-label="Akun Saya"
         >
-          <User size={20} />
+          <User size={19} />
           <span className="text-xs font-semibold">Akun</span>
         </button>
       </div>
