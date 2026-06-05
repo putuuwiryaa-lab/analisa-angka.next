@@ -2,41 +2,40 @@
 
 /* ============================================================
    THEME — sumber tunggal warna & token (purple premium)
-   Nama token = warna sebenarnya (tidak ada lagi --gold yang isinya pink).
    ============================================================ */
 @theme {
-  /* Surface & background */
-  --color-bg: #0d0a1a;
-  --color-bg-deep: #080611;
-  --color-surface: #151025;
-  --color-surface-2: #18122d;
-  --color-surface-pressed: #20183a;
+  /* Surface & background: dinaikkan sedikit agar tidak terlalu suram */
+  --color-bg: #110d20;
+  --color-bg-deep: #0d0a18;
+  --color-surface: #1c1530;
+  --color-surface-2: #21193a;
+  --color-surface-pressed: #2a2148;
 
   /* Teks */
-  --color-text: #f5f0ff;
-  --color-text-muted: #b9acd3;
-  --color-text-soft: #82749f;
-  --color-text-faint: #5b4a78;
+  --color-text: #f6f1ff;
+  --color-text-muted: #c4b8dc;
+  --color-text-soft: #9587b0;
+  --color-text-faint: #695988;
 
-  /* Aksen utama web */
+  /* Aksen utama web: cyan diturunkan saturasi/brightness */
   --color-primary: #7c4dff;
   --color-primary-soft: #a98cff;
-  --color-accent: #28d7ff;
-  --color-success: #79f2bb;
+  --color-accent: #45c8df;
+  --color-success: #79e6b0;
   --color-danger: #ff6b8a;
 
   /* Border */
-  --color-border: rgba(255, 255, 255, 0.13);
-  --color-border-soft: rgba(255, 255, 255, 0.08);
-  --color-border-strong: rgba(255, 255, 255, 0.2);
+  --color-border: rgba(255, 255, 255, 0.15);
+  --color-border-soft: rgba(255, 255, 255, 0.095);
+  --color-border-strong: rgba(255, 255, 255, 0.24);
 
-  /* Warna per-mode analisa (dipasang lewat [data-mode]) */
-  --color-mode-ai: #f3c14b;
-  --color-mode-bbfs: #ff9f43;
-  --color-mode-mati: #ff647c;
-  --color-mode-jumlah: #14b8a6;
-  --color-mode-shio: #28d7ff;
-  --color-mode-rekap: #6ea8ff;
+  /* Warna per-mode analisa */
+  --color-mode-ai: #e6b84d;
+  --color-mode-bbfs: #ec9a4a;
+  --color-mode-mati: #f26b86;
+  --color-mode-jumlah: #22b8a8;
+  --color-mode-shio: #45c8df;
+  --color-mode-rekap: #78a8f2;
 
   /* Radius */
   --radius-lg: 1rem;
@@ -63,7 +62,9 @@
   }
 
   body {
-    background-color: var(--color-bg);
+    background:
+      radial-gradient(circle at 85% 8%, rgba(124, 77, 255, 0.16), transparent 30%),
+      linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-deep) 100%);
     color: var(--color-text);
     font-family: var(--font-sans);
     text-rendering: optimizeLegibility;
@@ -111,10 +112,10 @@
     color: var(--accent, var(--color-primary));
   }
   .accent-bg-soft {
-    background-color: color-mix(in srgb, var(--accent, var(--color-primary)) 16%, transparent);
+    background-color: color-mix(in srgb, var(--accent, var(--color-primary)) 14%, transparent);
   }
   .accent-border {
-    border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 40%, transparent);
+    border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 34%, transparent);
   }
 
   .pressable {
