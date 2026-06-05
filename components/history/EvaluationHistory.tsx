@@ -1,14 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase/client";
 
 type EvaluationMode = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
 type EvaluationPosition = "all" | "as" | "kop" | "kepala" | "ekor";
 type TargetPair = "depan" | "tengah" | "belakang";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
-
-const EVALUATION_HISTORY_LIMIT = 15;
 
 function safeDecode(value: string) {
   try {
@@ -20,12 +17,6 @@ function safeDecode(value: string) {
 
 function normalizeMarketId(value: string) {
   return safeDecode(value).trim();
-}
-
-function marketIdCandidates(value: string) {
-  const decoded = normalizeMarketId(value);
-  const encoded = encodeURIComponent(decoded);
-  return Array.from(new Set([value, decoded, encoded, decoded.toUpperCase(), decoded.toLowerCase()].filter(Boolean)));
 }
 
 function labelFromMatiDetail(detail: any) {
@@ -50,27 +41,6 @@ function displayLabel(row: any, mode: EvaluationMode) {
   return rawLabel === "TIDAK MASUK" ? "ZONK" : rawLabel;
 }
 
-function legacyAi2DScope(targetPair: TargetPair): AnalysisScope {
-  return `2d_${targetPair}` as AnalysisScope;
-}
-
-function shouldUseAi2DScopeFallback(mode: EvaluationMode, analysisScope: AnalysisScope) {
-  return mode === "ai" && analysisScope !== "3d" && analysisScope !== "4d";
-}
-
-async function resolveMarketIds(marketId: string) {
-  const candidates = marketIdCandidates(marketId);
-  const { data } = await supabase.from("markets").select("id,name").in("id", candidates);
-
-  const ids = new Set(candidates);
-  for (const market of data || []) {
-    if (market?.id) ids.add(String(market.id));
-    if (market?.name) ids.add(String(market.name));
-  }
-
-  return Array.from(ids);
-}
-
 async function fetchEvaluations(
   marketId: string,
   mode: EvaluationMode,
@@ -79,31 +49,21 @@ async function fetchEvaluations(
   targetPair: TargetPair,
   analysisScope: AnalysisScope,
 ) {
-  const resolvedMarketIds = await resolveMarketIds(marketId);
+  const params = new URLSearchParams({
+    marketId: normalizeMarketId(marketId),
+    mode,
+    param: String(param),
+    position,
+    targetPair,
+    analysisScope,
+  });
 
-  let query = supabase
-    .from("analysis_evaluations")
-    .select(
-      "id,from_result,new_result,is_hit,status,detail,evaluated_at,position,target_pair,analysis_scope,market_id",
-    )
-    .in("market_id", resolvedMarketIds)
-    .eq("mode", mode)
-    .eq("param", param)
-    .order("evaluated_at", { ascending: false })
-    .limit(EVALUATION_HISTORY_LIMIT);
+  const response = await fetch(`/api/evaluations?${params.toString()}`, { cache: "no-store" });
+  const json = await response.json();
 
-  if (position && position !== "all") query = query.eq("position", position);
-  if (mode !== "mati") query = query.eq("target_pair", targetPair);
-
-  if (shouldUseAi2DScopeFallback(mode, analysisScope)) {
-    query = query.in("analysis_scope", ["default", legacyAi2DScope(targetPair)]);
-  } else {
-    query = query.eq("analysis_scope", analysisScope);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data || []).slice(0, EVALUATION_HISTORY_LIMIT);
+  if (!response.ok) throw new Error(json?.error || "Gagal memuat riwayat evaluasi");
+  if (!Array.isArray(json)) throw new Error("Format riwayat evaluasi tidak valid");
+  return json;
 }
 
 export function EvaluationHistory({
