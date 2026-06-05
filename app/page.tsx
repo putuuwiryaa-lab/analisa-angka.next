@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
   return (
     <div className="animate-rise">
-      <div className="animate-soft-pop mb-4 rounded-3xl border border-border-soft bg-surface/80 p-3 shadow-xl shadow-black/10">
+      <div className="animate-soft-pop depth-1 mb-4 rounded-3xl border p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-accent">
@@ -111,7 +111,7 @@ export default function DashboardPage() {
           </div>
           <button
             onClick={() => refetch()}
-            className="pressable flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border-soft bg-white/[0.045] text-text-muted hover:border-border hover:bg-white/[0.07]"
+            className="pressable depth-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.07]"
             aria-label="Refresh data pasaran"
           >
             <RefreshCw size={18} className={isFetching ? "animate-spin" : ""} />
@@ -145,10 +145,10 @@ export default function DashboardPage() {
               <Link
                 key={m.id}
                 href={`/analyze/${encodeURIComponent(m.id)}`}
-                className="pressable animate-soft-pop group flex h-[112px] flex-col overflow-hidden rounded-3xl border border-border-soft bg-surface text-center hover:border-border hover:bg-surface-2"
+                className="pressable animate-soft-pop depth-1 group flex h-[112px] flex-col overflow-hidden rounded-3xl border text-center hover:border-border hover:bg-surface-2"
                 style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}
               >
-                <div className="flex min-h-[48px] items-center justify-center border-b border-border-soft bg-white/[0.025] px-3 transition-colors group-hover:bg-white/[0.04]">
+                <div className="depth-2 flex min-h-[48px] items-center justify-center border-b border-border-soft px-3 transition-colors group-hover:bg-white/[0.04]">
                   <span className="display line-clamp-2 text-[12px] leading-4 text-text">{m.name || m.id}</span>
                 </div>
                 <div className="flex flex-1 items-center justify-center">
@@ -161,10 +161,10 @@ export default function DashboardPage() {
               href={requestMarketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="pressable animate-soft-pop flex h-[112px] flex-col items-center justify-center rounded-3xl border border-dashed border-border-soft bg-surface/70 text-center hover:border-border hover:bg-surface"
+              className="pressable animate-soft-pop depth-2 flex h-[112px] flex-col items-center justify-center rounded-3xl border border-dashed text-center hover:border-border hover:bg-surface"
               aria-label="Request penambahan pasaran via WhatsApp"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/[0.06] text-primary-soft">
+              <div className="depth-3 flex h-10 w-10 items-center justify-center rounded-2xl border text-primary-soft">
                 <Plus size={22} strokeWidth={3} />
               </div>
               <span className="display mt-2 block text-[11px] text-text">Request Pasaran</span>
@@ -174,7 +174,7 @@ export default function DashboardPage() {
             </a>
 
             {filteredMarkets.length === 0 && (
-              <div className="animate-soft-pop col-span-2 rounded-3xl border border-dashed border-border bg-white/5 py-12 text-center sm:col-span-3">
+              <div className="animate-soft-pop depth-1 col-span-2 rounded-3xl border border-dashed py-12 text-center sm:col-span-3">
                 <Database className="mx-auto mb-3 text-text-soft" />
                 <p className="text-xs uppercase tracking-wide text-text-muted">Pasaran tidak ditemukan</p>
               </div>
