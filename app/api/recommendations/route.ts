@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { customFocusPairs, customFocusToBBFSScope, type CustomFocus, type TargetPair } from "@/lib/analysis/customDigit";
 import type { RecommendationBadge, RecommendedMap } from "@/lib/analysis/recommendations";
 
@@ -29,6 +29,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 
 type RecommendationGroup = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
 type ScoredRecommendation = { param: number; badge: RecommendationBadge };
+type MarketRow = { id?: string | null; name?: string | null };
 
 function safeDecode(value: string) {
   try {
@@ -103,17 +104,17 @@ function applyRecommendationBadges(next: RecommendedMap, keyForParam: (param: nu
   scored.filter((item) => item.badge === "fire").forEach((item) => setBadge(next, keyForParam(item.param), "fire"));
 }
 
-async function resolveMarketIds(supabase: ReturnType<typeof createClient>, marketId: string) {
+async function resolveMarketIds(supabase: SupabaseClient, marketId: string) {
   const ids = new Set(marketCandidates(marketId));
   const { data } = await supabase.from("markets").select("id,name").in("id", Array.from(ids));
-  for (const market of data || []) {
-    if (market?.id) ids.add(String(market.id));
-    if (market?.name) ids.add(String(market.name));
+  for (const market of ((data || []) as MarketRow[])) {
+    if (market.id) ids.add(String(market.id));
+    if (market.name) ids.add(String(market.name));
   }
   return Array.from(ids);
 }
 
-async function loadRows(supabase: ReturnType<typeof createClient>, marketIds: string[], mode: string, position: string, params: number[], targetPair: TargetPair = "belakang", analysisScope = "default") {
+async function loadRows(supabase: SupabaseClient, marketIds: string[], mode: string, position: string, params: number[], targetPair: TargetPair = "belakang", analysisScope = "default") {
   const { data, error } = await supabase
     .from("analysis_evaluations")
     .select("param,is_hit,status,evaluated_at,target_pair,analysis_scope,market_id")
@@ -130,7 +131,7 @@ async function loadRows(supabase: ReturnType<typeof createClient>, marketIds: st
   return data || [];
 }
 
-async function buildRecommendations(supabase: ReturnType<typeof createClient>, marketIds: string[], customFocus: CustomFocus): Promise<RecommendedMap> {
+async function buildRecommendations(supabase: SupabaseClient, marketIds: string[], customFocus: CustomFocus): Promise<RecommendedMap> {
   const pairs = customFocusPairs(customFocus);
   const bbfsScope = customFocusToBBFSScope(customFocus);
   const next: RecommendedMap = {};
