@@ -17,6 +17,17 @@ import {
 const VALID_TARGET_PAIRS: TargetPair[] = ["depan", "tengah", "belakang"];
 type ResultData = Record<string, any>;
 
+type MarketRecord = {
+  id?: string;
+  name?: string;
+  history_data?: string | null;
+  historyData?: string | null;
+  history?: string | null;
+  data?: string | null;
+  results?: string | null;
+  result?: string | null;
+};
+
 function parseTargetPair(value: string | null): TargetPair {
   return VALID_TARGET_PAIRS.includes(value as TargetPair) ? (value as TargetPair) : "belakang";
 }
@@ -32,6 +43,20 @@ function isAi2DScope(scope: AnalysisScope | null): boolean {
 function requestScopeForAnalyze(type: string, scope: AnalysisScope): AnalysisScope {
   if (type === "ai" && isAi2DScope(scope)) return "default";
   return scope;
+}
+function normalizeId(value: string) {
+  return decodeURIComponent(value).trim().toLowerCase();
+}
+function extractHistoryData(market: MarketRecord) {
+  return String(
+    market.history_data ?? market.historyData ?? market.history ?? market.data ?? market.results ?? market.result ?? "",
+  );
+}
+function parseHistoryTokens(historyData: string) {
+  return historyData
+    .split(/[\s\n\r\t,;|]+/)
+    .map((token) => token.trim())
+    .filter((token) => /^\d{4}$/.test(token));
 }
 
 export function useAnalysisController({ type, marketId }: { type: string; marketId: string }) {
@@ -101,14 +126,29 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   };
 
   const getMarketData = async () => {
-    const resMarkets = await fetch("/api/markets");
-    const allMarkets = await resMarkets.json();
-    const current = allMarkets.find((m: any) => m.id === marketId);
-    if (!current) throw new Error(`Data histori ${marketId} belum disetup oleh Admin!`);
-    const data = String(current.history_data || "")
-      .split(/[\s\n\r\t,]+/)
-      .filter((tok: string) => /^\d{4}$/.test(tok));
-    if (!data || data.length < 17) throw new Error("Data dari server kurang! Min 17 result.");
+    const response = await fetch("/api/markets", { cache: "no-store" });
+    const json = await response.json();
+
+    if (!response.ok) {
+      throw new Error(json?.error || "Gagal membaca data pasaran dari server.");
+    }
+    if (!Array.isArray(json)) {
+      throw new Error("Format data pasaran dari server tidak valid.");
+    }
+
+    const requestedId = normalizeId(marketId);
+    const current = json.find((market: MarketRecord) => {
+      const id = market.id ? normalizeId(String(market.id)) : "";
+      const name = market.name ? normalizeId(String(market.name)) : "";
+      return id === requestedId || name === requestedId;
+    });
+
+    if (!current) throw new Error(`Data histori ${decodeURIComponent(marketId)} belum disetup oleh Admin!`);
+
+    const data = parseHistoryTokens(extractHistoryData(current));
+    if (data.length < 17) {
+      throw new Error(`Data ${current.name || current.id || marketId} kurang. Minimal 17 result, terbaca ${data.length}.`);
+    }
     return data;
   };
 
@@ -220,7 +260,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   };
 
   const handleBack = () => {
-    if (!stepBack()) router.push(`/analyze/${marketId}`);
+    if (!stepBack()) router.push(`/analyze/${encodeURIComponent(marketId)}`);
   };
 
   const handleAnalyze = async (selectedParam: number, selectedTargetPair?: TargetPair) => {
