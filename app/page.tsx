@@ -6,57 +6,15 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Clock3, Database, Plus, RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
+import {
+  MARKETS_GC_TIME,
+  MARKETS_QUERY_KEY,
+  MARKETS_STALE_TIME,
+  fetchMarkets,
+  formatMarketUpdatedAt,
+} from "@/lib/markets/client";
 
 const WA_NUMBER = "6285119341538";
-const MARKETS_STALE_TIME = 10 * 60 * 1000;
-const MARKETS_GC_TIME = 60 * 60 * 1000;
-
-type Market = {
-  id: string;
-  name?: string | null;
-  order?: number | null;
-  updated_at?: string | null;
-  history_data?: string | null;
-  lastResult?: string;
-};
-
-function getLastResult(historyData: string | null | undefined) {
-  const tokens = String(historyData || "")
-    .trim()
-    .split(/[\s\n\r\t,]+/);
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    if (/^\d{4}$/.test(tokens[i])) return tokens[i];
-  }
-  return "----";
-}
-
-function formatMarketUpdatedAt(value: string | null) {
-  if (!value) return "Belum ada info";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Info tidak valid";
-  return date.toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-async function fetchMarkets(): Promise<Market[]> {
-  const response = await fetch("/api/markets", { cache: "no-store" });
-  const json = await response.json();
-
-  if (!response.ok) {
-    throw new Error(json?.error || "Gagal memuat data pasaran.");
-  }
-  if (!Array.isArray(json)) {
-    throw new Error("Format data pasaran dari server tidak valid.");
-  }
-
-  return json
-    .sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
-    .map((m) => ({ ...m, lastResult: getLastResult(m.history_data) }));
-}
 
 export default function DashboardPage() {
   const [search, setSearch] = useState("");
@@ -67,7 +25,7 @@ export default function DashboardPage() {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ["markets"],
+    queryKey: MARKETS_QUERY_KEY,
     queryFn: fetchMarkets,
     staleTime: MARKETS_STALE_TIME,
     gcTime: MARKETS_GC_TIME,
