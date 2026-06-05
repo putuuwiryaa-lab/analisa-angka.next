@@ -65,12 +65,12 @@ function cnPad(hideShell: boolean) {
 
 function HeroHeader() {
   return (
-    <header className="mb-6 flex items-center justify-between gap-4 pt-4">
+    <header className="animate-fade-in mb-6 flex items-center justify-between gap-4 pt-4">
       <div className="min-w-0">
         <h1 className="display truncate text-3xl uppercase leading-tight text-text sm:text-4xl">ANALISA ANGKA</h1>
         <p className="mt-1 text-sm font-medium text-text-soft sm:text-base">Prediksi berbasis matematis</p>
       </div>
-      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-primary/35 bg-primary/15 shadow-[0_0_32px_rgba(124,58,237,0.24)] sm:h-20 sm:w-20">
+      <div className="animate-soft-pop flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-primary/35 bg-primary/15 shadow-[0_0_32px_rgba(124,58,237,0.24)] sm:h-20 sm:w-20">
         <Logo className="h-10 w-10 sm:h-12 sm:w-12" />
       </div>
     </header>
@@ -79,11 +79,11 @@ function HeroHeader() {
 
 function BottomNav({ onOpenAccount }: { onOpenAccount: () => void }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
+    <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2.5">
         <Link
           href="/pantauan-rekap"
-          className="flex h-15 flex-[1.45] items-center justify-center gap-2 rounded-2xl border border-emerald-400/35 bg-emerald-500/15 px-4 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] active:scale-95"
+          className="pressable flex h-15 flex-[1.45] items-center justify-center gap-2 rounded-2xl border border-emerald-400/35 bg-emerald-500/15 px-4 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 hover:shadow-[0_0_34px_rgba(16,185,129,0.24)]"
           aria-label="Statistik Pasaran"
         >
           <BarChart3 size={21} />
@@ -92,7 +92,7 @@ function BottomNav({ onOpenAccount }: { onOpenAccount: () => void }) {
         <button
           type="button"
           onClick={onOpenAccount}
-          className="flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-white/[0.035] text-text-muted active:scale-95"
+          className="pressable flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-white/[0.035] text-text-muted hover:border-border hover:bg-white/[0.06]"
           aria-label="Akun Saya"
         >
           <User size={19} />
@@ -126,8 +126,8 @@ function AccountPanel({ open, onClose }: { open: boolean; onClose: () => void })
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
-      <div className="w-full max-w-sm animate-rise rounded-t-3xl border border-border-soft bg-surface p-5 sm:rounded-3xl">
+    <div className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
+      <div className="animate-soft-pop w-full max-w-sm rounded-t-3xl border border-border-soft bg-surface p-5 sm:rounded-3xl">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-text-soft">Akun</p>
@@ -163,7 +163,7 @@ function AccountPanel({ open, onClose }: { open: boolean; onClose: () => void })
             <LogOut size={15} /> Keluar
           </Button>
         ) : (
-          <div className="mt-3 rounded-2xl border border-danger/25 bg-danger/10 p-4 text-center">
+          <div className="animate-soft-pop mt-3 rounded-2xl border border-danger/25 bg-danger/10 p-4 text-center">
             <p className="mb-3 text-sm text-text">Yakin ingin keluar?</p>
             <div className="grid grid-cols-2 gap-3">
               <Button variant="ghost" onClick={() => setConfirmLogout(false)}>
