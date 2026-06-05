@@ -45,6 +45,7 @@
 
   /* Motion */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-press: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* Font dari next/font (lihat app/layout.tsx) — referensi, bukan salin nilai */
@@ -75,11 +76,19 @@
     color: #fff;
   }
 
-  /* Tap target minimum di mobile */
   button,
   a,
   [role="button"] {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-press);
   }
 }
 
@@ -87,20 +96,17 @@
    UTILITIES
    ============================================================ */
 @layer utilities {
-  /* Angka: monospace + rata kolom (tabular) */
   .num {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums slashed-zero;
     letter-spacing: 0.04em;
   }
 
-  /* Judul display: weight tebal + sedikit melebar */
   .display {
     font-weight: 800;
     letter-spacing: 0.04em;
   }
 
-  /* Kartu/komponen ber-mode: pakai var(--accent) dari [data-mode] */
   .accent-text {
     color: var(--accent, var(--color-primary));
   }
@@ -109,6 +115,30 @@
   }
   .accent-border {
     border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 40%, transparent);
+  }
+
+  .pressable {
+    transform: translateZ(0);
+    transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-press);
+  }
+  .pressable:active {
+    transform: scale(0.985);
+  }
+
+  .animate-rise {
+    animation: rise 220ms var(--ease-out-soft) both;
+  }
+  .animate-soft-pop {
+    animation: soft-pop 180ms var(--ease-out-soft) both;
+  }
+  .animate-fade-in {
+    animation: fade-in 180ms var(--ease-out-soft) both;
+  }
+  .animate-shimmer {
+    background-size: 200% 100%;
+    animation: shimmer 1.35s linear infinite;
   }
 }
 
@@ -138,12 +168,12 @@
 }
 
 /* ============================================================
-   MOTION — satu pola global
+   MOTION — ringan, konsisten, tetap hormati reduced motion
    ============================================================ */
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -151,8 +181,42 @@
   }
 }
 
-@layer utilities {
-  .animate-rise {
-    animation: rise 0.32s var(--ease-out-soft) both;
+@keyframes soft-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
   }
 }
