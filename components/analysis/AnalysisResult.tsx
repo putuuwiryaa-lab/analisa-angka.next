@@ -302,6 +302,7 @@ export function AnalysisResult({
   const formulaTotal =
     type === "ai" || type === "bbfs" ? 35 : type === "jumlah" ? 56 : type === "shio" ? 60 : 50;
   const isBBFSResult = type === "bbfs";
+  const isAIResult = type === "ai";
   const resultLabel = result.displayLabel || (isBBFSResult ? "BBFS" : label);
 
   return (
@@ -310,7 +311,7 @@ export function AnalysisResult({
         label={resultLabel}
         values={displayResult}
         shio={type === "shio"}
-        singleLine={isBBFSResult}
+        singleLine={isBBFSResult || isAIResult}
         stacked={type === "ai" || type === "bbfs"}
       />
       <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
