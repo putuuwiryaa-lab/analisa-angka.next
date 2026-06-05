@@ -62,19 +62,25 @@ function DigitPills({
   singleLine?: boolean;
   center?: boolean;
 }) {
+  if (singleLine) {
+    return (
+      <div
+        className="grid w-full gap-1.5"
+        style={{ gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))` }}
+      >
+        {items.map((item, i) => (
+          <div key={i} className={cnPill(true, compact)}>
+            {item}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={
-        singleLine
-          ? `flex flex-nowrap ${center ? "justify-center" : "justify-end"} gap-1.5 overflow-x-auto pb-1`
-          : `flex flex-wrap ${center ? "justify-center" : "justify-end"} gap-2`
-      }
-    >
+    <div className={`flex flex-wrap ${center ? "justify-center" : "justify-end"} gap-2`}>
       {items.map((item, i) => (
-        <div
-          key={i}
-          className={cnPill(singleLine, compact)}
-        >
+        <div key={i} className={cnPill(false, compact)}>
           {item}
         </div>
       ))}
@@ -84,7 +90,7 @@ function DigitPills({
 
 function cnPill(singleLine: boolean, compact: boolean) {
   const size = singleLine
-    ? "h-11 min-w-10 px-2 text-lg"
+    ? "h-11 min-w-0 px-0 text-lg"
     : compact
       ? "h-10 min-w-10 px-3 text-base"
       : "h-14 min-w-14 px-4 text-3xl";
@@ -132,7 +138,6 @@ function MainResultCard({
         <div className="accent-bg-soft accent-text inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide">
           <Trophy size={12} /> Hasil Utama
         </div>
-        <span className="text-[10px] font-black uppercase tracking-wide text-text-soft">Siap dibaca</span>
       </div>
       {useStacked ? (
         <div className="relative rounded-3xl border border-border-soft bg-surface-2 p-4 text-center">
