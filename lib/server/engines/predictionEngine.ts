@@ -1,10 +1,10 @@
 import "server-only";
-import { _0xJ2d } from './tables.js';
-import { _0x3ca571, RM_NAMES } from './offFormula.js';
-import { _0xEngineJumlahMati } from './jumlahEngine.js';
-import { _0x2d4get, _0xRumusShio, SHIO_RUMUS_NAMES, _0xEngineShioMati } from './shioEngine.js';
-import { _0x9a025f, _0xe57f0c, _0xEngineAI } from './aiEngine.js';
-import { runRekap } from './rekapEngine.js';
+import { _0xJ2d } from './tables';
+import { _0x3ca571, RM_NAMES } from './offFormula';
+import { _0xEngineJumlahMati } from './jumlahEngine';
+import { _0x2d4get, _0xRumusShio, SHIO_RUMUS_NAMES, _0xEngineShioMati } from './shioEngine';
+import { _0x9a025f, _0xe57f0c, _0xEngineAI } from './aiEngine';
+import { runRekap } from './rekapEngine';
 
 type AiVote = Record<number, number>;
 type TargetPair = 'depan' | 'tengah' | 'belakang';
