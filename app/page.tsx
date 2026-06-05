@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Database, Plus, RefreshCw, Search } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -43,16 +42,24 @@ function formatMarketUpdatedAt(value: string | null) {
 }
 
 async function fetchMarkets(): Promise<Market[]> {
-  const { data, error } = await supabase.from("markets").select("*");
-  if (error) throw error;
-  return (data || [])
+  const response = await fetch("/api/markets", { cache: "no-store" });
+  const json = await response.json();
+
+  if (!response.ok) {
+    throw new Error(json?.error || "Gagal memuat data pasaran.");
+  }
+  if (!Array.isArray(json)) {
+    throw new Error("Format data pasaran dari server tidak valid.");
+  }
+
+  return json
     .sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
     .map((m) => ({ ...m, lastResult: getLastResult(m.history_data) }));
 }
 
 export default function DashboardPage() {
   const [search, setSearch] = useState("");
-  const { data: markets = [], isLoading, refetch, isFetching } = useQuery({
+  const { data: markets = [], isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["markets"],
     queryFn: fetchMarkets,
   });
@@ -75,6 +82,8 @@ export default function DashboardPage() {
     );
   }, [markets, search]);
 
+  const errorMessage = error instanceof Error ? error.message : "";
+
   return (
     <div className="animate-rise">
       <div className="mb-4 flex items-center justify-between gap-3 px-1">
@@ -91,6 +100,12 @@ export default function DashboardPage() {
           <RefreshCw size={18} className={isFetching ? "animate-spin" : ""} />
         </button>
       </div>
+
+      {errorMessage && (
+        <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
+          {errorMessage}
+        </div>
+      )}
 
       <div className="relative mb-5">
         <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
@@ -111,7 +126,7 @@ export default function DashboardPage() {
             {filteredMarkets.map((m) => (
               <Link
                 key={m.id}
-                href={`/analyze/${m.id}`}
+                href={`/analyze/${encodeURIComponent(m.id)}`}
                 className="flex h-[104px] flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface text-center transition active:scale-[0.985] hover:border-border"
               >
                 <div className="border-b border-border-soft bg-white/[0.02] px-2 py-2.5">
