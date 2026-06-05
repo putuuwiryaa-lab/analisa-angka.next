@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Clock3, Database, Plus, RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 const WA_NUMBER = "6285119341538";
+const MARKETS_STALE_TIME = 10 * 60 * 1000;
+const MARKETS_GC_TIME = 60 * 60 * 1000;
 
 type Market = {
   id: string;
@@ -58,9 +60,18 @@ async function fetchMarkets(): Promise<Market[]> {
 
 export default function DashboardPage() {
   const [search, setSearch] = useState("");
-  const { data: markets = [], isLoading, error, refetch, isFetching } = useQuery({
+  const {
+    data: markets = [],
+    isPending,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ["markets"],
     queryFn: fetchMarkets,
+    staleTime: MARKETS_STALE_TIME,
+    gcTime: MARKETS_GC_TIME,
+    placeholderData: keepPreviousData,
   });
 
   const requestMarketUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
@@ -83,6 +94,7 @@ export default function DashboardPage() {
   }, [markets, search]);
 
   const errorMessage = error instanceof Error ? error.message : "";
+  const showInitialSkeleton = isPending && markets.length === 0;
 
   return (
     <div className="animate-rise">
@@ -125,7 +137,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 pb-6 sm:grid-cols-3">
-        {isLoading ? (
+        {showInitialSkeleton ? (
           Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-3xl" />)
         ) : (
           <>
