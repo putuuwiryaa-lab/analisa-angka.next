@@ -356,7 +356,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
           !this.showRekapFocusSelector
         );
       },
-      canStartAnalyze: !loading && param !== 0 && !isRekapCustom && !autoMode,
+      canStartAnalyze: !result && !loading && param !== 0 && !isRekapCustom && !autoMode,
     },
     handlers: {
       handleBack,
