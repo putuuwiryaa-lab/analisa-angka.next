@@ -33,19 +33,20 @@ export function StatisticCard({
 
   return (
     <div
-      className="rounded-2xl border p-3 text-left shadow-xl"
+      className="animate-soft-pop rounded-3xl border p-3 text-left shadow-xl"
       style={{
-        borderColor: topRank ? "rgba(246,201,107,0.55)" : "rgba(255,255,255,0.11)",
+        animationDelay: `${Math.min(index, 10) * 24}ms`,
+        borderColor: topRank ? "rgba(246,201,107,0.46)" : "rgba(255,255,255,0.12)",
         background: topRank
-          ? "linear-gradient(135deg,rgba(246,201,107,0.16),rgba(52,211,153,0.08))"
-          : "rgba(8,12,18,0.78)",
+          ? "linear-gradient(135deg,rgba(246,201,107,0.14),rgba(52,211,153,0.07))"
+          : "rgba(28,21,48,0.82)",
         backdropFilter: "blur(12px)",
       }}
     >
       <div className="flex items-start gap-3">
         <div className="flex w-14 shrink-0 flex-col items-center gap-1.5">
           <div
-            className="display flex h-12 w-12 items-center justify-center rounded-2xl text-[13px]"
+            className="display flex h-12 w-12 items-center justify-center rounded-2xl text-[13px] shadow-sm"
             style={{ background: topRank ? statGold : statAccentSoft, color: topRank ? "#120d02" : statAccent }}
           >
             #{index + 1}
@@ -79,7 +80,7 @@ export function StatisticCard({
               )}
             </div>
             <span
-              className="shrink-0 rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-black uppercase tracking-wide"
+              className="shrink-0 rounded-full border border-white/10 bg-white/[0.055] px-2.5 py-1 text-[11px] font-black uppercase tracking-wide"
               style={{ color: statGold }}
             >
               {badgeLabel(item)}
@@ -87,13 +88,13 @@ export function StatisticCard({
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-            <div className="rounded-xl bg-black/25 p-2">
+            <div className="rounded-2xl border border-white/8 bg-black/20 p-2">
               <p className="text-[10px] font-black uppercase tracking-wide text-text-muted">Riwayat</p>
               <p className="display text-[13px]" style={{ color: statGold }}>
                 {item.wins_15}/15
               </p>
             </div>
-            <div className="rounded-xl bg-black/25 p-2">
+            <div className="rounded-2xl border border-white/8 bg-black/20 p-2">
               <p className="text-[10px] font-black uppercase tracking-wide text-text-muted">Terbaru</p>
               <p className="display text-[13px]" style={{ color: statAccent }}>
                 {item.wins_last_5}/5
@@ -102,7 +103,7 @@ export function StatisticCard({
           </div>
 
           {alsoLabels.length > 0 && (
-            <div className="mt-3 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.07] px-3 py-2">
+            <div className="mt-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.07] px-3 py-2">
               <p className="text-[10px] font-black uppercase tracking-wide text-text-muted">Juga unggul</p>
               <p className="mt-1 text-[11px] font-black uppercase leading-4 tracking-wide" style={{ color: statAccent }}>
                 {alsoLabels.join(" · ")}
@@ -113,7 +114,7 @@ export function StatisticCard({
           <button
             type="button"
             onClick={() => onOpen(marketUrl(item))}
-            className="mt-3 w-full rounded-xl px-4 py-2.5 text-[11px] font-black uppercase tracking-wide active:scale-[0.985]"
+            className="pressable mt-3 w-full rounded-2xl px-4 py-2.5 text-[11px] font-black uppercase tracking-wide"
             style={{ background: topRank ? statGold : statAccentSoft, color: topRank ? "#120d02" : statAccent }}
           >
             Buka Pasaran
@@ -122,4 +123,4 @@ export function StatisticCard({
       </div>
     </div>
   );
-              }
+}
