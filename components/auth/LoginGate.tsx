@@ -77,23 +77,20 @@ export function LoginGate() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-start px-5 pb-8 pt-[calc(2rem+env(safe-area-inset-top))] sm:pt-12">
       <div className="w-full max-w-sm animate-rise">
-        {/* Header */}
-        <div className="mb-5 rounded-3xl border border-border bg-white/[0.05] p-6 text-center backdrop-blur-xl">
-          <div className="mx-auto mb-4 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-3xl border border-border bg-primary/20">
+        <div className="animate-soft-pop mb-5 rounded-3xl border border-border bg-white/[0.055] p-6 text-center shadow-xl shadow-black/10 backdrop-blur-xl">
+          <div className="mx-auto mb-4 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-3xl border border-border bg-primary/18 shadow-[0_0_30px_rgba(124,77,255,0.18)]">
             <Logo className="h-12 w-12" />
           </div>
-          <h1 className="display text-3xl text-text">Analisa Angka</h1>
+          <h1 className="display text-3xl uppercase text-text">ANALISA ANGKA</h1>
           <p className="mt-3 text-sm text-text-muted">
-            Mulai trial gratis atau masuk dengan PIN VIP.
+            Prediksi berbasis matematis.
           </p>
         </div>
 
-        {/* Panel */}
-        <div className="rounded-3xl border border-border-soft bg-surface p-5 sm:p-6">
-          {/* Device key */}
-          <div className="mb-5 rounded-2xl border border-border-soft bg-black/25 p-4">
+        <div className="animate-soft-pop rounded-3xl border border-border-soft bg-surface p-5 shadow-xl shadow-black/10 sm:p-6">
+          <div className="mb-5 rounded-3xl border border-border-soft bg-black/20 p-4">
             <div className="mb-3 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/12 text-accent">
                 <KeyRound size={18} />
               </div>
               <div>
@@ -105,13 +102,13 @@ export function LoginGate() {
           </div>
 
           {error && (
-            <p className="mb-4 rounded-2xl border border-danger/25 bg-danger/10 p-3 text-center text-xs font-bold text-danger">
+            <p className="animate-soft-pop mb-4 rounded-2xl border border-danger/25 bg-danger/10 p-3 text-center text-xs font-bold text-danger">
               {error}
             </p>
           )}
 
           {!showPin ? (
-            <div className="space-y-3">
+            <div className="animate-rise space-y-3">
               <Button
                 onClick={startTrial}
                 disabled={loading || !deviceId || !displayCode}
@@ -138,7 +135,7 @@ export function LoginGate() {
               </a>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="animate-rise space-y-4">
               <div>
                 <label className="mb-2 ml-1 block text-xs font-bold uppercase tracking-wide text-text-muted">
                   PIN VIP / MASTER
@@ -181,7 +178,7 @@ export function LoginGate() {
                   href={activationUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-bold text-primary-soft underline underline-offset-4"
+                  className="pressable text-xs font-bold text-primary-soft underline underline-offset-4"
                 >
                   Hubungi Admin untuk Aktivasi VIP
                 </a>
