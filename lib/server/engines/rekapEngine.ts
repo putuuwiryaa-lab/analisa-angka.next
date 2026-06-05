@@ -1,9 +1,9 @@
 import "server-only";
-import { _0xJ2d } from './tables.js';
-import { _0xEngineAI } from './aiEngine.js';
-import { _0xEngineMatiPos } from './matiEngine.js';
-import { _0xEngineJumlahMati } from './jumlahEngine.js';
-import { _0x2d4get, _0xEngineShioMati } from './shioEngine.js';
+import { _0xJ2d } from './tables';
+import { _0xEngineAI } from './aiEngine';
+import { _0xEngineMatiPos } from './matiEngine';
+import { _0xEngineJumlahMati } from './jumlahEngine';
+import { _0x2d4get, _0xEngineShioMati } from './shioEngine';
 
 export function runRekap(D: string[], param: number) {
   const isTop = param === 2;
