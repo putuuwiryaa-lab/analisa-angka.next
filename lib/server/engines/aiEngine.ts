@@ -1,5 +1,5 @@
 import "server-only";
-import { AI_I, AI_L, AI_B, AI_T, AI_P, _0xc3c54e, _0xJ2d } from './tables.js';
+import { AI_I, AI_L, AI_B, AI_T, AI_P, _0xc3c54e, _0xJ2d } from './tables';
 
 export const _0xe57f0c: Record<number, number> = { 4: 11, 5: 12, 6: 13 };
 
