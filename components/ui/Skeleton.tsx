@@ -7,7 +7,10 @@ type SkeletonProps = ComponentProps<"div">;
 export function Skeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
-      className={cn("animate-pulse rounded-lg bg-white/[0.06]", className)}
+      className={cn(
+        "animate-shimmer rounded-lg bg-[linear-gradient(90deg,rgba(255,255,255,0.045),rgba(255,255,255,0.085),rgba(255,255,255,0.045))]",
+        className,
+      )}
       {...props}
     />
   );
