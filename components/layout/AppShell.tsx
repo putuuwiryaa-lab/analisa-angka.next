@@ -67,7 +67,7 @@ function HeroHeader() {
   return (
     <header className="mb-6 flex items-center justify-between gap-4 pt-4">
       <div className="min-w-0">
-        <h1 className="display truncate text-3xl leading-tight text-text sm:text-4xl">Analisa Angka</h1>
+        <h1 className="display truncate text-3xl uppercase leading-tight text-text sm:text-4xl">ANALISA ANGKA</h1>
         <p className="mt-1 text-sm font-medium text-text-soft sm:text-base">Prediksi berbasis matematis</p>
       </div>
       <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-primary/35 bg-primary/15 shadow-[0_0_32px_rgba(124,58,237,0.24)] sm:h-20 sm:w-20">
