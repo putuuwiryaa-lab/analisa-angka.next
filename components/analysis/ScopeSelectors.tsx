@@ -8,15 +8,12 @@ import {
 
 export type AnalysisScope = "default" | BBFSAnalysisScope;
 
-/* ---- Data / kontrak (dipertahankan identik dengan repo lama) ---- */
 export const TARGET_PAIR_OPTIONS: Array<{ key: TargetPair; title: string; subtitle: string }> = [
   { key: "depan", title: "2D DEPAN", subtitle: "AS - KOP" },
   { key: "tengah", title: "2D TENGAH", subtitle: "KOP - KEPALA" },
   { key: "belakang", title: "2D BELAKANG", subtitle: "KEPALA - EKOR" },
 ];
 
-// BBFS & AI sengaja DIPISAH: isinya kebetulan sama sekarang, tapi tujuannya
-// berbeda dan bisa berkembang sendiri-sendiri. Jangan digabung.
 export const BBFS_SCOPE_OPTIONS: Array<{
   key: Exclude<AnalysisScope, "default">;
   title: string;
@@ -55,7 +52,6 @@ export function analysisScopeLabel(scope: AnalysisScope | null) {
   return option ? `${option.title} · ${option.subtitle}` : "";
 }
 
-/* ---- UI (warna dari var(--accent), tidak ada prop meta) ---- */
 type SelectOption = { key: string; title: string; subtitle: string };
 
 function SelectorPanel({
@@ -68,7 +64,7 @@ function SelectorPanel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="animate-rise mt-4 space-y-4 rounded-2xl border border-border-soft bg-surface p-4">
+    <div className="animate-soft-pop mt-4 space-y-4 rounded-3xl border border-border-soft bg-surface p-4">
       <div className="text-center">
         <div className="display accent-text text-sm">{title}</div>
         <p className="mt-1.5 text-xs font-medium text-text-muted">{subtitle}</p>
@@ -78,15 +74,16 @@ function SelectorPanel({
   );
 }
 
-function SelectorButton({ option, onClick }: { option: SelectOption; onClick: () => void }) {
+function SelectorButton({ option, onClick, index = 0 }: { option: SelectOption; onClick: () => void; index?: number }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="accent-bg-soft accent-border accent-text min-h-16 w-full rounded-2xl border px-5 py-4 text-center transition active:scale-[0.98]"
+      className="pressable animate-soft-pop accent-border accent-text min-h-16 w-full rounded-3xl border bg-white/[0.035] px-5 py-4 text-center hover:bg-white/[0.06]"
+      style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}
     >
       <span className="display block text-[15px]">{option.title}</span>
-      <span className="mt-2 block text-[11px] font-bold uppercase tracking-wide opacity-80">
+      <span className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
         {option.subtitle}
       </span>
     </button>
@@ -96,8 +93,8 @@ function SelectorButton({ option, onClick }: { option: SelectOption; onClick: ()
 export function TargetPairSelector({ onSelect }: { onSelect: (pair: TargetPair) => void }) {
   return (
     <SelectorPanel title="Pilih Fokus 2D" subtitle="Pilih posisi angka yang mau dianalisa.">
-      {TARGET_PAIR_OPTIONS.map((o) => (
-        <SelectorButton key={o.key} option={o} onClick={() => onSelect(o.key)} />
+      {TARGET_PAIR_OPTIONS.map((o, index) => (
+        <SelectorButton key={o.key} option={o} onClick={() => onSelect(o.key)} index={index} />
       ))}
     </SelectorPanel>
   );
@@ -110,8 +107,8 @@ export function BBFSScopeSelector({
 }) {
   return (
     <SelectorPanel title="Pilih Jenis BBFS" subtitle="Pilih target backtest BBFS.">
-      {BBFS_SCOPE_OPTIONS.map((o) => (
-        <SelectorButton key={o.key} option={o} onClick={() => onSelect(o.key)} />
+      {BBFS_SCOPE_OPTIONS.map((o, index) => (
+        <SelectorButton key={o.key} option={o} onClick={() => onSelect(o.key)} index={index} />
       ))}
     </SelectorPanel>
   );
@@ -124,8 +121,8 @@ export function AIScopeSelector({
 }) {
   return (
     <SelectorPanel title="Pilih Jenis Angka Ikut" subtitle="Pilih target AI yang mau dianalisa.">
-      {AI_SCOPE_OPTIONS.map((o) => (
-        <SelectorButton key={o.key} option={o} onClick={() => onSelect(o.key)} />
+      {AI_SCOPE_OPTIONS.map((o, index) => (
+        <SelectorButton key={o.key} option={o} onClick={() => onSelect(o.key)} index={index} />
       ))}
     </SelectorPanel>
   );
@@ -134,11 +131,12 @@ export function AIScopeSelector({
 export function RekapFocusSelector({ onSelect }: { onSelect: (focus: CustomFocus) => void }) {
   return (
     <SelectorPanel title="Pilih Jenis Rekap" subtitle="Pilih dulu jenis line yang mau dibuat.">
-      {CUSTOM_FOCUS_OPTIONS.map((item) => (
+      {CUSTOM_FOCUS_OPTIONS.map((item, index) => (
         <SelectorButton
           key={item.key}
           option={{ key: item.key, title: item.title, subtitle: customFocusSubtitle(item.key) }}
           onClick={() => onSelect(item.key)}
+          index={index}
         />
       ))}
     </SelectorPanel>
