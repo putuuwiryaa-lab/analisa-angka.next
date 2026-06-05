@@ -113,13 +113,6 @@ export function AnalysisPageChrome({
           {loading ? "Memproses..." : "Mulai Analisa"}
         </Button>
       )}
-
-      {loading && (
-        <div className="animate-rise my-4 flex flex-col items-center justify-center gap-4 rounded-2xl border border-border-soft bg-surface p-8 text-center">
-          <div className="accent-border h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-[var(--accent)]" />
-          <div className="display text-xs text-text">Memproses Analisa</div>
-        </div>
-      )}
     </>
   );
 }
