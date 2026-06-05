@@ -15,7 +15,7 @@ type ResultData = Record<string, any>;
 function StatsList({ stats }: { stats: any[] }) {
   if (!stats.length)
     return (
-      <div className="rounded-2xl border border-border-soft bg-surface-2 p-4 text-center text-[11px] font-bold uppercase tracking-wide text-text-muted">
+      <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-bold uppercase tracking-wide text-text-muted">
         Belum ada statistik aktif
       </div>
     );
@@ -27,7 +27,7 @@ function StatsList({ stats }: { stats: any[] }) {
         return (
           <div
             key={i}
-            className="animate-soft-pop grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border border-border-soft bg-surface-2 p-3"
+            className="animate-soft-pop depth-2 grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border p-3"
           >
             <span className="accent-border accent-text rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wide">
               Elite
@@ -94,12 +94,12 @@ function cnPill(singleLine: boolean, compact: boolean) {
     : compact
       ? "h-10 min-w-10 px-3 text-base"
       : "h-14 min-w-14 px-4 text-3xl";
-  return `accent-border accent-bg-soft display flex shrink-0 items-center justify-center rounded-2xl border text-text shadow-[0_8px_24px_rgba(0,0,0,0.14)] ${size}`;
+  return `depth-accent display flex shrink-0 items-center justify-center rounded-2xl border text-text ${size}`;
 }
 
 function ResultRow({ label, values, shio = false }: { label: string; values: any; shio?: boolean }) {
   return (
-    <div className="animate-soft-pop flex min-h-[68px] items-center justify-between gap-3 rounded-2xl border border-border-soft bg-surface-2 p-4">
+    <div className="animate-soft-pop depth-2 flex min-h-[68px] items-center justify-between gap-3 rounded-2xl border p-4">
       <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-text-soft">{label}</span>
       <div className="min-w-0 flex-1">
         {shio ? (
@@ -132,15 +132,15 @@ function MainResultCard({
   const arr = safeArray(values);
   const useStacked = stacked || shio;
   return (
-    <div className="animate-soft-pop relative overflow-hidden rounded-3xl border border-border-soft bg-surface p-4 shadow-xl shadow-black/10">
+    <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-4">
       <div className="accent-bg-soft absolute -right-16 -top-16 h-44 w-44 rounded-full blur-3xl" />
       <div className="relative mb-3 flex items-center justify-between gap-3">
-        <div className="accent-bg-soft accent-text inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide">
+        <div className="depth-3 accent-text inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide">
           <Trophy size={12} /> Hasil Utama
         </div>
       </div>
       {useStacked ? (
-        <div className="relative rounded-3xl border border-border-soft bg-surface-2 p-4 text-center">
+        <div className="depth-2 relative rounded-3xl border p-4 text-center">
           <h3 className="text-[11px] font-bold uppercase tracking-wide text-text-soft">{label}</h3>
           <div className="mt-4">
             {shio ? (
@@ -155,7 +155,7 @@ function MainResultCard({
           </div>
         </div>
       ) : (
-        <div className="relative flex items-center justify-between gap-3 rounded-3xl border border-border-soft bg-surface-2 p-4">
+        <div className="depth-2 relative flex items-center justify-between gap-3 rounded-3xl border p-4">
           <h3 className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-text-soft">{label}</h3>
           <div className="min-w-0 flex-1">
             <DigitPills items={arr} compact={false} singleLine={singleLine} />
@@ -179,7 +179,7 @@ function DetailValidationHeader({
     <div className="flex items-center justify-between gap-3">
       <SectionTitle title="Detail Validasi" />
       <div className="flex shrink-0 items-center gap-2">
-        <span className="rounded-full border border-border-soft bg-white/[0.035] px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-text-muted">
+        <span className="depth-3 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-text-muted">
           {activeLabel}
         </span>
         <DetailToggle open={open} onClick={onToggle} />
@@ -199,7 +199,7 @@ function MatiEvaluationTabs({ marketId, param }: { marketId: string; param: numb
   const activeLabel = tabs.find((tab) => tab.key === activePosition)?.label || "AS";
 
   return (
-    <div className="animate-rise space-y-3 rounded-3xl border border-border-soft bg-surface p-4">
+    <div className="animate-rise depth-1 space-y-3 rounded-3xl border p-4">
       <div className="flex items-center justify-between px-1">
         <span className="display text-xs text-text">Riwayat Evaluasi</span>
         <span className="text-[11px] font-bold uppercase tracking-wide text-text-soft">Per Posisi</span>
@@ -214,8 +214,8 @@ function MatiEvaluationTabs({ marketId, param }: { marketId: string; param: numb
               onClick={() => setActivePosition(tab.key)}
               className={
                 active
-                  ? "pressable accent-border accent-bg-soft accent-text rounded-2xl border px-2 py-3 text-[11px] font-black uppercase tracking-wide"
-                  : "pressable rounded-2xl border border-border-soft bg-white/[0.04] px-2 py-3 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
+                  ? "pressable depth-accent accent-text rounded-2xl border px-2 py-3 text-[11px] font-black uppercase tracking-wide"
+                  : "pressable depth-3 rounded-2xl border px-2 py-3 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
               }
             >
               {tab.label}
@@ -264,12 +264,12 @@ export function AnalysisResult({
     const totalActive = POS.reduce((acc, p) => acc + statsFrom(result[p]).length, 0);
     return (
       <div className="animate-rise space-y-4">
-        <div className="space-y-3 rounded-3xl border border-border-soft bg-surface p-4">
+        <div className="depth-1 space-y-3 rounded-3xl border p-4">
           {POS.map((p) => (
             <ResultRow key={p} label={`OFF ${p}`} values={result[p]?.result} />
           ))}
         </div>
-        <div className="animate-soft-pop space-y-5 rounded-3xl border border-border-soft bg-surface p-4">
+        <div className="animate-soft-pop depth-1 space-y-5 rounded-3xl border p-4">
           <DetailValidationHeader
             activeLabel={`RUMUS ACTIVE ${totalActive}/56`}
             open={detailValidationOpen}
@@ -313,7 +313,7 @@ export function AnalysisResult({
         singleLine={isBBFSResult}
         stacked={type === "ai" || type === "bbfs"}
       />
-      <div className="animate-soft-pop rounded-3xl border border-border-soft bg-surface p-4">
+      <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
         <DetailValidationHeader
           activeLabel={`RUMUS ACTIVE ${active}/${formulaTotal}`}
           open={detailValidationOpen}
@@ -327,7 +327,7 @@ export function AnalysisResult({
       </div>
       <AngkaJadiPanel type={type} result={result} open={angkaJadiOpen} setOpen={setAngkaJadiOpen} />
       {evaluationModes.has(effectiveMode) && param !== 0 && (
-        <div className="animate-soft-pop space-y-3 rounded-3xl border border-border-soft bg-surface p-4">
+        <div className="animate-soft-pop depth-1 space-y-3 rounded-3xl border p-4">
           <EvaluationHistory
             marketId={marketId}
             mode={effectiveMode}
