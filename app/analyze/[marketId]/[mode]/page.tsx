@@ -79,6 +79,7 @@ export default function AnalyzeModePage({
           show={flags.showCustomDigitBuilder}
           marketId={decodedMarketId}
           customFocus={customFocus}
+          loading={loading}
           onGenerate={handlers.handleCustomDigitGenerate}
           {...custom}
         />
