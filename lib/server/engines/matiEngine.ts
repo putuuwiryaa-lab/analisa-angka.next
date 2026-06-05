@@ -1,5 +1,5 @@
 import "server-only";
-import { _0x3ca571 } from './offFormula.js';
+import { _0x3ca571 } from './offFormula';
 
 export function _0xEngineMatiPos(D: string[], posIdx: number, param: number = 1) {
   const U = D.slice(-17);
