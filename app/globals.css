@@ -138,7 +138,7 @@
 }
 
 /* ============================================================
-   MOTION — satu pola, hormati prefers-reduced-motion
+   MOTION — satu pola global
    ============================================================ */
 @keyframes rise {
   from {
@@ -154,15 +154,5 @@
 @layer utilities {
   .animate-rise {
     animation: rise 0.32s var(--ease-out-soft) both;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
   }
 }
