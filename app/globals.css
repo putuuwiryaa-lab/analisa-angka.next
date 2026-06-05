@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 /* ============================================================
-   THEME — sumber tunggal warna & token (purple premium)
+   THEME — sumber tunggal warna & token (purple + navy premium)
    ============================================================ */
 @theme {
-  /* Surface & background: ungu tetap utama, slate jadi undertone kedalaman */
-  --color-bg: #100f1f;
-  --color-bg-deep: #090b14;
-  --color-surface: #1b1530;
-  --color-surface-2: #1d2438;
-  --color-surface-pressed: #27314a;
+  /* Base: navy gelap sebagai dasar, ungu sebagai identitas */
+  --color-bg: #0b0d16;
+  --color-bg-deep: #080914;
+  --color-surface: #171329;
+  --color-surface-2: #172033;
+  --color-surface-pressed: #22304a;
 
   /* Teks */
   --color-text: #f6f1ff;
@@ -17,10 +17,10 @@
   --color-text-soft: #928baa;
   --color-text-faint: #66617f;
 
-  /* Aksen utama web: cyan diturunkan saturasi/brightness */
+  /* Aksen utama web */
   --color-primary: #7c4dff;
   --color-primary-soft: #a98cff;
-  --color-accent: #45c8df;
+  --color-accent: #4fb6c9;
   --color-success: #79e6b0;
   --color-danger: #ff6b8a;
 
@@ -34,7 +34,7 @@
   --color-mode-bbfs: #ec9a4a;
   --color-mode-mati: #f26b86;
   --color-mode-jumlah: #22b8a8;
-  --color-mode-shio: #45c8df;
+  --color-mode-shio: #4fb6c9;
   --color-mode-rekap: #78a8f2;
 
   /* Radius */
@@ -47,15 +47,11 @@
   --ease-press: cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Font dari next/font (lihat app/layout.tsx) — referensi, bukan salin nilai */
 @theme inline {
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
 }
 
-/* ============================================================
-   BASE
-   ============================================================ */
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
@@ -63,8 +59,8 @@
 
   body {
     background:
-      radial-gradient(circle at 86% 6%, rgba(124, 77, 255, 0.15), transparent 30%),
-      radial-gradient(circle at 8% 18%, rgba(69, 200, 223, 0.055), transparent 28%),
+      radial-gradient(circle at 86% 6%, rgba(124, 77, 255, 0.14), transparent 30%),
+      radial-gradient(circle at 8% 18%, rgba(79, 182, 201, 0.055), transparent 28%),
       radial-gradient(circle at 76% 78%, rgba(34, 184, 168, 0.05), transparent 34%),
       linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-deep) 100%);
     color: var(--color-text);
@@ -95,9 +91,6 @@
   }
 }
 
-/* ============================================================
-   UTILITIES
-   ============================================================ */
 @layer utilities {
   .num {
     font-family: var(--font-mono);
@@ -123,35 +116,35 @@
   .depth-1 {
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--color-surface) 92%, white 8%),
-      color-mix(in srgb, var(--color-surface) 96%, var(--color-bg-deep) 4%)
+      color-mix(in srgb, var(--color-surface) 97%, white 3%),
+      color-mix(in srgb, var(--color-surface) 92%, black 8%)
     );
     border-color: var(--color-border-soft);
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
   }
   .depth-2 {
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--color-surface-2) 92%, white 5%),
-      color-mix(in srgb, var(--color-surface-2) 96%, black 4%)
+      color-mix(in srgb, var(--color-surface-2) 98%, white 2%),
+      color-mix(in srgb, var(--color-surface-2) 90%, black 10%)
     );
-    border-color: rgba(255, 255, 255, 0.115);
+    border-color: rgba(165, 180, 220, 0.11);
   }
   .depth-3 {
-    background: rgba(226, 232, 255, 0.045);
-    border-color: rgba(226, 232, 255, 0.13);
+    background: rgba(84, 105, 150, 0.12);
+    border-color: rgba(150, 165, 210, 0.12);
   }
   .depth-accent {
     background: linear-gradient(
       135deg,
-      color-mix(in srgb, var(--accent, var(--color-primary)) 14%, var(--color-surface)),
-      color-mix(in srgb, var(--accent, var(--color-primary)) 8%, var(--color-surface-2))
+      color-mix(in srgb, var(--accent, var(--color-primary)) 18%, var(--color-surface)),
+      color-mix(in srgb, var(--accent, var(--color-primary)) 10%, var(--color-bg-deep))
     );
-    border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 34%, transparent);
-    box-shadow: 0 16px 38px color-mix(in srgb, var(--accent, var(--color-primary)) 13%, transparent);
+    border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 36%, transparent);
+    box-shadow: 0 16px 38px color-mix(in srgb, var(--accent, var(--color-primary)) 14%, transparent);
   }
   .depth-glow-soft {
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16), 0 0 34px rgba(124, 77, 255, 0.08);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18), 0 0 34px rgba(124, 77, 255, 0.07);
   }
 
   .pressable {
@@ -179,9 +172,6 @@
   }
 }
 
-/* ============================================================
-   MODE ACCENT — set satu variabel, seluruh subtree ikut bertema
-   ============================================================ */
 [data-mode] {
   --accent: var(--color-primary);
 }
@@ -204,9 +194,6 @@
   --accent: var(--color-mode-rekap);
 }
 
-/* ============================================================
-   MOTION — ringan, konsisten, tetap hormati reduced motion
-   ============================================================ */
 @keyframes rise {
   from {
     opacity: 0;
