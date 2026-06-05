@@ -4,23 +4,56 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Anon client + RLS — sama seperti perilaku route lama (read-only markets publik).
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+type RawMarket = Record<string, unknown>;
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+function normalizeHistoryData(market: RawMarket) {
+  return String(
+    market.history_data ??
+      market.historyData ??
+      market.history ??
+      market.data ??
+      market.results ??
+      market.result ??
+      "",
+  );
+}
+
+function normalizeMarket(market: RawMarket) {
+  return {
+    ...market,
+    id: String(market.id ?? market.slug ?? market.code ?? market.name ?? ""),
+    name: market.name ?? market.title ?? market.id ?? "Pasaran",
+    order: Number(market.order ?? market.sort_order ?? market.sort ?? 99),
+    history_data: normalizeHistoryData(market),
+  };
+}
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
-      .from("markets")
-      .select("*")
-      .order("order", { ascending: true });
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Konfigurasi Supabase belum lengkap.");
+    }
 
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data, error } = await supabase.from("markets").select("*");
     if (error) throw error;
 
-    return NextResponse.json(data, {
-      headers: { "Access-Control-Allow-Origin": "*" },
+    const markets = (data || [])
+      .map(normalizeMarket)
+      .filter((market) => market.id)
+      .sort((a, b) => Number(a.order ?? 99) - Number(b.order ?? 99));
+
+    return NextResponse.json(markets, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-store",
+      },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat markets";
