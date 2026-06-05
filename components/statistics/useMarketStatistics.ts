@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   type AiStatScope,
   type AnalysisScope,
@@ -10,6 +10,9 @@ import {
   type TargetPair,
   type VisibleCategoryKey,
 } from "@/lib/analysis/statistics";
+
+const STATISTICS_STALE_TIME = 5 * 60 * 1000;
+const STATISTICS_GC_TIME = 30 * 60 * 1000;
 
 export function aiParamOptions(scope: AiStatScope) {
   if (scope === "3d") return [1, 3, 5, 7, 8];
@@ -50,7 +53,6 @@ export function useMarketStatistics() {
   const [bbfsScope, setBbfsScope] = useState<AnalysisScope>("2d_belakang");
   const [param, setParam] = useState<number>(4);
 
-  // Auto-koreksi param ketika kategori / scope AI berubah (sama seperti lama).
   useEffect(() => {
     if (category === "ai" && !aiParamOptions(aiScope).includes(param)) setParam(aiParamOptions(aiScope)[0]);
     if (category === "bbfs" && ![7, 8, 9].includes(param)) setParam(8);
@@ -61,6 +63,9 @@ export function useMarketStatistics() {
   const query = useQuery({
     queryKey: ["marketStatistics", category, targetPair, aiScope, bbfsScope, param],
     queryFn: () => fetchStatistics({ category, targetPair, aiScope, bbfsScope, param }),
+    staleTime: STATISTICS_STALE_TIME,
+    gcTime: STATISTICS_GC_TIME,
+    placeholderData: keepPreviousData,
   });
 
   return {
@@ -76,7 +81,7 @@ export function useMarketStatistics() {
     setParam,
     items: query.data?.items ?? [],
     relatedStats: query.data?.relatedStats ?? {},
-    loading: query.isLoading,
+    loading: query.isPending && !query.data,
     error: query.error instanceof Error ? query.error.message : query.error ? "Belum bisa memuat statistik." : "",
     refetch: query.refetch,
     isFetching: query.isFetching,
