@@ -47,7 +47,7 @@ function Pill({
       className={cn(
         "pressable min-h-[52px] rounded-2xl border px-2 py-3 text-[11px] font-black uppercase tracking-wide",
         full && "col-span-full",
-        !active && "border-border-soft bg-white/[0.045] text-text-muted hover:border-border hover:bg-white/[0.065]",
+        !active && "depth-3 text-text-muted hover:border-border hover:bg-white/[0.065]",
       )}
       style={
         active
@@ -101,7 +101,7 @@ export default function StatisticsPage() {
         <ArrowLeft size={16} /> Beranda
       </Button>
 
-      <div className="animate-soft-pop relative overflow-hidden rounded-3xl border border-emerald-300/20 bg-surface p-5 shadow-xl shadow-black/10">
+      <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-5">
         <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-400/10 blur-3xl" />
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -115,18 +115,18 @@ export default function StatisticsPage() {
           </div>
           <button
             onClick={() => s.refetch()}
-            className="pressable flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border-soft bg-white/[0.055] text-text-muted hover:border-border hover:bg-white/[0.075]"
+            className="pressable depth-3 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075]"
             aria-label="Refresh statistik"
           >
             <RefreshCw size={19} className={s.isFetching ? "animate-spin" : ""} />
           </button>
         </div>
         <div className="relative mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-emerald-300/15 bg-black/20 px-4 py-3">
+          <div className="depth-2 rounded-2xl border px-4 py-3">
             <p className="text-[10px] font-black uppercase tracking-wide text-text-soft">Mode</p>
             <p className="display mt-1 truncate text-[12px]" style={{ color: statAccent }}>{filterLabel}</p>
           </div>
-          <div className="rounded-2xl border border-amber-200/15 bg-black/20 px-4 py-3">
+          <div className="depth-2 rounded-2xl border px-4 py-3">
             <p className="text-[10px] font-black uppercase tracking-wide text-text-soft">Update</p>
             <p className="display mt-1 truncate text-[11px]" style={{ color: statGold }}>{formatUpdatedAt(latestUpdate)}</p>
           </div>
@@ -135,7 +135,7 @@ export default function StatisticsPage() {
 
       <section className="animate-soft-pop">
         <SectionLabel title="Mode Statistik" />
-        <div className="grid grid-cols-5 gap-1.5 rounded-3xl border border-border-soft bg-surface p-2">
+        <div className="depth-1 grid grid-cols-5 gap-1.5 rounded-3xl border p-2">
           {categories.map((item) => (
             <Pill key={item.key} active={item.key === s.category} onClick={() => s.setCategory(item.key)}>
               {item.title}
@@ -146,9 +146,9 @@ export default function StatisticsPage() {
 
       <section className="animate-soft-pop">
         <SectionLabel title="Filter Ranking" right={filterLabel} />
-        <div className="space-y-4 rounded-3xl border border-border-soft bg-surface p-4">
+        <div className="depth-1 space-y-4 rounded-3xl border p-4">
           {isAI && (
-            <div className="space-y-3 rounded-3xl border border-border-soft bg-black/15 p-3">
+            <div className="depth-2 space-y-3 rounded-3xl border p-3">
               <div className="grid grid-cols-2 gap-2">
                 {aiScopes.map((item) => (
                   <Pill
@@ -161,14 +161,14 @@ export default function StatisticsPage() {
                   </Pill>
                 ))}
               </div>
-              <p className="rounded-2xl border border-border-soft bg-black/20 px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-wide text-text-soft">
+              <p className="depth-3 rounded-2xl border px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-wide text-text-soft">
                 {aiScopeSubtitle(s.aiScope)}
               </p>
             </div>
           )}
 
           {isBBFS && (
-            <div className="space-y-3 rounded-3xl border border-border-soft bg-black/15 p-3">
+            <div className="depth-2 space-y-3 rounded-3xl border p-3">
               <div className="grid grid-cols-2 gap-2">
                 {bbfsScopes.map((item) => (
                   <Pill
@@ -181,14 +181,14 @@ export default function StatisticsPage() {
                   </Pill>
                 ))}
               </div>
-              <p className="rounded-2xl border border-border-soft bg-black/20 px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-wide text-text-soft">
+              <p className="depth-3 rounded-2xl border px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-wide text-text-soft">
                 {selectedBBFS.subtitle}
               </p>
             </div>
           )}
 
           {!isAI && !isBBFS && (
-            <div className="space-y-3 rounded-3xl border border-border-soft bg-black/15 p-3">
+            <div className="depth-2 space-y-3 rounded-3xl border p-3">
               <div className="grid grid-cols-3 gap-2">
                 {targetPairs.map((item) => (
                   <Pill key={item.key} active={s.targetPair === item.key} onClick={() => s.setTargetPair(item.key)}>
@@ -197,14 +197,14 @@ export default function StatisticsPage() {
                 ))}
               </div>
               {isPosition && (
-                <p className="rounded-2xl border border-border-soft bg-black/20 px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-wide text-text-soft">
+                <p className="depth-3 rounded-2xl border px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-wide text-text-soft">
                   {positionPairSubtitle(s.targetPair)}
                 </p>
               )}
             </div>
           )}
 
-          <div className="rounded-3xl border border-amber-200/15 bg-black/15 p-3">
+          <div className="depth-2 rounded-3xl border p-3">
             <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-text-soft">Parameter</p>
             <div className="grid grid-cols-3 gap-2">
               {paramOptions.map((value) => (
@@ -242,8 +242,8 @@ export default function StatisticsPage() {
             ))}
           </div>
         ) : (
-          <div className="animate-soft-pop rounded-3xl border border-border-soft bg-surface p-7 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border-soft bg-black/20 text-text-soft">
+          <div className="animate-soft-pop depth-1 rounded-3xl border p-7 text-center">
+            <div className="depth-2 mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border text-text-soft">
               <BarChart3 />
             </div>
             <p className="display text-sm text-text">Belum ada ranking</p>
