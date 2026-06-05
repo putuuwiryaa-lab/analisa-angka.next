@@ -138,9 +138,8 @@ export default function DashboardPage() {
                 <div className="flex min-h-[48px] items-center justify-center border-b border-border-soft bg-white/[0.025] px-3">
                   <span className="display line-clamp-2 text-[12px] leading-4 text-text">{m.name || m.id}</span>
                 </div>
-                <div className="flex flex-1 flex-col items-center justify-center gap-1">
+                <div className="flex flex-1 items-center justify-center">
                   <span className="num text-2xl font-black tracking-[0.08em] text-accent">{m.lastResult || "----"}</span>
-                  <span className="text-[9px] font-black uppercase tracking-wide text-text-soft">Result terakhir</span>
                 </div>
               </Link>
             ))}
