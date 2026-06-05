@@ -1,5 +1,5 @@
 import "server-only";
-import { TBL_I, TBL_L, TBL_B, TBL_T, _0xJ2d, _0xc3c54e } from './tables.js';
+import { TBL_I, TBL_L, TBL_B, TBL_T, _0xJ2d, _0xc3c54e } from './tables';
 
 const R56_ALDY_BUSTER: Record<number, number> = {
   0: 3,
