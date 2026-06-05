@@ -86,7 +86,7 @@ export default function DashboardPage() {
 
   return (
     <div className="animate-rise">
-      <div className="mb-4 rounded-3xl border border-border-soft bg-surface/80 p-3 shadow-xl shadow-black/10">
+      <div className="animate-soft-pop mb-4 rounded-3xl border border-border-soft bg-surface/80 p-3 shadow-xl shadow-black/10">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-accent">
@@ -99,7 +99,7 @@ export default function DashboardPage() {
           </div>
           <button
             onClick={() => refetch()}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border-soft bg-white/[0.045] text-text-muted active:scale-95"
+            className="pressable flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border-soft bg-white/[0.045] text-text-muted hover:border-border hover:bg-white/[0.07]"
             aria-label="Refresh data pasaran"
           >
             <RefreshCw size={18} className={isFetching ? "animate-spin" : ""} />
@@ -108,19 +108,19 @@ export default function DashboardPage() {
       </div>
 
       {errorMessage && (
-        <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
+        <div className="animate-soft-pop mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
           {errorMessage}
         </div>
       )}
 
-      <div className="relative mb-4">
+      <div className="animate-fade-in relative mb-4">
         <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
         <Input
           type="text"
           placeholder="Cari pasaran…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-14 rounded-3xl pl-12 font-bold"
+          className="h-14 rounded-3xl pl-12 font-bold transition-colors focus:border-border-strong"
         />
       </div>
 
@@ -129,17 +129,18 @@ export default function DashboardPage() {
           Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-3xl" />)
         ) : (
           <>
-            {filteredMarkets.map((m) => (
+            {filteredMarkets.map((m, index) => (
               <Link
                 key={m.id}
                 href={`/analyze/${encodeURIComponent(m.id)}`}
-                className="group flex h-[112px] flex-col overflow-hidden rounded-3xl border border-border-soft bg-surface text-center transition active:scale-[0.985] hover:border-border"
+                className="pressable animate-soft-pop group flex h-[112px] flex-col overflow-hidden rounded-3xl border border-border-soft bg-surface text-center hover:border-border hover:bg-surface-2"
+                style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}
               >
-                <div className="flex min-h-[48px] items-center justify-center border-b border-border-soft bg-white/[0.025] px-3">
+                <div className="flex min-h-[48px] items-center justify-center border-b border-border-soft bg-white/[0.025] px-3 transition-colors group-hover:bg-white/[0.04]">
                   <span className="display line-clamp-2 text-[12px] leading-4 text-text">{m.name || m.id}</span>
                 </div>
                 <div className="flex flex-1 items-center justify-center">
-                  <span className="num text-2xl font-black tracking-[0.08em] text-accent">{m.lastResult || "----"}</span>
+                  <span className="num text-2xl font-black tracking-[0.08em] text-accent transition-transform duration-150 group-hover:scale-[1.03]">{m.lastResult || "----"}</span>
                 </div>
               </Link>
             ))}
@@ -148,7 +149,7 @@ export default function DashboardPage() {
               href={requestMarketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-[112px] flex-col items-center justify-center rounded-3xl border border-dashed border-border-soft bg-surface/70 text-center transition active:scale-[0.985] hover:border-border"
+              className="pressable animate-soft-pop flex h-[112px] flex-col items-center justify-center rounded-3xl border border-dashed border-border-soft bg-surface/70 text-center hover:border-border hover:bg-surface"
               aria-label="Request penambahan pasaran via WhatsApp"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/[0.06] text-primary-soft">
@@ -161,7 +162,7 @@ export default function DashboardPage() {
             </a>
 
             {filteredMarkets.length === 0 && (
-              <div className="col-span-2 rounded-3xl border border-dashed border-border bg-white/5 py-12 text-center sm:col-span-3">
+              <div className="animate-soft-pop col-span-2 rounded-3xl border border-dashed border-border bg-white/5 py-12 text-center sm:col-span-3">
                 <Database className="mx-auto mb-3 text-text-soft" />
                 <p className="text-xs uppercase tracking-wide text-text-muted">Pasaran tidak ditemukan</p>
               </div>
