@@ -65,13 +65,13 @@ function cnPad(hideShell: boolean) {
 
 function HeroHeader() {
   return (
-    <header className="mb-5 flex items-center gap-3 pt-2">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-primary/15">
-        <Logo className="h-7 w-7" />
+    <header className="mb-6 flex items-center justify-between gap-4 pt-4">
+      <div className="min-w-0">
+        <h1 className="display truncate text-3xl leading-tight text-text sm:text-4xl">Analisa Angka</h1>
+        <p className="mt-1 text-sm font-medium text-text-soft sm:text-base">Prediksi berbasis matematis</p>
       </div>
-      <div>
-        <h1 className="display text-lg text-text">Analisa Angka</h1>
-        <p className="text-xs text-text-soft">Sistem prediksi pasaran</p>
+      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-primary/35 bg-primary/15 shadow-[0_0_32px_rgba(124,58,237,0.24)] sm:h-20 sm:w-20">
+        <Logo className="h-10 w-10 sm:h-12 sm:w-12" />
       </div>
     </header>
   );
@@ -178,4 +178,4 @@ function AccountPanel({ open, onClose }: { open: boolean; onClose: () => void })
       </div>
     </div>
   );
-      }
+}
