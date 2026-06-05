@@ -8,13 +8,14 @@ import { Logo } from "@/components/ui/Logo";
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
-      <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-surface ring-1 ring-white/10">
-        <Logo className="h-10 w-10" />
+    <div className="animate-fade-in flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
+      <div className="animate-soft-pop relative flex h-24 w-24 items-center justify-center rounded-3xl border border-border-soft bg-surface shadow-xl shadow-black/10">
+        <div className="absolute inset-0 rounded-3xl bg-primary/10 blur-xl" />
+        <Logo className="relative h-10 w-10" />
       </div>
       <div className="flex items-center gap-2 text-text-muted">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Memverifikasi akses…</span>
+        <span className="text-sm font-medium">Memverifikasi akses…</span>
       </div>
     </div>
   );
