@@ -71,6 +71,7 @@ export function CustomDigitBuilder({
   setCustomOffJumlahCountForPair,
   customOffShioCountByPair,
   setCustomOffShioCountForPair,
+  loading = false,
   onGenerate,
 }: {
   show: boolean;
@@ -104,6 +105,7 @@ export function CustomDigitBuilder({
   setCustomOffJumlahCountForPair: (pair: TargetPair, value: number | null) => void;
   customOffShioCountByPair: PairCountMap;
   setCustomOffShioCountForPair: (pair: TargetPair, value: number | null) => void;
+  loading?: boolean;
   onGenerate: () => void;
 }) {
   const { data: badges = {} } = useQuery({
@@ -288,8 +290,9 @@ export function CustomDigitBuilder({
         </CustomDigitSection>
       ))}
 
-      <Button size="lg" className="w-full" onClick={onGenerate}>
-        <RefreshCw size={18} /> Generate
+      <Button size="lg" className="w-full" onClick={onGenerate} disabled={loading}>
+        <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+        {loading ? "Memproses..." : "Generate"}
       </Button>
     </div>
   );
