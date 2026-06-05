@@ -66,6 +66,21 @@ async function fetchEvaluations(
   return json;
 }
 
+function StateBox({ text, tone = "neutral" }: { text: string; tone?: "neutral" | "error" | "loading" }) {
+  return (
+    <div
+      className={`animate-soft-pop rounded-3xl border p-4 text-center text-[11px] font-black uppercase tracking-wide ${
+        tone === "error"
+          ? "border-danger/25 bg-danger/10 text-danger"
+          : "border-border-soft bg-surface-2 text-text-muted"
+      }`}
+    >
+      {tone === "loading" && <div className="mx-auto mb-3 h-2 w-16 rounded-full bg-white/10 animate-pulse" />}
+      {text}
+    </div>
+  );
+}
+
 export function EvaluationHistory({
   marketId,
   mode,
@@ -92,15 +107,9 @@ export function EvaluationHistory({
     enabled: Boolean(normalizedMarketId && mode && param),
   });
 
-  const emptyBox = (text: string) => (
-    <div className="rounded-2xl border border-border-soft bg-surface-2 p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">
-      {text}
-    </div>
-  );
-
-  if (isLoading) return emptyBox("Memuat riwayat…");
-  if (error) return emptyBox(error instanceof Error ? error.message : "Gagal memuat riwayat evaluasi");
-  if (!rows.length) return emptyBox("Riwayat evaluasi belum ada");
+  if (isLoading) return <StateBox text="Memuat riwayat…" tone="loading" />;
+  if (error) return <StateBox text={error instanceof Error ? error.message : "Gagal memuat riwayat evaluasi"} tone="error" />;
+  if (!rows.length) return <StateBox text="Riwayat evaluasi belum ada" />;
 
   return (
     <div className="animate-rise space-y-3">
@@ -110,19 +119,20 @@ export function EvaluationHistory({
       </div>
 
       {showAi2DigitNote && (
-        <div className="rounded-xl border border-mode-ai/20 bg-mode-ai/[0.08] px-3 py-2 text-[11px] font-bold leading-relaxed text-mode-ai">
+        <div className="animate-soft-pop rounded-2xl border border-mode-ai/20 bg-mode-ai/[0.08] px-3 py-2 text-[11px] font-bold leading-relaxed text-mode-ai">
           Catatan: jika AI 2 digit terlalu sering ZONK, lebih bijak jadikan hasilnya sebagai OFF 2 digit.
         </div>
       )}
 
       <div className="grid grid-cols-3 gap-2">
-        {rows.map((row: any) => {
+        {rows.map((row: any, index: number) => {
           const label = displayLabel(row, mode);
           const isSuccess = label !== "ZONK";
           return (
             <div
               key={row.id}
-              className="rounded-2xl border border-border-soft bg-surface-2 p-2 text-center"
+              className="animate-soft-pop rounded-2xl border border-border-soft bg-surface-2 p-2 text-center"
+              style={{ animationDelay: `${Math.min(index, 12) * 20}ms` }}
             >
               <div className="num text-[11px] font-black text-text">
                 {row.from_result} → {row.new_result}
