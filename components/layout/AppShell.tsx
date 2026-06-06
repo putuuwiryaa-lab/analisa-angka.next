@@ -72,8 +72,9 @@ function HeroHeader() {
           Prediksi berbasis matematis
         </p>
       </div>
-      <div className="animate-soft-pop flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl border border-primary/35 bg-primary/15 shadow-[0_0_32px_rgba(124,58,237,0.24)] sm:h-20 sm:w-20">
-        <Logo className="h-9 w-9 sm:h-12 sm:w-12" />
+      <div className="animate-soft-pop relative flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-[1.7rem] border border-primary/45 bg-primary/18 shadow-[0_0_34px_rgba(124,58,237,0.30),0_0_54px_rgba(40,215,255,0.10)] sm:h-20 sm:w-20">
+        <div className="pointer-events-none absolute inset-[-0.45rem] rounded-[2rem] bg-primary/10 blur-xl" />
+        <Logo className="relative h-11 w-11 sm:h-12 sm:w-12" />
       </div>
     </header>
   );
