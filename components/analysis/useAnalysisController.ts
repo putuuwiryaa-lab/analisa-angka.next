@@ -288,6 +288,8 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     const nextScope = searchParams.has("analysis_scope") ? parseAnalysisScope(searchParams.get("analysis_scope")) : null;
     const nextTargetPair = searchParams.has("target_pair") ? parseTargetPair(searchParams.get("target_pair")) : null;
     const hasResult = searchParams.get("result") === "1";
+    const finalScope = nextScope || "default";
+    const finalTargetPair = isAI || isBBFS ? targetPairFromScope(finalScope) : nextTargetPair || "belakang";
 
     if (isAI || isBBFS) {
       setAnalysisScope(nextScope);
@@ -297,7 +299,27 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     }
 
     setParam(type === "rekap" ? 3 : nextParam);
-    if (!hasResult) {
+
+    if (hasResult && nextParam > 0) {
+      const cached = readAnalysisCache(
+        analysisCacheKey({
+          marketId,
+          type,
+          param: nextParam,
+          targetPair: finalTargetPair,
+          analysisScope: finalScope,
+        }),
+      );
+      if (cached) {
+        setResult(cached);
+        setError("");
+        setDetailValidationOpen(false);
+        setAngkaJadiOpen(false);
+        return;
+      }
+    }
+
+    if (!hasResult || (hasResult && !result)) {
       setResult(null);
       setError("");
       setDetailValidationOpen(false);
