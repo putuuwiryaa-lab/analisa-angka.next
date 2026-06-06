@@ -88,10 +88,10 @@ function BottomNav({ onOpenFree }: { onOpenFree: () => void }) {
         <button
           type="button"
           onClick={onOpenFree}
-          className="pressable animate-free-wiggle flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft hover:border-primary/50 hover:bg-primary/15"
+          className="pressable flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft hover:border-primary/50 hover:bg-primary/15"
           aria-label="Akses Free"
         >
-          <Gift size={19} />
+          <Gift size={19} className="animate-free-wiggle" />
           <span className="text-xs font-semibold">FREE</span>
         </button>
       </div>
