@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { canUseStatistics } from "@/lib/access/freeAccess";
 import {
   MARKET_STAT_SELECT,
   MAX_LOSS_STREAK_ALLOWED,
@@ -16,6 +17,7 @@ import {
   type TargetPair,
   type VisibleCategoryKey,
 } from "@/lib/analysis/statistics";
+import { getBearerToken, TOKEN_VERSION, verifyToken } from "@/lib/server/jwt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +26,7 @@ const VALID_CATEGORIES = new Set(["ai", "bbfs", "off_digit", "off_jumlah", "off_
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 const VALID_AI_SCOPES = new Set(["4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
+const VIP_LOCK_MESSAGE = "Statistik pasaran tersedia untuk VIP. Aktivasi PIN untuk membuka ranking statistik.";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -44,8 +47,27 @@ function parseAnalysisScope(value: string | null): AnalysisScope {
   return VALID_ANALYSIS_SCOPES.has(value || "") ? (value as AnalysisScope) : "2d_belakang";
 }
 
+function tokenValueFromHeaders(headers: Headers) {
+  const token = getBearerToken(headers);
+  return token && token !== "null" && token !== "undefined" ? token : "";
+}
+
+function roleFromRequest(headers: Headers) {
+  const token = tokenValueFromHeaders(headers);
+  if (!token) return "FREE";
+
+  const decoded = verifyToken(token);
+  if (decoded.tokenVersion !== TOKEN_VERSION) return "FREE";
+  return decoded.role;
+}
+
 export async function GET(request: NextRequest) {
   try {
+    const role = roleFromRequest(request.headers);
+    if (!canUseStatistics(role)) {
+      return NextResponse.json({ error: VIP_LOCK_MESSAGE }, { status: 403, headers: { "Cache-Control": "no-store" } });
+    }
+
     if (!supabaseUrl || !supabaseKey) throw new Error("Konfigurasi Supabase belum lengkap.");
 
     const search = request.nextUrl.searchParams;
