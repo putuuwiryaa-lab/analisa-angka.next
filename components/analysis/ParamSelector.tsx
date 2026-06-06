@@ -17,8 +17,8 @@ type ParamConfig = {
 
 function VipBadge() {
   return (
-    <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/12 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-primary-soft">
-      <Lock size={10} /> VIP
+    <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-primary-soft/80">
+      <Lock size={9} /> VIP
     </span>
   );
 }
@@ -91,24 +91,24 @@ export function ParamSelector({
                 key={value}
                 onClick={() => (locked ? setUpgradeOpen(true) : onAnalyze(value))}
                 className={cn(
-                  "pressable animate-soft-pop depth-3 accent-text rounded-3xl border text-center hover:border-border hover:bg-white/[0.06]",
+                  "pressable animate-soft-pop depth-3 accent-text relative rounded-3xl border text-center hover:border-border hover:bg-white/[0.06]",
                   isSpecial ? "col-span-3 min-h-[88px] p-4" : isGridThree ? "min-h-[88px] p-3" : "p-5",
-                  locked ? "opacity-80" : "",
+                  locked ? "border-border-soft/70 bg-white/[0.015] opacity-55 hover:bg-white/[0.025]" : "",
                 )}
                 style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}
               >
-                <span className={cn("display block", isSpecial ? "text-[15px] leading-5" : "text-2xl")}>{label}</span>
+                {locked && <VipBadge />}
+                <span className={cn("display block", isSpecial ? "text-[15px] leading-5" : "text-2xl", locked ? "text-text-muted/80" : "")}>{label}</span>
                 {((isAiMode && !isSpecial) || type === "bbfs") && (
-                  <span className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-text-muted">
+                  <span className={cn("mt-2 block text-[10px] font-bold uppercase tracking-wide", locked ? "text-text-soft/70" : "text-text-muted")}>
                     DIGIT
                   </span>
                 )}
                 {hint && (
-                  <span className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-text-muted">
+                  <span className={cn("mt-2 block text-[10px] font-bold uppercase tracking-wide", locked ? "text-text-soft/70" : "text-text-muted")}>
                     {hint}
                   </span>
                 )}
-                {locked && <VipBadge />}
               </button>
             );
           })}
