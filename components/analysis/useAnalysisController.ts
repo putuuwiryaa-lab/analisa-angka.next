@@ -34,7 +34,7 @@ import {
 
 const VALID_TARGET_PAIRS: TargetPair[] = ["depan", "tengah", "belakang"];
 const VALID_CUSTOM_FOCUS: CustomFocus[] = ["depan", "tengah", "belakang", "3d", "4d"];
-const VIP_LOCK_MESSAGE = "Fitur ini tersedia untuk VIP. Aktivasi PIN untuk membuka semua mode dan parameter analisa.";
+const VIP_LOCK_MESSAGE = "Fitur ini dibatasi untuk pengguna Free agar performa server tetap stabil dan akses analisa tetap lancar. Masukkan PIN VIP untuk membuka fitur ini.";
 type ResultData = Record<string, any>;
 
 type FlowUrlState = {
