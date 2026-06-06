@@ -10,16 +10,20 @@ import { Button } from "@/components/ui/Button";
 
 function StatusPill({ label, value, onReset }: { label: string; value: string; onReset: () => void }) {
   return (
-    <div className="animate-rise depth-2 mt-3 flex items-center justify-between gap-3 rounded-2xl border p-3">
-      <div className="min-w-0 text-left">
-        <span className="mr-2 text-[11px] font-bold uppercase tracking-wide text-text-soft">
+    <div className="animate-rise depth-3 mt-3 flex items-center justify-between gap-2 rounded-2xl border px-3 py-2.5">
+      <div className="min-w-0 flex-1 text-left">
+        <span className="mr-1.5 text-[10px] font-bold uppercase tracking-wide text-text-soft">
           {label}:
         </span>
-        <span className="accent-text text-xs font-black uppercase tracking-wide">{value}</span>
+        <span className="accent-text text-[11px] font-black uppercase tracking-wide leading-relaxed">{value}</span>
       </div>
-      <Button variant="ghost" size="sm" className="shrink-0" onClick={onReset}>
+      <button
+        type="button"
+        onClick={onReset}
+        className="pressable shrink-0 rounded-full border border-border-soft bg-white/[0.035] px-3 py-1.5 text-[11px] font-bold text-text-muted hover:border-border hover:text-text"
+      >
         Ganti
-      </Button>
+      </button>
     </div>
   );
 }
@@ -83,8 +87,8 @@ export function AnalysisPageChrome({
           </div>
         </div>
 
-        <div className="depth-2 flex min-h-[72px] items-center justify-center rounded-2xl border px-4 py-4 text-center">
-          <p className="display break-words text-2xl leading-tight text-text sm:text-[28px]">
+        <div className="depth-2 flex min-h-[88px] items-center justify-center rounded-[1.35rem] border px-5 py-5 text-center">
+          <p className="display break-words text-[2rem] leading-[1.05] text-text sm:text-[2.35rem]">
             {marketId}
           </p>
         </div>
