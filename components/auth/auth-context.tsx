@@ -56,7 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) {
-      setStatus("LOCKED");
+      setRole("FREE");
+      setStatus("READY");
       return;
     }
     setToken(saved);
@@ -75,10 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           localStorage.removeItem(TOKEN_KEY);
           setToken(null);
-          setStatus("LOCKED");
+          setRole("FREE");
+          setStatus("READY");
         }
       } catch {
-        setStatus("LOCKED");
+        setRole("FREE");
+        setStatus("READY");
       }
     })();
   }, []);
@@ -94,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setRole("FREE");
-    setStatus("LOCKED");
+    setStatus("READY");
   }, []);
 
   return (
@@ -110,4 +113,4 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth harus dipakai di dalam <AuthProvider>");
   return ctx;
-                         }
+}
