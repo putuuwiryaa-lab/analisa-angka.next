@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Lock } from "lucide-react";
-import { PinActivationPanel } from "@/components/auth/PinActivationPanel";
+import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import {
@@ -123,23 +123,23 @@ function SelectorButton({
 
 function useUpgradePanels() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
 
   function openUpgrade() {
     setUpgradeOpen(true);
   }
 
-  function openPin() {
+  function openLogin() {
     setUpgradeOpen(false);
-    setPinOpen(true);
+    setLoginOpen(true);
   }
 
   return {
     openUpgrade,
     panels: (
       <>
-        <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openPin} />
-        <PinActivationPanel open={pinOpen} onClose={() => setPinOpen(false)} />
+        <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLogin} />
+        <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
       </>
     ),
   };
