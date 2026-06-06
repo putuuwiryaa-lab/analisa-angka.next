@@ -8,8 +8,6 @@ export type Role = "TRIAL" | "PRO" | "MASTER";
 
 export interface TokenPayload {
   role: Role;
-  deviceId: string;
-  displayCode: string;
   tokenVersion: number;
   accountId?: string;
   phone?: string;
