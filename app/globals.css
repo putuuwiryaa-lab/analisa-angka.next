@@ -171,8 +171,9 @@
     animation: shimmer 1.35s linear infinite;
   }
   .animate-free-wiggle {
-    animation: free-wiggle 2.6s ease-in-out infinite;
-    transform-origin: 50% 70%;
+    animation: free-wiggle 1.45s cubic-bezier(0.36, 0, 0.22, 1) infinite;
+    transform-origin: 50% 62%;
+    will-change: transform;
   }
 }
 
@@ -240,24 +241,30 @@
 
 @keyframes free-wiggle {
   0%,
-  72%,
+  44%,
   100% {
-    transform: rotate(0deg) scale(1);
+    transform: rotate(0deg) translateY(0) scale(1);
   }
-  76% {
-    transform: rotate(-2.5deg) scale(1.012);
+  50% {
+    transform: rotate(-24deg) translateY(-2px) scale(1.38);
+  }
+  56% {
+    transform: rotate(24deg) translateY(-2px) scale(1.38);
+  }
+  62% {
+    transform: rotate(-18deg) translateY(-1px) scale(1.28);
+  }
+  68% {
+    transform: rotate(18deg) translateY(-1px) scale(1.22);
+  }
+  74% {
+    transform: rotate(-10deg) translateY(0) scale(1.14);
   }
   80% {
-    transform: rotate(2.5deg) scale(1.012);
-  }
-  84% {
-    transform: rotate(-1.6deg) scale(1.008);
+    transform: rotate(10deg) translateY(0) scale(1.1);
   }
   88% {
-    transform: rotate(1.2deg) scale(1.006);
-  }
-  92% {
-    transform: rotate(0deg) scale(1);
+    transform: rotate(0deg) translateY(0) scale(1);
   }
 }
 
