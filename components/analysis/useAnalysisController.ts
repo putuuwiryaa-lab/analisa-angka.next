@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/auth/auth-context";
 import { bbfsScopeToTargetPair, type CustomFocus, type TargetPair } from "@/lib/analysis/customDigit";
@@ -28,6 +28,13 @@ import {
 const VALID_TARGET_PAIRS: TargetPair[] = ["depan", "tengah", "belakang"];
 type ResultData = Record<string, any>;
 
+type FlowUrlState = {
+  analysisScope?: AnalysisScope | null;
+  targetPair?: TargetPair | null;
+  param?: number | null;
+  result?: boolean;
+};
+
 function parseTargetPair(value: string | null): TargetPair {
   return VALID_TARGET_PAIRS.includes(value as TargetPair) ? (value as TargetPair) : "belakang";
 }
@@ -44,12 +51,18 @@ function requestScopeForAnalyze(type: string, scope: AnalysisScope): AnalysisSco
   if (type === "ai" && isAi2DScope(scope)) return "default";
   return scope;
 }
+function readParamFromUrl(value: string | null) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
 
 export function useAnalysisController({ type, marketId }: { type: string; marketId: string }) {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const { token } = useAuth();
   const searchParams = useSearchParams();
+  const searchKey = searchParams.toString();
   const autoStartedRef = useRef(false);
 
   const isAI = type === "ai";
@@ -60,15 +73,17 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   const autoParam = Number(searchParams.get("param"));
   const autoTargetPair = parseTargetPair(searchParams.get("target_pair"));
   const autoAnalysisScope = parseAnalysisScope(searchParams.get("analysis_scope"));
-  const initialParam =
-    autoMode && Number.isFinite(autoParam) && autoParam > 0 ? autoParam : type === "rekap" ? 3 : 0;
+  const urlParam = readParamFromUrl(searchParams.get("param"));
+  const urlScope = searchParams.has("analysis_scope") ? parseAnalysisScope(searchParams.get("analysis_scope")) : null;
+  const urlTargetPair = searchParams.has("target_pair") ? parseTargetPair(searchParams.get("target_pair")) : null;
+  const initialParam = autoMode && Number.isFinite(autoParam) && autoParam > 0 ? autoParam : type === "rekap" ? 3 : urlParam;
 
   const [param, setParam] = useState<number | null>(initialParam);
   const [targetPair, setTargetPair] = useState<TargetPair | null>(
-    needsTargetPair ? (autoMode ? autoTargetPair : null) : "belakang",
+    needsTargetPair ? (autoMode ? autoTargetPair : urlTargetPair) : "belakang",
   );
   const [analysisScope, setAnalysisScope] = useState<AnalysisScope | null>(
-    isAI || isBBFS ? (autoMode ? autoAnalysisScope : null) : "default",
+    isAI || isBBFS ? (autoMode ? autoAnalysisScope : urlScope) : "default",
   );
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ResultData | null>(null);
@@ -92,6 +107,16 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   const [customOffShioCountByPair, setCustomOffShioCountByPair] = useState<PairCountMap>({});
 
   const isRekapCustom = type === "rekap" && param === 3;
+
+  const pushFlowUrl = (state: FlowUrlState) => {
+    const params = new URLSearchParams();
+    if (state.analysisScope && state.analysisScope !== "default") params.set("analysis_scope", state.analysisScope);
+    if (state.targetPair) params.set("target_pair", state.targetPair);
+    if (state.param && state.param > 0) params.set("param", String(state.param));
+    if (state.result) params.set("result", "1");
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
 
   const setCustomAiDigitForPair = (pair: TargetPair, value: 2 | 4 | 6 | null) =>
     setCustomAiDigitByPair((prev) => ({ ...prev, [pair]: value }));
@@ -164,25 +189,30 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setParam(0);
     setResult(null);
     setError("");
+    pushFlowUrl({ targetPair: pair });
   };
   const handleScopeSelect = (scope: Exclude<AnalysisScope, "default">) => {
+    const pair = targetPairFromScope(scope);
     setAnalysisScope(scope);
-    setTargetPair(targetPairFromScope(scope));
+    setTargetPair(pair);
     setParam(0);
     setResult(null);
     setError("");
+    pushFlowUrl({ analysisScope: scope, targetPair: pair });
   };
   const resetScope = () => {
     setAnalysisScope(null);
     setParam(0);
     setResult(null);
     setError("");
+    pushFlowUrl({});
   };
   const handleTargetPairReset = () => {
     setTargetPair(null);
     setParam(0);
     setResult(null);
     setError("");
+    pushFlowUrl({});
   };
   const handleCustomFocusReset = () => {
     setCustomFocus(null);
@@ -204,44 +234,10 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setError("");
   };
 
-  const stepBack = () => {
-    if (loading) return true;
-    if (result) {
-      setResult(null);
-      setError("");
-      if (needsTargetPair) {
-        setTargetPair(null);
-        setParam(0);
-      }
-      if (isAI || isBBFS) {
-        setAnalysisScope(null);
-        setParam(0);
-      }
-      if (isRekapCustom) setCustomFocus(null);
-      return true;
-    }
-    if (isRekapCustom && customFocus) {
-      setCustomFocus(null);
-      setError("");
-      return true;
-    }
-    if ((isAI || isBBFS) && analysisScope) {
-      setAnalysisScope(null);
-      setParam(0);
-      setError("");
-      return true;
-    }
-    if (needsTargetPair && targetPair) {
-      setTargetPair(null);
-      setParam(0);
-      setError("");
-      return true;
-    }
-    return false;
-  };
-
   const handleBack = () => {
-    if (!stepBack()) router.push(`/analyze/${encodeURIComponent(marketId)}`);
+    if (loading) return;
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push(`/analyze/${encodeURIComponent(marketId)}`);
   };
 
   const handleAnalyze = async (selectedParam: number, selectedTargetPair?: TargetPair) => {
@@ -256,6 +252,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setTargetPair(finalTargetPair);
     setParam(selectedParam);
     setError("");
+    pushFlowUrl({ analysisScope: selectedScope, targetPair: finalTargetPair, param: selectedParam, result: true });
 
     const cacheKey = analysisCacheKey({
       marketId,
@@ -284,6 +281,30 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (autoMode) return;
+    const nextParam = readParamFromUrl(searchParams.get("param"));
+    const nextScope = searchParams.has("analysis_scope") ? parseAnalysisScope(searchParams.get("analysis_scope")) : null;
+    const nextTargetPair = searchParams.has("target_pair") ? parseTargetPair(searchParams.get("target_pair")) : null;
+    const hasResult = searchParams.get("result") === "1";
+
+    if (isAI || isBBFS) {
+      setAnalysisScope(nextScope);
+      setTargetPair(nextScope ? targetPairFromScope(nextScope) : "belakang");
+    } else if (needsTargetPair) {
+      setTargetPair(nextTargetPair);
+    }
+
+    setParam(type === "rekap" ? 3 : nextParam);
+    if (!hasResult) {
+      setResult(null);
+      setError("");
+      setDetailValidationOpen(false);
+      setAngkaJadiOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKey, type]);
 
   useEffect(() => {
     if (!autoMode || autoStartedRef.current || type === "rekap") return;
