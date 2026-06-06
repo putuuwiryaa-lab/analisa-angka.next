@@ -66,8 +66,8 @@ type SelectOption = { key: string; title: string; subtitle: string };
 
 function VipBadge() {
   return (
-    <span className="mt-3 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/12 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-primary-soft">
-      <Lock size={10} /> VIP
+    <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-primary-soft/80">
+      <Lock size={9} /> VIP
     </span>
   );
 }
@@ -107,16 +107,16 @@ function SelectorButton({
     <button
       type="button"
       onClick={onClick}
-      className={`pressable animate-soft-pop depth-3 accent-text min-h-16 w-full rounded-3xl border px-5 py-4 text-center hover:border-border hover:bg-white/[0.06] ${
-        locked ? "opacity-80" : ""
+      className={`pressable animate-soft-pop depth-3 accent-text relative min-h-16 w-full rounded-3xl border px-5 py-4 text-center hover:border-border hover:bg-white/[0.06] ${
+        locked ? "border-border-soft/70 bg-white/[0.015] opacity-55 hover:bg-white/[0.025]" : ""
       }`}
       style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}
     >
-      <span className="display block text-[15px]">{option.title}</span>
-      <span className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
+      {locked && <VipBadge />}
+      <span className={`display block text-[15px] ${locked ? "text-text-muted/80" : ""}`}>{option.title}</span>
+      <span className={`mt-2 block text-[11px] font-bold uppercase tracking-wide ${locked ? "text-text-soft/70" : "text-text-muted"}`}>
         {option.subtitle}
       </span>
-      {locked && <VipBadge />}
     </button>
   );
 }
