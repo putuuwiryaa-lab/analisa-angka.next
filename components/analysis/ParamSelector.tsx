@@ -19,11 +19,11 @@ function VipBadge({ compact = false }: { compact?: boolean }) {
   return (
     <span
       className={cn(
-        "absolute inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 font-black uppercase tracking-wide text-primary-soft/80",
-        compact ? "bottom-2 right-2 px-1.5 py-0.5 text-[8px]" : "right-3 top-3 px-2 py-1 text-[9px]",
+        "absolute inline-flex items-center gap-0.5 rounded-full border border-primary/25 bg-primary/10 font-black uppercase tracking-wide text-primary-soft/80",
+        compact ? "right-1.5 top-1.5 px-1.5 py-0.5 text-[7px]" : "right-3 top-3 px-2 py-1 text-[9px]",
       )}
     >
-      <Lock size={compact ? 8 : 9} /> VIP
+      <Lock size={compact ? 7 : 9} /> VIP
     </span>
   );
 }
@@ -90,6 +90,7 @@ export function ParamSelector({
               value,
               analysisScope as LockableScope,
             );
+            const compactBadge = locked && !isSpecial && isGridThree;
 
             return (
               <button
@@ -98,11 +99,12 @@ export function ParamSelector({
                 className={cn(
                   "pressable animate-soft-pop depth-3 accent-text relative rounded-3xl border text-center hover:border-border hover:bg-white/[0.06]",
                   isSpecial ? "col-span-3 min-h-[88px] p-4" : isGridThree ? "min-h-[88px] p-3" : "p-5",
+                  compactBadge ? "pt-7" : "",
                   locked ? "border-border-soft/70 bg-white/[0.015] opacity-55 hover:bg-white/[0.025]" : "",
                 )}
                 style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}
               >
-                {locked && <VipBadge compact={!isSpecial && isGridThree} />}
+                {locked && <VipBadge compact={compactBadge} />}
                 <span className={cn("display block", isSpecial ? "text-[15px] leading-5" : "text-2xl", locked ? "text-text-muted/80" : "")}>{label}</span>
                 {((isAiMode && !isSpecial) || type === "bbfs") && (
                   <span className={cn("mt-2 block text-[10px] font-bold uppercase tracking-wide", locked ? "text-text-soft/70" : "text-text-muted")}>
