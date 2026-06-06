@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, KeyRound, Lock } from "lucide-react";
-import { PinActivationPanel } from "@/components/auth/PinActivationPanel";
+import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { Button } from "@/components/ui/Button";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
@@ -13,11 +13,11 @@ export default function StatisticsAccessLayout({ children }: { children: ReactNo
   const router = useRouter();
   const { role } = useAuth();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
 
-  function openPinPanel() {
+  function openLoginPanel() {
     setUpgradeOpen(false);
-    setPinOpen(true);
+    setLoginOpen(true);
   }
 
   if (canUseStatistics(role)) return <>{children}</>;
@@ -34,20 +34,20 @@ export default function StatisticsAccessLayout({ children }: { children: ReactNo
         </div>
         <p className="display text-xl text-text">Statistik VIP</p>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-text-muted">
-          Statistik pasaran tersedia untuk VIP. Aktivasi PIN untuk membuka ranking statistik dan semua mode lanjutan.
+          Statistik dibatasi untuk pengguna Free agar performa server tetap stabil. Login VIP untuk membuka ranking statistik.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <Button size="lg" onClick={() => setUpgradeOpen(true)}>
             <Lock size={16} /> Aktivasi VIP
           </Button>
-          <Button variant="ghost" size="lg" onClick={openPinPanel}>
-            <KeyRound size={16} /> Masukkan PIN
+          <Button variant="ghost" size="lg" onClick={openLoginPanel}>
+            <KeyRound size={16} /> Login VIP
           </Button>
         </div>
       </div>
 
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openPinPanel} title="Statistik VIP" />
-      <PinActivationPanel open={pinOpen} onClose={() => setPinOpen(false)} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} title="Statistik VIP" />
+      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
 }
