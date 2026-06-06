@@ -17,7 +17,8 @@ import {
   type TargetPair,
   type VisibleCategoryKey,
 } from "@/lib/analysis/statistics";
-import { getBearerToken, TOKEN_VERSION, verifyToken } from "@/lib/server/jwt";
+import { getBearerToken } from "@/lib/server/jwt";
+import { verifyActiveVipSession } from "@/lib/server/vip-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ const VALID_CATEGORIES = new Set(["ai", "bbfs", "off_digit", "off_jumlah", "off_
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 const VALID_AI_SCOPES = new Set(["4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
-const VIP_LOCK_MESSAGE = "Statistik dibatasi untuk pengguna Free agar performa server tetap stabil. Masukkan PIN VIP untuk membuka ranking statistik.";
+const VIP_LOCK_MESSAGE = "Statistik dibatasi untuk pengguna Free agar performa server tetap stabil. Akses VIP tersedia melalui menu VIP.";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -47,23 +48,18 @@ function parseAnalysisScope(value: string | null): AnalysisScope {
   return VALID_ANALYSIS_SCOPES.has(value || "") ? (value as AnalysisScope) : "2d_belakang";
 }
 
-function tokenValueFromHeaders(headers: Headers) {
+async function roleFromRequest(headers: Headers) {
   const token = getBearerToken(headers);
-  return token && token !== "null" && token !== "undefined" ? token : "";
-}
+  if (!token || token === "null" || token === "undefined") return "FREE";
 
-function roleFromRequest(headers: Headers) {
-  const token = tokenValueFromHeaders(headers);
-  if (!token) return "FREE";
-
-  const decoded = verifyToken(token);
-  if (decoded.tokenVersion !== TOKEN_VERSION) return "FREE";
-  return decoded.role;
+  const access = await verifyActiveVipSession(headers);
+  if (!access.ok) throw new Error(access.error);
+  return access.role;
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const role = roleFromRequest(request.headers);
+    const role = await roleFromRequest(request.headers);
     if (!canUseStatistics(role)) {
       return NextResponse.json({ error: VIP_LOCK_MESSAGE }, { status: 403, headers: { "Cache-Control": "no-store" } });
     }
