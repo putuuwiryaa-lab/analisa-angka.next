@@ -63,7 +63,7 @@ function cnPad(hideShell: boolean) {
 
 function HeroHeader() {
   return (
-    <header className="animate-fade-in mb-5 flex items-start justify-between gap-3 pt-3 sm:mb-6 sm:items-center sm:gap-4 sm:pt-4">
+    <header className="animate-fade-in mb-5 flex items-start justify-between gap-2 pt-3 sm:mb-6 sm:items-center sm:gap-4 sm:pt-4">
       <div className="min-w-0 flex-1 pr-1">
         <h1 className="display max-w-[11.5ch] whitespace-normal break-words text-[2.1rem] uppercase leading-[0.98] text-text sm:max-w-none sm:text-4xl">
           ANALISA ANGKA
@@ -72,7 +72,7 @@ function HeroHeader() {
           Prediksi berbasis matematis
         </p>
       </div>
-      <div className="animate-soft-pop relative flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-[1.7rem] border border-primary/45 bg-primary/18 shadow-[0_0_34px_rgba(124,58,237,0.30),0_0_54px_rgba(40,215,255,0.10)] sm:h-20 sm:w-20">
+      <div className="animate-soft-pop relative mr-3 mt-1 flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-[1.7rem] border border-primary/45 bg-primary/18 shadow-[0_0_34px_rgba(124,58,237,0.30),0_0_54px_rgba(40,215,255,0.10)] sm:mr-0 sm:mt-0 sm:h-20 sm:w-20">
         <div className="pointer-events-none absolute inset-[-0.45rem] rounded-[2rem] bg-primary/10 blur-xl" />
         <Logo className="relative h-11 w-11 sm:h-12 sm:w-12" />
       </div>
