@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { KeyRound, Lock } from "lucide-react";
-import { PinActivationPanel } from "@/components/auth/PinActivationPanel";
+import { Lock } from "lucide-react";
+import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
-import { Button } from "@/components/ui/Button";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { canUseEvaluationHistory } from "@/lib/access/freeAccess";
 
@@ -95,11 +94,11 @@ function StateBox({ text, tone = "neutral" }: { text: string; tone?: "neutral" |
 
 function LockedEvaluationHistory() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
 
-  function openPinPanel() {
+  function openLoginPanel() {
     setUpgradeOpen(false);
-    setPinOpen(true);
+    setLoginOpen(true);
   }
 
   return (
@@ -119,13 +118,13 @@ function LockedEvaluationHistory() {
           <div>
             <p className="display text-sm text-text-muted">Riwayat Evaluasi</p>
             <p className="mt-2 text-xs font-semibold leading-relaxed text-text-soft">
-              Riwayat evaluasi dibatasi untuk pengguna Free agar performa server tetap stabil. Masukkan PIN VIP untuk membuka detail validasi historis.
+              Riwayat evaluasi dibatasi untuk pengguna Free agar performa server tetap stabil. Login VIP untuk membuka detail validasi historis.
             </p>
           </div>
         </div>
       </button>
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openPinPanel} title="Riwayat Evaluasi VIP" />
-      <PinActivationPanel open={pinOpen} onClose={() => setPinOpen(false)} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} title="Riwayat Evaluasi VIP" />
+      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   );
 }
