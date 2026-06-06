@@ -42,9 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap";
 
   return (
-    <div
-      className={cnPad(hideShell)}
-    >
+    <div className={cnPad(hideShell)}>
       {!hideShell && <HeroHeader />}
 
       <main className="min-w-0 flex-1">{children}</main>
@@ -65,13 +63,17 @@ function cnPad(hideShell: boolean) {
 
 function HeroHeader() {
   return (
-    <header className="animate-fade-in mb-6 flex items-center justify-between gap-4 pt-4">
-      <div className="min-w-0">
-        <h1 className="display truncate text-3xl uppercase leading-tight text-text sm:text-4xl">ANALISA ANGKA</h1>
-        <p className="mt-1 text-sm font-medium text-text-soft sm:text-base">Prediksi berbasis matematis</p>
+    <header className="animate-fade-in mb-5 flex items-start justify-between gap-3 pt-3 sm:mb-6 sm:items-center sm:gap-4 sm:pt-4">
+      <div className="min-w-0 flex-1 pr-1">
+        <h1 className="display max-w-[11.5ch] whitespace-normal break-words text-[2.1rem] uppercase leading-[0.98] text-text sm:max-w-none sm:text-4xl">
+          ANALISA ANGKA
+        </h1>
+        <p className="mt-2 text-sm font-medium leading-snug text-text-soft sm:text-base">
+          Prediksi berbasis matematis
+        </p>
       </div>
-      <div className="animate-soft-pop flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-primary/35 bg-primary/15 shadow-[0_0_32px_rgba(124,58,237,0.24)] sm:h-20 sm:w-20">
-        <Logo className="h-10 w-10 sm:h-12 sm:w-12" />
+      <div className="animate-soft-pop flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl border border-primary/35 bg-primary/15 shadow-[0_0_32px_rgba(124,58,237,0.24)] sm:h-20 sm:w-20">
+        <Logo className="h-9 w-9 sm:h-12 sm:w-12" />
       </div>
     </header>
   );
