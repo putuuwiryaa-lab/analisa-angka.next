@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, Lock } from "lucide-react";
 import { ANALYSIS_MENU, CUSTOM_MENU, MODES, type ModeKey } from "@/components/analysis/modes";
+import { PinActivationPanel } from "@/components/auth/PinActivationPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { Button } from "@/components/ui/Button";
@@ -74,7 +75,11 @@ function SubMenuCard({
         {locked ? <Lock size={20} strokeWidth={1.9} /> : <Icon size={20} strokeWidth={1.9} />}
       </div>
       <span className="accent-text display flex-1 text-[13px]">{label}</span>
-      {locked ? <VipBadge /> : <ChevronRight size={18} className="text-text-soft transition-transform duration-150 group-hover:translate-x-0.5" />}
+      {locked ? (
+        <VipBadge />
+      ) : (
+        <ChevronRight size={18} className="text-text-soft transition-transform duration-150 group-hover:translate-x-0.5" />
+      )}
     </>
   );
 
@@ -109,6 +114,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
   const router = useRouter();
   const { role } = useAuth();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
   const decodedMarketId = safeDecode(marketId);
 
   const { data: marketName = decodedMarketId } = useQuery({
@@ -116,6 +122,11 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
     queryFn: () => fetchMarketName(decodedMarketId),
     enabled: !!decodedMarketId,
   });
+
+  function openPinPanel() {
+    setUpgradeOpen(false);
+    setPinOpen(true);
+  }
 
   return (
     <div className="animate-rise pb-4">
@@ -165,7 +176,8 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
         ))}
       </div>
 
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openPinPanel} />
+      <PinActivationPanel open={pinOpen} onClose={() => setPinOpen(false)} />
     </div>
   );
 }
