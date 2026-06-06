@@ -9,10 +9,12 @@ const WA_NUMBER = "6285119341538";
 export function UpgradeLockPanel({
   open,
   onClose,
+  onOpenPin,
   title = "Akses VIP",
 }: {
   open: boolean;
   onClose: () => void;
+  onOpenPin: () => void;
   title?: string;
 }) {
   const { displayCode } = useAuth();
@@ -56,7 +58,7 @@ export function UpgradeLockPanel({
               <MessageCircle size={16} /> Aktivasi via WhatsApp
             </Button>
           </a>
-          <Button variant="ghost" size="lg" className="w-full" onClick={onClose}>
+          <Button variant="ghost" size="lg" className="w-full" onClick={onOpenPin}>
             Masukkan PIN
           </Button>
         </div>
