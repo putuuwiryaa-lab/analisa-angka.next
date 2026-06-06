@@ -49,7 +49,7 @@ export function UpgradeLockPanel({
         </div>
 
         <p className="text-sm font-medium leading-relaxed text-text-muted">
-          Fitur ini tersedia untuk VIP. Aktivasi PIN untuk membuka semua mode dan parameter analisa.
+          Fitur ini dibatasi untuk pengguna Free agar performa server tetap stabil dan akses analisa tetap lancar. Masukkan PIN VIP untuk membuka fitur ini.
         </p>
 
         <div className="mt-5 grid gap-3">
