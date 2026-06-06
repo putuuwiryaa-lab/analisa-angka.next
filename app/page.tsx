@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Clock3, Database, Plus, RefreshCw, Search } from "lucide-react";
+import { InstallAppBanner } from "@/components/pwa/InstallAppBanner";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -56,6 +57,8 @@ export default function DashboardPage() {
 
   return (
     <div className="animate-rise">
+      <InstallAppBanner />
+
       <div className="animate-soft-pop depth-1 mb-4 rounded-3xl border p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
