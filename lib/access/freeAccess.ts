@@ -7,25 +7,25 @@ export type LockableCustomFocus = LockableTargetPair | "3d" | "4d";
 export const FREE_ACCESS = {
   ai: {
     scopes: ["2d_belakang"],
-    params: [4, 6],
+    params: [2, 4, 6, 7, 8],
   },
   bbfs: {
     scopes: ["2d_belakang"],
-    params: [9],
+    params: [7, 8, 9],
   },
   mati: {
-    params: [1],
+    params: [1, 2, 3],
   },
   jumlah: {
     targetPairs: ["belakang"],
-    params: [1],
+    params: [1, 2, 3],
   },
   shio: {
     targetPairs: ["belakang"],
-    params: [1],
+    params: [1, 2, 3],
   },
   statistik: {
-    full: true,
+    full: false,
   },
 } as const;
 
@@ -36,6 +36,10 @@ export function isVipRole(role?: string | null) {
 export function isModeLockedForRole(role: string | null | undefined, mode: LockableMode) {
   if (isVipRole(role)) return false;
   return mode === "rekap";
+}
+
+export function canUseStatistics(role: string | null | undefined) {
+  return isVipRole(role);
 }
 
 export function canUseAnalysisScope(role: string | null | undefined, mode: LockableMode, scope: LockableScope) {
@@ -65,11 +69,11 @@ export function canUseParam(
 ) {
   if (isVipRole(role)) return true;
 
-  if (mode === "ai") return scope === "2d_belakang" && FREE_ACCESS.ai.params.includes(param as 4 | 6);
-  if (mode === "bbfs") return scope === "2d_belakang" && FREE_ACCESS.bbfs.params.includes(param as 9);
-  if (mode === "mati") return FREE_ACCESS.mati.params.includes(param as 1);
-  if (mode === "jumlah") return targetPair === "belakang" && FREE_ACCESS.jumlah.params.includes(param as 1);
-  if (mode === "shio") return targetPair === "belakang" && FREE_ACCESS.shio.params.includes(param as 1);
+  if (mode === "ai") return scope === "2d_belakang" && FREE_ACCESS.ai.params.includes(param as 2 | 4 | 6 | 7 | 8);
+  if (mode === "bbfs") return scope === "2d_belakang" && FREE_ACCESS.bbfs.params.includes(param as 7 | 8 | 9);
+  if (mode === "mati") return FREE_ACCESS.mati.params.includes(param as 1 | 2 | 3);
+  if (mode === "jumlah") return targetPair === "belakang" && FREE_ACCESS.jumlah.params.includes(param as 1 | 2 | 3);
+  if (mode === "shio") return targetPair === "belakang" && FREE_ACCESS.shio.params.includes(param as 1 | 2 | 3);
 
   return false;
 }
