@@ -7,7 +7,7 @@ import { canUseParam, type LockableMode, type LockableScope } from "@/lib/access
 
 export const runtime = "nodejs";
 
-const VIP_LOCK_MESSAGE = "Fitur ini tersedia untuk VIP. Aktivasi PIN untuk membuka semua mode dan parameter analisa.";
+const VIP_LOCK_MESSAGE = "Fitur ini dibatasi untuk pengguna Free agar performa server tetap stabil dan akses analisa tetap lancar. Masukkan PIN VIP untuk membuka fitur ini.";
 
 type TargetPair = "depan" | "tengah" | "belakang";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
