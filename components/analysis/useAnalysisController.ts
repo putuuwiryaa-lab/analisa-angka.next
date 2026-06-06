@@ -4,6 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/auth/auth-context";
+import {
+  canUseCustomFocus,
+  canUseParam,
+  canUseTargetPair,
+  type LockableMode,
+  type LockableScope,
+} from "@/lib/access/freeAccess";
 import { bbfsScopeToTargetPair, type CustomFocus, type TargetPair } from "@/lib/analysis/customDigit";
 import { analysisCacheKey, readAnalysisCache, writeAnalysisCache } from "@/lib/analysis/sessionCache";
 import {
@@ -27,6 +34,7 @@ import {
 
 const VALID_TARGET_PAIRS: TargetPair[] = ["depan", "tengah", "belakang"];
 const VALID_CUSTOM_FOCUS: CustomFocus[] = ["depan", "tengah", "belakang", "3d", "4d"];
+const VIP_LOCK_MESSAGE = "Fitur ini tersedia untuk VIP. Aktivasi PIN untuk membuka semua mode dan parameter analisa.";
 type ResultData = Record<string, any>;
 
 type FlowUrlState = {
@@ -65,7 +73,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
-  const { token } = useAuth();
+  const { token, role } = useAuth();
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
   const autoStartedRef = useRef(false);
@@ -233,6 +241,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     pushFlowUrl({});
   };
   const selectCustomFocus = (focus: CustomFocus) => {
+    if (!canUseCustomFocus(role, focus)) return setError(VIP_LOCK_MESSAGE);
     setCustomFocus(focus);
     setCustomAi3dDigit(null);
     setCustomAi3dParity(false);
@@ -257,6 +266,36 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     const finalTargetPair =
       isBBFS || isAI ? targetPairFromScope(selectedScope) : selectedTargetPair || targetPair || "belakang";
     if (needsTargetPair && !finalTargetPair) return setError("Pilih fokus 2D dulu.");
+
+    if (isAI || isBBFS) {
+      const scopeAllowed = canUseParam(
+        role,
+        type as LockableMode,
+        selectedParam,
+        selectedScope as LockableScope,
+        finalTargetPair,
+      );
+      if (!scopeAllowed) return setError(VIP_LOCK_MESSAGE);
+    } else if (needsTargetPair) {
+      const targetAllowed = canUseTargetPair(role, type as LockableMode, finalTargetPair);
+      const paramAllowed = canUseParam(
+        role,
+        type as LockableMode,
+        selectedParam,
+        selectedScope as LockableScope,
+        finalTargetPair,
+      );
+      if (!targetAllowed || !paramAllowed) return setError(VIP_LOCK_MESSAGE);
+    } else {
+      const paramAllowed = canUseParam(
+        role,
+        type as LockableMode,
+        selectedParam,
+        selectedScope as LockableScope,
+        finalTargetPair,
+      );
+      if (!paramAllowed) return setError(VIP_LOCK_MESSAGE);
+    }
 
     setTargetPair(finalTargetPair);
     setParam(selectedParam);
@@ -350,6 +389,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
 
   const handleCustomDigitGenerate = async () => {
     if (!customFocus) return setError("Pilih jenis rekap dulu.");
+    if (!canUseCustomFocus(role, customFocus)) return setError(VIP_LOCK_MESSAGE);
     const state = {
       customFocus,
       customAiDigitByPair,
