@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "./auth-context";
-import { LoginGate } from "./LoginGate";
 import { Logo } from "@/components/ui/Logo";
 
 function LoadingScreen() {
@@ -25,6 +24,5 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { status } = useAuth();
 
   if (status === "LOADING") return <LoadingScreen />;
-  if (status !== "READY") return <LoginGate />;
   return <>{children}</>;
 }

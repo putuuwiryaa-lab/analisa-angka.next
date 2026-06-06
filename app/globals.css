@@ -170,6 +170,11 @@
     background-size: 200% 100%;
     animation: shimmer 1.35s linear infinite;
   }
+  .animate-free-wiggle {
+    animation: free-wiggle 1.45s cubic-bezier(0.36, 0, 0.22, 1) infinite;
+    transform-origin: 50% 62%;
+    will-change: transform;
+  }
 }
 
 [data-mode] {
@@ -231,6 +236,35 @@
   }
   to {
     background-position: -200% 0;
+  }
+}
+
+@keyframes free-wiggle {
+  0%,
+  44%,
+  100% {
+    transform: rotate(0deg) translateY(0) scale(1);
+  }
+  50% {
+    transform: rotate(-24deg) translateY(-2px) scale(1.38);
+  }
+  56% {
+    transform: rotate(24deg) translateY(-2px) scale(1.38);
+  }
+  62% {
+    transform: rotate(-18deg) translateY(-1px) scale(1.28);
+  }
+  68% {
+    transform: rotate(18deg) translateY(-1px) scale(1.22);
+  }
+  74% {
+    transform: rotate(-10deg) translateY(0) scale(1.14);
+  }
+  80% {
+    transform: rotate(10deg) translateY(0) scale(1.1);
+  }
+  88% {
+    transform: rotate(0deg) translateY(0) scale(1);
   }
 }
 

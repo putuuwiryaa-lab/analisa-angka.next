@@ -1,45 +1,29 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Copy, Check, LogOut, MessageCircle, User } from "lucide-react";
-import { useAuth, type Role } from "@/components/auth/auth-context";
+import { BarChart3, Gift, Lock } from "lucide-react";
+import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
+import { useAuth } from "@/components/auth/auth-context";
 import { Logo } from "@/components/ui/Logo";
-import { Button } from "@/components/ui/Button";
-
-const WA_NUMBER = "6285119341538";
-
-function formatTokenExpiry(token: string | null) {
-  try {
-    if (!token) return "Masa aktif";
-    const payloadPart = token.split(".")[1];
-    if (!payloadPart) return "Masa aktif";
-    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
-    const payload = JSON.parse(atob(normalized));
-    if (!payload.exp) return "Masa aktif";
-    return new Date(payload.exp * 1000).toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return "Masa aktif";
-  }
-}
-
-function accountInfo(role: Role, token: string | null) {
-  const label = role === "MASTER" ? "MASTER" : role === "PRO" ? "VIP" : "TRIAL";
-  const sub = role === "MASTER" ? "Admin access" : `Aktif sampai ${formatTokenExpiry(token)}`;
-  return { label, sub };
-}
+import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
+import { canUseStatistics } from "@/lib/access/freeAccess";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { role } = useAuth();
+  const statisticsLocked = !canUseStatistics(role);
 
   // Halaman tanpa shell (header/nav disembunyikan), seperti perilaku lama.
   const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap";
+
+  function openLoginPanel() {
+    setUpgradeOpen(false);
+    setLoginOpen(true);
+  }
 
   return (
     <div className={cnPad(hideShell)}>
@@ -47,9 +31,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="min-w-0 flex-1">{children}</main>
 
-      {!hideShell && <BottomNav onOpenAccount={() => setAccountOpen(true)} />}
+      {!hideShell && (
+        <BottomNav
+          onOpenFree={() => setLoginOpen(true)}
+          statisticsLocked={statisticsLocked}
+          onOpenUpgrade={() => setUpgradeOpen(true)}
+        />
+      )}
 
-      <AccountPanel open={accountOpen} onClose={() => setAccountOpen(false)} />
+      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} title="Statistik VIP" />
     </div>
   );
 }
@@ -80,105 +71,53 @@ function HeroHeader() {
   );
 }
 
-function BottomNav({ onOpenAccount }: { onOpenAccount: () => void }) {
+function BottomNav({
+  onOpenFree,
+  statisticsLocked,
+  onOpenUpgrade,
+}: {
+  onOpenFree: () => void;
+  statisticsLocked: boolean;
+  onOpenUpgrade: () => void;
+}) {
+  const statsClassName = "pressable relative flex h-15 flex-[1.45] items-center justify-center gap-2 rounded-2xl border px-4";
+
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2.5">
-        <Link
-          href="/pantauan-rekap"
-          className="pressable flex h-15 flex-[1.45] items-center justify-center gap-2 rounded-2xl border border-emerald-400/35 bg-emerald-500/15 px-4 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 hover:shadow-[0_0_34px_rgba(16,185,129,0.24)]"
-          aria-label="Statistik Pasaran"
-        >
-          <BarChart3 size={21} />
-          <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
-        </Link>
+        {statisticsLocked ? (
+          <button
+            type="button"
+            onClick={onOpenUpgrade}
+            className={`${statsClassName} border-emerald-400/15 bg-emerald-500/5 text-emerald-300/45`}
+            aria-label="Statistik VIP"
+          >
+            <BarChart3 size={21} />
+            <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
+            <span className="absolute right-2 top-1.5 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-primary-soft/80">
+              <Lock size={8} /> VIP
+            </span>
+          </button>
+        ) : (
+          <Link
+            href="/pantauan-rekap"
+            className={`${statsClassName} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 hover:shadow-[0_0_34px_rgba(16,185,129,0.24)]`}
+            aria-label="Statistik Pasaran"
+          >
+            <BarChart3 size={21} />
+            <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
+          </Link>
+        )}
         <button
           type="button"
-          onClick={onOpenAccount}
-          className="pressable flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-white/[0.035] text-text-muted hover:border-border hover:bg-white/[0.06]"
-          aria-label="Akun Saya"
+          onClick={onOpenFree}
+          className="pressable flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft hover:border-primary/50 hover:bg-primary/15"
+          aria-label="Login VIP dan Akses Free"
         >
-          <User size={19} />
-          <span className="text-xs font-semibold">Akun</span>
+          <Gift size={19} className="animate-free-wiggle" />
+          <span className="text-xs font-semibold">VIP</span>
         </button>
       </div>
     </nav>
-  );
-}
-
-function AccountPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { role, displayCode, token, logout } = useAuth();
-  const [copied, setCopied] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
-
-  if (!open) return null;
-
-  const { label, sub } = accountInfo(role, token);
-  const adminUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
-    `Halo, saya ingin bantuan Analisa Angka. Device Key saya ${displayCode}`,
-  )}`;
-
-  async function copyKey() {
-    try {
-      await navigator.clipboard.writeText(displayCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* abaikan */
-    }
-  }
-
-  return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
-      <div className="animate-soft-pop w-full max-w-sm rounded-t-3xl border border-border-soft bg-surface p-5 sm:rounded-3xl">
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-text-soft">Akun</p>
-            <h3 className="display mt-1 text-xl text-text">{label}</h3>
-            <p className="mt-1 text-xs text-text-muted">{sub}</p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Tutup
-          </Button>
-        </div>
-
-        <div className="mb-4 rounded-2xl border border-border-soft bg-black/25 p-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-text-soft">Device Key</p>
-          <p className="num mt-2 text-2xl font-black tracking-[0.25em] text-primary-soft">
-            {displayCode}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="ghost" onClick={copyKey}>
-            {copied ? <Check size={15} /> : <Copy size={15} />}
-            {copied ? "Tersalin" : "Salin Key"}
-          </Button>
-          <a href={adminUrl} target="_blank" rel="noopener noreferrer">
-            <Button variant="ghost" className="w-full">
-              <MessageCircle size={15} /> Admin
-            </Button>
-          </a>
-        </div>
-
-        {!confirmLogout ? (
-          <Button variant="danger" className="mt-3 w-full" onClick={() => setConfirmLogout(true)}>
-            <LogOut size={15} /> Keluar
-          </Button>
-        ) : (
-          <div className="animate-soft-pop mt-3 rounded-2xl border border-danger/25 bg-danger/10 p-4 text-center">
-            <p className="mb-3 text-sm text-text">Yakin ingin keluar?</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="ghost" onClick={() => setConfirmLogout(false)}>
-                Batal
-              </Button>
-              <Button variant="danger" onClick={logout}>
-                Keluar
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
