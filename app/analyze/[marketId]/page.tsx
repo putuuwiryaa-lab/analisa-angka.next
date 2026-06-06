@@ -130,7 +130,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
 
   return (
     <div className="animate-rise pb-4">
-      <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push("/") }>
+      <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push("/")}>
         <ArrowLeft size={16} /> Beranda
       </Button>
 
