@@ -14,7 +14,7 @@ const LIMIT = 15;
 const VALID_MODES = new Set(["ai", "ai_parity", "ai_size", "bbfs", "mati", "jumlah", "shio"]);
 const VALID_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
-const VIP_LOCK_MESSAGE = "Riwayat evaluasi tersedia untuk VIP. Aktivasi PIN untuk membuka detail validasi historis.";
+const VIP_LOCK_MESSAGE = "Riwayat evaluasi dibatasi untuk pengguna Free agar performa server tetap stabil. Masukkan PIN VIP untuk membuka detail validasi historis.";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
