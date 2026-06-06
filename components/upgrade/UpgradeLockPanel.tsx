@@ -1,14 +1,11 @@
 "use client";
 
-import { Lock, MessageCircle, X } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-
-const WA_NUMBER = "6285119341538";
+import { Lock, X } from "lucide-react";
 
 export function UpgradeLockPanel({
   open,
   onClose,
-  onOpenPin,
+  onOpenPin: _onOpenPin,
   title = "Akses VIP",
 }: {
   open: boolean;
@@ -17,10 +14,6 @@ export function UpgradeLockPanel({
   title?: string;
 }) {
   if (!open) return null;
-
-  const activationUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
-    "Halo, saya ingin aktivasi VIP Analisa Angka.",
-  )}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-4 backdrop-blur-sm sm:items-center sm:pb-0">
@@ -46,19 +39,8 @@ export function UpgradeLockPanel({
         </div>
 
         <p className="text-sm font-medium leading-relaxed text-text-muted">
-          Fitur ini dibatasi untuk pengguna Free agar performa server tetap stabil dan akses analisa tetap lancar. Login VIP untuk membuka fitur ini.
+          Fitur ini dibatasi untuk pengguna Free agar performa server tetap stabil dan akses analisa tetap lancar. Akses VIP tersedia melalui menu VIP.
         </p>
-
-        <div className="mt-5 grid gap-3">
-          <a href={activationUrl} target="_blank" rel="noopener noreferrer">
-            <Button size="lg" className="w-full whitespace-nowrap">
-              <MessageCircle size={16} /> Aktivasi via WhatsApp
-            </Button>
-          </a>
-          <Button variant="ghost" size="lg" className="w-full" onClick={onOpenPin}>
-            Login VIP
-          </Button>
-        </div>
       </div>
     </div>
   );
