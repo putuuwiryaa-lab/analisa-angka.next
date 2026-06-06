@@ -119,7 +119,7 @@ function LockedEvaluationHistory() {
           <div>
             <p className="display text-sm text-text-muted">Riwayat Evaluasi</p>
             <p className="mt-2 text-xs font-semibold leading-relaxed text-text-soft">
-              Riwayat evaluasi dan detail validasi historis tersedia untuk VIP.
+              Riwayat evaluasi dibatasi untuk pengguna Free agar performa server tetap stabil. Masukkan PIN VIP untuk membuka detail validasi historis.
             </p>
           </div>
         </div>
