@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { emailFromPhone, normalizePhone, phoneIsValid } from "@/lib/auth/accountLogin";
 import { verifyVipProfile } from "@/lib/auth/vipProfile";
-import { createAdminClient } from "@/lib/server/supabase-admin";
 import { requireEnv } from "@/lib/server/env";
 import { signToken, type Role } from "@/lib/server/jwt";
 
@@ -42,19 +41,10 @@ export async function POST(request: Request) {
 
   const phone = normalizePhone(body.phone);
   const passcode = String(body.password || "").trim();
-  const deviceId = String(body.deviceId || "").trim();
-  const displayCode = String(body.displayCode || "").trim();
 
   if (!phoneIsValid(phone) || passcode.length < 4) {
     return NextResponse.json(
       { success: false, error: "Nomor WA atau password tidak valid" },
-      { status: 400 },
-    );
-  }
-
-  if (!deviceId || deviceId.length < 20 || !/^\d{6}$/.test(displayCode)) {
-    return NextResponse.json(
-      { success: false, error: "Identitas perangkat tidak valid" },
       { status: 400 },
     );
   }
@@ -87,29 +77,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createAdminClient();
-
-    const { error: deviceError } = await supabase
-      .from("vip_account_devices")
-      .upsert(
-        {
-          user_id: userId,
-          device_id: deviceId,
-          display_code: displayCode,
-          last_seen_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,device_id" },
-      );
-
-    if (deviceError) {
-      console.error("ACCOUNT_DEVICE_UPSERT_ERROR", deviceError);
-    }
-
     const token = signToken(
       {
         role,
-        deviceId,
-        displayCode,
         accountId: userId,
         phone,
       },
