@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireEnv } from "@/lib/server/env";
-import { verifyToken, TOKEN_VERSION } from "@/lib/server/jwt";
+import { verifyToken } from "@/lib/server/jwt";
+import { verifyActiveVipSession } from "@/lib/server/vip-session";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { token } = body;
+  const token = String(body.token || "");
 
   if (!token) {
     return NextResponse.json(
@@ -27,26 +28,20 @@ export async function POST(request: Request) {
 
   try {
     const decoded = verifyToken(token);
-    const role = String(decoded.role || "");
+    const headers = new Headers({ authorization: `Bearer ${token}` });
+    const access = await verifyActiveVipSession(headers);
 
-    if (decoded.tokenVersion !== TOKEN_VERSION) {
+    if (!access.ok) {
       return NextResponse.json(
-        { valid: false, error: "Sesi lama. Silakan login ulang." },
-        { status: 401 },
-      );
-    }
-
-    if (!["PRO", "MASTER"].includes(role)) {
-      return NextResponse.json(
-        { valid: false, error: "Akses tidak valid" },
-        { status: 403 },
+        { valid: false, error: access.error },
+        { status: access.status },
       );
     }
 
     return NextResponse.json({
       valid: true,
-      role,
-      phone: decoded.phone || null,
+      role: access.role,
+      phone: decoded.phone || access.phone || null,
     });
   } catch (e) {
     const message =
