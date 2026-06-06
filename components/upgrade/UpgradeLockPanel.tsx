@@ -2,7 +2,6 @@
 
 import { Lock, MessageCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { useAuth } from "@/components/auth/auth-context";
 
 const WA_NUMBER = "6285119341538";
 
@@ -17,12 +16,10 @@ export function UpgradeLockPanel({
   onOpenPin: () => void;
   title?: string;
 }) {
-  const { displayCode } = useAuth();
-
   if (!open) return null;
 
   const activationUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
-    `Halo, saya ingin aktivasi VIP Analisa Angka. Device Key saya ${displayCode}`,
+    "Halo, saya ingin aktivasi VIP Analisa Angka.",
   )}`;
 
   return (
@@ -49,7 +46,7 @@ export function UpgradeLockPanel({
         </div>
 
         <p className="text-sm font-medium leading-relaxed text-text-muted">
-          Fitur ini dibatasi untuk pengguna Free agar performa server tetap stabil dan akses analisa tetap lancar. Masukkan PIN VIP untuk membuka fitur ini.
+          Fitur ini dibatasi untuk pengguna Free agar performa server tetap stabil dan akses analisa tetap lancar. Login VIP untuk membuka fitur ini.
         </p>
 
         <div className="mt-5 grid gap-3">
@@ -59,7 +56,7 @@ export function UpgradeLockPanel({
             </Button>
           </a>
           <Button variant="ghost" size="lg" className="w-full" onClick={onOpenPin}>
-            Masukkan PIN
+            Login VIP
           </Button>
         </div>
       </div>
