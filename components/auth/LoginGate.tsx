@@ -39,14 +39,14 @@ export function LoginGate() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-start px-5 pb-8 pt-[calc(2rem+env(safe-area-inset-top))] sm:pt-12">
+    <div className="flex min-h-screen flex-col items-center justify-start px-5 pb-8 pt-[calc(1.25rem+env(safe-area-inset-top))] sm:pt-10">
       <div className="w-full max-w-sm animate-rise">
-        <div className="animate-soft-pop mb-5 rounded-3xl border border-border bg-white/[0.055] p-6 text-center shadow-xl shadow-black/10 backdrop-blur-xl">
-          <div className="mx-auto mb-4 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-3xl border border-border bg-primary/18 shadow-[0_0_30px_rgba(124,77,255,0.18)]">
-            <Logo className="h-12 w-12" />
+        <div className="animate-soft-pop mb-4 rounded-3xl border border-border bg-white/[0.055] p-5 text-center shadow-xl shadow-black/10 backdrop-blur-xl">
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-3xl border border-border bg-primary/18 shadow-[0_0_30px_rgba(124,77,255,0.18)]">
+            <Logo className="h-10 w-10" />
           </div>
-          <h1 className="display text-3xl uppercase text-text">ANALISA ANGKA</h1>
-          <p className="mt-3 text-sm text-text-muted">Prediksi berbasis matematis.</p>
+          <h1 className="display text-[1.75rem] uppercase leading-tight text-text">ANALISA ANGKA</h1>
+          <p className="mt-2 text-sm text-text-muted">Prediksi berbasis matematis.</p>
         </div>
 
         <div className="animate-soft-pop rounded-3xl border border-border-soft bg-surface p-5 shadow-xl shadow-black/10 sm:p-6">
@@ -60,7 +60,7 @@ export function LoginGate() {
                 <p className="mt-0.5 text-xs text-text-muted">Kode perangkat untuk aktivasi VIP</p>
               </div>
             </div>
-            <p className="num text-3xl font-black tracking-[0.3em] text-text">{displayCode}</p>
+            <p className="num text-[1.7rem] font-black tracking-[0.24em] text-text">{displayCode}</p>
           </div>
 
           {error && (
@@ -94,8 +94,8 @@ export function LoginGate() {
             </Button>
 
             <a href={activationUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="ghost" size="lg" className="w-full">
-                <MessageCircle size={16} /> Hubungi Admin untuk Aktivasi
+              <Button variant="ghost" size="lg" className="w-full whitespace-nowrap">
+                <MessageCircle size={16} /> Aktivasi via WhatsApp
               </Button>
             </a>
           </div>
