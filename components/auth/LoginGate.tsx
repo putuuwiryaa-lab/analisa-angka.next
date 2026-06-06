@@ -9,51 +9,15 @@ import { Input } from "@/components/ui/Input";
 
 const WA_NUMBER = "6285119341538";
 
-function getTrialFingerprint() {
-  return {
-    userAgent: navigator.userAgent || "",
-    platform: navigator.platform || "",
-    language: navigator.language || "",
-    languages: Array.isArray(navigator.languages) ? navigator.languages.join(",") : "",
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
-    screen: `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`,
-    availScreen: `${window.screen.availWidth}x${window.screen.availHeight}`,
-    pixelRatio: String(window.devicePixelRatio || ""),
-    hardwareConcurrency: String(navigator.hardwareConcurrency || ""),
-    deviceMemory: String((navigator as Navigator & { deviceMemory?: number }).deviceMemory || ""),
-    maxTouchPoints: String(navigator.maxTouchPoints || 0),
-    vendor: navigator.vendor || "",
-  };
-}
-
 export function LoginGate() {
   const { deviceId, displayCode, login } = useAuth();
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPin, setShowPin] = useState(false);
 
   const activationUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
     `Halo, saya ingin aktivasi VIP Analisa Angka. Device Key saya ${displayCode}`,
   )}`;
-
-  async function startTrial() {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/trial", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId, displayCode, fingerprint: getTrialFingerprint() }),
-      });
-      const json = await res.json();
-      if (json.success) login(json.role, json.token);
-      else setError(json.error || "Trial tidak bisa diaktifkan");
-    } catch {
-      setError("Koneksi server gagal");
-    }
-    setLoading(false);
-  }
 
   async function submitPin() {
     if (!pin) return;
@@ -82,9 +46,7 @@ export function LoginGate() {
             <Logo className="h-12 w-12" />
           </div>
           <h1 className="display text-3xl uppercase text-text">ANALISA ANGKA</h1>
-          <p className="mt-3 text-sm text-text-muted">
-            Prediksi berbasis matematis.
-          </p>
+          <p className="mt-3 text-sm text-text-muted">Prediksi berbasis matematis.</p>
         </div>
 
         <div className="animate-soft-pop rounded-3xl border border-border-soft bg-surface p-5 shadow-xl shadow-black/10 sm:p-6">
@@ -107,84 +69,36 @@ export function LoginGate() {
             </p>
           )}
 
-          {!showPin ? (
-            <div className="animate-rise space-y-3">
-              <Button
-                onClick={startTrial}
-                disabled={loading || !deviceId || !displayCode}
-                size="lg"
-                className="w-full"
-              >
-                {loading ? "Mengaktifkan…" : "Mulai Trial Gratis"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="lg"
-                className="w-full"
-                onClick={() => {
-                  setError("");
-                  setShowPin(true);
-                }}
-              >
-                Saya Punya PIN VIP
-              </Button>
-              <a href={activationUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" size="lg" className="w-full">
-                  <MessageCircle size={16} /> Hubungi Admin
-                </Button>
-              </a>
-            </div>
-          ) : (
-            <div className="animate-rise space-y-4">
-              <div>
-                <label className="mb-2 ml-1 block text-xs font-bold uppercase tracking-wide text-text-muted">
-                  PIN VIP / MASTER
-                </label>
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-soft" />
-                  <Input
-                    type="password"
-                    value={pin}
-                    autoFocus
-                    inputMode="numeric"
-                    onChange={(e) => setPin(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && submitPin()}
-                    placeholder="••••••"
-                    className="num h-14 pl-12 text-center text-2xl tracking-[0.5em]"
-                  />
-                </div>
-              </div>
-              <Button
-                onClick={submitPin}
-                disabled={loading || !pin}
-                size="lg"
-                className="w-full"
-              >
-                {loading ? "Memverifikasi…" : "Buka Akses VIP"}
-              </Button>
-              <div className="grid gap-3 text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    setError("");
-                    setShowPin(false);
-                  }}
-                >
-                  Kembali ke Trial Gratis
-                </Button>
-                <a
-                  href={activationUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="pressable text-xs font-bold text-primary-soft underline underline-offset-4"
-                >
-                  Hubungi Admin untuk Aktivasi VIP
-                </a>
+          <div className="animate-rise space-y-4">
+            <div>
+              <label className="mb-2 ml-1 block text-xs font-bold uppercase tracking-wide text-text-muted">
+                PIN VIP / MASTER
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-soft" />
+                <Input
+                  type="password"
+                  value={pin}
+                  autoFocus
+                  inputMode="numeric"
+                  onChange={(e) => setPin(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitPin()}
+                  placeholder="••••••"
+                  className="num h-14 pl-12 text-center text-2xl tracking-[0.5em]"
+                />
               </div>
             </div>
-          )}
+
+            <Button onClick={submitPin} disabled={loading || !pin} size="lg" className="w-full">
+              {loading ? "Memverifikasi…" : "Buka Akses VIP"}
+            </Button>
+
+            <a href={activationUrl} target="_blank" rel="noopener noreferrer">
+              <Button variant="ghost" size="lg" className="w-full">
+                <MessageCircle size={16} /> Hubungi Admin untuk Aktivasi
+              </Button>
+            </a>
+          </div>
         </div>
       </div>
     </div>
