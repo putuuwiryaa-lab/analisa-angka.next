@@ -97,7 +97,7 @@ export function InstallAppBanner() {
 
           {help && (
             <div className="mt-3 rounded-2xl border border-border-soft bg-white/[0.035] px-3 py-2 text-[11px] font-semibold leading-relaxed text-text-muted">
-              Buka menu browser, lalu pilih <span className="text-text">Install app</span> atau <span className="text-text">Add to Home screen</span>.
+              Buka menu browser, pilih <span className="text-text">Tambahkan ke Layar Utama</span>, lalu tekan <span className="text-text">Instal</span>.
             </div>
           )}
 
