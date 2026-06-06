@@ -3,33 +3,39 @@
 import { type ReactNode, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, CheckCircle2, Gift, KeyRound, MessageCircle } from "lucide-react";
+import { BarChart3, CheckCircle2, Gift, KeyRound, Lock, MessageCircle } from "lucide-react";
 import { PinActivationPanel } from "@/components/auth/PinActivationPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
+import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
+import { canUseStatistics } from "@/lib/access/freeAccess";
 
 const WA_NUMBER = "6285119341538";
 
 const FREE_FEATURES = [
-  "Angka Ikut 2D Belakang: parameter 4 dan 6",
-  "BBFS 2D Belakang: 9 digit",
-  "Angka Mati: parameter 1",
-  "Jumlah Mati Belakang: parameter 1",
-  "Shio Mati Belakang: parameter 1",
-  "Statistik pasaran terbuka penuh",
+  "Angka Ikut 2D Belakang: semua parameter",
+  "BBFS 2D Belakang: semua parameter",
+  "Angka Mati: semua parameter",
+  "Jumlah Mati 2D Belakang: semua parameter",
+  "Shio Mati 2D Belakang: semua parameter",
+  "Statistik pasaran tersedia untuk VIP",
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [freeOpen, setFreeOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { role } = useAuth();
+  const statisticsLocked = !canUseStatistics(role);
 
   // Halaman tanpa shell (header/nav disembunyikan), seperti perilaku lama.
   const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap";
 
   function openPinPanel() {
     setFreeOpen(false);
+    setUpgradeOpen(false);
     setPinOpen(true);
   }
 
@@ -39,9 +45,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="min-w-0 flex-1">{children}</main>
 
-      {!hideShell && <BottomNav onOpenFree={() => setFreeOpen(true)} />}
+      {!hideShell && (
+        <BottomNav
+          onOpenFree={() => setFreeOpen(true)}
+          statisticsLocked={statisticsLocked}
+          onOpenUpgrade={() => setUpgradeOpen(true)}
+        />
+      )}
 
       <FreeAccessPanel open={freeOpen} onClose={() => setFreeOpen(false)} onOpenPin={openPinPanel} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openPinPanel} title="Statistik VIP" />
       <PinActivationPanel open={pinOpen} onClose={() => setPinOpen(false)} />
     </div>
   );
@@ -73,18 +86,43 @@ function HeroHeader() {
   );
 }
 
-function BottomNav({ onOpenFree }: { onOpenFree: () => void }) {
+function BottomNav({
+  onOpenFree,
+  statisticsLocked,
+  onOpenUpgrade,
+}: {
+  onOpenFree: () => void;
+  statisticsLocked: boolean;
+  onOpenUpgrade: () => void;
+}) {
+  const statsClassName = "pressable relative flex h-15 flex-[1.45] items-center justify-center gap-2 rounded-2xl border px-4";
+
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2.5">
-        <Link
-          href="/pantauan-rekap"
-          className="pressable flex h-15 flex-[1.45] items-center justify-center gap-2 rounded-2xl border border-emerald-400/35 bg-emerald-500/15 px-4 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 hover:shadow-[0_0_34px_rgba(16,185,129,0.24)]"
-          aria-label="Statistik Pasaran"
-        >
-          <BarChart3 size={21} />
-          <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
-        </Link>
+        {statisticsLocked ? (
+          <button
+            type="button"
+            onClick={onOpenUpgrade}
+            className={`${statsClassName} border-emerald-400/15 bg-emerald-500/5 text-emerald-300/45`}
+            aria-label="Statistik VIP"
+          >
+            <BarChart3 size={21} />
+            <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
+            <span className="absolute right-2 top-1.5 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-primary-soft/80">
+              <Lock size={8} /> VIP
+            </span>
+          </button>
+        ) : (
+          <Link
+            href="/pantauan-rekap"
+            className={`${statsClassName} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 hover:shadow-[0_0_34px_rgba(16,185,129,0.24)]`}
+            aria-label="Statistik Pasaran"
+          >
+            <BarChart3 size={21} />
+            <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
+          </Link>
+        )}
         <button
           type="button"
           onClick={onOpenFree}
@@ -144,7 +182,7 @@ function FreeAccessPanel({
         <div className="mt-4 rounded-2xl border border-primary/25 bg-primary/10 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-primary-soft">VIP membuka semua mode</p>
           <p className="mt-1 text-xs leading-relaxed text-text-muted">
-            Aktivasi PIN untuk membuka semua mode dan parameter analisa.
+            Aktivasi PIN untuk membuka Statistik, Racik Angka, dan semua mode lanjutan.
           </p>
         </div>
 
