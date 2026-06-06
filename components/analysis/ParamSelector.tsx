@@ -15,10 +15,15 @@ type ParamConfig = {
   hints?: Record<number, string>;
 };
 
-function VipBadge() {
+function VipBadge({ compact = false }: { compact?: boolean }) {
   return (
-    <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-primary-soft/80">
-      <Lock size={9} /> VIP
+    <span
+      className={cn(
+        "absolute inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 font-black uppercase tracking-wide text-primary-soft/80",
+        compact ? "bottom-2 right-2 px-1.5 py-0.5 text-[8px]" : "right-3 top-3 px-2 py-1 text-[9px]",
+      )}
+    >
+      <Lock size={compact ? 8 : 9} /> VIP
     </span>
   );
 }
@@ -97,7 +102,7 @@ export function ParamSelector({
                 )}
                 style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}
               >
-                {locked && <VipBadge />}
+                {locked && <VipBadge compact={!isSpecial && isGridThree} />}
                 <span className={cn("display block", isSpecial ? "text-[15px] leading-5" : "text-2xl", locked ? "text-text-muted/80" : "")}>{label}</span>
                 {((isAiMode && !isSpecial) || type === "bbfs") && (
                   <span className={cn("mt-2 block text-[10px] font-bold uppercase tracking-wide", locked ? "text-text-soft/70" : "text-text-muted")}>
