@@ -26,7 +26,7 @@ const VALID_CATEGORIES = new Set(["ai", "bbfs", "off_digit", "off_jumlah", "off_
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 const VALID_AI_SCOPES = new Set(["4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
-const VIP_LOCK_MESSAGE = "Statistik pasaran tersedia untuk VIP. Aktivasi PIN untuk membuka ranking statistik.";
+const VIP_LOCK_MESSAGE = "Statistik dibatasi untuk pengguna Free agar performa server tetap stabil. Masukkan PIN VIP untuk membuka ranking statistik.";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
