@@ -26,11 +26,13 @@ import {
 } from "./customDigitGenerate";
 
 const VALID_TARGET_PAIRS: TargetPair[] = ["depan", "tengah", "belakang"];
+const VALID_CUSTOM_FOCUS: CustomFocus[] = ["depan", "tengah", "belakang", "3d", "4d"];
 type ResultData = Record<string, any>;
 
 type FlowUrlState = {
   analysisScope?: AnalysisScope | null;
   targetPair?: TargetPair | null;
+  customFocus?: CustomFocus | null;
   param?: number | null;
   result?: boolean;
 };
@@ -40,6 +42,9 @@ function parseTargetPair(value: string | null): TargetPair {
 }
 function parseAnalysisScope(value: string | null): AnalysisScope {
   return BBFS_SCOPE_OPTIONS.some((item) => item.key === value) ? (value as AnalysisScope) : "default";
+}
+function parseCustomFocus(value: string | null): CustomFocus | null {
+  return VALID_CUSTOM_FOCUS.includes(value as CustomFocus) ? (value as CustomFocus) : null;
 }
 function targetPairFromScope(scope: AnalysisScope): TargetPair {
   return scope === "default" ? "belakang" : bbfsScopeToTargetPair(scope);
@@ -76,6 +81,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   const urlParam = readParamFromUrl(searchParams.get("param"));
   const urlScope = searchParams.has("analysis_scope") ? parseAnalysisScope(searchParams.get("analysis_scope")) : null;
   const urlTargetPair = searchParams.has("target_pair") ? parseTargetPair(searchParams.get("target_pair")) : null;
+  const urlCustomFocus = parseCustomFocus(searchParams.get("custom_focus"));
   const initialParam = autoMode && Number.isFinite(autoParam) && autoParam > 0 ? autoParam : type === "rekap" ? 3 : urlParam;
 
   const [param, setParam] = useState<number | null>(initialParam);
@@ -90,7 +96,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   const [error, setError] = useState("");
   const [detailValidationOpen, setDetailValidationOpen] = useState(false);
   const [angkaJadiOpen, setAngkaJadiOpen] = useState(false);
-  const [customFocus, setCustomFocus] = useState<CustomFocus | null>(type === "rekap" ? null : "belakang");
+  const [customFocus, setCustomFocus] = useState<CustomFocus | null>(type === "rekap" ? urlCustomFocus : "belakang");
   const [customAiDigitByPair, setCustomAiDigitByPair] = useState<PairAiMap>({});
   const [customAiParityByPair, setCustomAiParityByPair] = useState<PairBoolMap>({});
   const [customAiSizeByPair, setCustomAiSizeByPair] = useState<PairBoolMap>({});
@@ -112,6 +118,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     const params = new URLSearchParams();
     if (state.analysisScope && state.analysisScope !== "default") params.set("analysis_scope", state.analysisScope);
     if (state.targetPair) params.set("target_pair", state.targetPair);
+    if (state.customFocus) params.set("custom_focus", state.customFocus);
     if (state.param && state.param > 0) params.set("param", String(state.param));
     if (state.result) params.set("result", "1");
     const query = params.toString();
@@ -223,6 +230,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setCustomBBFSDigit(null);
     setResult(null);
     setError("");
+    pushFlowUrl({});
   };
   const selectCustomFocus = (focus: CustomFocus) => {
     setCustomFocus(focus);
@@ -232,6 +240,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setCustomAi4dDigit(null);
     setCustomBBFSDigit(null);
     setError("");
+    pushFlowUrl({ customFocus: focus, param: 3 });
   };
 
   const handleBack = () => {
@@ -287,11 +296,14 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     const nextParam = readParamFromUrl(searchParams.get("param"));
     const nextScope = searchParams.has("analysis_scope") ? parseAnalysisScope(searchParams.get("analysis_scope")) : null;
     const nextTargetPair = searchParams.has("target_pair") ? parseTargetPair(searchParams.get("target_pair")) : null;
+    const nextCustomFocus = parseCustomFocus(searchParams.get("custom_focus"));
     const hasResult = searchParams.get("result") === "1";
     const finalScope = nextScope || "default";
     const finalTargetPair = isAI || isBBFS ? targetPairFromScope(finalScope) : nextTargetPair || "belakang";
 
-    if (isAI || isBBFS) {
+    if (type === "rekap") {
+      setCustomFocus(nextCustomFocus);
+    } else if (isAI || isBBFS) {
       setAnalysisScope(nextScope);
       setTargetPair(nextScope ? targetPairFromScope(nextScope) : "belakang");
     } else if (needsTargetPair) {
@@ -300,7 +312,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
 
     setParam(type === "rekap" ? 3 : nextParam);
 
-    if (hasResult && nextParam > 0) {
+    if (hasResult && nextParam > 0 && type !== "rekap") {
       const cached = readAnalysisCache(
         analysisCacheKey({
           marketId,
@@ -356,6 +368,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
       customOffShioCountByPair,
     };
     if (!hasAnyCustomFilter(state)) return setError("Pilih minimal satu filter dulu.");
+    pushFlowUrl({ customFocus, param: 3, result: true });
     resetBeforeAnalyze();
     try {
       const data = await getMarketData();
