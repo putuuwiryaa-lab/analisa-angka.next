@@ -3,29 +3,16 @@
 import { type ReactNode, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, CheckCircle2, Gift, KeyRound, Lock, MessageCircle } from "lucide-react";
-import { PinActivationPanel } from "@/components/auth/PinActivationPanel";
+import { BarChart3, Gift, Lock } from "lucide-react";
+import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { Logo } from "@/components/ui/Logo";
-import { Button } from "@/components/ui/Button";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { canUseStatistics } from "@/lib/access/freeAccess";
 
-const WA_NUMBER = "6285119341538";
-
-const FREE_FEATURES = [
-  "Angka Ikut 2D Belakang: semua parameter",
-  "BBFS 2D Belakang: semua parameter",
-  "Angka Mati: semua parameter",
-  "Jumlah Mati 2D Belakang: semua parameter",
-  "Shio Mati 2D Belakang: semua parameter",
-  "Statistik pasaran tersedia untuk VIP",
-];
-
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [freeOpen, setFreeOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const { role } = useAuth();
   const statisticsLocked = !canUseStatistics(role);
@@ -33,10 +20,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Halaman tanpa shell (header/nav disembunyikan), seperti perilaku lama.
   const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap";
 
-  function openPinPanel() {
-    setFreeOpen(false);
+  function openLoginPanel() {
     setUpgradeOpen(false);
-    setPinOpen(true);
+    setLoginOpen(true);
   }
 
   return (
@@ -47,15 +33,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {!hideShell && (
         <BottomNav
-          onOpenFree={() => setFreeOpen(true)}
+          onOpenFree={() => setLoginOpen(true)}
           statisticsLocked={statisticsLocked}
           onOpenUpgrade={() => setUpgradeOpen(true)}
         />
       )}
 
-      <FreeAccessPanel open={freeOpen} onClose={() => setFreeOpen(false)} onOpenPin={openPinPanel} />
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openPinPanel} title="Statistik VIP" />
-      <PinActivationPanel open={pinOpen} onClose={() => setPinOpen(false)} />
+      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} title="Statistik VIP" />
     </div>
   );
 }
@@ -127,76 +112,12 @@ function BottomNav({
           type="button"
           onClick={onOpenFree}
           className="pressable flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft hover:border-primary/50 hover:bg-primary/15"
-          aria-label="Akses Free"
+          aria-label="Login VIP dan Akses Free"
         >
           <Gift size={19} className="animate-free-wiggle" />
-          <span className="text-xs font-semibold">FREE</span>
+          <span className="text-xs font-semibold">VIP</span>
         </button>
       </div>
     </nav>
-  );
-}
-
-function FreeAccessPanel({
-  open,
-  onClose,
-  onOpenPin,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onOpenPin: () => void;
-}) {
-  const { displayCode } = useAuth();
-
-  if (!open) return null;
-
-  const activationUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
-    `Halo, saya ingin aktivasi VIP Analisa Angka. Device Key saya ${displayCode}`,
-  )}`;
-
-  return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
-      <div className="animate-soft-pop w-full max-w-sm rounded-t-3xl border border-border-soft bg-surface p-5 sm:rounded-3xl">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-primary-soft">Paket FREE</p>
-            <h3 className="display mt-1 text-xl text-text">Akses Gratis</h3>
-            <p className="mt-1 text-xs leading-relaxed text-text-muted">
-              Fitur yang bisa dipakai tanpa aktivasi VIP.
-            </p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Tutup
-          </Button>
-        </div>
-
-        <div className="space-y-2.5">
-          {FREE_FEATURES.map((feature) => (
-            <div key={feature} className="flex gap-2.5 rounded-2xl border border-border-soft bg-black/20 p-3">
-              <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary-soft" />
-              <p className="text-xs font-semibold leading-relaxed text-text-muted">{feature}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-primary/25 bg-primary/10 p-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-primary-soft">VIP membuka semua mode</p>
-          <p className="mt-1 text-xs leading-relaxed text-text-muted">
-            Aktivasi PIN untuk membuka Statistik, Racik Angka, dan semua mode lanjutan.
-          </p>
-        </div>
-
-        <div className="mt-4 grid gap-3">
-          <a href={activationUrl} target="_blank" rel="noopener noreferrer">
-            <Button size="lg" className="w-full whitespace-nowrap">
-              <MessageCircle size={16} /> Aktivasi via WhatsApp
-            </Button>
-          </a>
-          <Button variant="ghost" size="lg" className="w-full" onClick={onOpenPin}>
-            <KeyRound size={16} /> Masukkan PIN
-          </Button>
-        </div>
-      </div>
-    </div>
   );
 }
