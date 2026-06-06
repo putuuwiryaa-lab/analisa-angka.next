@@ -126,11 +126,13 @@ function canRoleAnalyze({
   if (!["ai", "bbfs", "mati", "jumlah", "shio", "rekap"].includes(type)) return false;
   if (type === "rekap") return role === "PRO" || role === "MASTER";
 
+  const accessScope = type === "ai" && rawScope === "default" && targetPair === "belakang" ? "2d_belakang" : rawScope;
+
   return canUseParam(
     role,
     type as LockableMode,
     param,
-    rawScope as LockableScope,
+    accessScope as LockableScope,
     targetPair,
   );
 }
