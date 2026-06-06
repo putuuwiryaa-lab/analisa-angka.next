@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, Lock } from "lucide-react";
 import { ANALYSIS_MENU, CUSTOM_MENU, MODES, type ModeKey } from "@/components/analysis/modes";
-import { PinActivationPanel } from "@/components/auth/PinActivationPanel";
+import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { Button } from "@/components/ui/Button";
@@ -114,7 +114,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
   const router = useRouter();
   const { role } = useAuth();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const decodedMarketId = safeDecode(marketId);
 
   const { data: marketName = decodedMarketId } = useQuery({
@@ -123,9 +123,9 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
     enabled: !!decodedMarketId,
   });
 
-  function openPinPanel() {
+  function openLoginPanel() {
     setUpgradeOpen(false);
-    setPinOpen(true);
+    setLoginOpen(true);
   }
 
   return (
@@ -176,8 +176,8 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
         ))}
       </div>
 
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openPinPanel} />
-      <PinActivationPanel open={pinOpen} onClose={() => setPinOpen(false)} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} />
+      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
 }
