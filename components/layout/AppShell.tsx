@@ -3,40 +3,26 @@
 import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Copy, Check, LogOut, MessageCircle, User } from "lucide-react";
-import { useAuth, type Role } from "@/components/auth/auth-context";
+import { BarChart3, CheckCircle2, Gift, KeyRound, MessageCircle } from "lucide-react";
+import { PinActivationPanel } from "@/components/auth/PinActivationPanel";
+import { useAuth } from "@/components/auth/auth-context";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 
 const WA_NUMBER = "6285119341538";
 
-function formatTokenExpiry(token: string | null) {
-  try {
-    if (!token) return "Masa aktif";
-    const payloadPart = token.split(".")[1];
-    if (!payloadPart) return "Masa aktif";
-    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
-    const payload = JSON.parse(atob(normalized));
-    if (!payload.exp) return "Masa aktif";
-    return new Date(payload.exp * 1000).toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return "Masa aktif";
-  }
-}
-
-function accountInfo(role: Role, token: string | null) {
-  const label = role === "MASTER" ? "MASTER" : role === "PRO" ? "VIP" : "TRIAL";
-  const sub = role === "MASTER" ? "Admin access" : `Aktif sampai ${formatTokenExpiry(token)}`;
-  return { label, sub };
-}
+const FREE_FEATURES = [
+  "Angka Ikut 2D Belakang: parameter 4 dan 6",
+  "BBFS 2D Belakang: 9 digit",
+  "Angka Mati: parameter 1",
+  "Jumlah Mati Belakang: parameter 1",
+  "Shio Mati Belakang: parameter 1",
+  "Statistik pasaran terbuka penuh",
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [freeOpen, setFreeOpen] = useState(false);
 
   // Halaman tanpa shell (header/nav disembunyikan), seperti perilaku lama.
   const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap";
@@ -47,9 +33,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="min-w-0 flex-1">{children}</main>
 
-      {!hideShell && <BottomNav onOpenAccount={() => setAccountOpen(true)} />}
+      {!hideShell && <BottomNav onOpenFree={() => setFreeOpen(true)} />}
 
-      <AccountPanel open={accountOpen} onClose={() => setAccountOpen(false)} />
+      <FreeAccessPanel open={freeOpen} onClose={() => setFreeOpen(false)} />
     </div>
   );
 }
@@ -80,7 +66,7 @@ function HeroHeader() {
   );
 }
 
-function BottomNav({ onOpenAccount }: { onOpenAccount: () => void }) {
+function BottomNav({ onOpenFree }: { onOpenFree: () => void }) {
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2.5">
@@ -94,91 +80,80 @@ function BottomNav({ onOpenAccount }: { onOpenAccount: () => void }) {
         </Link>
         <button
           type="button"
-          onClick={onOpenAccount}
-          className="pressable flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-white/[0.035] text-text-muted hover:border-border hover:bg-white/[0.06]"
-          aria-label="Akun Saya"
+          onClick={onOpenFree}
+          className="pressable flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft hover:border-primary/50 hover:bg-primary/15"
+          aria-label="Akses Free"
         >
-          <User size={19} />
-          <span className="text-xs font-semibold">Akun</span>
+          <Gift size={19} />
+          <span className="text-xs font-semibold">FREE</span>
         </button>
       </div>
     </nav>
   );
 }
 
-function AccountPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { role, displayCode, token, logout } = useAuth();
-  const [copied, setCopied] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
+function FreeAccessPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { displayCode } = useAuth();
+  const [pinOpen, setPinOpen] = useState(false);
 
   if (!open) return null;
 
-  const { label, sub } = accountInfo(role, token);
-  const adminUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
-    `Halo, saya ingin bantuan Analisa Angka. Device Key saya ${displayCode}`,
+  const activationUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
+    `Halo, saya ingin aktivasi VIP Analisa Angka. Device Key saya ${displayCode}`,
   )}`;
 
-  async function copyKey() {
-    try {
-      await navigator.clipboard.writeText(displayCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* abaikan */
-    }
+  function openPinPanel() {
+    onClose();
+    setPinOpen(true);
   }
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
-      <div className="animate-soft-pop w-full max-w-sm rounded-t-3xl border border-border-soft bg-surface p-5 sm:rounded-3xl">
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-text-soft">Akun</p>
-            <h3 className="display mt-1 text-xl text-text">{label}</h3>
-            <p className="mt-1 text-xs text-text-muted">{sub}</p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Tutup
-          </Button>
-        </div>
-
-        <div className="mb-4 rounded-2xl border border-border-soft bg-black/25 p-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-text-soft">Device Key</p>
-          <p className="num mt-2 text-2xl font-black tracking-[0.25em] text-primary-soft">
-            {displayCode}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="ghost" onClick={copyKey}>
-            {copied ? <Check size={15} /> : <Copy size={15} />}
-            {copied ? "Tersalin" : "Salin Key"}
-          </Button>
-          <a href={adminUrl} target="_blank" rel="noopener noreferrer">
-            <Button variant="ghost" className="w-full">
-              <MessageCircle size={15} /> Admin
-            </Button>
-          </a>
-        </div>
-
-        {!confirmLogout ? (
-          <Button variant="danger" className="mt-3 w-full" onClick={() => setConfirmLogout(true)}>
-            <LogOut size={15} /> Keluar
-          </Button>
-        ) : (
-          <div className="animate-soft-pop mt-3 rounded-2xl border border-danger/25 bg-danger/10 p-4 text-center">
-            <p className="mb-3 text-sm text-text">Yakin ingin keluar?</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="ghost" onClick={() => setConfirmLogout(false)}>
-                Batal
-              </Button>
-              <Button variant="danger" onClick={logout}>
-                Keluar
-              </Button>
+    <>
+      <div className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
+        <div className="animate-soft-pop w-full max-w-sm rounded-t-3xl border border-border-soft bg-surface p-5 sm:rounded-3xl">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-primary-soft">Paket FREE</p>
+              <h3 className="display mt-1 text-xl text-text">Akses Gratis</h3>
+              <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                Fitur yang bisa dipakai tanpa aktivasi VIP.
+              </p>
             </div>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Tutup
+            </Button>
           </div>
-        )}
+
+          <div className="space-y-2.5">
+            {FREE_FEATURES.map((feature) => (
+              <div key={feature} className="flex gap-2.5 rounded-2xl border border-border-soft bg-black/20 p-3">
+                <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary-soft" />
+                <p className="text-xs font-semibold leading-relaxed text-text-muted">{feature}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-primary/25 bg-primary/10 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-primary-soft">VIP membuka semua mode</p>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+              Aktivasi PIN untuk membuka semua mode dan parameter analisa.
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            <a href={activationUrl} target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="w-full whitespace-nowrap">
+                <MessageCircle size={16} /> Aktivasi via WhatsApp
+              </Button>
+            </a>
+            <Button variant="ghost" size="lg" className="w-full" onClick={openPinPanel}>
+              <KeyRound size={16} /> Masukkan PIN
+            </Button>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <PinActivationPanel open={pinOpen} onClose={() => setPinOpen(false)} />
+    </>
   );
 }
