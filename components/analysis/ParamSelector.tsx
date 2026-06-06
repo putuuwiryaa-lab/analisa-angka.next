@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Lock } from "lucide-react";
-import { PinActivationPanel } from "@/components/auth/PinActivationPanel";
+import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { canUseParam, type LockableMode, type LockableScope } from "@/lib/access/freeAccess";
@@ -41,7 +41,7 @@ export function ParamSelector({
 }) {
   const { role } = useAuth();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
 
   if (type === "rekap" || param !== 0) return null;
 
@@ -66,9 +66,9 @@ export function ParamSelector({
   const isAiMode = type === "ai";
   const isGridThree = isAiMode || type === "bbfs" || type === "mati" || type === "jumlah" || type === "shio";
 
-  function openPinPanel() {
+  function openLoginPanel() {
     setUpgradeOpen(false);
-    setPinOpen(true);
+    setLoginOpen(true);
   }
 
   return (
@@ -122,8 +122,8 @@ export function ParamSelector({
         </div>
       </div>
 
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openPinPanel} />
-      <PinActivationPanel open={pinOpen} onClose={() => setPinOpen(false)} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} />
+      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   );
 }
