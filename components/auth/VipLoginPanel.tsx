@@ -17,7 +17,7 @@ const FREE_FEATURES = [
 ];
 
 export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { deviceId, displayCode, login } = useAuth();
+  const { login } = useAuth();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -26,7 +26,7 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
   if (!open) return null;
 
   const activationUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
-    `Halo, saya ingin aktivasi VIP Analisa Angka. Nomor WA saya ${phone || "..."}. Device Key saya ${displayCode}`,
+    `Halo, saya ingin aktivasi VIP Analisa Angka. Nomor WA saya ${phone || "..."}`,
   )}`;
 
   async function submitLogin() {
@@ -39,7 +39,7 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
       const response = await fetch("/api/account-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, password, deviceId, displayCode }),
+        body: JSON.stringify({ phone, password }),
       });
 
       const json = await response.json();
@@ -133,11 +133,6 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
           </Button>
         </a>
 
-        <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/10 p-3">
-          <p className="text-[10px] font-black uppercase tracking-wide text-text-soft">Device Key</p>
-          <p className="num mt-1 text-lg font-black tracking-[0.25em] text-text">{displayCode}</p>
-        </div>
-
         <div className="mt-4 space-y-2">
           <p className="text-[11px] font-black uppercase tracking-wide text-text-soft">Akses Free tetap tersedia</p>
           {FREE_FEATURES.map((feature) => (
@@ -150,4 +145,4 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
       </div>
     </div>
   );
-      }
+}
