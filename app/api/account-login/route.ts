@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { emailFromPhone, normalizePhone, phoneIsValid } from "@/lib/auth/accountLogin";
 import { verifyVipProfile } from "@/lib/auth/vipProfile";
+import { createAdminClient } from "@/lib/server/supabase-admin";
 import { requireEnv } from "@/lib/server/env";
 import { signToken, type Role } from "@/lib/server/jwt";
+import { getClientIp } from "@/lib/server/http";
 
 export const runtime = "nodejs";
+
+function hashValue(value: string, secret: string) {
+  return crypto.createHmac("sha256", secret).update(value).digest("hex");
+}
 
 async function checkCredentials(phone: string, passcode: string) {
   const supabaseUrl = requireEnv("SUPABASE_URL").replace(/\/$/, "");
@@ -36,11 +43,61 @@ async function checkCredentials(phone: string, passcode: string) {
   return String(json.user.id);
 }
 
+async function writeLoginEvent({
+  userId,
+  phone,
+  ipHash,
+  userAgentHash,
+  success,
+  reason,
+}: {
+  userId?: string;
+  phone: string;
+  ipHash: string;
+  userAgentHash: string;
+  success: boolean;
+  reason: string;
+}) {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase.from("vip_login_events").insert({
+    user_id: userId || null,
+    phone,
+    ip_hash: ipHash,
+    user_agent_hash: userAgentHash,
+    success,
+    reason,
+  });
+
+  if (error) {
+    console.error("VIP_LOGIN_EVENT_ERROR", error);
+  }
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
 
   const phone = normalizePhone(body.phone);
   const passcode = String(body.password || "").trim();
+
+  let jwtSecret = "";
+
+  try {
+    jwtSecret = requireEnv("JWT_SECRET");
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : e);
+
+    return NextResponse.json(
+      { success: false, error: "Kesalahan konfigurasi server" },
+      { status: 500 },
+    );
+  }
+
+  const ipHash = hashValue(getClientIp(request.headers), jwtSecret);
+  const userAgentHash = hashValue(
+    request.headers.get("user-agent") || "unknown",
+    jwtSecret,
+  );
 
   if (!phoneIsValid(phone) || passcode.length < 4) {
     return NextResponse.json(
@@ -53,6 +110,14 @@ export async function POST(request: Request) {
     const userId = await checkCredentials(phone, passcode);
 
     if (!userId) {
+      await writeLoginEvent({
+        phone,
+        ipHash,
+        userAgentHash,
+        success: false,
+        reason: "wrong_credentials",
+      });
+
       return NextResponse.json(
         { success: false, error: "Nomor WA atau password salah" },
         { status: 401 },
@@ -62,6 +127,15 @@ export async function POST(request: Request) {
     const access = await verifyVipProfile(userId, phone);
 
     if (!access.ok) {
+      await writeLoginEvent({
+        userId,
+        phone,
+        ipHash,
+        userAgentHash,
+        success: false,
+        reason: access.error,
+      });
+
       return NextResponse.json(
         { success: false, error: access.error },
         { status: 403 },
@@ -71,17 +145,54 @@ export async function POST(request: Request) {
     const role = String(access.profile.role || "PRO") as Role;
 
     if (!["PRO", "MASTER"].includes(role)) {
+      await writeLoginEvent({
+        userId,
+        phone,
+        ipHash,
+        userAgentHash,
+        success: false,
+        reason: "invalid_role",
+      });
+
       return NextResponse.json(
         { success: false, error: "Role VIP tidak valid" },
         { status: 403 },
       );
     }
 
+    const sessionId = crypto.randomUUID();
+    const supabase = createAdminClient();
+
+    const { error: sessionError } = await supabase
+      .from("vip_profiles")
+      .update({
+        active_session_id: sessionId,
+        active_session_at: new Date().toISOString(),
+        last_login_ip_hash: ipHash,
+        last_login_user_agent_hash: userAgentHash,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId);
+
+    if (sessionError) {
+      throw sessionError;
+    }
+
+    await writeLoginEvent({
+      userId,
+      phone,
+      ipHash,
+      userAgentHash,
+      success: true,
+      reason: "login_success",
+    });
+
     const token = signToken(
       {
         role,
         accountId: userId,
         phone,
+        sessionId,
       },
       role === "MASTER" ? "365d" : "60d",
     );
