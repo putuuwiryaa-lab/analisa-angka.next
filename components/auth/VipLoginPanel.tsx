@@ -14,10 +14,8 @@ const DEFAULT_PENALTY_MESSAGE =
 
 const FREE_FEATURES = [
   "Angka Ikut 2D Belakang: semua parameter",
-  "BBFS 2D Belakang: semua parameter",
   "Angka Mati: semua parameter",
-  "Jumlah Mati 2D Belakang: semua parameter",
-  "Shio Mati 2D Belakang: semua parameter",
+  "Menu dan fitur VIP tetap terlihat, tetapi akses penuh tersedia untuk akun VIP",
 ];
 
 type PenaltyState = {
