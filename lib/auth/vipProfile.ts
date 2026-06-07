@@ -4,7 +4,7 @@ export async function verifyVipProfile(userId: string, phone: string) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("vip_profiles")
-    .select("user_id, phone, role, expires_at, is_active, suspended_at")
+    .select("user_id, phone, role, expires_at, is_active, suspended_at, active_session_id, penalty_until, penalty_reason, session_switch_count, session_switch_window_start")
     .eq("user_id", userId)
     .maybeSingle();
 
