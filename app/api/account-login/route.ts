@@ -9,8 +9,57 @@ import { getClientIp } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 
+const SWITCH_WINDOW_MS = 24 * 60 * 60 * 1000;
+const PENALTY_MS = 24 * 60 * 60 * 1000;
+const MAX_SWITCHES_PER_WINDOW = 3;
+
+const PENALTY_MESSAGE =
+  "Akun VIP dikunci sementara karena terdeteksi digunakan bergantian di beberapa perangkat. Silakan coba lagi setelah 24 jam.";
+
 function hashValue(value: string, secret: string) {
   return crypto.createHmac("sha256", secret).update(value).digest("hex");
+}
+
+function isPenaltyActive(value: string | null | undefined) {
+  return Boolean(value && new Date(value).getTime() > Date.now());
+}
+
+function formatPenaltyUntil(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    return new Date(value).toISOString();
+  } catch {
+    return value;
+  }
+}
+
+function calculateSwitchState(profile: any) {
+  const hasExistingSession = Boolean(profile?.active_session_id);
+  if (!hasExistingSession) {
+    return {
+      nextSwitchCount: 0,
+      windowStart: profile?.session_switch_window_start || null,
+      shouldPenalty: false,
+    };
+  }
+
+  const now = Date.now();
+  const windowStartMs = profile?.session_switch_window_start
+    ? new Date(profile.session_switch_window_start).getTime()
+    : 0;
+
+  const windowExpired = !windowStartMs || now - windowStartMs > SWITCH_WINDOW_MS;
+  const nextSwitchCount = windowExpired
+    ? 1
+    : Number(profile?.session_switch_count || 0) + 1;
+
+  return {
+    nextSwitchCount,
+    windowStart: windowExpired
+      ? new Date().toISOString()
+      : profile.session_switch_window_start,
+    shouldPenalty: nextSwitchCount > MAX_SWITCHES_PER_WINDOW,
+  };
 }
 
 async function checkCredentials(phone: string, passcode: string) {
@@ -142,7 +191,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const role = String(access.profile.role || "PRO") as Role;
+    const profile: any = access.profile;
+
+    if (isPenaltyActive(profile.penalty_until)) {
+      await writeLoginEvent({
+        userId,
+        phone,
+        ipHash,
+        userAgentHash,
+        success: false,
+        reason: "penalty_active",
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: PENALTY_MESSAGE,
+          penalty_until: formatPenaltyUntil(profile.penalty_until),
+        },
+        { status: 423 },
+      );
+    }
+
+    const role = String(profile.role || "PRO") as Role;
 
     if (!["PRO", "MASTER"].includes(role)) {
       await writeLoginEvent({
@@ -160,8 +231,47 @@ export async function POST(request: Request) {
       );
     }
 
-    const sessionId = crypto.randomUUID();
+    const switchState = calculateSwitchState(profile);
     const supabase = createAdminClient();
+
+    if (switchState.shouldPenalty) {
+      const penaltyUntil = new Date(Date.now() + PENALTY_MS).toISOString();
+
+      const { error: penaltyError } = await supabase
+        .from("vip_profiles")
+        .update({
+          penalty_until: penaltyUntil,
+          penalty_reason: "Terdeteksi login berpindah sesi terlalu sering dalam 24 jam",
+          session_switch_count: switchState.nextSwitchCount,
+          session_switch_window_start: switchState.windowStart,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId);
+
+      if (penaltyError) {
+        throw penaltyError;
+      }
+
+      await writeLoginEvent({
+        userId,
+        phone,
+        ipHash,
+        userAgentHash,
+        success: false,
+        reason: "penalty_created",
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: PENALTY_MESSAGE,
+          penalty_until: penaltyUntil,
+        },
+        { status: 423 },
+      );
+    }
+
+    const sessionId = crypto.randomUUID();
 
     const { error: sessionError } = await supabase
       .from("vip_profiles")
@@ -170,6 +280,10 @@ export async function POST(request: Request) {
         active_session_at: new Date().toISOString(),
         last_login_ip_hash: ipHash,
         last_login_user_agent_hash: userAgentHash,
+        session_switch_count: switchState.nextSwitchCount,
+        session_switch_window_start: switchState.windowStart,
+        penalty_until: null,
+        penalty_reason: null,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId);
@@ -184,7 +298,7 @@ export async function POST(request: Request) {
       ipHash,
       userAgentHash,
       success: true,
-      reason: "login_success",
+      reason: switchState.nextSwitchCount > 0 ? "session_switched" : "login_success",
     });
 
     const token = signToken(
@@ -202,7 +316,8 @@ export async function POST(request: Request) {
       role,
       token,
       phone,
-      expires_at: access.profile.expires_at,
+      expires_at: profile.expires_at,
+      session_switch_count: switchState.nextSwitchCount,
     });
   } catch (e) {
     console.error("ACCOUNT_LOGIN_ERROR", e);
