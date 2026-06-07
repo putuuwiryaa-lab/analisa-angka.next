@@ -118,12 +118,12 @@ function LockedEvaluationHistory() {
           <div>
             <p className="display text-sm text-text-muted">Riwayat Evaluasi</p>
             <p className="mt-2 text-xs font-semibold leading-relaxed text-text-soft">
-              Riwayat evaluasi dibatasi untuk pengguna Free agar performa server tetap stabil. Login VIP untuk membuka detail validasi historis.
+              Melihat riwayat evaluasi hingga 2 minggu terakhir untuk menilai apakah metode dan parameter sedang stabil atau perlu diganti.
             </p>
           </div>
         </div>
       </button>
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} title="Riwayat Evaluasi VIP" />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} feature="evaluation" />
       <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   );
