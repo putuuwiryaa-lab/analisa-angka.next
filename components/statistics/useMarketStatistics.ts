@@ -35,7 +35,11 @@ async function fetchStatistics(args: {
     param: String(args.param),
   });
 
-  const response = await fetch(`/api/statistics?${params.toString()}`, { cache: "no-store" });
+  const token = typeof window !== "undefined" ? localStorage.getItem("supreme_token") || "" : "";
+  const response = await fetch(`/api/statistics?${params.toString()}`, {
+    cache: "no-store",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
   const json = await response.json();
 
   if (!response.ok) throw new Error(json?.error || "Gagal memuat statistik pasaran");
