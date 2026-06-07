@@ -12,6 +12,8 @@ import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { Button } from "@/components/ui/Button";
 import { isModeLockedForRole } from "@/lib/access/freeAccess";
 
+type UpgradeFeature = "default" | "statistics" | "evaluation" | "rekap" | "mode";
+
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value);
@@ -114,6 +116,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
   const router = useRouter();
   const { role } = useAuth();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState<UpgradeFeature>("mode");
   const [loginOpen, setLoginOpen] = useState(false);
   const decodedMarketId = safeDecode(marketId);
 
@@ -126,6 +129,11 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
   function openLoginPanel() {
     setUpgradeOpen(false);
     setLoginOpen(true);
+  }
+
+  function openUpgrade(feature: UpgradeFeature) {
+    setUpgradeFeature(feature);
+    setUpgradeOpen(true);
   }
 
   return (
@@ -152,7 +160,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
             mode={item.mode}
             marketId={decodedMarketId}
             locked={isModeLockedForRole(role, item.mode)}
-            onLockedClick={() => setUpgradeOpen(true)}
+            onLockedClick={() => openUpgrade("mode")}
             index={index}
           />
         ))}
@@ -170,13 +178,13 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
             mode={item.mode}
             marketId={decodedMarketId}
             locked={isModeLockedForRole(role, item.mode)}
-            onLockedClick={() => setUpgradeOpen(true)}
+            onLockedClick={() => openUpgrade("rekap")}
             index={ANALYSIS_MENU.length + index}
           />
         ))}
       </div>
 
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} feature={upgradeFeature} />
       <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
