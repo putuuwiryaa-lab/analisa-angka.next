@@ -9,19 +9,7 @@ export const FREE_ACCESS = {
     scopes: ["2d_belakang"],
     params: [2, 4, 6, 7, 8],
   },
-  bbfs: {
-    scopes: ["2d_belakang"],
-    params: [7, 8, 9],
-  },
   mati: {
-    params: [1, 2, 3],
-  },
-  jumlah: {
-    targetPairs: ["belakang"],
-    params: [1, 2, 3],
-  },
-  shio: {
-    targetPairs: ["belakang"],
     params: [1, 2, 3],
   },
   statistik: {
@@ -38,7 +26,7 @@ export function isVipRole(role?: string | null) {
 
 export function isModeLockedForRole(role: string | null | undefined, mode: LockableMode) {
   if (isVipRole(role)) return false;
-  return mode === "rekap";
+  return mode === "bbfs" || mode === "jumlah" || mode === "shio" || mode === "rekap";
 }
 
 export function canUseStatistics(role: string | null | undefined) {
@@ -52,7 +40,7 @@ export function canUseEvaluationHistory(role: string | null | undefined) {
 export function canUseAnalysisScope(role: string | null | undefined, mode: LockableMode, scope: LockableScope) {
   if (isVipRole(role)) return true;
   if (mode === "ai") return FREE_ACCESS.ai.scopes.includes(scope as "2d_belakang");
-  if (mode === "bbfs") return FREE_ACCESS.bbfs.scopes.includes(scope as "2d_belakang");
+  if (mode === "bbfs") return false;
   return true;
 }
 
@@ -62,9 +50,8 @@ export function canUseTargetPair(
   targetPair: LockableTargetPair,
 ) {
   if (isVipRole(role)) return true;
-  if (mode === "jumlah") return FREE_ACCESS.jumlah.targetPairs.includes(targetPair as "belakang");
-  if (mode === "shio") return FREE_ACCESS.shio.targetPairs.includes(targetPair as "belakang");
-  return true;
+  void targetPair;
+  return mode !== "jumlah" && mode !== "shio";
 }
 
 export function canUseParam(
@@ -76,11 +63,10 @@ export function canUseParam(
 ) {
   if (isVipRole(role)) return true;
 
+  void targetPair;
   if (mode === "ai") return scope === "2d_belakang" && FREE_ACCESS.ai.params.includes(param as 2 | 4 | 6 | 7 | 8);
-  if (mode === "bbfs") return scope === "2d_belakang" && FREE_ACCESS.bbfs.params.includes(param as 7 | 8 | 9);
   if (mode === "mati") return FREE_ACCESS.mati.params.includes(param as 1 | 2 | 3);
-  if (mode === "jumlah") return targetPair === "belakang" && FREE_ACCESS.jumlah.params.includes(param as 1 | 2 | 3);
-  if (mode === "shio") return targetPair === "belakang" && FREE_ACCESS.shio.params.includes(param as 1 | 2 | 3);
+  if (mode === "bbfs" || mode === "jumlah" || mode === "shio") return false;
 
   return false;
 }
