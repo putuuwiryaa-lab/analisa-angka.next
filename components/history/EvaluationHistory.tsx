@@ -1,14 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Lock } from "lucide-react";
-import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
-import { useAuth } from "@/components/auth/auth-context";
-import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
-import { canUseEvaluationHistory } from "@/lib/access/freeAccess";
 
-type EvaluationMode = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
+ type EvaluationMode = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
 type EvaluationPosition = "all" | "as" | "kop" | "kepala" | "ekor";
 type TargetPair = "depan" | "tengah" | "belakang";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
@@ -92,43 +86,6 @@ function StateBox({ text, tone = "neutral" }: { text: string; tone?: "neutral" |
   );
 }
 
-function LockedEvaluationHistory() {
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
-
-  function openLoginPanel() {
-    setUpgradeOpen(false);
-    setLoginOpen(true);
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setUpgradeOpen(true)}
-        className="pressable depth-2 relative w-full rounded-3xl border border-border-soft/70 bg-white/[0.015] p-5 text-left opacity-65 hover:bg-white/[0.025]"
-      >
-        <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-primary-soft/80">
-          <Lock size={9} /> VIP
-        </span>
-        <div className="flex items-start gap-3 pr-16">
-          <div className="depth-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-primary-soft">
-            <Lock size={17} />
-          </div>
-          <div>
-            <p className="display text-sm text-text-muted">Riwayat Evaluasi</p>
-            <p className="mt-2 text-xs font-semibold leading-relaxed text-text-soft">
-              Melihat riwayat evaluasi hingga 2 minggu terakhir untuk menilai apakah metode dan parameter sedang stabil atau perlu diganti.
-            </p>
-          </div>
-        </div>
-      </button>
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} feature="evaluation" />
-      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
-    </>
-  );
-}
-
 export function EvaluationHistory({
   marketId,
   mode,
@@ -146,11 +103,8 @@ export function EvaluationHistory({
   analysisScope?: AnalysisScope;
   title?: string;
 }) {
-  const { role } = useAuth();
   const normalizedMarketId = normalizeMarketId(marketId);
   const showAi2DigitNote = mode === "ai" && param === 2;
-
-  const canViewHistory = canUseEvaluationHistory(role);
 
   const {
     data: rows = [],
@@ -160,13 +114,11 @@ export function EvaluationHistory({
   } = useQuery({
     queryKey: ["evaluations", normalizedMarketId, mode, param, position, targetPair, analysisScope],
     queryFn: () => fetchEvaluations(normalizedMarketId, mode, param, position, targetPair, analysisScope),
-    enabled: canViewHistory && Boolean(normalizedMarketId && mode && param),
+    enabled: Boolean(normalizedMarketId && mode && param),
     staleTime: EVALUATIONS_STALE_TIME,
     gcTime: EVALUATIONS_GC_TIME,
     placeholderData: keepPreviousData,
   });
-
-  if (!canViewHistory) return <LockedEvaluationHistory />;
 
   const hasRows = rows.length > 0;
 
