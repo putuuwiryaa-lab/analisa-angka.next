@@ -26,6 +26,8 @@ type ScopeOption = {
   subtitle: string;
 };
 
+type UpgradeFeature = "default" | "statistics" | "evaluation" | "rekap" | "mode";
+
 export const TARGET_PAIR_OPTIONS: Array<{ key: TargetPair; title: string; subtitle: string }> = [
   { key: "depan", title: "2D DEPAN", subtitle: "AS - KOP" },
   { key: "tengah", title: "2D TENGAH", subtitle: "KOP - KEPALA" },
@@ -121,7 +123,7 @@ function SelectorButton({
   );
 }
 
-function useUpgradePanels() {
+function useUpgradePanels(feature: UpgradeFeature = "mode") {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
 
@@ -138,7 +140,7 @@ function useUpgradePanels() {
     openUpgrade,
     panels: (
       <>
-        <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLogin} />
+        <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLogin} feature={feature} />
         <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
       </>
     ),
@@ -147,7 +149,7 @@ function useUpgradePanels() {
 
 export function TargetPairSelector({ onSelect }: { onSelect: (pair: TargetPair) => void }) {
   const { role } = useAuth();
-  const { openUpgrade, panels } = useUpgradePanels();
+  const { openUpgrade, panels } = useUpgradePanels("mode");
 
   return (
     <>
@@ -176,7 +178,7 @@ export function BBFSScopeSelector({
   onSelect: (scope: Exclude<AnalysisScope, "default">) => void;
 }) {
   const { role } = useAuth();
-  const { openUpgrade, panels } = useUpgradePanels();
+  const { openUpgrade, panels } = useUpgradePanels("mode");
 
   return (
     <>
@@ -205,7 +207,7 @@ export function AIScopeSelector({
   onSelect: (scope: Exclude<AnalysisScope, "default">) => void;
 }) {
   const { role } = useAuth();
-  const { openUpgrade, panels } = useUpgradePanels();
+  const { openUpgrade, panels } = useUpgradePanels("mode");
 
   return (
     <>
@@ -230,7 +232,7 @@ export function AIScopeSelector({
 
 export function RekapFocusSelector({ onSelect }: { onSelect: (focus: CustomFocus) => void }) {
   const { role } = useAuth();
-  const { openUpgrade, panels } = useUpgradePanels();
+  const { openUpgrade, panels } = useUpgradePanels("rekap");
 
   return (
     <>
