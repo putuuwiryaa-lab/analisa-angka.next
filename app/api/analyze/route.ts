@@ -127,7 +127,10 @@ export async function POST(request: Request) {
   }
 
   const expectedInternalSecret = process.env.INTERNAL_API_SECRET;
-  const submittedInternalSecret = request.headers.get("x-internal-secret") || "";
+  const submittedInternalSecret =
+    request.headers.get("x-internal-secret") ||
+    request.headers.get("x-internal-api-secret") ||
+    "";
 
   const isInternalRequest = Boolean(
     expectedInternalSecret &&
