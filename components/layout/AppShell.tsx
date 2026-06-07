@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} title="Statistik VIP" />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} feature="statistics" />
     </div>
   );
 }
