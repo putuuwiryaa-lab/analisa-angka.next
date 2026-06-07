@@ -3,7 +3,7 @@
 import { type ReactNode, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Gift, Lock } from "lucide-react";
+import { BarChart3, Lock, UserRoundCheck } from "lucide-react";
 import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { Logo } from "@/components/ui/Logo";
@@ -17,7 +17,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { role } = useAuth();
   const statisticsLocked = !canUseStatistics(role);
 
-  // Halaman tanpa shell (header/nav disembunyikan), seperti perilaku lama.
   const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap";
 
   function openLoginPanel() {
@@ -112,9 +111,9 @@ function BottomNav({
           type="button"
           onClick={onOpenFree}
           className="pressable flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft hover:border-primary/50 hover:bg-primary/15"
-          aria-label="Login VIP dan Akses Free"
+          aria-label="Akun VIP"
         >
-          <Gift size={19} className="animate-free-wiggle" />
+          <UserRoundCheck size={19} />
           <span className="text-xs font-semibold">VIP</span>
         </button>
       </div>
