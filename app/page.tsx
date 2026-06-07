@@ -97,9 +97,9 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 pb-6 sm:grid-cols-3">
+      <div className="grid min-h-[calc(100svh-27rem)] grid-cols-2 content-start gap-3 pb-6 sm:grid-cols-3">
         {showInitialSkeleton ? (
-          Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-3xl" />)
+          Array.from({ length: 14 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-3xl" />)
         ) : (
           <>
             {filteredMarkets.map((m, index) => (
