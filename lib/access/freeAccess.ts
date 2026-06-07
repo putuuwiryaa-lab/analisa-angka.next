@@ -30,6 +30,11 @@ export function canUseStatistics(role: string | null | undefined) {
   return isVipRole(role);
 }
 
+export function canUseEvaluationHistory(role: string | null | undefined) {
+  void role;
+  return true;
+}
+
 export function canUseAnalysisScope(role: string | null | undefined, mode: LockableMode, scope: LockableScope) {
   if (isVipRole(role)) return true;
   if (mode === "ai") return FREE_ACCESS.ai.scopes.includes(scope as "2d_belakang");
