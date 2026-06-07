@@ -22,8 +22,8 @@ export const MODE_KEYS: ModeKey[] = ["ai", "bbfs", "mati", "jumlah", "shio", "re
 // Pengelompokan menu (label menu dipertahankan apa adanya).
 export const ANALYSIS_MENU: Array<{ label: string; mode: ModeKey }> = [
   { label: "ANGKA IKUT", mode: "ai" },
-  { label: "BBFS", mode: "bbfs" },
   { label: "ANGKA MATI", mode: "mati" },
+  { label: "BBFS", mode: "bbfs" },
   { label: "JUMLAH MATI", mode: "jumlah" },
   { label: "SHIO MATI", mode: "shio" },
 ];
