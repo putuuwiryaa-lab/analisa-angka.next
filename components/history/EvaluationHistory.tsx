@@ -2,7 +2,7 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
- type EvaluationMode = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
+type EvaluationMode = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
 type EvaluationPosition = "all" | "as" | "kop" | "kepala" | "ekor";
 type TargetPair = "depan" | "tengah" | "belakang";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
@@ -61,11 +61,7 @@ async function fetchEvaluations(
     analysisScope,
   });
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("supreme_token") || "" : "";
-  const response = await fetch(`/api/evaluations?${params.toString()}`, {
-    cache: "no-store",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const response = await fetch(`/api/evaluations?${params.toString()}`, { cache: "no-store" });
   const json = await response.json();
 
   if (!response.ok) throw new Error(json?.error || "Gagal memuat riwayat evaluasi");
