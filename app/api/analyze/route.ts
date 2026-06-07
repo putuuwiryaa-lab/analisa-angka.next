@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireEnv } from "@/lib/server/env";
-import { verifyToken, getBearerToken, TOKEN_VERSION } from "@/lib/server/jwt";
+import { getBearerToken } from "@/lib/server/jwt";
+import { verifyActiveVipSession } from "@/lib/server/vip-session";
 import { runAnalysis } from "@/lib/server/engines/predictionEngine";
 import { canUseParam, type LockableMode, type LockableScope } from "@/lib/access/freeAccess";
 
@@ -45,10 +46,7 @@ function isAi2DScope(scope: AnalysisScope): boolean {
 }
 
 function normalizeScopeForType(type: string, scope: AnalysisScope): AnalysisScope {
-  // AI 2D lama tetap disimpan sebagai scope default.
-  // Pembeda depan/tengah/belakang dikirim lewat targetPair, bukan remap data.
   if (type === "ai" && isAi2DScope(scope)) return "default";
-
   return scope;
 }
 
@@ -56,50 +54,29 @@ function targetPairFromScope(scope: AnalysisScope, fallback: TargetPair): Target
   if (scope === "2d_depan") return "depan";
   if (scope === "2d_tengah") return "tengah";
   if (scope === "2d_belakang") return "belakang";
-
   return fallback;
 }
 
 function aiParamIsValid(param: number, scope: AnalysisScope) {
   if (scope === "3d") return [1, 3, 5, 7, 8].includes(param);
   if (scope === "4d") return [1, 2, 4].includes(param);
-
   return [2, 4, 6, 7, 8].includes(param);
-}
-
-function tokenValueFromHeaders(headers: Headers) {
-  const token = getBearerToken(headers);
-  return token && token !== "null" && token !== "undefined" ? token : "";
 }
 
 type AccessResult =
   | { ok: true; role: string }
   | { ok: false; status: number; error: string };
 
-async function validateAccessToken(headers: Headers): Promise<AccessResult> {
-  const token = tokenValueFromHeaders(headers);
-
-  if (!token) {
+async function validateAccess(headers: Headers): Promise<AccessResult> {
+  const token = getBearerToken(headers);
+  if (!token || token === "null" || token === "undefined") {
     return { ok: true, role: "FREE" };
   }
 
-  let decoded;
+  const access = await verifyActiveVipSession(headers);
+  if (!access.ok) return access;
 
-  try {
-    decoded = verifyToken(token);
-  } catch {
-    return { ok: false, status: 401, error: "Token invalid" };
-  }
-
-  if (decoded.tokenVersion !== TOKEN_VERSION) {
-    return { ok: false, status: 401, error: "Sesi lama. Silakan login ulang." };
-  }
-
-  if (!["PRO", "MASTER"].includes(String(decoded.role || ""))) {
-    return { ok: false, status: 403, error: "Akses tidak valid" };
-  }
-
-  return { ok: true, role: decoded.role };
+  return { ok: true, role: access.role };
 }
 
 function canRoleAnalyze({
@@ -161,7 +138,7 @@ export async function POST(request: Request) {
   let role = "FREE";
 
   if (!isInternalRequest) {
-    const access = await validateAccessToken(request.headers);
+    const access = await validateAccess(request.headers);
 
     if (!access.ok) {
       return NextResponse.json(

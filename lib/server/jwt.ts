@@ -11,6 +11,7 @@ export interface TokenPayload {
   tokenVersion: number;
   accountId?: string;
   phone?: string;
+  sessionId?: string;
 }
 
 export function signToken(

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { canUseEvaluationHistory } from "@/lib/access/freeAccess";
-import { getBearerToken, TOKEN_VERSION, verifyToken } from "@/lib/server/jwt";
+import { getBearerToken } from "@/lib/server/jwt";
+import { verifyActiveVipSession } from "@/lib/server/vip-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,8 @@ const LIMIT = 15;
 const VALID_MODES = new Set(["ai", "ai_parity", "ai_size", "bbfs", "mati", "jumlah", "shio"]);
 const VALID_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
-const VIP_LOCK_MESSAGE = "Riwayat evaluasi dibatasi untuk pengguna Free agar performa server tetap stabil. Masukkan PIN VIP untuk membuka detail validasi historis.";
+const VIP_LOCK_MESSAGE =
+  "Riwayat evaluasi dibatasi untuk pengguna Free agar performa server tetap stabil. Akses VIP tersedia melalui menu VIP.";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -30,7 +32,10 @@ function safeDecode(value: string) {
 function marketCandidates(value: string) {
   const decoded = safeDecode(value).trim();
   const encoded = encodeURIComponent(decoded);
-  return Array.from(new Set([value, decoded, encoded, decoded.toUpperCase(), decoded.toLowerCase()].filter(Boolean)));
+
+  return Array.from(
+    new Set([value, decoded, encoded, decoded.toUpperCase(), decoded.toLowerCase()].filter(Boolean)),
+  );
 }
 
 function legacyAi2DScope(targetPair: TargetPair): AnalysisScope {
@@ -41,28 +46,36 @@ function shouldUseAi2DScopeFallback(mode: EvaluationMode, analysisScope: Analysi
   return mode === "ai" && analysisScope !== "3d" && analysisScope !== "4d";
 }
 
-function tokenValueFromHeaders(headers: Headers) {
+async function roleFromRequest(headers: Headers) {
   const token = getBearerToken(headers);
-  return token && token !== "null" && token !== "undefined" ? token : "";
-}
 
-function roleFromRequest(headers: Headers) {
-  const token = tokenValueFromHeaders(headers);
-  if (!token) return "FREE";
+  if (!token || token === "null" || token === "undefined") {
+    return "FREE";
+  }
 
-  const decoded = verifyToken(token);
-  if (decoded.tokenVersion !== TOKEN_VERSION) return "FREE";
-  return decoded.role;
+  const access = await verifyActiveVipSession(headers);
+
+  if (!access.ok) {
+    throw new Error(access.error);
+  }
+
+  return access.role;
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const role = roleFromRequest(request.headers);
+    const role = await roleFromRequest(request.headers);
+
     if (!canUseEvaluationHistory(role)) {
-      return NextResponse.json({ error: VIP_LOCK_MESSAGE }, { status: 403, headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json(
+        { error: VIP_LOCK_MESSAGE },
+        { status: 403, headers: { "Cache-Control": "no-store" } },
+      );
     }
 
-    if (!supabaseUrl || !supabaseKey) throw new Error("Konfigurasi Supabase belum lengkap.");
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Konfigurasi Supabase belum lengkap.");
+    }
 
     const search = request.nextUrl.searchParams;
     const marketId = safeDecode(search.get("marketId") || "").trim();
@@ -72,18 +85,37 @@ export async function GET(request: NextRequest) {
     const targetPair = (search.get("targetPair") || "belakang") as TargetPair;
     const analysisScope = (search.get("analysisScope") || "default") as AnalysisScope;
 
-    if (!marketId) throw new Error("marketId kosong.");
-    if (!VALID_MODES.has(mode)) throw new Error("Mode evaluasi tidak valid.");
-    if (!Number.isFinite(param) || param <= 0) throw new Error("Param evaluasi tidak valid.");
-    if (!VALID_TARGET_PAIRS.has(targetPair)) throw new Error("Target pair tidak valid.");
-    if (!VALID_SCOPES.has(analysisScope)) throw new Error("Analysis scope tidak valid.");
+    if (!marketId) {
+      throw new Error("marketId kosong.");
+    }
+
+    if (!VALID_MODES.has(mode)) {
+      throw new Error("Mode evaluasi tidak valid.");
+    }
+
+    if (!Number.isFinite(param) || param <= 0) {
+      throw new Error("Param evaluasi tidak valid.");
+    }
+
+    if (!VALID_TARGET_PAIRS.has(targetPair)) {
+      throw new Error("Target pair tidak valid.");
+    }
+
+    if (!VALID_SCOPES.has(analysisScope)) {
+      throw new Error("Analysis scope tidak valid.");
+    }
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
     const ids = new Set(marketCandidates(marketId));
-    const { data: markets } = await supabase.from("markets").select("id,name").in("id", Array.from(ids));
+
+    const { data: markets } = await supabase
+      .from("markets")
+      .select("id,name")
+      .in("id", Array.from(ids));
+
     for (const market of markets || []) {
       if (market?.id) ids.add(String(market.id));
       if (market?.name) ids.add(String(market.name));
@@ -98,8 +130,13 @@ export async function GET(request: NextRequest) {
       .order("evaluated_at", { ascending: false })
       .limit(LIMIT);
 
-    if (position && position !== "all") query = query.eq("position", position);
-    if (mode !== "mati") query = query.eq("target_pair", targetPair);
+    if (position && position !== "all") {
+      query = query.eq("position", position);
+    }
+
+    if (mode !== "mati") {
+      query = query.eq("target_pair", targetPair);
+    }
 
     if (shouldUseAi2DScopeFallback(mode, analysisScope)) {
       query = query.in("analysis_scope", ["default", legacyAi2DScope(targetPair)]);
@@ -108,13 +145,20 @@ export async function GET(request: NextRequest) {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json(data || [], {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat riwayat evaluasi";
-    return NextResponse.json({ error: message }, { status: 500 });
+
+    return NextResponse.json(
+      { error: message },
+      { status: 500 },
+    );
   }
 }
