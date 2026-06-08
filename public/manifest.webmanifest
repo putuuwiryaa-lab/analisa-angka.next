@@ -1,0 +1,17 @@
+{
+  "name": "Analisa Angka",
+  "short_name": "Analisa Angka",
+  "description": "Aplikasi analisa angka berbasis evaluasi statistik.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d0a1a",
+  "theme_color": "#0d0a1a",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
