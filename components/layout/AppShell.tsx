@@ -3,26 +3,15 @@
 import { type ReactNode, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Lock, UserRoundCheck } from "lucide-react";
+import { BarChart3, UserRoundCheck } from "lucide-react";
 import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
-import { useAuth } from "@/components/auth/auth-context";
 import { Logo } from "@/components/ui/Logo";
-import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
-import { canUseStatistics } from "@/lib/access/freeAccess";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [loginOpen, setLoginOpen] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const { role } = useAuth();
-  const statisticsLocked = !canUseStatistics(role);
 
   const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap";
-
-  function openLoginPanel() {
-    setUpgradeOpen(false);
-    setLoginOpen(true);
-  }
 
   return (
     <div className={cnPad(hideShell)}>
@@ -30,16 +19,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="min-w-0 flex-1">{children}</main>
 
-      {!hideShell && (
-        <BottomNav
-          onOpenFree={() => setLoginOpen(true)}
-          statisticsLocked={statisticsLocked}
-          onOpenUpgrade={() => setUpgradeOpen(true)}
-        />
-      )}
+      {!hideShell && <BottomNav onOpenFree={() => setLoginOpen(true)} />}
 
       <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} feature="statistics" />
     </div>
   );
 }
@@ -70,43 +52,20 @@ function HeroHeader() {
   );
 }
 
-function BottomNav({
-  onOpenFree,
-  statisticsLocked,
-  onOpenUpgrade,
-}: {
-  onOpenFree: () => void;
-  statisticsLocked: boolean;
-  onOpenUpgrade: () => void;
-}) {
+function BottomNav({ onOpenFree }: { onOpenFree: () => void }) {
   const statsClassName = "pressable relative flex h-15 flex-[1.45] items-center justify-center gap-2 rounded-2xl border px-4";
 
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2.5">
-        {statisticsLocked ? (
-          <button
-            type="button"
-            onClick={onOpenUpgrade}
-            className={`${statsClassName} border-emerald-400/15 bg-emerald-500/5 text-emerald-300/45`}
-            aria-label="Statistik VIP"
-          >
-            <BarChart3 size={21} />
-            <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
-            <span className="absolute right-2 top-1.5 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-primary-soft/80">
-              <Lock size={8} /> VIP
-            </span>
-          </button>
-        ) : (
-          <Link
-            href="/pantauan-rekap"
-            className={`${statsClassName} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 hover:shadow-[0_0_34px_rgba(16,185,129,0.24)]`}
-            aria-label="Statistik Pasaran"
-          >
-            <BarChart3 size={21} />
-            <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
-          </Link>
-        )}
+        <Link
+          href="/pantauan-rekap"
+          className={`${statsClassName} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 hover:shadow-[0_0_34px_rgba(16,185,129,0.24)]`}
+          aria-label="Statistik Pasaran"
+        >
+          <BarChart3 size={21} />
+          <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
+        </Link>
         <button
           type="button"
           onClick={onOpenFree}
