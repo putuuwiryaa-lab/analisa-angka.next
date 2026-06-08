@@ -53,7 +53,7 @@ async function fetchStatistics(args: {
 export function useMarketStatistics() {
   const [category, setCategory] = useState<VisibleCategoryKey>("ai");
   const [targetPair, setTargetPair] = useState<TargetPair>("belakang");
-  const [aiScope, setAiScope] = useState<AiStatScope>("2d_belakang");
+  const [aiScope, setAiScope] = useState<AiStatScope>("2d_depan");
   const [bbfsScope, setBbfsScope] = useState<AnalysisScope>("2d_belakang");
   const [param, setParam] = useState<number>(4);
 
