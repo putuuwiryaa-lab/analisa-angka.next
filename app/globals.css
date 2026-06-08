@@ -45,6 +45,7 @@
   /* Motion */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-press: cubic-bezier(0.2, 0, 0, 1);
+  --ease-mobile: cubic-bezier(0.18, 0.82, 0.28, 1);
 }
 
 @theme inline {
@@ -55,6 +56,7 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
   }
 
   body {
@@ -79,6 +81,7 @@
   a,
   [role="button"] {
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   button,
@@ -149,31 +152,80 @@
 
   .pressable {
     transform: translateZ(0);
-    transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+    transition-property: transform, background-color, border-color, color, box-shadow, opacity, filter;
     transition-duration: 150ms;
     transition-timing-function: var(--ease-press);
+    will-change: transform;
   }
   .pressable:active {
-    transform: scale(0.985);
+    transform: scale(0.972);
+    filter: brightness(1.06);
+  }
+
+  .tap-glow {
+    position: relative;
+    overflow: hidden;
+  }
+  .tap-glow:active::after {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .tap-glow::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.12), transparent 62%);
+    opacity: 0;
+    transform: scale(0.96);
+    transition: opacity 160ms var(--ease-mobile), transform 160ms var(--ease-mobile);
   }
 
   .animate-rise {
-    animation: rise 220ms var(--ease-out-soft) both;
+    animation: rise 240ms var(--ease-mobile) both;
+    will-change: opacity, transform;
   }
   .animate-soft-pop {
-    animation: soft-pop 180ms var(--ease-out-soft) both;
+    animation: soft-pop 210ms var(--ease-mobile) both;
+    will-change: opacity, transform;
   }
   .animate-fade-in {
-    animation: fade-in 180ms var(--ease-out-soft) both;
+    animation: fade-in 190ms var(--ease-out-soft) both;
+    will-change: opacity;
+  }
+  .animate-page-enter {
+    animation: page-enter 280ms var(--ease-mobile) both;
+    will-change: opacity, transform;
+  }
+  .animate-slide-up-soft {
+    animation: slide-up-soft 260ms var(--ease-mobile) both;
+    will-change: opacity, transform;
+  }
+  .animate-mobile-card {
+    animation: mobile-card 240ms var(--ease-mobile) both;
+    will-change: opacity, transform;
   }
   .animate-shimmer {
     background-size: 200% 100%;
     animation: shimmer 1.35s linear infinite;
   }
   .animate-free-wiggle {
-    animation: free-wiggle 1.45s cubic-bezier(0.36, 0, 0.22, 1) infinite;
+    animation: free-wiggle 1.8s cubic-bezier(0.36, 0, 0.22, 1) infinite;
     transform-origin: 50% 62%;
     will-change: transform;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pressable:hover {
+    transform: translateY(-1px);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .pressable:hover {
+    transform: translateZ(0);
   }
 }
 
@@ -202,7 +254,7 @@
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -213,11 +265,44 @@
 @keyframes soft-pop {
   from {
     opacity: 0;
-    transform: scale(0.985);
+    transform: scale(0.975) translateY(3px);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slide-up-soft {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mobile-card {
+  from {
+    opacity: 0;
+    transform: translateY(9px) scale(0.988);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -241,29 +326,23 @@
 
 @keyframes free-wiggle {
   0%,
-  44%,
+  52%,
   100% {
     transform: rotate(0deg) translateY(0) scale(1);
   }
-  50% {
-    transform: rotate(-24deg) translateY(-2px) scale(1.38);
+  58% {
+    transform: rotate(-10deg) translateY(-1px) scale(1.12);
   }
-  56% {
-    transform: rotate(24deg) translateY(-2px) scale(1.38);
+  64% {
+    transform: rotate(10deg) translateY(-1px) scale(1.12);
   }
-  62% {
-    transform: rotate(-18deg) translateY(-1px) scale(1.28);
+  70% {
+    transform: rotate(-7deg) translateY(0) scale(1.08);
   }
-  68% {
-    transform: rotate(18deg) translateY(-1px) scale(1.22);
+  76% {
+    transform: rotate(7deg) translateY(0) scale(1.06);
   }
-  74% {
-    transform: rotate(-10deg) translateY(0) scale(1.14);
-  }
-  80% {
-    transform: rotate(10deg) translateY(0) scale(1.1);
-  }
-  88% {
+  84% {
     transform: rotate(0deg) translateY(0) scale(1);
   }
 }
