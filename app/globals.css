@@ -210,11 +210,6 @@
     background-size: 200% 100%;
     animation: shimmer 1.35s linear infinite;
   }
-  .animate-free-wiggle {
-    animation: free-wiggle 1.8s cubic-bezier(0.36, 0, 0.22, 1) infinite;
-    transform-origin: 50% 62%;
-    will-change: transform;
-  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -321,29 +316,6 @@
   }
   to {
     background-position: -200% 0;
-  }
-}
-
-@keyframes free-wiggle {
-  0%,
-  52%,
-  100% {
-    transform: rotate(0deg) translateY(0) scale(1);
-  }
-  58% {
-    transform: rotate(-10deg) translateY(-1px) scale(1.12);
-  }
-  64% {
-    transform: rotate(10deg) translateY(-1px) scale(1.12);
-  }
-  70% {
-    transform: rotate(-7deg) translateY(0) scale(1.08);
-  }
-  76% {
-    transform: rotate(7deg) translateY(0) scale(1.06);
-  }
-  84% {
-    transform: rotate(0deg) translateY(0) scale(1);
   }
 }
 
