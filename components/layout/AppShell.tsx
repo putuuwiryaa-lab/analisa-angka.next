@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { BarChart3, UserRoundCheck } from "lucide-react";
 import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
+import { InstallAppBanner } from "@/components/install/InstallAppBanner";
 import { Logo } from "@/components/ui/Logo";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -20,6 +21,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="min-w-0 flex-1">{children}</main>
 
       {!hideShell && <BottomNav onOpenFree={() => setLoginOpen(true)} />}
+      {!hideShell && <InstallAppBanner />}
 
       <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
