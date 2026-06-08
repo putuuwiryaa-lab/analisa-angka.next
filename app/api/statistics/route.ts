@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { canUseStatistics } from "@/lib/access/freeAccess";
+import { isVipRole } from "@/lib/access/freeAccess";
 import {
   MARKET_STAT_SELECT,
   MAX_LOSS_STREAK_ALLOWED,
@@ -27,7 +27,8 @@ const VALID_CATEGORIES = new Set(["ai", "bbfs", "off_digit", "off_jumlah", "off_
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 const VALID_AI_SCOPES = new Set(["4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
-const VIP_LOCK_MESSAGE = "Statistik dibatasi untuk pengguna Free agar performa server tetap stabil. Akses VIP tersedia melalui menu VIP.";
+const STATISTICS_LOCK_MESSAGE =
+  "Statistik performa untuk fitur analisa gratis tersedia di akses VIP. Statistik lain dibuka sebagai preview performa fitur lanjutan.";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -41,7 +42,7 @@ function parseTargetPair(value: string | null): TargetPair {
 }
 
 function parseAiScope(value: string | null): AiStatScope {
-  return VALID_AI_SCOPES.has(value || "") ? (value as AiStatScope) : "2d_belakang";
+  return VALID_AI_SCOPES.has(value || "") ? (value as AiStatScope) : "2d_depan";
 }
 
 function parseAnalysisScope(value: string | null): AnalysisScope {
@@ -52,17 +53,21 @@ async function roleFromRequest(headers: Headers) {
   const token = getBearerToken(headers);
   if (!token || token === "null" || token === "undefined") return "FREE";
 
-  const access = await verifyActiveVipSession(headers);
-  if (!access.ok) throw new Error(access.error);
-  return access.role;
+  try {
+    const access = await verifyActiveVipSession(headers);
+    return access.ok ? access.role : "FREE";
+  } catch {
+    return "FREE";
+  }
+}
+
+function isLockedForFree(category: VisibleCategoryKey, aiScope: AiStatScope) {
+  return category === "off_digit" || (category === "ai" && aiScope === "2d_belakang");
 }
 
 export async function GET(request: NextRequest) {
   try {
     const role = await roleFromRequest(request.headers);
-    if (!canUseStatistics(role)) {
-      return NextResponse.json({ error: VIP_LOCK_MESSAGE }, { status: 403, headers: { "Cache-Control": "no-store" } });
-    }
 
     if (!supabaseUrl || !supabaseKey) throw new Error("Konfigurasi Supabase belum lengkap.");
 
@@ -74,6 +79,10 @@ export async function GET(request: NextRequest) {
     const param = Number(search.get("param") || 0);
 
     if (!Number.isFinite(param) || param <= 0) throw new Error("Parameter statistik tidak valid.");
+
+    if (!isVipRole(role) && isLockedForFree(category, aiScope)) {
+      return NextResponse.json({ error: STATISTICS_LOCK_MESSAGE }, { status: 403, headers: { "Cache-Control": "no-store" } });
+    }
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
