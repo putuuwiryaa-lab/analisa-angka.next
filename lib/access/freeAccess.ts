@@ -15,6 +15,9 @@ export const FREE_ACCESS = {
   statistik: {
     full: false,
   },
+  evaluationHistory: {
+    full: false,
+  },
 } as const;
 
 export function isVipRole(role?: string | null) {
@@ -31,8 +34,7 @@ export function canUseStatistics(role: string | null | undefined) {
 }
 
 export function canUseEvaluationHistory(role: string | null | undefined) {
-  void role;
-  return true;
+  return isVipRole(role);
 }
 
 export function canUseAnalysisScope(role: string | null | undefined, mode: LockableMode, scope: LockableScope) {
