@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BarChart3, RefreshCw } from "lucide-react";
+import { ArrowLeft, BarChart3, Lock, RefreshCw } from "lucide-react";
 import { StatisticCard } from "@/components/statistics/StatisticCard";
 import { useMarketStatistics, aiParamOptions } from "@/components/statistics/useMarketStatistics";
 import { Button } from "@/components/ui/Button";
@@ -94,6 +94,7 @@ export default function StatisticsPage() {
 
   const topItems = s.items.slice(0, 100);
   const latestUpdate = topItems[0]?.updated_at;
+  const isLockedStatistic = Boolean(s.error && /vip|akses|fitur analisa gratis/i.test(s.error));
 
   return (
     <div className="animate-rise space-y-5 pb-4">
@@ -244,17 +245,23 @@ export default function StatisticsPage() {
         ) : (
           <div className="animate-soft-pop depth-1 rounded-3xl border p-7 text-center">
             <div className="depth-2 mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border text-text-soft">
-              <BarChart3 />
+              {isLockedStatistic ? <Lock /> : <BarChart3 />}
             </div>
-            <p className="display text-sm text-text">Belum ada ranking</p>
-            <p className="mx-auto mt-3 max-w-sm text-xs leading-5 text-text-muted">
-              {s.error
-                ? "Statistik belum bisa dimuat. Pastikan evaluator statistik sudah berjalan."
-                : `Belum ada pasaran yang masuk kriteria ${filterLabel}.`}
+            <p className="display text-sm text-text">
+              {isLockedStatistic ? "Statistik Lanjutan VIP" : "Belum ada ranking"}
             </p>
-            <Button variant="ghost" className="mt-5" onClick={() => s.refetch()}>
-              Muat Ulang
-            </Button>
+            <p className="mx-auto mt-3 max-w-sm text-xs leading-5 text-text-muted">
+              {isLockedStatistic
+                ? "Fitur analisa ini sudah tersedia gratis. Statistik performa mendalam tetap menjadi bagian dari akses VIP untuk evaluasi metode yang lebih lengkap."
+                : s.error
+                  ? s.error
+                  : `Belum ada pasaran yang masuk kriteria ${filterLabel}.`}
+            </p>
+            {!isLockedStatistic && (
+              <Button variant="ghost" className="mt-5" onClick={() => s.refetch()}>
+                Muat Ulang
+              </Button>
+            )}
           </div>
         )}
       </section>
