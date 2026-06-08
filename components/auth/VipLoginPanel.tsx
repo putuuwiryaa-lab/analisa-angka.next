@@ -12,10 +12,13 @@ const PENALTY_MESSAGE_KEY = "vip_penalty_message";
 const DEFAULT_PENALTY_MESSAGE =
   "Akses VIP akun ini sedang dikunci sementara karena terlalu banyak pergantian sesi dalam 24 jam. Silakan coba kembali setelah masa kunci berakhir. Jika Anda merasa ini terjadi karena kesalahan, hubungi admin.";
 
-const FREE_FEATURES = [
-  "Angka Ikut 2D Belakang: semua parameter",
-  "Angka Mati: semua parameter",
-  "Menu dan fitur VIP tetap terlihat, tetapi akses penuh tersedia untuk akun VIP",
+const VIP_BENEFITS = [
+  "Membuka mode dan parameter analisa yang lebih lengkap.",
+  "Mendukung analisa beberapa posisi: depan, tengah, belakang, 3D, dan 4D.",
+  "Menampilkan statistik performa untuk membantu memilih metode yang lebih stabil.",
+  "Membuka riwayat evaluasi agar hasil analisa bisa dibandingkan dari waktu ke waktu.",
+  "Menyediakan rekap angka untuk membantu proses penyaringan angka lebih cepat dan terarah.",
+  "Ikut bantu biaya server tetap ringan, plus sesekali traktir admin kopi biar fitur tetap dirawat.",
 ];
 
 type PenaltyState = {
@@ -235,11 +238,11 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
             </a>
 
             <div className="mt-4 space-y-2">
-              <p className="text-[11px] font-black uppercase tracking-wide text-text-soft">Akses Free tetap tersedia</p>
-              {FREE_FEATURES.map((feature) => (
-                <div key={feature} className="flex gap-2.5 rounded-2xl border border-border-soft bg-black/20 p-3">
+              <p className="text-[11px] font-black uppercase tracking-wide text-text-soft">Keunggulan VIP</p>
+              {VIP_BENEFITS.map((benefit) => (
+                <div key={benefit} className="flex gap-2.5 rounded-2xl border border-border-soft bg-black/20 p-3">
                   <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-primary-soft" />
-                  <p className="text-xs font-semibold leading-relaxed text-text-muted">{feature}</p>
+                  <p className="text-xs font-semibold leading-relaxed text-text-muted">{benefit}</p>
                 </div>
               ))}
             </div>
