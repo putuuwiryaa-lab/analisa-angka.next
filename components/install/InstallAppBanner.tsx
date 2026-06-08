@@ -8,11 +8,25 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-const INSTALL_BANNER_DISMISSED_KEY = "install_app_banner_dismissed";
+const INSTALL_BANNER_HIDE_UNTIL_KEY = "install_app_banner_hide_until";
+const INSTALL_BANNER_INSTALLED_KEY = "install_app_banner_installed";
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function isStandaloneDisplay() {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
+}
+
+function shouldHideBanner() {
+  if (typeof window === "undefined") return true;
+  if (localStorage.getItem(INSTALL_BANNER_INSTALLED_KEY) === "true") return true;
+
+  const hideUntil = Number(localStorage.getItem(INSTALL_BANNER_HIDE_UNTIL_KEY) || 0);
+  return Number.isFinite(hideUntil) && hideUntil > Date.now();
+}
+
+function hideForDays(days: number) {
+  localStorage.setItem(INSTALL_BANNER_HIDE_UNTIL_KEY, String(Date.now() + days * DAY_MS));
 }
 
 export function InstallAppBanner() {
@@ -22,7 +36,7 @@ export function InstallAppBanner() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (isStandaloneDisplay()) return;
-    if (localStorage.getItem(INSTALL_BANNER_DISMISSED_KEY) === "true") return;
+    if (shouldHideBanner()) return;
 
     function handleBeforeInstallPrompt(event: Event) {
       event.preventDefault();
@@ -33,7 +47,8 @@ export function InstallAppBanner() {
     function handleAppInstalled() {
       setVisible(false);
       setInstallPrompt(null);
-      localStorage.setItem(INSTALL_BANNER_DISMISSED_KEY, "true");
+      localStorage.setItem(INSTALL_BANNER_INSTALLED_KEY, "true");
+      localStorage.removeItem(INSTALL_BANNER_HIDE_UNTIL_KEY);
     }
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -52,14 +67,22 @@ export function InstallAppBanner() {
     await installPrompt.prompt();
     const choice = await installPrompt.userChoice;
     if (choice.outcome === "accepted") {
-      localStorage.setItem(INSTALL_BANNER_DISMISSED_KEY, "true");
+      localStorage.setItem(INSTALL_BANNER_INSTALLED_KEY, "true");
+      localStorage.removeItem(INSTALL_BANNER_HIDE_UNTIL_KEY);
+    } else {
+      hideForDays(1);
     }
     setVisible(false);
     setInstallPrompt(null);
   }
 
+  function remindLater() {
+    hideForDays(1);
+    setVisible(false);
+  }
+
   function dismiss() {
-    localStorage.setItem(INSTALL_BANNER_DISMISSED_KEY, "true");
+    hideForDays(2);
     setVisible(false);
   }
 
@@ -75,6 +98,13 @@ export function InstallAppBanner() {
             Akses lebih cepat dari layar utama tanpa perlu membuka browser.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={remindLater}
+          className="pressable shrink-0 rounded-2xl border border-border-soft bg-white/[0.04] px-3 py-2 text-xs font-black uppercase tracking-wide text-text-muted"
+        >
+          Nanti
+        </button>
         <button
           type="button"
           onClick={installApp}
