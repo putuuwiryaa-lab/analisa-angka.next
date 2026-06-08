@@ -120,6 +120,11 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
     setLoading(false);
   }
 
+  function handleLoginSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submitLogin();
+  }
+
   return (
     <div className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
       <div className="animate-soft-pop max-h-[92vh] w-full max-w-sm overflow-y-auto rounded-t-3xl border border-border-soft bg-surface p-5 sm:rounded-3xl">
@@ -192,17 +197,20 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
               </p>
             )}
 
-            <div className="space-y-3">
+            <form className="space-y-3" onSubmit={handleLoginSubmit}>
               <div>
-                <label className="mb-2 ml-1 block text-xs font-bold uppercase tracking-wide text-text-muted">
+                <label className="mb-2 ml-1 block text-xs font-bold uppercase tracking-wide text-text-muted" htmlFor="vip-phone">
                   Nomor WhatsApp
                 </label>
                 <div className="relative">
                   <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-soft" />
                   <Input
+                    id="vip-phone"
+                    name="username"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     inputMode="tel"
+                    autoComplete="username"
                     placeholder="081234567890"
                     className="pl-11"
                   />
@@ -210,26 +218,28 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
               </div>
 
               <div>
-                <label className="mb-2 ml-1 block text-xs font-bold uppercase tracking-wide text-text-muted">
+                <label className="mb-2 ml-1 block text-xs font-bold uppercase tracking-wide text-text-muted" htmlFor="vip-password">
                   Password VIP
                 </label>
                 <div className="relative">
                   <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-soft" />
                   <Input
+                    id="vip-password"
+                    name="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && submitLogin()}
+                    autoComplete="current-password"
                     placeholder="Password dari admin"
                     className="pl-11"
                   />
                 </div>
               </div>
-            </div>
 
-            <Button onClick={submitLogin} disabled={loading || !phone || !password} size="lg" className="mt-5 w-full">
-              {loading ? "Memverifikasi…" : "Masuk VIP"}
-            </Button>
+              <Button type="submit" disabled={loading || !phone || !password} size="lg" className="mt-5 w-full">
+                {loading ? "Memverifikasi…" : "Masuk VIP"}
+              </Button>
+            </form>
 
             <a href={activationUrl} target="_blank" rel="noopener noreferrer">
               <Button variant="ghost" size="lg" className="mt-3 w-full whitespace-nowrap">
