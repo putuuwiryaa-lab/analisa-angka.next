@@ -1,16 +1,17 @@
 import "server-only";
 import { _0xJ2d } from './tables';
 import { _0xEngineAI } from './aiEngine';
-import { _0xEngineMatiPos } from './matiEngine';
+import { runMatiPos } from './matiEngine';
 import { _0xEngineJumlahMati } from './jumlahEngine';
 import { _0x2d4get, _0xEngineShioMati } from './shioEngine';
 
 export function runRekap(D: string[], param: number) {
   const isTop = param === 2;
 
+  // Rekap = kombinator murni: panggil engine lain, lalu silang jadi line 2D.
   const CT = isTop ? _0xEngineAI(D, 4) : _0xEngineAI(D, 6);
-  const LK = isTop ? _0xEngineMatiPos(D, 2, 3).map(Number) : _0xEngineMatiPos(D, 2, 1).map(Number);
-  const LE = isTop ? _0xEngineMatiPos(D, 3, 3).map(Number) : _0xEngineMatiPos(D, 3, 1).map(Number);
+  const LK = isTop ? runMatiPos(D, 2, 3).result.map(Number) : runMatiPos(D, 2, 1).result.map(Number);
+  const LE = isTop ? runMatiPos(D, 3, 3).result.map(Number) : runMatiPos(D, 3, 1).result.map(Number);
   const LJ = isTop ? _0xEngineJumlahMati(D, 2).map(Number) : _0xEngineJumlahMati(D, 1).map(Number);
   const LS = isTop ? _0xEngineShioMati(D, 2).map(Number) : _0xEngineShioMati(D, 1).map(Number);
 
@@ -32,7 +33,7 @@ export function runRekap(D: string[], param: number) {
       offEkor: LE,
       offJumlah: LJ,
       offShio: LS,
-      lines
-    }
+      lines,
+    },
   };
 }
