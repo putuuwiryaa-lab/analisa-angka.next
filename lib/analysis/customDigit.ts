@@ -1,4 +1,4 @@
-import { SHIO_2D } from "./constants";
+import { jumlah2D, shioOf2D } from "./constants";
 
 export type TargetPair = "depan" | "tengah" | "belakang";
 export type CustomFocus = TargetPair | "3d" | "4d";
@@ -51,18 +51,6 @@ export const customFocusPositionLabels: Record<PositionKey, string> = {
   kop: "KOP",
   kepala: "KEPALA",
   ekor: "EKOR",
-};
-
-const jumlah2DLocal = (a: number, b: number) => {
-  const s = a + b;
-  return s >= 10 ? s - 9 : s;
-};
-
-const shioOf2DLocal = (n: number) => {
-  for (const [shio, list] of Object.entries(SHIO_2D)) {
-    if (list.includes(n)) return Number(shio);
-  }
-  return 1;
 };
 
 const pairDigits = (line: Record<PositionKey, number>, pair: TargetPair) => {
@@ -150,8 +138,8 @@ export const buildCustomDigitLines = ({
       if (aiParity && digitParity(a) !== aiParity && digitParity(b) !== aiParity) return false;
       if (aiSize && digitSize(a) !== aiSize && digitSize(b) !== aiSize) return false;
       if (bbfs.length && (!bbfs.includes(a) || !bbfs.includes(b))) return false;
-      if (offJumlah.includes(jumlah2DLocal(a, b))) return false;
-      if (offShio.includes(shioOf2DLocal(a * 10 + b))) return false;
+      if (offJumlah.includes(jumlah2D(a, b))) return false;
+      if (offShio.includes(shioOf2D(a * 10 + b))) return false;
     }
     return true;
   };
