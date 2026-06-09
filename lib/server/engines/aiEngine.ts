@@ -8,6 +8,10 @@ type AiEngineOptions = {
   thresholds?: Record<number, number>;
 };
 
+type AiVote = Record<number, number>;
+type AiRumusStat = { name: string; dg: number; hits: number; valid: number; thresh: number; lolos: boolean };
+export type AiValidation = { sr: AiRumusStat[]; vote: AiVote; elitCount: number; fallback: boolean };
+
 function thresholdForDigitCount(dg: number, thresholds?: Record<number, number>) {
   return thresholds?.[dg] ?? _0xe57f0c[dg] ?? 10;
 }
@@ -62,48 +66,75 @@ function _0xSeedRank(seed: string, digit: number) {
   return h >>> 0;
 }
 
-export function _0xEngineAI(D: string[], param: number = 6, options: AiEngineOptions = {}) {
+/**
+ * Bagian BERAT — DIJALANKAN SEKALI.
+ * Walk-forward 35 rumus × 14 langkah. Menghasilkan:
+ *  - vote   : tally suara per digit 0-9 dari rumus elite (dipakai seleksi digit,
+ *             ganjil/genap, dan besar/kecil — sumber tunggal)
+ *  - sr     : statistik per-rumus untuk panel "Detail Validasi"
+ *  - elitCount, fallback : status validasi
+ */
+export function runAiValidation(
+  D: string[],
+  targetIndexes: number[] = [2, 3],
+  thresholds?: Record<number, number>,
+): AiValidation {
   const U = D.slice(-17);
-  const vote: Record<number, number> = {};
-  const targetIndexes = options.targetIndexes?.length ? options.targetIndexes : [2, 3];
-
+  const vote: AiVote = {};
   for (let d = 0; d <= 9; d++) vote[d] = 0;
 
-  let elit = 0;
+  const sr: AiRumusStat[] = [];
+  let elitCount = 0;
 
   for (let r = 0; r < _0x9a025f.length; r++) {
     const rm = _0x9a025f[r];
-    let hits = 0;
-
+    let hits = 0, valid = 0;
     for (let i = 0; i < 14; i++) {
       const prev2 = U[i], prev = U[i + 1], curr = U[i + 2], tgt = U[i + 3];
       const ai = rm.f(curr, prev, prev2);
-
       if (ai === null) continue;
+      valid++;
       if (targetIndexes.some((index) => ai.includes(parseInt(tgt[index])))) hits++;
     }
+    const thr = thresholdForDigitCount(rm.dg, thresholds);
+    const lolos = hits >= thr;
+    sr.push({ name: rm.n, dg: rm.dg, hits, valid, thresh: thr, lolos });
 
-    const thr = thresholdForDigitCount(rm.dg, options.thresholds);
-
-    if (hits >= thr) {
+    if (lolos) {
       const fp = rm.f(D[D.length - 1], D[D.length - 2], D[D.length - 3]);
-
       if (fp !== null) {
-        elit++;
-        for (let j = 0; j < fp.length; j++) vote[fp[j]]++;
-      }
-    }
-  }
-
-  if (elit === 0) {
-    for (let r = 0; r < _0x9a025f.length; r++) {
-      const fp = _0x9a025f[r].f(D[D.length - 1], D[D.length - 2], D[D.length - 3]);
-
-      if (fp !== null) {
+        elitCount++;
         for (let j = 0; j < fp.length; j++) vote[fp[j] as number]++;
       }
     }
   }
+
+  let fallback = false;
+  if (elitCount === 0) {
+    fallback = true;
+    for (let r = 0; r < _0x9a025f.length; r++) {
+      const fp = _0x9a025f[r].f(D[D.length - 1], D[D.length - 2], D[D.length - 3]);
+      if (fp !== null) {
+        elitCount++;
+        for (let j = 0; j < fp.length; j++) vote[fp[j] as number]++;
+      }
+    }
+  }
+
+  return { sr, vote, elitCount, fallback };
+}
+
+/**
+ * Bagian RINGAN — seleksi N digit dari vote yang SUDAH dihitung.
+ * freq/recency + penyeimbang ganjil-genap & besar-kecil + tie-break FNV deterministik.
+ */
+export function selectAiDigits(
+  D: string[],
+  vote: AiVote,
+  param: number = 6,
+  targetIndexes: number[] = [2, 3],
+): number[] {
+  const U = D.slice(-17);
 
   const windowSize = Math.max(1, Math.min(param, U.length));
   const recentWindow = U.slice(-windowSize);
@@ -176,3 +207,12 @@ export function _0xEngineAI(D: string[], param: number = 6, options: AiEngineOpt
 
   return selected.sort((a, b) => a - b);
 }
+
+/**
+ * Wrapper backward-compat (dipakai rekapEngine). Validasi + seleksi sekali jalan.
+ */
+export function _0xEngineAI(D: string[], param: number = 6, options: AiEngineOptions = {}) {
+  const targetIndexes = options.targetIndexes?.length ? options.targetIndexes : [2, 3];
+  const { vote } = runAiValidation(D, targetIndexes, options.thresholds);
+  return selectAiDigits(D, vote, param, targetIndexes);
+    }
