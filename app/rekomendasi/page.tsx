@@ -225,13 +225,13 @@ function ComboRow({ combo }: { combo: InvestCombo }) {
   const hot = combo.avgWins15 >= 14;
 
   return (
-    <div className="depth-2 flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5">
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          {hot && <Flame size={13} className="shrink-0 text-amber-400" />}
-          <p className="display truncate text-[12.5px] leading-tight text-text">{combo.label}</p>
+    <div className="depth-2 flex items-start justify-between gap-3 rounded-2xl border px-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-1.5">
+          {hot && <Flame size={13} className="mt-0.5 shrink-0 text-amber-400" />}
+          <p className="display text-[12.5px] leading-snug text-text">{combo.label}</p>
         </div>
-        <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-text-soft">
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">
           menang {combo.avgWins15}/15
         </p>
       </div>
@@ -241,4 +241,4 @@ function ComboRow({ combo }: { combo: InvestCombo }) {
       </div>
     </div>
   );
-      }
+}
