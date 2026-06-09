@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Coins, Flame, RefreshCw, Search } from "lucide-react";
+import { ChevronDown, Coins, Flame, RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -41,6 +41,8 @@ async function fetchInvest(): Promise<InvestMarket[]> {
 
 export default function RekomendasiPage() {
   const [search, setSearch] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
+
   const {
     data: markets = [],
     isPending,
@@ -68,6 +70,8 @@ export default function RekomendasiPage() {
   const errorMessage = error instanceof Error ? error.message : "";
   const showInitialSkeleton = isPending && markets.length === 0;
 
+  const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
+
   return (
     <div className="animate-rise pb-4">
       {/* Intro */}
@@ -81,7 +85,7 @@ export default function RekomendasiPage() {
             </div>
             <h2 className="display mt-2 text-3xl text-text">Invest 2D</h2>
             <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
-              Kombinasi analisa yang lagi bagus (menang ≥13/15) untuk invest 2D di kisaran 55–65 line. Angka-nya kamu generate sendiri lewat Rekap Custom.
+              Kombinasi analisa yang lagi bagus (menang ≥13/15) untuk invest 2D di kisaran 55–65 line. Tap pasaran untuk lihat combo-nya, lalu generate angka di Rekap Custom.
             </p>
           </div>
           <button
@@ -112,10 +116,10 @@ export default function RekomendasiPage() {
         />
       </div>
 
-      {/* List */}
-      <div className="min-h-[40svh] space-y-3">
+      {/* List pasaran */}
+      <div className="min-h-[40svh] space-y-2.5">
         {showInitialSkeleton ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-56 rounded-3xl" />)
+          Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
         ) : filtered.length === 0 ? (
           <div className="animate-soft-pop depth-1 rounded-3xl border border-dashed py-14 text-center">
             <Coins className="mx-auto mb-3 text-text-soft" />
@@ -129,33 +133,64 @@ export default function RekomendasiPage() {
             )}
           </div>
         ) : (
-          filtered.map((market, index) => <MarketCard key={market.marketId} market={market} index={index} />)
+          filtered.map((market, index) => (
+            <MarketRow
+              key={market.marketId}
+              market={market}
+              index={index}
+              open={openId === market.marketId}
+              onToggle={() => toggle(market.marketId)}
+            />
+          ))
         )}
       </div>
     </div>
   );
 }
 
-function MarketCard({ market, index }: { market: InvestMarket; index: number }) {
+function MarketRow({
+  market,
+  index,
+  open,
+  onToggle,
+}: {
+  market: InvestMarket;
+  index: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const total = market.pairs.reduce((sum, p) => sum + p.combos.length, 0);
 
   return (
     <div
-      className="animate-soft-pop depth-1 space-y-4 rounded-3xl border p-4"
-      style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
+      className="animate-soft-pop depth-1 overflow-hidden rounded-2xl border"
+      style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}
     >
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="display truncate text-lg text-text">{market.marketName}</h3>
-        <span className="num shrink-0 rounded-full bg-accent/12 px-3 py-1 text-xs font-black text-accent">
-          {total} combo
-        </span>
-      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="pressable flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-white/[0.04]"
+      >
+        <h3 className="display truncate text-base text-text">{market.marketName}</h3>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <span className="num rounded-full bg-accent/12 px-2.5 py-1 text-[11px] font-black text-accent">
+            {total} combo
+          </span>
+          <ChevronDown
+            size={18}
+            className={`text-text-soft transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
+        </div>
+      </button>
 
-      <div className="space-y-4">
-        {market.pairs.map((p) => (
-          <PairBlock key={p.pair} block={p} />
-        ))}
-      </div>
+      {open && (
+        <div className="animate-fade-in space-y-4 border-t border-border-soft px-4 pb-4 pt-3.5">
+          {market.pairs.map((p) => (
+            <PairBlock key={p.pair} block={p} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -207,4 +242,3 @@ function ComboRow({ combo }: { combo: InvestCombo }) {
     </div>
   );
       }
-    
