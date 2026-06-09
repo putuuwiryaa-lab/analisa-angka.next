@@ -3,7 +3,7 @@
 import { type ReactNode, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, UserRoundCheck } from "lucide-react";
+import { BarChart3, Coins, UserRoundCheck } from "lucide-react";
 import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { InstallAppBanner } from "@/components/install/InstallAppBanner";
 import { Logo } from "@/components/ui/Logo";
@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="min-w-0 flex-1">{children}</main>
 
-      {!hideShell && <BottomNav onOpenFree={() => setLoginOpen(true)} />}
+      {!hideShell && <BottomNav pathname={pathname} onOpenFree={() => setLoginOpen(true)} />}
       {!hideShell && <InstallAppBanner />}
 
       <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
@@ -54,28 +54,43 @@ function HeroHeader() {
   );
 }
 
-function BottomNav({ onOpenFree }: { onOpenFree: () => void }) {
-  const statsClassName = "pressable relative flex h-15 flex-[1.45] items-center justify-center gap-2 rounded-2xl border px-4";
+function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () => void }) {
+  const investActive = pathname === "/rekomendasi";
+
+  const pill = "pressable relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3";
 
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2.5">
+      <div className="mx-auto flex max-w-3xl items-center gap-2.5 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2.5">
         <Link
           href="/pantauan-rekap"
-          className={`${statsClassName} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_28px_rgba(16,185,129,0.18)] hover:bg-emerald-500/20 hover:shadow-[0_0_34px_rgba(16,185,129,0.24)]`}
+          className={`${pill} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_24px_rgba(16,185,129,0.16)] hover:bg-emerald-500/20`}
           aria-label="Statistik Pasaran"
         >
-          <BarChart3 size={21} />
+          <BarChart3 size={20} />
           <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
         </Link>
+
+        <Link
+          href="/rekomendasi"
+          aria-current={investActive ? "page" : undefined}
+          className={`${pill} border-accent/35 bg-accent/12 text-accent shadow-[0_0_24px_rgba(40,215,255,0.14)] hover:bg-accent/18 ${
+            investActive ? "border-accent/60 bg-accent/20 shadow-[0_0_32px_rgba(40,215,255,0.26)]" : ""
+          }`}
+          aria-label="Rekomendasi Invest"
+        >
+          <Coins size={20} />
+          <span className="text-sm font-black uppercase tracking-wide">Invest</span>
+        </Link>
+
         <button
           type="button"
           onClick={onOpenFree}
-          className="pressable flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft hover:border-primary/50 hover:bg-primary/15"
+          className="pressable flex h-14 flex-[0.7] flex-col items-center justify-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft hover:border-primary/50 hover:bg-primary/15"
           aria-label="Akun VIP"
         >
-          <UserRoundCheck size={19} />
-          <span className="text-xs font-semibold">VIP</span>
+          <UserRoundCheck size={18} />
+          <span className="text-[11px] font-semibold">VIP</span>
         </button>
       </div>
     </nav>
