@@ -4,6 +4,7 @@ import { _0x3ca571, RM_NAMES } from './offFormula';
 import { _0xEngineJumlahMati } from './jumlahEngine';
 import { _0x2d4get, _0xRumusShio, SHIO_RUMUS_NAMES, _0xEngineShioMati } from './shioEngine';
 import { runAiValidation, selectAiDigits } from './aiEngine';
+import { runMatiPos, type MatiPosResult } from './matiEngine';
 import { runRekap } from './rekapEngine';
 
 type AiVote = Record<number, number>;
@@ -99,56 +100,14 @@ export function runAnalysis(type: string, payload: string[], param: number, opti
   }
 
   if (type === 'mati') {
+    // Satu engine bersama dengan Rekap — sudah termasuk fallback.
     const POS = [
-      { n: 'AS', x: 0 }, { n: 'KOP', x: 1 }, { n: 'KEPALA', x: 2 }, { n: 'EKOR', x: 3 }
+      { n: 'AS', x: 0 }, { n: 'KOP', x: 1 }, { n: 'KEPALA', x: 2 }, { n: 'EKOR', x: 3 },
     ];
-    const posResults: any = {};
-
-    POS.forEach(p => {
-      const SA: Record<string, number> = {};
-      const MK = Object.keys(_0x3ca571('0000', '0000'));
-      MK.forEach(k => { SA[k] = 0; });
-      for (let i = 0; i < 14; i++) {
-        const pr: any = _0x3ca571(U[i], U[i + 1]), tg = U[i + 2];
-        const val = parseInt(tg[p.x]);
-        MK.forEach(k => { if (pr[k] !== val) SA[k] += 1; });
-      }
-
-      const stats = MK.map((k, idx) => ({ key: k, name: RM_NAMES[idx], score: SA[k], lolos: SA[k] >= 14 }));
-
-      const fq: Record<string, number> = {};
-      for (let d = 0; d <= 9; d++) fq[String(d)] = 0;
-      U.forEach(r => { fq[r[p.x]]++; });
-
-      const rc: Record<string, number> = {};
-      for (let d = 0; d <= 9; d++) rc[String(d)] = 99;
-      for (let j = U.length - 1; j >= 0; j--) {
-        const dg = U[j][p.x];
-        if (rc[dg] === 99) rc[dg] = (U.length - 1 - j);
-      }
-
-      let el = MK.filter(k => SA[k] >= 14);
-      if (el.length === 0) {
-        const mx = Math.max(...MK.map(k => SA[k]));
-        el = MK.filter(k => SA[k] === mx);
-      }
-
-      const FP: any = _0x3ca571(D[D.length - 2], D[D.length - 1]);
-      const ct: Record<string, number> = {};
-      el.forEach(k => { const v = String(FP[k]); ct[v] = (ct[v] || 0) + 1; });
-
-      const sr = Object.keys(ct).sort((a, b) => {
-        if (ct[b] !== ct[a]) return ct[b] - ct[a];
-        if ((fq[a] || 0) !== (fq[b] || 0)) return (fq[a] || 0) - (fq[b] || 0);
-        return (rc[b] || 99) - (rc[a] || 99);
-      });
-
-      const offDigits = sr.slice(0, param);
-      const filteredStats = stats.filter(s => s.lolos && offDigits.includes(String(FP[s.key])));
-
-      posResults[p.n] = { stats: filteredStats, activeCount: filteredStats.length, result: offDigits };
+    const posResults: Record<string, MatiPosResult> = {};
+    POS.forEach((p) => {
+      posResults[p.n] = runMatiPos(D, p.x, param);
     });
-
     return { success: true, data: posResults };
   }
 
@@ -217,4 +176,4 @@ export function runAnalysis(type: string, payload: string[], param: number, opti
   }
 
   return { success: false, message: "Type not supported yet" };
-            }
+                     }
