@@ -17,6 +17,20 @@ export const SHIO_2D: Record<number, number[]> = {
   12: [12, 24, 36, 48, 60, 72, 84, 96],
 };
 
+/** Reduksi jumlah 2D (kontrol). Sumber tunggal sisi client (dipakai angka jadi & rekap custom). */
+export const jumlah2D = (a: number, b: number) => {
+  const s = a + b;
+  return s >= 10 ? s - 9 : s;
+};
+
+/** Konversi angka 2D (0-99) ke shio 1-12. Sumber tunggal sisi client. */
+export const shioOf2D = (n: number) => {
+  for (const [shio, list] of Object.entries(SHIO_2D)) {
+    if (list.includes(n)) return Number(shio);
+  }
+  return 1;
+};
+
 /**
  * Metadata tiap mode analisa — DATA saja (label + jumlah rumus).
  * Warna accent TIDAK lagi di sini; sudah pindah ke token CSS (--color-mode-*)
@@ -33,4 +47,3 @@ export const typeMeta: Record<string, { label: string; formula: string }> = {
 
 export const evaluationModes = new Set(["ai", "ai_parity", "ai_size", "bbfs", "mati", "jumlah", "shio"]);
 export const angkaJadiModes = new Set(["mati", "jumlah", "shio"]);
-  
