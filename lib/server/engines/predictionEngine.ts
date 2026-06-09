@@ -3,7 +3,7 @@ import { _0xJ2d } from './tables';
 import { _0x3ca571, RM_NAMES } from './offFormula';
 import { _0xEngineJumlahMati } from './jumlahEngine';
 import { _0x2d4get, _0xRumusShio, SHIO_RUMUS_NAMES, _0xEngineShioMati } from './shioEngine';
-import { _0x9a025f, _0xe57f0c, _0xEngineAI } from './aiEngine';
+import { runAiValidation, selectAiDigits } from './aiEngine';
 import { runRekap } from './rekapEngine';
 
 type AiVote = Record<number, number>;
@@ -37,10 +37,6 @@ function aiThresholds(scope: AnalysisScope = 'default'): Record<number, number> 
   return { 3: 10, 4: 11, 5: 12, 6: 13 };
 }
 
-function thresholdForDigitCount(dg: number, thresholds: Record<number, number>) {
-  return thresholds[dg] ?? _0xe57f0c[dg] ?? 10;
-}
-
 function topVoteDigit(vote: AiVote) {
   return Object.keys(vote)
     .map((k) => ({ d: parseInt(k), v: vote[parseInt(k)] }))
@@ -63,51 +59,6 @@ function buildAiSize(vote: AiVote) {
   return { dominant, bigVote, smallVote };
 }
 
-function buildAiVote(D: string[], targetIndexes = [2, 3], thresholds: Record<number, number> = aiThresholds()) {
-  const U = D.slice(-17);
-  const sr = [];
-  let elitCount = 0;
-  const vote: AiVote = {};
-  for (let d = 0; d <= 9; d++) vote[d] = 0;
-
-  for (let r = 0; r < _0x9a025f.length; r++) {
-    const rm = _0x9a025f[r];
-    let hits = 0, valid = 0;
-    for (let i = 0; i < 14; i++) {
-      const prev2 = U[i], prev = U[i + 1], curr = U[i + 2], tgt = U[i + 3];
-      const ai = rm.f(curr, prev, prev2);
-      if (ai === null) continue;
-      valid++;
-      if (targetIndexes.some((index) => ai.includes(parseInt(tgt[index])))) hits++;
-    }
-    const thr = thresholdForDigitCount(rm.dg, thresholds);
-    const lolos = hits >= thr;
-    sr.push({ name: rm.n, dg: rm.dg, hits, valid, thresh: thr, lolos });
-
-    if (lolos) {
-      const fp = rm.f(D[D.length - 1], D[D.length - 2], D[D.length - 3]);
-      if (fp !== null) {
-        elitCount++;
-        for (let j = 0; j < fp.length; j++) vote[fp[j] as number]++;
-      }
-    }
-  }
-
-  let fallback = false;
-  if (elitCount === 0) {
-    fallback = true;
-    for (let r = 0; r < _0x9a025f.length; r++) {
-      const fp = _0x9a025f[r].f(D[D.length - 1], D[D.length - 2], D[D.length - 3]);
-      if (fp !== null) {
-        elitCount++;
-        for (let j = 0; j < fp.length; j++) vote[fp[j] as number]++;
-      }
-    }
-  }
-
-  return { sr, elitCount, vote, fallback };
-}
-
 export function runAnalysis(type: string, payload: string[], param: number, options: RunAnalysisOptions = {}) {
   const D = payload;
   const U = D.slice(-17);
@@ -122,9 +73,13 @@ export function runAnalysis(type: string, payload: string[], param: number, opti
   if (type === 'ai' || type === 'ai_parity' || type === 'ai_size') {
     const targetIndexes = aiTargetIndexes(analysisScope, targetPair);
     const thresholds = aiThresholds(analysisScope);
-    const { sr, elitCount, vote, fallback } = buildAiVote(D, targetIndexes, thresholds);
+
+    // Validasi BERAT dijalankan SEKALI; vote dipakai bersama untuk
+    // seleksi digit, ganjil/genap, dan besar/kecil.
+    const { sr, elitCount, vote, fallback } = runAiValidation(D, targetIndexes, thresholds);
+
     const aiResultParam = forceDigitResult ? param : type === 'ai' && param !== 7 && param !== 8 ? param : 6;
-    const aiResult = _0xEngineAI(D, aiResultParam, { targetIndexes, thresholds });
+    const aiResult = selectAiDigits(D, vote, aiResultParam, targetIndexes);
     const parity = buildAiParity(vote);
     const size = buildAiSize(vote);
     const stats = sr.filter(s => s.lolos);
@@ -262,4 +217,4 @@ export function runAnalysis(type: string, payload: string[], param: number, opti
   }
 
   return { success: false, message: "Type not supported yet" };
-}
+            }
