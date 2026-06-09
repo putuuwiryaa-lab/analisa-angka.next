@@ -1,5 +1,8 @@
-import { DIGITS, SHIO_2D } from "./constants";
+import { DIGITS, jumlah2D, shioOf2D } from "./constants";
 export { buildCustomDigitLines } from "./customDigit";
+
+// Re-export helper bersama agar impor lama dari "utils" tetap jalan.
+export { jumlah2D, shioOf2D };
 
 export type LineSection = { label: string; lines: string[] };
 
@@ -8,18 +11,6 @@ export const statsFrom = (value: any) => Array.isArray(value?.stats) ? value.sta
 export const format2D = (n: number | string) => String(n).padStart(2, "0");
 export const normalDigitList = (value: any) => Array.from(new Set(safeArray(value).map((v: any) => String(v)).filter((v: string) => /^\d$/.test(v))));
 export const toNumberList = (value: any) => Array.from(new Set(safeArray(value).map((v: any) => Number(v)).filter((v: number) => Number.isFinite(v))));
-
-export const jumlah2D = (a: number, b: number) => {
-  const s = a + b;
-  return s >= 10 ? s - 9 : s;
-};
-
-export const shioOf2D = (n: number) => {
-  for (const [shio, list] of Object.entries(SHIO_2D)) {
-    if (list.includes(n)) return Number(shio);
-  }
-  return 1;
-};
 
 export const buildAngkaJadi = (type: string, result: any): { sections: LineSection[] } => {
   if (!result) return { sections: [] };
