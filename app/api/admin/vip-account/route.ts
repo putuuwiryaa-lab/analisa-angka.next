@@ -31,10 +31,22 @@ function expiryFromDays(days: number) {
   return new Date(Date.now() + Math.floor(days) * 24 * 60 * 60 * 1000).toISOString();
 }
 
+/**
+ * Perbandingan rahasia constant-time yang AMAN untuk input panjang sembarang.
+ * Kedua sisi di-hash ke 32 byte dulu, jadi timingSafeEqual tidak pernah throw
+ * gara-gara beda panjang, dan perbandingannya tetap tahan timing-attack.
+ */
+function safeEqual(a: string, b: string) {
+  const ha = crypto.createHash("sha256").update(a).digest();
+  const hb = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
 function assertAdminSecret(request: Request) {
   const expected = requireEnv("ADMIN_API_SECRET");
   const submitted = request.headers.get("x-admin-secret") || "";
-  return Boolean(expected && submitted && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(submitted)));
+  if (!expected || !submitted) return false;
+  return safeEqual(expected, submitted);
 }
 
 export async function POST(request: Request) {
@@ -47,11 +59,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "Kesalahan konfigurasi server" }, { status: 500 });
   }
 
+  // Pengecekan auth dipisah: error apa pun di sini = 401, bukan 500.
   try {
     if (!assertAdminSecret(request)) {
       return NextResponse.json({ success: false, error: "Akses admin tidak valid" }, { status: 401 });
     }
+  } catch (e) {
+    console.error("ADMIN_SECRET_CHECK_ERROR", e);
+    return NextResponse.json({ success: false, error: "Akses admin tidak valid" }, { status: 401 });
+  }
 
+  try {
     const body = await request.json().catch(() => ({}));
     const phone = normalizePhone(body.phone);
     const role = String(body.role || "PRO").toUpperCase() as VipRole;
