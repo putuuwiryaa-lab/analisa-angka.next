@@ -329,3 +329,38 @@
     transition-duration: 0.001ms !important;
   }
 }
+/* ===== Transisi antar halaman (View Transitions API) =====
+   Diaktifkan oleh experimental.viewTransition di next.config.
+   Browser tanpa dukungan: navigasi tetap normal, sekadar tanpa animasi. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); /* ease-out halus */
+}
+
+/* Halaman lama: fade out cepat */
+::view-transition-old(root) {
+  animation-name: vt-fade-out;
+}
+
+/* Halaman baru: fade in + sedikit naik (senada dengan animate-rise) */
+::view-transition-new(root) {
+  animation-name: vt-rise-in;
+}
+
+@keyframes vt-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes vt-rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Hormati pengguna yang mematikan animasi */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
