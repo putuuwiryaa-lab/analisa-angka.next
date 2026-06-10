@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className={cnPad(hideShell)}>
       {!hideShell && <HeroHeader />}
       <main className="min-w-0 flex-1">{children}</main>
-      {!hideShell && <BottomNav pathname={pathname} onOpenFree={() => setLoginOpen(true)} />}
+      {!hideShell && <BottomNav onOpenFree={() => setLoginOpen(true)} />}
       {!hideShell && <InstallAppBanner />}
       <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
@@ -46,12 +46,9 @@ function HeroHeader() {
   );
 }
 
-function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () => void }) {
-  const statsActive = pathname === "/pantauan-rekap";
-  const investActive = pathname === "/rekomendasi";
+function BottomNav({ onOpenFree }: { onOpenFree: () => void }) {
   const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3 hover:border-border hover:bg-white/[0.075]";
   const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
-  const activeGlow = "0 0 32px color-mix(in srgb, var(--accent) 24%, transparent)";
 
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
@@ -59,9 +56,8 @@ function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () 
         <Link
           data-mode="statistics"
           href="/pantauan-rekap"
-          aria-current={statsActive ? "page" : undefined}
           className={pill}
-          style={{ boxShadow: statsActive ? activeGlow : softGlow }}
+          style={{ boxShadow: softGlow }}
           aria-label="Statistik Pasaran"
         >
           <BarChart3 size={20} />
@@ -83,9 +79,8 @@ function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () 
         <Link
           data-mode="invest"
           href="/rekomendasi"
-          aria-current={investActive ? "page" : undefined}
           className={pill}
-          style={{ boxShadow: investActive ? activeGlow : softGlow }}
+          style={{ boxShadow: softGlow }}
           aria-label="Rekomendasi Invest"
         >
           <Coins size={20} />
