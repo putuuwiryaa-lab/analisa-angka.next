@@ -155,13 +155,14 @@
     transform: translateZ(0);
     transform-origin: center;
     transition-property: transform, background-color, border-color, color, box-shadow, opacity, filter;
-    transition-duration: 170ms;
+    transition-duration: 150ms;
     transition-timing-function: var(--ease-press);
     will-change: transform;
   }
   .pressable:active {
-    transform: translateY(1px) scale(0.985);
-    filter: brightness(1.04);
+    transform: translateY(2px) scale(0.975) !important;
+    filter: brightness(1.06);
+    transition-duration: 90ms;
   }
 
   .tap-glow {
@@ -220,13 +221,20 @@
   }
 
   .pressable:hover:active {
-    transform: translateY(1px) scale(0.985);
+    transform: translateY(2px) scale(0.975) !important;
   }
 }
 
 @media (hover: none), (pointer: coarse) {
   .pressable:hover {
     transform: translateZ(0);
+  }
+
+  .pressable:active,
+  .pressable:hover:active {
+    transform: translateY(2px) scale(0.975) !important;
+    filter: brightness(1.06);
+    transition-duration: 90ms;
   }
 }
 
