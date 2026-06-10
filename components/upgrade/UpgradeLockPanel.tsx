@@ -50,18 +50,21 @@ export function UpgradeLockPanel({
   open,
   onClose,
   onOpenVipLogin,
+  onOpenPin,
   title,
   feature = "default",
 }: {
   open: boolean;
   onClose: () => void;
-  onOpenVipLogin: () => void;
+  onOpenVipLogin?: () => void;
+  onOpenPin?: () => void;
   title?: string;
   feature?: UpgradeFeature;
 }) {
   if (!open) return null;
 
   const copy = FEATURE_COPY[feature] || FEATURE_COPY.default;
+  const openVipLogin = onOpenVipLogin || onOpenPin || onClose;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-4 backdrop-blur-sm sm:items-center sm:pb-0">
@@ -104,7 +107,7 @@ export function UpgradeLockPanel({
           </button>
           <button
             type="button"
-            onClick={onOpenVipLogin}
+            onClick={openVipLogin}
             className="pressable h-12 rounded-2xl border border-primary/35 bg-primary/15 px-4 text-xs font-black uppercase tracking-wide text-primary-soft hover:border-primary/55 hover:bg-primary/20"
           >
             Login VIP
