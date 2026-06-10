@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, Coins, ChevronRight, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Coins, RefreshCw, Search } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-context";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -53,7 +54,6 @@ function formatAgo(ts: number) {
   return `${h} jam lalu`;
 }
 
-// Map digit-1/digit-2 pasangan -> posisi mati di builder Rekap
 const PAIR_POS: Record<InvestPair["pair"], { d1: string; d2: string }> = {
   depan: { d1: "as", d2: "kop" },
   tengah: { d1: "kop", d2: "kepala" },
@@ -82,8 +82,10 @@ function buildRekapUrl(marketId: string, pair: InvestPair["pair"], filters: Inve
 
 export default function RekomendasiPage() {
   const router = useRouter();
+  const { role } = useAuth();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [toast, setToast] = useState("");
 
   const {
     data: markets = [],
@@ -115,12 +117,22 @@ export default function RekomendasiPage() {
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
+  const handleOpenRekap = (marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
+    if (role === "FREE") {
+      setToast("Fitur ini tersedia untuk pengguna VIP");
+      setTimeout(() => setToast(""), 3000);
+      return;
+    }
+    router.push(buildRekapUrl(marketId, pair, filters));
+  };
+
   return (
     <div className="animate-rise space-y-4 pb-4">
       <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
         <ArrowLeft size={16} /> Beranda
       </Button>
 
+      {/* Intro */}
       <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-5">
         <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-accent/10 blur-3xl" />
         <div className="relative flex items-start justify-between gap-3">
@@ -155,6 +167,7 @@ export default function RekomendasiPage() {
         </div>
       )}
 
+      {/* Search */}
       <div className="animate-fade-in relative">
         <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
         <Input
@@ -166,6 +179,7 @@ export default function RekomendasiPage() {
         />
       </div>
 
+      {/* List pasaran */}
       <div className="min-h-[40svh] space-y-2.5">
         {showInitialSkeleton ? (
           Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
@@ -189,11 +203,20 @@ export default function RekomendasiPage() {
               index={index}
               open={openId === market.marketId}
               onToggle={() => toggle(market.marketId)}
-              onOpenRekap={(pair, filters) => router.push(buildRekapUrl(market.marketId, pair, filters))}
+              onOpenRekap={(pair, filters) => handleOpenRekap(market.marketId, pair, filters)}
             />
           ))
         )}
       </div>
+
+      {/* Toast VIP */}
+      {toast && (
+        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
+          <div className="animate-soft-pop rounded-2xl border border-primary/30 bg-bg-deep/95 px-5 py-3 text-center text-xs font-bold text-primary-soft shadow-lg backdrop-blur-xl">
+            {toast}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -306,4 +329,4 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
       </div>
     </button>
   );
-}
+ }                                            
