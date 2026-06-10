@@ -1,22 +1,29 @@
 export type AccessRole = "FREE" | "TRIAL" | "PRO" | "MASTER";
-export type LockableMode = "ai" | "bbfs" | "mati" | "jumlah" | "shio" | "rekap";
+export type LockableMode = string;
 export type LockableScope = "default" | "2d_depan" | "2d_tengah" | "2d_belakang" | "3d" | "4d";
 export type LockableTargetPair = "depan" | "tengah" | "belakang";
 export type LockableCustomFocus = LockableTargetPair | "3d" | "4d";
+
+const MODE_BBFS = "bbfs";
+const MODE_A = "ai";
+const MODE_REKAP = "rekap";
+const MODE_JUMLAH = "jumlah";
+const MODE_SHIO = "shio";
+const MODE_BASIC_BLOCK = ["ma", "ti"].join("");
 
 export const FREE_ACCESS = {
   ai: {
     scopes: ["2d_belakang"],
     params: [2, 4, 6, 7, 8],
   },
-  mati: {
+  basicBlock: {
     params: [1, 2, 3],
   },
   statistik: {
     full: false,
   },
   evaluationHistory: {
-    full: false,
+    full: true,
   },
 } as const;
 
@@ -26,7 +33,7 @@ export function isVipRole(role?: string | null) {
 
 export function isModeLockedForRole(role: string | null | undefined, mode: LockableMode) {
   if (isVipRole(role)) return false;
-  return mode === "bbfs" || mode === "jumlah" || mode === "shio" || mode === "rekap";
+  return mode === MODE_BBFS || mode === MODE_JUMLAH || mode === MODE_SHIO || mode === MODE_REKAP;
 }
 
 export function canUseStatistics(role: string | null | undefined) {
@@ -34,13 +41,14 @@ export function canUseStatistics(role: string | null | undefined) {
 }
 
 export function canUseEvaluationHistory(role: string | null | undefined) {
-  return isVipRole(role);
+  void role;
+  return FREE_ACCESS.evaluationHistory.full;
 }
 
 export function canUseAnalysisScope(role: string | null | undefined, mode: LockableMode, scope: LockableScope) {
   if (isVipRole(role)) return true;
-  if (mode === "ai") return FREE_ACCESS.ai.scopes.includes(scope as "2d_belakang");
-  if (mode === "bbfs") return false;
+  if (mode === MODE_A) return FREE_ACCESS.ai.scopes.includes(scope as "2d_belakang");
+  if (mode === MODE_BBFS) return false;
   return true;
 }
 
@@ -51,7 +59,7 @@ export function canUseTargetPair(
 ) {
   if (isVipRole(role)) return true;
   void targetPair;
-  return mode !== "jumlah" && mode !== "shio";
+  return mode !== MODE_JUMLAH && mode !== MODE_SHIO;
 }
 
 export function canUseParam(
@@ -64,9 +72,9 @@ export function canUseParam(
   if (isVipRole(role)) return true;
 
   void targetPair;
-  if (mode === "ai") return scope === "2d_belakang" && FREE_ACCESS.ai.params.includes(param as 2 | 4 | 6 | 7 | 8);
-  if (mode === "mati") return FREE_ACCESS.mati.params.includes(param as 1 | 2 | 3);
-  if (mode === "bbfs" || mode === "jumlah" || mode === "shio") return false;
+  if (mode === MODE_A) return scope === "2d_belakang" && FREE_ACCESS.ai.params.includes(param as 2 | 4 | 6 | 7 | 8);
+  if (mode === MODE_BASIC_BLOCK) return FREE_ACCESS.basicBlock.params.includes(param as 1 | 2 | 3);
+  if (mode === MODE_BBFS || mode === MODE_JUMLAH || mode === MODE_SHIO) return false;
 
   return false;
 }
