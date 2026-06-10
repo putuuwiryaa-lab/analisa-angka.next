@@ -13,27 +13,10 @@ import {
   type InvestAccess,
 } from "./investCatalog";
 
-/**
- * INVEST ENGINE — pemindai rekomendasi invest (proksi via market_statistics).
- *
- * Per pasaran, untuk 3 pasangan 2D (depan/tengah/belakang) yang INDEPENDEN:
- *   1. baca komponen "menang 13/15" dari market_statistics
- *   2. cocokkan ke buku catatan (INVEST_CATALOG)
- *   3. ambil combo yang SEMUA bloknya menang
- *   4. urutkan pakai rata-rata score komponen
- *
- * Akses: dibuka untuk semua user (FREE penuh). Param `catalog` opsional
- * disediakan kalau suatu saat ingin membatasi (mis. lewat catalogForRole).
- *
- * Komponen yang belum genap 15 sampel (bbfs/parity/size baru) otomatis belum
- * punya baris -> combo-nya belum muncul, lalu hidup sendiri saat datanya matang.
- */
-
 export type InvestPair = "depan" | "tengah" | "belakang";
 
 const PAIRS: InvestPair[] = ["depan", "tengah", "belakang"];
 
-// Tiap pasangan 2D = dua posisi digit. off_kepala = digit-1, off_ekor = digit-2.
 const PAIR_POSITIONS: Record<InvestPair, { d1: string; d2: string }> = {
   depan: { d1: "as", d2: "kop" },
   tengah: { d1: "kop", d2: "kepala" },
@@ -44,6 +27,12 @@ const PAIR_LABEL: Record<InvestPair, string> = {
   depan: "2D DEPAN",
   tengah: "2D TENGAH",
   belakang: "2D BELAKANG",
+};
+
+const BBFS_SCOPE: Record<InvestPair, string> = {
+  depan: "2d_depan",
+  tengah: "2d_tengah",
+  belakang: "2d_belakang",
 };
 
 interface StatRow {
@@ -64,23 +53,21 @@ interface StatRow {
 const STAT_SELECT =
   "market_id,market_name,group_key,mode,position,param,target_pair,analysis_scope,wins_15,wins_last_5,max_loss_streak,score";
 
-/** Deskriptor baris market_statistics untuk sebuah blok filter, pada pasangan tertentu. */
 function filterDescriptor(f: InvestFilter, pair: InvestPair) {
   const pos = PAIR_POSITIONS[pair];
   switch (f.kind) {
     case "ai":
       return { group_key: "ai", position: "all", param: f.param, target_pair: pair, analysis_scope: "default" };
-    case "off_kepala": // digit-1 pasangan
+    case "off_kepala":
       return { group_key: "off_digit", position: pos.d1, param: f.param, target_pair: "all", analysis_scope: "default" };
-    case "off_ekor": // digit-2 pasangan
+    case "off_ekor":
       return { group_key: "off_digit", position: pos.d2, param: f.param, target_pair: "all", analysis_scope: "default" };
     case "off_jumlah":
       return { group_key: "off_jumlah", position: "all", param: f.param, target_pair: pair, analysis_scope: "default" };
     case "off_shio":
       return { group_key: "off_shio", position: "all", param: f.param, target_pair: pair, analysis_scope: "default" };
-    // --- siap-sambut (belum ada data sampai genap 15) ---
     case "bbfs":
-      return { group_key: "bbfs", position: "all", param: f.param, target_pair: pair, analysis_scope: `2d_${pair}` };
+      return { group_key: "bbfs", position: "all", param: f.param, target_pair: pair, analysis_scope: BBFS_SCOPE[pair] };
     case "parity":
       return { group_key: "ai_parity", position: "all", param: 1, target_pair: pair, analysis_scope: "default" };
     case "size":
@@ -90,7 +77,6 @@ function filterDescriptor(f: InvestFilter, pair: InvestPair) {
   }
 }
 
-/** Kunci kanonik (TANPA mode — tahan jika nama mode bbfs/parity/size sedikit beda). */
 function statKey(d: { group_key: string; position: string; param: number; target_pair: string; analysis_scope: string }) {
   return [d.group_key, d.position || "all", d.param, d.target_pair || "all", d.analysis_scope || "default"].join("|");
 }
@@ -103,12 +89,11 @@ function isWinning(r: StatRow) {
   return r.wins_15 >= MIN_WINS_15 && r.wins_last_5 >= MIN_WINS_LAST_5 && r.max_loss_streak <= MAX_LOSS_STREAK_ALLOWED;
 }
 
-/** Peta komponen MENANG untuk satu pasaran. (off_digit gabungan 'mati_2d' diabaikan.) */
 function buildWinningMap(rows: StatRow[]) {
   const map = new Map<string, StatRow>();
   for (const r of rows) {
     if (!isWinning(r)) continue;
-    if (r.group_key === "off_digit" && r.mode !== "mati") continue; // pakai mati per-posisi
+    if (r.group_key === "off_digit" && r.mode !== "mati") continue;
     const k = rowKey(r);
     const prev = map.get(k);
     if (!prev || (r.score ?? 0) > (prev.score ?? 0)) map.set(k, r);
@@ -124,6 +109,7 @@ export interface InvestComboResult {
   hitRate: number;
   avgWins15: number;
   avgScore: number;
+  filters: InvestFilter[];
 }
 
 export interface InvestPairResult {
@@ -143,7 +129,6 @@ const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.le
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Evaluasi satu pasaran dari baris statistik-nya. `catalog` default = seluruh katalog (FREE penuh). */
 export function evaluateMarketInvest(
   marketId: string,
   marketName: string,
@@ -169,6 +154,7 @@ export function evaluateMarketInvest(
         hitRate: combo.hitRate,
         avgWins15: round1(avg(wins)),
         avgScore: round2(avg(scores)),
+        filters: combo.filters,
       });
     }
 
@@ -191,7 +177,6 @@ export function evaluateMarketInvest(
   };
 }
 
-/** OVERVIEW: semua pasaran (1 query). Untuk halaman list /rekomendasi. */
 export async function loadInvestOverview(catalog: InvestCombo[] = INVEST_CATALOG): Promise<InvestMarketResult[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -228,7 +213,6 @@ export async function loadInvestOverview(catalog: InvestCombo[] = INVEST_CATALOG
   return results;
 }
 
-/** DETAIL: satu pasaran (untuk tap-to-detail nanti). */
 export async function loadInvestForMarket(marketId: string, catalog: InvestCombo[] = INVEST_CATALOG): Promise<InvestMarketResult> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
