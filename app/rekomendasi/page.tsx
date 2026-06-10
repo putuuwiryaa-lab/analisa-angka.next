@@ -69,6 +69,15 @@ function formatScore(value: number) {
   return value % 1 === 0 ? String(value) : value.toFixed(1);
 }
 
+function comboStrengthLabel(avgWins15: number) {
+  const wins = Math.round(avgWins15);
+  if (wins >= 15) return "Sempurna";
+  if (wins >= 14) return "Kuat";
+  if (wins >= 13) return "Stabil";
+  if (wins >= 12) return "Potensial";
+  return "Pantauan";
+}
+
 function totalCombos(markets: InvestMarket[]) {
   return markets.reduce((sum, market) => sum + market.pairs.reduce((pairSum, pair) => pairSum + pair.combos.length, 0), 0);
 }
@@ -200,11 +209,11 @@ export default function RekomendasiPage() {
           <div className="min-w-0">
             <div className="accent-text flex items-center gap-2 text-[11px] font-black uppercase tracking-wide">
               <Coins size={14} />
-              <span>Invest 2D</span>
+              <span>Rekomendasi 2D</span>
             </div>
-            <h2 className="display mt-2 text-3xl text-text">Rekomendasi Invest</h2>
+            <h2 className="display mt-2 text-3xl text-text">Invest Terarah</h2>
             <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
-              Kandidat kombinasi terkuat dari hasil terbaru. Pilih rekomendasi, lalu buka di Rekap untuk membentuk angka bermain.
+              Pilihan kombinasi terbaik dari hasil terbaru. Pilih rekomendasi, lalu buka di Rekap untuk membentuk angka bermain.
             </p>
           </div>
           <button
@@ -218,8 +227,8 @@ export default function RekomendasiPage() {
 
         <div className="relative mt-4 grid grid-cols-3 gap-2">
           <SummaryChip label="Pasaran" value={String(withRecs.length)} />
-          <SummaryChip label="Kandidat" value={String(allComboCount)} />
-          <SummaryChip label="Update" value={dataUpdatedAt ? formatAgo(dataUpdatedAt) : "-"} compact />
+          <SummaryChip label="Pilihan" value={String(allComboCount)} />
+          <SummaryChip label="Diperbarui" value={dataUpdatedAt ? formatAgo(dataUpdatedAt) : "-"} compact />
         </div>
       </div>
 
@@ -231,7 +240,7 @@ export default function RekomendasiPage() {
 
       {!showInitialSkeleton && topCombos.length > 0 && !search && (
         <section className="animate-soft-pop space-y-3">
-          <SectionHeader icon={<Trophy size={15} />} title="Top Rekomendasi" subtitle="Kandidat terkuat lintas pasaran" />
+          <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Teratas" subtitle="Pilihan terbaik dari seluruh pasaran" />
           <div className="grid gap-2.5">
             {topCombos.map((item, index) => (
               <TopComboCard
@@ -327,7 +336,7 @@ function MetricChip({ label, value }: { label: string; value: string }) {
 
 function TopComboCard({ item, index, onOpen }: { item: TopInvestCombo; index: number; onOpen: () => void }) {
   const combo = item.combo;
-  const hot = combo.avgWins15 >= 14;
+  const strengthLabel = comboStrengthLabel(combo.avgWins15);
 
   return (
     <button
@@ -342,19 +351,21 @@ function TopComboCard({ item, index, onOpen }: { item: TopInvestCombo; index: nu
             <span className="accent-bg-soft accent-text rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
               {item.pairLabel}
             </span>
-            {hot && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-400">Kuat</span>}
+            <span className="accent-bg-soft accent-text rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
+              {strengthLabel}
+            </span>
           </div>
           <p className="display mt-2 truncate text-sm text-text">{item.marketName}</p>
           <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">{combo.label}</p>
         </div>
         <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black uppercase tracking-wide">
-          Rekap <ChevronRight size={13} />
+          Buka Rekap <ChevronRight size={13} />
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         <MetricChip label="Riwayat" value={`${Math.round(combo.avgWins15)}/15`} />
-        <MetricChip label="Lines" value={String(combo.expectedLines)} />
-        <MetricChip label="Score" value={formatScore(combo.avgScore)} />
+        <MetricChip label="Line" value={String(combo.expectedLines)} />
+        <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
       </div>
     </button>
   );
@@ -426,7 +437,7 @@ function PairBlock({
         <span className="accent-text text-[11px] font-black uppercase tracking-wide">{block.pairLabel}</span>
         <span className="h-px flex-1 bg-white/10" />
         <span className="text-[10px] font-bold uppercase tracking-wide text-text-soft">
-          {block.combos.length ? `${block.combos.length} kandidat` : ""}
+          {block.combos.length ? `${block.combos.length} pilihan` : ""}
         </span>
       </div>
 
@@ -446,7 +457,7 @@ function PairBlock({
 }
 
 function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void }) {
-  const hot = combo.avgWins15 >= 14;
+  const strengthLabel = comboStrengthLabel(combo.avgWins15);
   const akurat = Math.round(combo.avgWins15);
 
   return (
@@ -458,11 +469,9 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            {hot && (
-              <span className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-400">
-                Sedang Kuat
-              </span>
-            )}
+            <span className="accent-bg-soft accent-text inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
+              {strengthLabel}
+            </span>
             {combo.access === "VIP" && (
               <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-soft">
                 <Lock size={9} /> VIP
@@ -472,14 +481,14 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
           <p className="display mt-1.5 text-[12.5px] leading-snug text-text">{combo.label}</p>
         </div>
         <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5">
-          <span className="text-[11px] font-black uppercase tracking-wide">Rekap</span>
+          <span className="text-[11px] font-black uppercase tracking-wide">Buka Rekap</span>
           <ChevronRight size={14} />
         </div>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         <MetricChip label="Riwayat" value={`${akurat}/15`} />
-        <MetricChip label="Lines" value={String(combo.expectedLines)} />
-        <MetricChip label="Score" value={formatScore(combo.avgScore)} />
+        <MetricChip label="Line" value={String(combo.expectedLines)} />
+        <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
       </div>
     </button>
   );
