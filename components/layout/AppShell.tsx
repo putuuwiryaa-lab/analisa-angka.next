@@ -71,11 +71,17 @@ function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () 
         </Link>
 
         <Link
+          data-mode="invest"
           href="/rekomendasi"
           aria-current={investActive ? "page" : undefined}
-          className={`${pill} border-accent/35 bg-accent/12 text-accent shadow-[0_0_24px_rgba(40,215,255,0.14)] hover:bg-accent/18 ${
-            investActive ? "border-accent/60 bg-accent/20 shadow-[0_0_32px_rgba(40,215,255,0.26)]" : ""
+          className={`${pill} accent-bg-soft accent-text hover:border-border hover:bg-white/[0.075] ${
+            investActive ? "border-border" : "border-border-soft"
           }`}
+          style={{
+            boxShadow: investActive
+              ? "0 0 32px color-mix(in srgb, var(--accent) 24%, transparent)"
+              : "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)",
+          }}
           aria-label="Rekomendasi Invest"
         >
           <Coins size={20} />
@@ -85,7 +91,7 @@ function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () 
         <button
           type="button"
           onClick={onOpenFree}
-          className="pressable flex h-14 flex-[0.7] flex-col items-center justify-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft hover:border-primary/50 hover:bg-primary/15"
+          className="pressable flex h-14 flex-[0.7] flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-white/[0.035] text-text-muted hover:border-primary/40 hover:bg-primary/10 hover:text-primary-soft"
           aria-label="Akun VIP"
         >
           <UserRoundCheck size={18} />
