@@ -90,7 +90,7 @@
   input,
   textarea,
   select {
-    transition-duration: 150ms;
+    transition-duration: 180ms;
     transition-timing-function: var(--ease-press);
   }
 }
@@ -154,13 +154,13 @@
   .pressable {
     transform: translateZ(0);
     transition-property: transform, background-color, border-color, color, box-shadow, opacity, filter;
-    transition-duration: 150ms;
+    transition-duration: 180ms;
     transition-timing-function: var(--ease-press);
     will-change: transform;
   }
   .pressable:active {
-    transform: scale(0.972);
-    filter: brightness(1.06);
+    transform: scale(0.982);
+    filter: brightness(1.045);
   }
 
   .tap-glow {
@@ -180,31 +180,31 @@
     background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.12), transparent 62%);
     opacity: 0;
     transform: scale(0.96);
-    transition: opacity 160ms var(--ease-mobile), transform 160ms var(--ease-mobile);
+    transition: opacity 180ms var(--ease-mobile), transform 180ms var(--ease-mobile);
   }
 
   .animate-rise {
-    animation: rise 240ms var(--ease-mobile) both;
+    animation: rise 280ms var(--ease-mobile) both;
     will-change: opacity, transform;
   }
   .animate-soft-pop {
-    animation: soft-pop 210ms var(--ease-mobile) both;
+    animation: soft-pop 260ms var(--ease-mobile) both;
     will-change: opacity, transform;
   }
   .animate-fade-in {
-    animation: fade-in 190ms var(--ease-out-soft) both;
+    animation: fade-in 220ms var(--ease-out-soft) both;
     will-change: opacity;
   }
   .animate-page-enter {
-    animation: page-enter 280ms var(--ease-mobile) both;
+    animation: page-enter 320ms var(--ease-mobile) both;
     will-change: opacity, transform;
   }
   .animate-slide-up-soft {
-    animation: slide-up-soft 260ms var(--ease-mobile) both;
+    animation: slide-up-soft 300ms var(--ease-mobile) both;
     will-change: opacity, transform;
   }
   .animate-mobile-card {
-    animation: mobile-card 240ms var(--ease-mobile) both;
+    animation: mobile-card 280ms var(--ease-mobile) both;
     will-change: opacity, transform;
   }
   .animate-shimmer {
@@ -264,7 +264,7 @@
 @keyframes soft-pop {
   0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.985);
+    transform: translateY(10px) scale(0.992);
   }
   100% {
     opacity: 1;
@@ -284,7 +284,7 @@
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.992);
+    transform: translateY(12px) scale(0.995);
   }
   to {
     opacity: 1;
@@ -306,7 +306,7 @@
 @keyframes mobile-card {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.99);
+    transform: translateY(10px) scale(0.995);
   }
   to {
     opacity: 1;
