@@ -122,7 +122,7 @@ export function ParamSelector({
         </div>
       </div>
 
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} feature="mode" />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenVipLogin={openLoginPanel} feature="mode" />
       <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   );
