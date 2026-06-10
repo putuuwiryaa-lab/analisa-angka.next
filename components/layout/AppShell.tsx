@@ -12,8 +12,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap";
-
+  const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap" || pathname === "/rekomendasi";
   return (
     <div className={cnPad(hideShell)}>
       {!hideShell && <HeroHeader />}
