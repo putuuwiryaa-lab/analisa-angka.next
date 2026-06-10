@@ -51,11 +51,38 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
     setCustomOffShioCountByPair((prev) => ({ ...prev, [pair]: value }));
 
   const resetCustomRekapSelections = () => {
+    setCustomAiDigitByPair({});
+    setCustomAiParityByPair({});
+    setCustomAiSizeByPair({});
     setCustomAi3dDigit(null);
     setCustomAi3dParity(false);
     setCustomAi3dSize(false);
     setCustomAi4dDigit(null);
     setCustomBBFSDigit(null);
+    setCustomOffAsCount(null);
+    setCustomOffKopCount(null);
+    setCustomOffKepalaCount(null);
+    setCustomOffEkorCount(null);
+    setCustomOffJumlahCountByPair({});
+    setCustomOffShioCountByPair({});
+  };
+
+  const applyCustomRekapState = (nextState: CustomRekapState) => {
+    setCustomFocus(nextState.customFocus);
+    setCustomAiDigitByPair(nextState.customAiDigitByPair);
+    setCustomAiParityByPair(nextState.customAiParityByPair);
+    setCustomAiSizeByPair(nextState.customAiSizeByPair);
+    setCustomAi3dDigit(nextState.customAi3dDigit);
+    setCustomAi3dParity(nextState.customAi3dParity);
+    setCustomAi3dSize(nextState.customAi3dSize);
+    setCustomAi4dDigit(nextState.customAi4dDigit);
+    setCustomBBFSDigit(nextState.customBBFSDigit);
+    setCustomOffAsCount(nextState.customOffAsCount);
+    setCustomOffKopCount(nextState.customOffKopCount);
+    setCustomOffKepalaCount(nextState.customOffKepalaCount);
+    setCustomOffEkorCount(nextState.customOffEkorCount);
+    setCustomOffJumlahCountByPair(nextState.customOffJumlahCountByPair);
+    setCustomOffShioCountByPair(nextState.customOffShioCountByPair);
   };
 
   const state: CustomRekapState = {
@@ -102,6 +129,7 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
       setCustomOffJumlahCountForPair,
       setCustomOffShioCountForPair,
       resetCustomRekapSelections,
+      applyCustomRekapState,
     },
   };
 }
