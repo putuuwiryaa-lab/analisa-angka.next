@@ -49,13 +49,13 @@ const FEATURE_COPY: Record<UpgradeFeature, { title: string; paragraphs: string[]
 export function UpgradeLockPanel({
   open,
   onClose,
-  onOpenPin: _onOpenPin,
+  onOpenVipLogin: _onOpenVipLogin,
   title,
   feature = "default",
 }: {
   open: boolean;
   onClose: () => void;
-  onOpenPin: () => void;
+  onOpenVipLogin: () => void;
   title?: string;
   feature?: UpgradeFeature;
 }) {
