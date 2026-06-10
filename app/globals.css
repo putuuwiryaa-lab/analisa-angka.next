@@ -36,6 +36,7 @@
   --color-mode-jumlah: #22b8a8;
   --color-mode-shio: #4fb6c9;
   --color-mode-rekap: #78a8f2;
+  --color-mode-invest: #c084fc;
 
   /* Radius */
   --radius-lg: 1rem;
@@ -245,6 +246,9 @@
 [data-mode="rekap"] {
   --accent: var(--color-mode-rekap);
 }
+[data-mode="invest"] {
+  --accent: var(--color-mode-invest);
+}
 
 @keyframes rise {
   from {
@@ -258,13 +262,22 @@
 }
 
 @keyframes soft-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fade-in {
   from {
     opacity: 0;
-    transform: scale(0.975) translateY(3px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
   }
 }
 
@@ -282,7 +295,7 @@
 @keyframes slide-up-soft {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -293,7 +306,7 @@
 @keyframes mobile-card {
   from {
     opacity: 0;
-    transform: translateY(9px) scale(0.988);
+    transform: translateY(10px) scale(0.99);
   }
   to {
     opacity: 1;
@@ -301,66 +314,11 @@
   }
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes shimmer {
-  from {
+  0% {
     background-position: 200% 0;
   }
-  to {
+  100% {
     background-position: -200% 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.001ms !important;
-  }
-}
-/* ===== Transisi antar halaman (View Transitions API) =====
-   Diaktifkan oleh experimental.viewTransition di next.config.
-   Browser tanpa dukungan: navigasi tetap normal, sekadar tanpa animasi. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 220ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); /* ease-out halus */
-}
-
-/* Halaman lama: fade out cepat */
-::view-transition-old(root) {
-  animation-name: vt-fade-out;
-}
-
-/* Halaman baru: fade in + sedikit naik (senada dengan animate-rise) */
-::view-transition-new(root) {
-  animation-name: vt-rise-in;
-}
-
-@keyframes vt-fade-out {
-  to { opacity: 0; }
-}
-
-@keyframes vt-rise-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Hormati pengguna yang mematikan animasi */
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none !important;
   }
 }
