@@ -59,45 +59,49 @@ function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () 
   const pill = "pressable relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3";
 
   return (
-    <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-3xl items-end gap-2.5 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3">
-        <Link
-          href="/pantauan-rekap"
-          className={`${pill} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_24px_rgba(16,185,129,0.16)] hover:bg-emerald-500/20`}
-          aria-label="Statistik Pasaran"
-        >
-          <BarChart3 size={20} />
-          <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
-        </Link>
+    <>
+      <button
+        type="button"
+        onClick={onOpenFree}
+        className="pressable animate-soft-pop fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-14 items-center gap-2 rounded-full border border-primary/45 bg-bg-deep/95 px-4 text-primary-soft shadow-[0_0_30px_rgba(124,58,237,0.24)] backdrop-blur-xl hover:border-primary/65 hover:bg-primary/12 sm:right-[calc(50%-24rem)]"
+        aria-label="Akun VIP"
+      >
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/18">
+          <UserRoundCheck size={19} />
+        </span>
+        <span className="text-[11px] font-black uppercase tracking-wide">VIP</span>
+      </button>
 
-        <button
-          type="button"
-          onClick={onOpenFree}
-          className="pressable -mt-4 flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-1 rounded-full border border-primary/55 bg-primary/18 text-primary-soft shadow-[0_0_36px_rgba(124,58,237,0.30)] hover:border-primary/70 hover:bg-primary/24"
-          aria-label="Akun VIP"
-        >
-          <UserRoundCheck size={21} />
-          <span className="text-[10px] font-black uppercase tracking-wide">VIP</span>
-        </button>
+      <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-3xl items-center gap-2.5 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3">
+          <Link
+            href="/pantauan-rekap"
+            className={`${pill} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_24px_rgba(16,185,129,0.16)] hover:bg-emerald-500/20`}
+            aria-label="Statistik Pasaran"
+          >
+            <BarChart3 size={20} />
+            <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
+          </Link>
 
-        <Link
-          data-mode="invest"
-          href="/rekomendasi"
-          aria-current={investActive ? "page" : undefined}
-          className={`${pill} accent-bg-soft accent-text hover:border-border hover:bg-white/[0.075] ${
-            investActive ? "border-border" : "border-border-soft"
-          }`}
-          style={{
-            boxShadow: investActive
-              ? "0 0 32px color-mix(in srgb, var(--accent) 24%, transparent)"
-              : "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)",
-          }}
-          aria-label="Rekomendasi Invest"
-        >
-          <Coins size={20} />
-          <span className="text-sm font-black uppercase tracking-wide">Invest</span>
-        </Link>
-      </div>
-    </nav>
+          <Link
+            data-mode="invest"
+            href="/rekomendasi"
+            aria-current={investActive ? "page" : undefined}
+            className={`${pill} accent-bg-soft accent-text hover:border-border hover:bg-white/[0.075] ${
+              investActive ? "border-border" : "border-border-soft"
+            }`}
+            style={{
+              boxShadow: investActive
+                ? "0 0 32px color-mix(in srgb, var(--accent) 24%, transparent)"
+                : "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)",
+            }}
+            aria-label="Rekomendasi Invest"
+          >
+            <Coins size={20} />
+            <span className="text-sm font-black uppercase tracking-wide">Invest</span>
+          </Link>
+        </div>
+      </nav>
+    </>
   );
 }
