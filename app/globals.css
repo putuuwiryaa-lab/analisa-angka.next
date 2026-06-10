@@ -90,7 +90,7 @@
   input,
   textarea,
   select {
-    transition-duration: 180ms;
+    transition-duration: 170ms;
     transition-timing-function: var(--ease-press);
   }
 }
@@ -153,14 +153,15 @@
 
   .pressable {
     transform: translateZ(0);
+    transform-origin: center;
     transition-property: transform, background-color, border-color, color, box-shadow, opacity, filter;
-    transition-duration: 180ms;
+    transition-duration: 170ms;
     transition-timing-function: var(--ease-press);
     will-change: transform;
   }
   .pressable:active {
-    transform: scale(0.982);
-    filter: brightness(1.045);
+    transform: translateY(1px) scale(0.985);
+    filter: brightness(1.04);
   }
 
   .tap-glow {
@@ -177,10 +178,10 @@
     inset: 0;
     pointer-events: none;
     border-radius: inherit;
-    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.12), transparent 62%);
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.13), transparent 64%);
     opacity: 0;
-    transform: scale(0.96);
-    transition: opacity 180ms var(--ease-mobile), transform 180ms var(--ease-mobile);
+    transform: scale(0.94);
+    transition: opacity 190ms var(--ease-mobile), transform 190ms var(--ease-mobile);
   }
 
   .animate-rise {
@@ -216,6 +217,10 @@
 @media (hover: hover) and (pointer: fine) {
   .pressable:hover {
     transform: translateY(-1px);
+  }
+
+  .pressable:hover:active {
+    transform: translateY(1px) scale(0.985);
   }
 }
 
