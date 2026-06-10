@@ -112,7 +112,7 @@ export function AnalysisPageChrome({
       </div>
 
       {(canStartAnalyze || loading) && (
-        <Button size="lg" className="mb-4 w-full" onClick={onStartAnalyze} disabled={loading}>
+        <Button variant="accent" size="lg" className="mb-4 w-full" onClick={onStartAnalyze} disabled={loading}>
           <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
           {loading ? "Memproses..." : "Mulai Analisa"}
         </Button>
