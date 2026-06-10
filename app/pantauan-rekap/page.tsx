@@ -17,29 +17,36 @@ import {
   categories,
   formatUpdatedAt,
   positionPairSubtitle,
-  statAccent,
-  statGold,
   targetPairLabel,
   targetPairs,
 } from "@/lib/analysis/statistics";
 
 function Pill({
   active,
-  tone = "emerald",
+  tone = "green",
   full = false,
   onClick,
   children,
 }: {
   active: boolean;
-  tone?: "emerald" | "gold";
+  tone?: "green" | "gold";
   full?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  const activeBg =
+  const activeStyle =
     tone === "gold"
-      ? "linear-gradient(135deg,#eac66f,#f1cf56)"
-      : "linear-gradient(135deg,#38dca6,#2ec96f)";
+      ? {
+          background: "linear-gradient(135deg,#eac66f,#f1cf56)",
+          color: "#120d02",
+          borderColor: "transparent",
+        }
+      : {
+          background: "linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 76%,#2ec96f))",
+          color: "#03120d",
+          borderColor: "transparent",
+        };
+
   return (
     <button
       type="button"
@@ -49,11 +56,7 @@ function Pill({
         full && "col-span-full",
         !active && "depth-3 text-text-muted hover:border-border hover:bg-white/[0.065]",
       )}
-      style={
-        active
-          ? { background: activeBg, color: tone === "gold" ? "#120d02" : "#03120d", borderColor: "transparent" }
-          : undefined
-      }
+      style={active ? activeStyle : undefined}
     >
       {children}
     </button>
@@ -63,9 +66,7 @@ function Pill({
 function SectionLabel({ title, right }: { title: string; right?: string }) {
   return (
     <div className="mb-3 flex items-center gap-3 px-1">
-      <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: statAccent }}>
-        {title}
-      </span>
+      <span className="accent-text text-[11px] font-black uppercase tracking-wide">{title}</span>
       <span className="h-px flex-1 bg-white/10" />
       {right && <span className="max-w-[48%] truncate text-[11px] font-bold uppercase tracking-wide text-text-soft">{right}</span>}
     </div>
@@ -97,18 +98,19 @@ export default function StatisticsPage() {
   const isLockedStatistic = Boolean(s.error && /vip|akses|fitur analisa gratis/i.test(s.error));
 
   return (
-    <div className="animate-rise space-y-5 pb-4">
+    <div data-mode="statistics" className="animate-rise space-y-5 pb-4">
       <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
         <ArrowLeft size={16} /> Beranda
       </Button>
 
       <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-5">
-        <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div
+          className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full blur-3xl"
+          style={{ backgroundColor: "color-mix(in srgb, var(--accent) 12%, transparent)" }}
+        />
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-wide" style={{ color: statAccent }}>
-              Statistik Pasaran
-            </p>
+            <p className="accent-text text-[11px] font-black uppercase tracking-wide">Statistik Pasaran</p>
             <h2 className="display mt-2 text-3xl text-text">Ranking</h2>
             <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
               {filterLabel} · {topItems.length} pasaran
@@ -125,11 +127,11 @@ export default function StatisticsPage() {
         <div className="relative mt-5 grid grid-cols-2 gap-3">
           <div className="depth-2 rounded-2xl border px-4 py-3">
             <p className="text-[10px] font-black uppercase tracking-wide text-text-soft">Mode</p>
-            <p className="display mt-1 truncate text-[12px]" style={{ color: statAccent }}>{filterLabel}</p>
+            <p className="display accent-text mt-1 truncate text-[12px]">{filterLabel}</p>
           </div>
           <div className="depth-2 rounded-2xl border px-4 py-3">
             <p className="text-[10px] font-black uppercase tracking-wide text-text-soft">Update</p>
-            <p className="display mt-1 truncate text-[11px]" style={{ color: statGold }}>{formatUpdatedAt(latestUpdate)}</p>
+            <p className="display mt-1 truncate text-[11px] text-text">{formatUpdatedAt(latestUpdate)}</p>
           </div>
         </div>
       </div>
