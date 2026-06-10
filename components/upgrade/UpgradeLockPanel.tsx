@@ -67,16 +67,16 @@ export function UpgradeLockPanel({
   const openVipLogin = onOpenVipLogin || onOpenPin || onClose;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-4 backdrop-blur-sm sm:items-center sm:pb-0">
+    <div data-mode="vip" className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-4 backdrop-blur-sm sm:items-center sm:pb-0">
       <div className="animate-rise depth-1 max-h-[88vh] w-full max-w-sm overflow-y-auto rounded-3xl border bg-surface p-5 shadow-2xl shadow-black/30">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="depth-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-primary-soft">
+            <div className="accent-bg-soft accent-text depth-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border-soft">
               <Lock size={18} />
             </div>
             <div>
               <p className="display text-sm text-text">{title || copy.title}</p>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-primary-soft">VIP</p>
+              <p className="accent-text mt-1 text-[10px] font-black uppercase tracking-wide">VIP</p>
             </div>
           </div>
           <button
@@ -108,7 +108,7 @@ export function UpgradeLockPanel({
           <button
             type="button"
             onClick={openVipLogin}
-            className="pressable h-12 rounded-2xl border border-primary/35 bg-primary/15 px-4 text-xs font-black uppercase tracking-wide text-primary-soft hover:border-primary/55 hover:bg-primary/20"
+            className="pressable accent-bg-soft accent-text accent-border h-12 rounded-2xl border px-4 text-xs font-black uppercase tracking-wide hover:bg-white/[0.06]"
           >
             Login VIP
           </button>
