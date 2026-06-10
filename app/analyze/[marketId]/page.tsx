@@ -10,6 +10,7 @@ import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { Button } from "@/components/ui/Button";
+import { VipBadge } from "@/components/ui/VipBadge";
 import { isModeLockedForRole } from "@/lib/access/freeAccess";
 
 type UpgradeFeature = "default" | "statistics" | "evaluation" | "rekap" | "mode";
@@ -43,14 +44,6 @@ async function fetchMarketName(marketId: string) {
   return market?.name || market?.id || decodedMarketId;
 }
 
-function VipBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/12 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-primary-soft">
-      <Lock size={10} /> VIP
-    </span>
-  );
-}
-
 function SubMenuCard({
   label,
   mode,
@@ -78,7 +71,7 @@ function SubMenuCard({
       </div>
       <span className="accent-text display flex-1 text-[13px]">{label}</span>
       {locked ? (
-        <VipBadge />
+        <VipBadge className="text-[10px]" iconSize={10} />
       ) : (
         <ChevronRight size={18} className="text-text-soft transition-transform duration-150 group-hover:translate-x-0.5" />
       )}
