@@ -2,88 +2,44 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/auth/auth-context";
-import {
-  canUseCustomFocus,
-  canUseParam,
-  canUseTargetPair,
-  type LockableMode,
-  type LockableScope,
-} from "@/lib/access/freeAccess";
-import { bbfsScopeToTargetPair, type CustomFocus, type TargetPair } from "@/lib/analysis/customDigit";
+import { canUseCustomFocus } from "@/lib/access/freeAccess";
+import type { CustomFocus, TargetPair } from "@/lib/analysis/customDigit";
 import { analysisCacheKey, readAnalysisCache, writeAnalysisCache } from "@/lib/analysis/sessionCache";
+import type { AnalysisScope } from "./ScopeSelectors";
+import { canRunAnalysisForRole } from "./analysisAccessGuards";
+import { postAnalyzeRequest } from "./analysisApiClient";
+import { buildAnalysisControllerFlags } from "./analysisControllerFlags";
+import { VIP_LOCK_MESSAGE } from "./analysisControllerMessages";
 import {
-  MARKETS_QUERY_KEY,
-  MARKETS_STALE_TIME,
-  extractHistoryData,
-  fetchMarkets,
-  findMarketByIdOrName,
-  parseHistoryTokens,
-  type Market,
-} from "@/lib/markets/client";
-import { BBFS_SCOPE_OPTIONS, type AnalysisScope } from "./ScopeSelectors";
+  type FlowUrlState,
+  parseAnalysisScope,
+  parseCustomFocus,
+  parseTargetPair,
+  readParamFromUrl,
+  requestScopeForAnalyze,
+  targetPairFromScope,
+} from "./analysisFlowUrl";
+import { buildInvestPreset } from "./buildInvestPreset";
 import {
   hasAnyCustomFilter,
   runCustomDigitGenerate,
-  type PairAiMap,
-  type PairBoolMap,
-  type PairCountMap,
   type PostAnalyze,
 } from "./customDigitGenerate";
+import { useCustomRekapState } from "./useCustomRekapState";
+import { useMarketHistoryData } from "./useMarketHistoryData";
 
-const VALID_TARGET_PAIRS: TargetPair[] = ["depan", "tengah", "belakang"];
-const VALID_CUSTOM_FOCUS: CustomFocus[] = ["depan", "tengah", "belakang", "3d", "4d"];
-const VIP_LOCK_MESSAGE = "Fitur ini dibatasi untuk pengguna Free agar performa server tetap stabil dan akses analisa tetap lancar. Masukkan PIN VIP untuk membuka fitur ini.";
 type ResultData = Record<string, any>;
-
-type FlowUrlState = {
-  analysisScope?: AnalysisScope | null;
-  targetPair?: TargetPair | null;
-  customFocus?: CustomFocus | null;
-  param?: number | null;
-  result?: boolean;
-};
-
-function parseTargetPair(value: string | null): TargetPair {
-  return VALID_TARGET_PAIRS.includes(value as TargetPair) ? (value as TargetPair) : "belakang";
-}
-function parseAnalysisScope(value: string | null): AnalysisScope {
-  return BBFS_SCOPE_OPTIONS.some((item) => item.key === value) ? (value as AnalysisScope) : "default";
-}
-function parseCustomFocus(value: string | null): CustomFocus | null {
-  return VALID_CUSTOM_FOCUS.includes(value as CustomFocus) ? (value as CustomFocus) : null;
-}
-function targetPairFromScope(scope: AnalysisScope): TargetPair {
-  return scope === "default" ? "belakang" : bbfsScopeToTargetPair(scope);
-}
-function isAi2DScope(scope: AnalysisScope | null): boolean {
-  return scope === "2d_depan" || scope === "2d_tengah" || scope === "2d_belakang";
-}
-function requestScopeForAnalyze(type: string, scope: AnalysisScope): AnalysisScope {
-  if (type === "ai" && isAi2DScope(scope)) return "default";
-  return scope;
-}
-function readParamFromUrl(value: string | null) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
-
-type BBFSDigit = 7 | 8 | 9;
 
 export function useAnalysisController({ type, marketId }: { type: string; marketId: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const queryClient = useQueryClient();
   const { token, role } = useAuth();
+  const { getMarketData } = useMarketHistoryData(marketId);
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
   const autoStartedRef = useRef(false);
   const investStartedRef = useRef(false);
-
-  const isAI = type === "ai";
-  const needsTargetPair = ["jumlah", "shio"].includes(type);
-  const isBBFS = type === "bbfs";
 
   const autoMode = searchParams.get("auto") === "1";
   const autoParam = Number(searchParams.get("param"));
@@ -94,6 +50,21 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   const urlScope = searchParams.has("analysis_scope") ? parseAnalysisScope(searchParams.get("analysis_scope")) : null;
   const urlTargetPair = searchParams.has("target_pair") ? parseTargetPair(searchParams.get("target_pair")) : null;
   const urlCustomFocus = parseCustomFocus(searchParams.get("custom_focus"));
+
+  const initialFlags = buildAnalysisControllerFlags({
+    type,
+    param: autoMode && Number.isFinite(autoParam) && autoParam > 0 ? autoParam : type === "rekap" ? 3 : urlParam,
+    targetPair: null,
+    analysisScope: null,
+    customFocus: urlCustomFocus,
+    loading: false,
+    result: null,
+    autoMode,
+  });
+
+  const isAI = initialFlags.isAI;
+  const isBBFS = initialFlags.isBBFS;
+  const needsTargetPair = initialFlags.needsTargetPair;
   const initialParam = autoMode && Number.isFinite(autoParam) && autoParam > 0 ? autoParam : type === "rekap" ? 3 : urlParam;
 
   const [param, setParam] = useState<number | null>(initialParam);
@@ -108,23 +79,36 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   const [error, setError] = useState("");
   const [detailValidationOpen, setDetailValidationOpen] = useState(false);
   const [angkaJadiOpen, setAngkaJadiOpen] = useState(false);
-  const [customFocus, setCustomFocus] = useState<CustomFocus | null>(type === "rekap" ? urlCustomFocus : "belakang");
-  const [customAiDigitByPair, setCustomAiDigitByPair] = useState<PairAiMap>({});
-  const [customAiParityByPair, setCustomAiParityByPair] = useState<PairBoolMap>({});
-  const [customAiSizeByPair, setCustomAiSizeByPair] = useState<PairBoolMap>({});
-  const [customAi3dDigit, setCustomAi3dDigit] = useState<1 | 3 | 5 | null>(null);
-  const [customAi3dParity, setCustomAi3dParity] = useState(false);
-  const [customAi3dSize, setCustomAi3dSize] = useState(false);
-  const [customAi4dDigit, setCustomAi4dDigit] = useState<1 | 2 | 4 | null>(null);
-  const [customBBFSDigit, setCustomBBFSDigit] = useState<BBFSDigit | null>(null);
-  const [customOffAsCount, setCustomOffAsCount] = useState<number | null>(null);
-  const [customOffKopCount, setCustomOffKopCount] = useState<number | null>(null);
-  const [customOffKepalaCount, setCustomOffKepalaCount] = useState<number | null>(null);
-  const [customOffEkorCount, setCustomOffEkorCount] = useState<number | null>(null);
-  const [customOffJumlahCountByPair, setCustomOffJumlahCountByPair] = useState<PairCountMap>({});
-  const [customOffShioCountByPair, setCustomOffShioCountByPair] = useState<PairCountMap>({});
 
-  const isRekapCustom = type === "rekap" && param === 3;
+  const rekap = useCustomRekapState(type === "rekap" ? urlCustomFocus : "belakang");
+  const {
+    customFocus,
+    customAiDigitByPair,
+    customAiParityByPair,
+    customAiSizeByPair,
+    customAi3dDigit,
+    customAi3dParity,
+    customAi3dSize,
+    customAi4dDigit,
+    customBBFSDigit,
+    customOffAsCount,
+    customOffKopCount,
+    customOffKepalaCount,
+    customOffEkorCount,
+    customOffJumlahCountByPair,
+    customOffShioCountByPair,
+  } = rekap.state;
+
+  const flags = buildAnalysisControllerFlags({
+    type,
+    param,
+    targetPair,
+    analysisScope,
+    customFocus,
+    loading,
+    result,
+    autoMode,
+  });
 
   const pushFlowUrl = (state: FlowUrlState) => {
     const params = new URLSearchParams();
@@ -137,17 +121,6 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
-  const setCustomAiDigitForPair = (pair: TargetPair, value: 2 | 4 | 6 | null) =>
-    setCustomAiDigitByPair((prev) => ({ ...prev, [pair]: value }));
-  const setCustomAiParityForPair = (pair: TargetPair, value: boolean) =>
-    setCustomAiParityByPair((prev) => ({ ...prev, [pair]: value }));
-  const setCustomAiSizeForPair = (pair: TargetPair, value: boolean) =>
-    setCustomAiSizeByPair((prev) => ({ ...prev, [pair]: value }));
-  const setCustomOffJumlahCountForPair = (pair: TargetPair, value: number | null) =>
-    setCustomOffJumlahCountByPair((prev) => ({ ...prev, [pair]: value }));
-  const setCustomOffShioCountForPair = (pair: TargetPair, value: number | null) =>
-    setCustomOffShioCountByPair((prev) => ({ ...prev, [pair]: value }));
-
   const resetBeforeAnalyze = () => {
     setLoading(true);
     setError("");
@@ -155,53 +128,21 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setAngkaJadiOpen(false);
   };
 
-  const getMarkets = async () => {
-    const cached = queryClient.getQueryData<Market[]>(MARKETS_QUERY_KEY);
-    if (cached?.length) return cached;
-    return queryClient.fetchQuery({
-      queryKey: MARKETS_QUERY_KEY,
-      queryFn: fetchMarkets,
-      staleTime: MARKETS_STALE_TIME,
-    });
-  };
-
-  const getMarketData = async () => {
-    const markets = await getMarkets();
-    const current = findMarketByIdOrName(markets, marketId);
-
-    if (!current) throw new Error(`Data histori ${decodeURIComponent(marketId)} belum disetup oleh Admin!`);
-
-    const data = parseHistoryTokens(extractHistoryData(current));
-    if (data.length < 17) {
-      throw new Error(`Data ${current.name || current.id || marketId} kurang. Minimal 17 result, terbaca ${data.length}.`);
-    }
-    return data;
-  };
-
-  const postAnalyze: PostAnalyze = async (
+  const postAnalyze: PostAnalyze = (
     analysisType,
     data,
     analysisParam,
     analysisTargetPair = "belakang",
     scope = "default",
-  ) => {
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        type: analysisType,
-        data,
-        param: analysisParam,
-        target_pair: analysisTargetPair,
-        analysis_scope: scope,
-      }),
+  ) =>
+    postAnalyzeRequest({
+      token,
+      type: analysisType,
+      data,
+      param: analysisParam,
+      targetPair: analysisTargetPair,
+      scope,
     });
-    const json = await res.json();
-    if (json.success || json.data) {
-      return { ...(json.data || json), target_pair: json.target_pair, analysis_scope: json.analysis_scope };
-    }
-    throw new Error(json.error || "Gagal memproses analisa");
-  };
 
   const handleTargetPairSelect = (pair: TargetPair) => {
     setTargetPair(pair);
@@ -210,6 +151,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setError("");
     pushFlowUrl({ targetPair: pair });
   };
+
   const handleScopeSelect = (scope: Exclude<AnalysisScope, "default">) => {
     const pair = targetPairFromScope(scope);
     setAnalysisScope(scope);
@@ -219,6 +161,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setError("");
     pushFlowUrl({ analysisScope: scope, targetPair: pair });
   };
+
   const resetScope = () => {
     setAnalysisScope(null);
     setParam(0);
@@ -226,6 +169,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setError("");
     pushFlowUrl({});
   };
+
   const handleTargetPairReset = () => {
     setTargetPair(null);
     setParam(0);
@@ -233,25 +177,20 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     setError("");
     pushFlowUrl({});
   };
+
   const handleCustomFocusReset = () => {
-    setCustomFocus(null);
-    setCustomAi3dDigit(null);
-    setCustomAi3dParity(false);
-    setCustomAi3dSize(false);
-    setCustomAi4dDigit(null);
-    setCustomBBFSDigit(null);
+    rekap.setters.setCustomFocus(null);
+    rekap.handlers.resetCustomRekapSelections();
     setResult(null);
     setError("");
     pushFlowUrl({});
   };
+
   const selectCustomFocus = (focus: CustomFocus) => {
     if (!canUseCustomFocus(role, focus)) return setError(VIP_LOCK_MESSAGE);
-    setCustomFocus(focus);
-    setCustomAi3dDigit(null);
-    setCustomAi3dParity(false);
-    setCustomAi3dSize(false);
-    setCustomAi4dDigit(null);
-    setCustomBBFSDigit(null);
+    rekap.setters.setCustomFocus(focus);
+    rekap.handlers.resetCustomRekapSelections();
+    setResult(null);
     setError("");
     pushFlowUrl({ customFocus: focus, param: 3 });
   };
@@ -266,40 +205,25 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     const selectedScope = analysisScope || "default";
     if (isAI && !analysisScope) return setError("Pilih jenis Angka Ikut dulu.");
     if (isBBFS && selectedScope === "default") return setError("Pilih jenis BBFS dulu.");
+
     const requestScope = requestScopeForAnalyze(type, selectedScope);
     const finalTargetPair =
       isBBFS || isAI ? targetPairFromScope(selectedScope) : selectedTargetPair || targetPair || "belakang";
+
     if (needsTargetPair && !finalTargetPair) return setError("Pilih fokus 2D dulu.");
 
-    if (isAI || isBBFS) {
-      const scopeAllowed = canUseParam(
-        role,
-        type as LockableMode,
-        selectedParam,
-        selectedScope as LockableScope,
-        finalTargetPair,
-      );
-      if (!scopeAllowed) return setError(VIP_LOCK_MESSAGE);
-    } else if (needsTargetPair) {
-      const targetAllowed = canUseTargetPair(role, type as LockableMode, finalTargetPair);
-      const paramAllowed = canUseParam(
-        role,
-        type as LockableMode,
-        selectedParam,
-        selectedScope as LockableScope,
-        finalTargetPair,
-      );
-      if (!targetAllowed || !paramAllowed) return setError(VIP_LOCK_MESSAGE);
-    } else {
-      const paramAllowed = canUseParam(
-        role,
-        type as LockableMode,
-        selectedParam,
-        selectedScope as LockableScope,
-        finalTargetPair,
-      );
-      if (!paramAllowed) return setError(VIP_LOCK_MESSAGE);
-    }
+    const allowed = canRunAnalysisForRole({
+      role,
+      type,
+      selectedParam,
+      selectedScope,
+      finalTargetPair,
+      isAI,
+      isBBFS,
+      needsTargetPair,
+    });
+
+    if (!allowed) return setError(VIP_LOCK_MESSAGE);
 
     setTargetPair(finalTargetPair);
     setParam(selectedParam);
@@ -313,6 +237,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
       targetPair: finalTargetPair,
       analysisScope: selectedScope,
     });
+
     const cached = result ? null : readAnalysisCache(cacheKey);
     if (cached) {
       setResult(cached);
@@ -322,6 +247,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     }
 
     resetBeforeAnalyze();
+
     try {
       const data = await getMarketData();
       const nextResult = await postAnalyze(type, data, selectedParam, finalTargetPair, requestScope);
@@ -331,13 +257,14 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     } catch (e: any) {
       setError(e.message || "Error koneksi server");
     }
+
     setLoading(false);
   };
 
-  // --- URL re-sync (alur manual) ---
   useEffect(() => {
     if (autoMode) return;
-    if (investPreset) return; // jangan re-sync saat invest preset aktif
+    if (investPreset) return;
+
     const nextParam = readParamFromUrl(searchParams.get("param"));
     const nextScope = searchParams.has("analysis_scope") ? parseAnalysisScope(searchParams.get("analysis_scope")) : null;
     const nextTargetPair = searchParams.has("target_pair") ? parseTargetPair(searchParams.get("target_pair")) : null;
@@ -347,7 +274,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     const finalTargetPair = isAI || isBBFS ? targetPairFromScope(finalScope) : nextTargetPair || "belakang";
 
     if (type === "rekap") {
-      setCustomFocus(nextCustomFocus);
+      rekap.setters.setCustomFocus(nextCustomFocus);
     } else if (isAI || isBBFS) {
       setAnalysisScope(nextScope);
       setTargetPair(nextScope ? targetPairFromScope(nextScope) : "belakang");
@@ -367,6 +294,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
           analysisScope: finalScope,
         }),
       );
+
       if (cached) {
         setResult(cached);
         setError("");
@@ -382,106 +310,53 @@ export function useAnalysisController({ type, marketId }: { type: string; market
       setDetailValidationOpen(false);
       setAngkaJadiOpen(false);
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchKey, type]);
 
-  // --- Auto-analyze (mode non-rekap, mis. statistik tap) ---
   useEffect(() => {
     if (!autoMode || autoStartedRef.current || type === "rekap") return;
     if (!Number.isFinite(autoParam) || autoParam <= 0) return;
+
     autoStartedRef.current = true;
     handleAnalyze(autoParam, autoTargetPair);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoMode, autoParam, autoTargetPair, type]);
-
-  // --- Inti generate Rekap Custom ---
-  // Dipecah jadi runCustomGenerate(state) agar bisa dipanggil dari:
-  //   (a) tombol Generate manual (handleCustomDigitGenerate)
-  //   (b) preset invest auto-generate (useEffect di bawah)
-  // State diterima eksplisit (bukan baca useState) agar (b) tidak menunggu React flush.
 
   const runCustomGenerate = async (genState: any) => {
     if (!genState.customFocus) return setError("Pilih jenis rekap dulu.");
     if (!canUseCustomFocus(role, genState.customFocus)) return setError(VIP_LOCK_MESSAGE);
     if (!hasAnyCustomFilter(genState)) return setError("Pilih minimal satu filter dulu.");
+
     pushFlowUrl({ customFocus: genState.customFocus, param: 3, result: true });
     resetBeforeAnalyze();
+
     try {
       const data = await getMarketData();
       setResult(await runCustomDigitGenerate(postAnalyze, data, genState));
     } catch (e: any) {
       setError(e.message || "Gagal generate custom digit");
     }
+
     setLoading(false);
   };
 
-  const handleCustomDigitGenerate = () =>
-    runCustomGenerate({
-      customFocus,
-      customAiDigitByPair,
-      customAiParityByPair,
-      customAiSizeByPair,
-      customAi3dDigit,
-      customAi3dParity,
-      customAi3dSize,
-      customAi4dDigit,
-      customBBFSDigit,
-      customOffAsCount,
-      customOffKopCount,
-      customOffKepalaCount,
-      customOffEkorCount,
-      customOffJumlahCountByPair,
-      customOffShioCountByPair,
-    });
+  const handleCustomDigitGenerate = () => runCustomGenerate(rekap.state);
 
-  // --- Invest preset + auto-generate ---
-  // Hanya aktif jika URL mengandung ?invest=1. Dijaga ref agar sekali jalan.
-  // Alur rekap manual TIDAK terpengaruh (investPreset = false tanpa ?invest=1).
   useEffect(() => {
     if (type !== "rekap" || !investPreset || investStartedRef.current) return;
+
     const focus = parseCustomFocus(searchParams.get("custom_focus"));
     if (!focus) return;
+
     investStartedRef.current = true;
 
-    const n = (k: string) => {
-      const v = Number(searchParams.get(k));
-      return Number.isFinite(v) && v > 0 ? v : null;
-    };
+    const preset = buildInvestPreset(searchParams, focus);
+    rekap.handlers.applyCustomRekapState(preset);
 
-    const aiDigit = n("iv_ai");
-    const preset = {
-      customFocus: focus,
-      customAiDigitByPair: aiDigit ? { [focus]: aiDigit as 2 | 4 | 6 } : {},
-      customAiParityByPair: searchParams.get("iv_par") === "1" ? { [focus]: true } : {},
-      customAiSizeByPair: searchParams.get("iv_size") === "1" ? { [focus]: true } : {},
-      customAi3dDigit: null,
-      customAi3dParity: false,
-      customAi3dSize: false,
-      customAi4dDigit: null,
-      customBBFSDigit: n("iv_bbfs") as BBFSDigit | null,
-      customOffAsCount: n("iv_off_as"),
-      customOffKopCount: n("iv_off_kop"),
-      customOffKepalaCount: n("iv_off_kepala"),
-      customOffEkorCount: n("iv_off_ekor"),
-      customOffJumlahCountByPair: n("iv_jml") ? { [focus]: n("iv_jml") } : {},
-      customOffShioCountByPair: n("iv_shio") ? { [focus]: n("iv_shio") } : {},
-    };
-
-    // set toggle builder agar tercentang (visual)
-    setCustomFocus(focus);
-    setCustomAiDigitByPair(preset.customAiDigitByPair);
-    setCustomAiParityByPair(preset.customAiParityByPair);
-    setCustomAiSizeByPair(preset.customAiSizeByPair);
-    setCustomBBFSDigit(preset.customBBFSDigit);
-    setCustomOffAsCount(preset.customOffAsCount);
-    setCustomOffKopCount(preset.customOffKopCount);
-    setCustomOffKepalaCount(preset.customOffKepalaCount);
-    setCustomOffEkorCount(preset.customOffEkorCount);
-    setCustomOffJumlahCountByPair(preset.customOffJumlahCountByPair);
-    setCustomOffShioCountByPair(preset.customOffShioCountByPair);
-
-    // hitung langsung (state eksplisit, tidak menunggu React flush)
     void runCustomGenerate(preset);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [investPreset, type]);
 
@@ -499,27 +374,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
       angkaJadiOpen,
       setAngkaJadiOpen,
     },
-    flags: {
-      isAI,
-      isBBFS,
-      isRekapCustom,
-      needsTargetPair,
-      autoMode,
-      showAIScopeSelector: isAI && !analysisScope && !result && !loading,
-      showTargetPairSelector: needsTargetPair && !targetPair && !result && !loading,
-      showBBFSScopeSelector: isBBFS && !analysisScope && !result && !loading,
-      showRekapFocusSelector: isRekapCustom && !customFocus && !result && !loading,
-      showCustomDigitBuilder: isRekapCustom && Boolean(customFocus) && !result,
-      get showParamSelector() {
-        return (
-          !this.showAIScopeSelector &&
-          !this.showTargetPairSelector &&
-          !this.showBBFSScopeSelector &&
-          !this.showRekapFocusSelector
-        );
-      },
-      canStartAnalyze: !result && !loading && param !== 0 && !isRekapCustom && !autoMode,
-    },
+    flags,
     handlers: {
       handleBack,
       handleAnalyze,
@@ -533,33 +388,33 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     },
     custom: {
       customAiDigitByPair,
-      setCustomAiDigitForPair,
+      setCustomAiDigitForPair: rekap.handlers.setCustomAiDigitForPair,
       customAiParityByPair,
-      setCustomAiParityForPair,
+      setCustomAiParityForPair: rekap.handlers.setCustomAiParityForPair,
       customAiSizeByPair,
-      setCustomAiSizeForPair,
+      setCustomAiSizeForPair: rekap.handlers.setCustomAiSizeForPair,
       customAi3dDigit,
-      setCustomAi3dDigit,
+      setCustomAi3dDigit: rekap.setters.setCustomAi3dDigit,
       customAi3dParity,
-      setCustomAi3dParity,
+      setCustomAi3dParity: rekap.setters.setCustomAi3dParity,
       customAi3dSize,
-      setCustomAi3dSize,
+      setCustomAi3dSize: rekap.setters.setCustomAi3dSize,
       customAi4dDigit,
-      setCustomAi4dDigit,
+      setCustomAi4dDigit: rekap.setters.setCustomAi4dDigit,
       customBBFSDigit,
-      setCustomBBFSDigit,
+      setCustomBBFSDigit: rekap.setters.setCustomBBFSDigit,
       customOffAsCount,
-      setCustomOffAsCount,
+      setCustomOffAsCount: rekap.setters.setCustomOffAsCount,
       customOffKopCount,
-      setCustomOffKopCount,
+      setCustomOffKopCount: rekap.setters.setCustomOffKopCount,
       customOffKepalaCount,
-      setCustomOffKepalaCount,
+      setCustomOffKepalaCount: rekap.setters.setCustomOffKepalaCount,
       customOffEkorCount,
-      setCustomOffEkorCount,
+      setCustomOffEkorCount: rekap.setters.setCustomOffEkorCount,
       customOffJumlahCountByPair,
-      setCustomOffJumlahCountForPair,
+      setCustomOffJumlahCountForPair: rekap.handlers.setCustomOffJumlahCountForPair,
       customOffShioCountByPair,
-      setCustomOffShioCountForPair,
+      setCustomOffShioCountForPair: rekap.handlers.setCustomOffShioCountForPair,
     },
   };
 }
