@@ -49,7 +49,7 @@ const FEATURE_COPY: Record<UpgradeFeature, { title: string; paragraphs: string[]
 export function UpgradeLockPanel({
   open,
   onClose,
-  onOpenVipLogin: _onOpenVipLogin,
+  onOpenVipLogin,
   title,
   feature = "default",
 }: {
@@ -92,6 +92,23 @@ export function UpgradeLockPanel({
               {paragraph}
             </p>
           ))}
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="pressable h-12 rounded-2xl border border-border-soft bg-white/[0.04] px-4 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:text-text"
+          >
+            Nanti
+          </button>
+          <button
+            type="button"
+            onClick={onOpenVipLogin}
+            className="pressable h-12 rounded-2xl border border-primary/35 bg-primary/15 px-4 text-xs font-black uppercase tracking-wide text-primary-soft hover:border-primary/55 hover:bg-primary/20"
+          >
+            Login VIP
+          </button>
         </div>
       </div>
     </div>
