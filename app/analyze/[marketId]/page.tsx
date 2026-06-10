@@ -184,7 +184,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
         ))}
       </div>
 
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLoginPanel} feature={upgradeFeature} />
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenVipLogin={openLoginPanel} feature={upgradeFeature} />
       <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
