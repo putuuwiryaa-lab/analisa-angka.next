@@ -1,10 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ChevronDown, Coins, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, ChevronDown, Coins, ChevronRight, RefreshCw, Search } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
+
+type InvestFilter = { kind: string; param: number };
 
 type InvestCombo = {
   id: string;
@@ -14,6 +18,7 @@ type InvestCombo = {
   hitRate: number;
   avgWins15: number;
   avgScore: number;
+  filters: InvestFilter[];
 };
 
 type InvestPair = {
@@ -48,7 +53,35 @@ function formatAgo(ts: number) {
   return `${h} jam lalu`;
 }
 
+// Map digit-1/digit-2 pasangan -> posisi mati di builder Rekap
+const PAIR_POS: Record<InvestPair["pair"], { d1: string; d2: string }> = {
+  depan: { d1: "as", d2: "kop" },
+  tengah: { d1: "kop", d2: "kepala" },
+  belakang: { d1: "kepala", d2: "ekor" },
+};
+
+function buildRekapUrl(marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) {
+  const p = new URLSearchParams();
+  p.set("custom_focus", pair);
+  p.set("invest", "1");
+  const pos = PAIR_POS[pair];
+  for (const f of filters) {
+    switch (f.kind) {
+      case "ai": p.set("iv_ai", String(f.param)); break;
+      case "parity": p.set("iv_par", "1"); break;
+      case "size": p.set("iv_size", "1"); break;
+      case "bbfs": p.set("iv_bbfs", String(f.param)); break;
+      case "off_shio": p.set("iv_shio", String(f.param)); break;
+      case "off_jumlah": p.set("iv_jml", String(f.param)); break;
+      case "off_kepala": p.set(`iv_off_${pos.d1}`, String(f.param)); break;
+      case "off_ekor": p.set(`iv_off_${pos.d2}`, String(f.param)); break;
+    }
+  }
+  return `/analyze/${encodeURIComponent(marketId)}/rekap?${p.toString()}`;
+}
+
 export default function RekomendasiPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -83,9 +116,12 @@ export default function RekomendasiPage() {
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
   return (
-    <div className="animate-rise pb-4">
-      {/* Intro */}
-      <div className="animate-soft-pop depth-accent relative mb-4 overflow-hidden rounded-3xl border p-5">
+    <div className="animate-rise space-y-4 pb-4">
+      <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
+        <ArrowLeft size={16} /> Beranda
+      </Button>
+
+      <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-5">
         <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-accent/10 blur-3xl" />
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -95,7 +131,7 @@ export default function RekomendasiPage() {
             </div>
             <h2 className="display mt-2 text-3xl text-text">Rekomendasi Invest 2D</h2>
             <p className="mt-2 max-w-[44ch] text-xs font-medium leading-snug text-text-muted">
-              Kombinasi yang sedang menunjukkan performa terbaik berdasarkan hasil terbaru. Pilih pasaran untuk melihat kandidat terkuat, lalu gunakan Rekap untuk membentuk angka bermain.
+              Kombinasi yang sedang menunjukkan performa terbaik berdasarkan hasil terbaru. Pilih pasaran untuk melihat kandidat terkuat, lalu buka di Rekap untuk membentuk angka bermain.
             </p>
             <p className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-text-soft">
               <RefreshCw size={12} />
@@ -114,13 +150,12 @@ export default function RekomendasiPage() {
       </div>
 
       {errorMessage && (
-        <div className="animate-soft-pop mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
+        <div className="animate-soft-pop rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
           {errorMessage}
         </div>
       )}
 
-      {/* Search */}
-      <div className="animate-fade-in relative mb-4">
+      <div className="animate-fade-in relative">
         <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
         <Input
           type="text"
@@ -131,7 +166,6 @@ export default function RekomendasiPage() {
         />
       </div>
 
-      {/* List pasaran */}
       <div className="min-h-[40svh] space-y-2.5">
         {showInitialSkeleton ? (
           Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
@@ -155,6 +189,7 @@ export default function RekomendasiPage() {
               index={index}
               open={openId === market.marketId}
               onToggle={() => toggle(market.marketId)}
+              onOpenRekap={(pair, filters) => router.push(buildRekapUrl(market.marketId, pair, filters))}
             />
           ))
         )}
@@ -168,11 +203,13 @@ function MarketRow({
   index,
   open,
   onToggle,
+  onOpenRekap,
 }: {
   market: InvestMarket;
   index: number;
   open: boolean;
   onToggle: () => void;
+  onOpenRekap: (pair: InvestPair["pair"], filters: InvestFilter[]) => void;
 }) {
   const total = market.pairs.reduce((sum, p) => sum + p.combos.length, 0);
 
@@ -202,7 +239,7 @@ function MarketRow({
       {open && (
         <div className="animate-fade-in space-y-4 border-t border-border-soft px-4 pb-4 pt-3.5">
           {market.pairs.map((p) => (
-            <PairBlock key={p.pair} block={p} />
+            <PairBlock key={p.pair} block={p} onOpenRekap={onOpenRekap} />
           ))}
         </div>
       )}
@@ -210,7 +247,13 @@ function MarketRow({
   );
 }
 
-function PairBlock({ block }: { block: InvestPair }) {
+function PairBlock({
+  block,
+  onOpenRekap,
+}: {
+  block: InvestPair;
+  onOpenRekap: (pair: InvestPair["pair"], filters: InvestFilter[]) => void;
+}) {
   return (
     <div>
       <div className="mb-2 flex items-center gap-2">
@@ -228,7 +271,7 @@ function PairBlock({ block }: { block: InvestPair }) {
       ) : (
         <div className="space-y-2">
           {block.combos.map((c) => (
-            <ComboRow key={c.id} combo={c} />
+            <ComboRow key={c.id} combo={c} onOpen={() => onOpenRekap(block.pair, c.filters)} />
           ))}
         </div>
       )}
@@ -236,12 +279,16 @@ function PairBlock({ block }: { block: InvestPair }) {
   );
 }
 
-function ComboRow({ combo }: { combo: InvestCombo }) {
+function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void }) {
   const hot = combo.avgWins15 >= 14;
   const akurat = Math.round(combo.avgWins15);
 
   return (
-    <div className="depth-2 flex items-start justify-between gap-3 rounded-2xl border px-3 py-3">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="pressable depth-2 flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left hover:bg-white/[0.05]"
+    >
       <div className="min-w-0 flex-1">
         <p className="display text-[12.5px] leading-snug text-text">{combo.label}</p>
         {hot && (
@@ -250,13 +297,16 @@ function ComboRow({ combo }: { combo: InvestCombo }) {
           </span>
         )}
         <p className="mt-1.5 text-[10px] font-bold uppercase tracking-wide text-text-soft">
-          Muncul pada {akurat} dari 15 hasil terakhir
+          Riwayat {akurat}/15
         </p>
       </div>
-      <div className="shrink-0 text-right">
-        <p className="num text-lg font-black leading-none text-accent">~{Math.round(combo.expectedLines)}</p>
-        <p className="text-[9px] font-bold uppercase tracking-wide text-text-soft">estimasi angka</p>
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="text-right">
+          <p className="num text-lg font-black leading-none text-accent">~{Math.round(combo.expectedLines)}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wide text-text-soft">estimasi</p>
+        </div>
+        <ChevronRight size={18} className="text-text-soft" />
       </div>
-    </div>
+    </button>
   );
-      }
+}
