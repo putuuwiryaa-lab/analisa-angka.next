@@ -140,7 +140,7 @@ function useUpgradePanels(feature: UpgradeFeature = "mode") {
     openUpgrade,
     panels: (
       <>
-        <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenPin={openLogin} feature={feature} />
+        <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenVipLogin={openLogin} feature={feature} />
         <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
       </>
     ),
