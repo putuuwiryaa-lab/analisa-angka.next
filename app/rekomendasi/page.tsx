@@ -3,13 +3,14 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, ChevronRight, Coins, Lock, RefreshCw, Search, Trophy } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Coins, RefreshCw, Search, Trophy } from "lucide-react";
 import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { VipBadge } from "@/components/ui/VipBadge";
 
 type InvestFilter = { kind: string; param: number };
 
@@ -472,11 +473,7 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
             <span className="accent-bg-soft accent-text inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
               {strengthLabel}
             </span>
-            {combo.access === "VIP" && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-soft">
-                <Lock size={9} /> VIP
-              </span>
-            )}
+            {combo.access === "VIP" && <VipBadge />}
           </div>
           <p className="display mt-1.5 text-[12.5px] leading-snug text-text">{combo.label}</p>
         </div>
