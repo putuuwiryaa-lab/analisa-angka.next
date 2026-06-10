@@ -37,6 +37,7 @@
   --color-mode-shio: #4fb6c9;
   --color-mode-rekap: #78a8f2;
   --color-mode-invest: #c084fc;
+  --color-mode-statistics: #34d399;
 
   /* Radius */
   --radius-lg: 1rem;
@@ -261,6 +262,9 @@
 }
 [data-mode="invest"] {
   --accent: var(--color-mode-invest);
+}
+[data-mode="statistics"] {
+  --accent: var(--color-mode-statistics);
 }
 
 @keyframes rise {
