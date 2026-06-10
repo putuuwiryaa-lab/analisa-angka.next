@@ -126,7 +126,7 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
   }
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
+    <div data-mode="vip" className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
       <div className="animate-soft-pop max-h-[92vh] w-full max-w-sm overflow-y-auto rounded-t-3xl border border-border-soft bg-surface p-5 sm:rounded-3xl">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
