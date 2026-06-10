@@ -130,11 +130,11 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
       <div className="animate-soft-pop max-h-[92vh] w-full max-w-sm overflow-y-auto rounded-t-3xl border border-border-soft bg-surface p-5 sm:rounded-3xl">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="depth-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-primary-soft">
+            <div className="accent-bg-soft accent-text depth-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border-soft">
               {isVip ? <UserRoundCheck size={18} /> : penalty ? <AlertTriangle size={18} /> : <KeyRound size={18} />}
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-primary-soft">{isVip ? "Akun VIP" : penalty ? "Akses Dikunci" : "Login VIP"}</p>
+              <p className="accent-text text-xs font-bold uppercase tracking-wide">{isVip ? "Akun VIP" : penalty ? "Akses Dikunci" : "Login VIP"}</p>
               <h3 className="display mt-1 text-xl text-text">{isVip ? "VIP Aktif" : penalty ? "Kunci Sementara" : "Nomor WA + Password"}</h3>
             </div>
           </div>
@@ -151,11 +151,17 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
 
         {isVip ? (
           <div className="space-y-4">
-            <div className="rounded-3xl border border-primary/25 bg-primary/10 p-4 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary-soft">
+            <div
+              className="rounded-3xl p-4 text-center"
+              style={{
+                border: "1px solid color-mix(in srgb, var(--accent) 28%, transparent)",
+                backgroundColor: "color-mix(in srgb, var(--accent) 10%, transparent)",
+              }}
+            >
+              <div className="accent-bg-soft accent-text mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-border-soft">
                 <ShieldCheck size={22} />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-wide text-primary-soft">{role}</p>
+              <p className="accent-text text-[10px] font-black uppercase tracking-wide">{role}</p>
               <p className="mt-2 text-sm font-semibold leading-relaxed text-text-muted">
                 Akun Anda sudah aktif sebagai VIP. Semua fitur analisa dapat digunakan tanpa batasan akses Free.
               </p>
@@ -251,7 +257,7 @@ export function VipLoginPanel({ open, onClose }: { open: boolean; onClose: () =>
               <p className="text-[11px] font-black uppercase tracking-wide text-text-soft">Keunggulan VIP</p>
               {VIP_BENEFITS.map((benefit) => (
                 <div key={benefit} className="flex gap-2.5 rounded-2xl border border-border-soft bg-black/20 p-3">
-                  <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-primary-soft" />
+                  <CheckCircle2 size={15} className="accent-text mt-0.5 shrink-0" />
                   <p className="text-xs font-semibold leading-relaxed text-text-muted">{benefit}</p>
                 </div>
               ))}
