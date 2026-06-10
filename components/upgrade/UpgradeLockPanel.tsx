@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Lock, X } from "lucide-react";
 
 type UpgradeFeature = "default" | "statistics" | "evaluation" | "rekap" | "mode";
@@ -16,7 +18,7 @@ const FEATURE_COPY: Record<UpgradeFeature, { title: string; paragraphs: string[]
     title: "Statistik VIP",
     paragraphs: [
       "Fitur ini menampilkan ranking statistik dari berbagai metode, parameter, dan pasaran. Anda bisa membandingkan performa antar metode untuk melihat mana yang sedang lebih stabil dan layak dijadikan fokus analisa.",
-      "Statistik membantu Anda menyusun rencana betting dengan lebih terarah, karena keputusan tidak hanya diambil dari satu hasil analisa, tetapi juga dari gambaran performa historis. Ini berguna untuk memilih pasaran, metode, dan parameter yang lebih sesuai sebelum masuk ke tahap analisa utama.",
+      "Statistik membantu Anda menyusun rencana analisa dengan lebih terarah karena keputusan tidak hanya diambil dari satu hasil analisa, tetapi juga dari gambaran performa historis.",
       "Akses Statistik tersedia untuk pengguna VIP. Pembatasan akses Free diterapkan agar performa server tetap stabil untuk semua pengguna.",
     ],
   },
@@ -31,8 +33,8 @@ const FEATURE_COPY: Record<UpgradeFeature, { title: string; paragraphs: string[]
   rekap: {
     title: "Rekap Angka VIP",
     paragraphs: [
-      "Fitur ini membantu merekap hasil dari beberapa metode analisa menjadi kombinasi angka yang lebih siap digunakan. Sistem menggabungkan beberapa sumber analisa agar proses penyaringan angka menjadi lebih cepat dan terarah.",
-      "Pada bagian rekap, tersedia juga badge khusus yang membantu mengenali kombinasi yang relevan untuk pasaran tertentu. Badge ini memudahkan Anda membaca pola gabungan, melihat angka yang lebih sering muncul, dan menentukan kombinasi mana yang lebih layak diprioritaskan.",
+      "Fitur ini membantu merekap hasil dari beberapa metode analisa menjadi kombinasi angka yang lebih mudah dibaca. Sistem menggabungkan beberapa sumber analisa agar proses penyaringan angka menjadi lebih cepat dan terarah.",
+      "Pada bagian rekap, tersedia juga badge khusus yang membantu mengenali kombinasi yang relevan untuk pasaran tertentu. Badge ini memudahkan Anda membaca pola gabungan dan melihat angka yang lebih sering muncul.",
       "Akses Rekap Angka tersedia untuk pengguna VIP. Pembatasan akses Free diterapkan agar performa server tetap stabil untuk semua pengguna.",
     ],
   },
@@ -61,14 +63,20 @@ export function UpgradeLockPanel({
   title?: string;
   feature?: UpgradeFeature;
 }) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!open || !mounted) return null;
 
   const copy = FEATURE_COPY[feature] || FEATURE_COPY.default;
   const openVipLogin = onOpenVipLogin || onOpenPin || onClose;
 
-  return (
-    <div data-mode="vip" className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 px-4 pb-4 backdrop-blur-sm sm:items-center sm:pb-0">
-      <div className="animate-rise depth-1 max-h-[88vh] w-full max-w-sm overflow-y-auto rounded-3xl border bg-surface p-5 shadow-2xl shadow-black/30">
+  return createPortal(
+    <div data-mode="vip" className="fixed inset-0 z-[999] flex items-center justify-center bg-black/55 px-4 py-4 backdrop-blur-sm">
+      <div className="animate-rise depth-1 max-h-[88svh] w-full max-w-sm overflow-y-auto rounded-3xl border bg-surface p-5 shadow-2xl shadow-black/30">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="accent-bg-soft accent-text depth-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border-soft">
@@ -114,6 +122,7 @@ export function UpgradeLockPanel({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
