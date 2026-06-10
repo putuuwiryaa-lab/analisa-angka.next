@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, ChevronRight, Coins, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Coins, Lock, RefreshCw, Search, Trophy } from "lucide-react";
+import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
+import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -35,6 +37,14 @@ type InvestMarket = {
   pairs: InvestPair[];
 };
 
+type TopInvestCombo = {
+  marketId: string;
+  marketName: string;
+  pair: InvestPair["pair"];
+  pairLabel: string;
+  combo: InvestCombo;
+};
+
 async function fetchInvest(): Promise<InvestMarket[]> {
   const res = await fetch("/api/invest");
   if (!res.ok) {
@@ -54,6 +64,32 @@ function formatAgo(ts: number) {
   return `${h} jam lalu`;
 }
 
+function formatScore(value: number) {
+  if (!Number.isFinite(value)) return "0";
+  return value % 1 === 0 ? String(value) : value.toFixed(1);
+}
+
+function totalCombos(markets: InvestMarket[]) {
+  return markets.reduce((sum, market) => sum + market.pairs.reduce((pairSum, pair) => pairSum + pair.combos.length, 0), 0);
+}
+
+function buildTopCombos(markets: InvestMarket[], limit = 6): TopInvestCombo[] {
+  return markets
+    .flatMap((market) =>
+      market.pairs.flatMap((pair) =>
+        pair.combos.map((combo) => ({
+          marketId: market.marketId,
+          marketName: market.marketName,
+          pair: pair.pair,
+          pairLabel: pair.pairLabel,
+          combo,
+        })),
+      ),
+    )
+    .sort((a, b) => (b.combo.avgScore || b.combo.avgWins15) - (a.combo.avgScore || a.combo.avgWins15))
+    .slice(0, limit);
+}
+
 const PAIR_POS: Record<InvestPair["pair"], { d1: string; d2: string }> = {
   depan: { d1: "as", d2: "kop" },
   tengah: { d1: "kop", d2: "kepala" },
@@ -67,14 +103,30 @@ function buildRekapUrl(marketId: string, pair: InvestPair["pair"], filters: Inve
   const pos = PAIR_POS[pair];
   for (const f of filters) {
     switch (f.kind) {
-      case "ai": p.set("iv_ai", String(f.param)); break;
-      case "parity": p.set("iv_par", "1"); break;
-      case "size": p.set("iv_size", "1"); break;
-      case "bbfs": p.set("iv_bbfs", String(f.param)); break;
-      case "off_shio": p.set("iv_shio", String(f.param)); break;
-      case "off_jumlah": p.set("iv_jml", String(f.param)); break;
-      case "off_kepala": p.set(`iv_off_${pos.d1}`, String(f.param)); break;
-      case "off_ekor": p.set(`iv_off_${pos.d2}`, String(f.param)); break;
+      case "ai":
+        p.set("iv_ai", String(f.param));
+        break;
+      case "parity":
+        p.set("iv_par", "1");
+        break;
+      case "size":
+        p.set("iv_size", "1");
+        break;
+      case "bbfs":
+        p.set("iv_bbfs", String(f.param));
+        break;
+      case "off_shio":
+        p.set("iv_shio", String(f.param));
+        break;
+      case "off_jumlah":
+        p.set("iv_jml", String(f.param));
+        break;
+      case "off_kepala":
+        p.set(`iv_off_${pos.d1}`, String(f.param));
+        break;
+      case "off_ekor":
+        p.set(`iv_off_${pos.d2}`, String(f.param));
+        break;
     }
   }
   return `/analyze/${encodeURIComponent(marketId)}/rekap?${p.toString()}`;
@@ -85,7 +137,8 @@ export default function RekomendasiPage() {
   const { role } = useAuth();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [toast, setToast] = useState("");
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
 
   const {
     data: markets = [],
@@ -103,6 +156,8 @@ export default function RekomendasiPage() {
   });
 
   const withRecs = useMemo(() => markets.filter((m) => m.hasAny), [markets]);
+  const topCombos = useMemo(() => buildTopCombos(withRecs), [withRecs]);
+  const allComboCount = useMemo(() => totalCombos(withRecs), [withRecs]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -117,10 +172,14 @@ export default function RekomendasiPage() {
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
+  function openLoginPanel() {
+    setUpgradeOpen(false);
+    setLoginOpen(true);
+  }
+
   const handleOpenRekap = (marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
     if (role === "FREE") {
-      setToast("Fitur ini tersedia untuk pengguna VIP");
-      setTimeout(() => setToast(""), 3000);
+      setUpgradeOpen(true);
       return;
     }
     router.push(buildRekapUrl(marketId, pair, filters));
@@ -132,23 +191,17 @@ export default function RekomendasiPage() {
         <ArrowLeft size={16} /> Beranda
       </Button>
 
-      {/* Intro */}
       <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-5">
         <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-accent/10 blur-3xl" />
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-accent">
               <Coins size={14} />
-              <span>Rekomendasi Invest</span>
+              <span>Invest 2D</span>
             </div>
-            <h2 className="display mt-2 text-3xl text-text">Rekomendasi Invest 2D</h2>
-            <p className="mt-2 max-w-[44ch] text-xs font-medium leading-snug text-text-muted">
-              Kombinasi yang sedang menunjukkan performa terbaik berdasarkan hasil terbaru. Pilih pasaran untuk melihat kandidat terkuat, lalu buka di Rekap untuk membentuk angka bermain.
-            </p>
-            <p className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-text-soft">
-              <RefreshCw size={12} />
-              Analisis berdasarkan hasil terkini
-              {dataUpdatedAt ? ` · diperbarui ${formatAgo(dataUpdatedAt)}` : ""}
+            <h2 className="display mt-2 text-3xl text-text">Rekomendasi Invest</h2>
+            <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
+              Kandidat kombinasi terkuat dari hasil terbaru. Pilih rekomendasi, lalu buka di Rekap untuk membentuk angka bermain.
             </p>
           </div>
           <button
@@ -159,6 +212,12 @@ export default function RekomendasiPage() {
             <RefreshCw size={19} className={isFetching ? "animate-spin" : ""} />
           </button>
         </div>
+
+        <div className="relative mt-4 grid grid-cols-3 gap-2">
+          <SummaryChip label="Pasaran" value={String(withRecs.length)} />
+          <SummaryChip label="Kandidat" value={String(allComboCount)} />
+          <SummaryChip label="Update" value={dataUpdatedAt ? formatAgo(dataUpdatedAt) : "-"} compact />
+        </div>
       </div>
 
       {errorMessage && (
@@ -167,7 +226,22 @@ export default function RekomendasiPage() {
         </div>
       )}
 
-      {/* Search */}
+      {!showInitialSkeleton && topCombos.length > 0 && !search && (
+        <section className="animate-soft-pop space-y-3">
+          <SectionHeader icon={<Trophy size={15} />} title="Top Rekomendasi" subtitle="Kandidat terkuat lintas pasaran" />
+          <div className="grid gap-2.5">
+            {topCombos.map((item, index) => (
+              <TopComboCard
+                key={`${item.marketId}-${item.pair}-${item.combo.id}`}
+                item={item}
+                index={index}
+                onOpen={() => handleOpenRekap(item.marketId, item.pair, item.combo.filters)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="animate-fade-in relative">
         <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
         <Input
@@ -179,45 +253,107 @@ export default function RekomendasiPage() {
         />
       </div>
 
-      {/* List pasaran */}
-      <div className="min-h-[40svh] space-y-2.5">
-        {showInitialSkeleton ? (
-          Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
-        ) : filtered.length === 0 ? (
-          <div className="animate-soft-pop depth-1 rounded-3xl border border-dashed py-14 text-center">
-            <Coins className="mx-auto mb-3 text-text-soft" />
-            <p className="px-6 text-xs uppercase tracking-wide text-text-muted">
-              {search ? "Pasaran tidak ditemukan" : "Belum ada rekomendasi yang memenuhi kriteria"}
-            </p>
-            {!search && (
-              <p className="mx-auto mt-1.5 max-w-[38ch] px-6 text-[11px] leading-snug text-text-soft">
-                Rekomendasi muncul setelah ditemukan kombinasi dengan performa yang cukup kuat pada hasil terbaru.
+      <section className="space-y-3">
+        <SectionHeader icon={<Coins size={15} />} title="Semua Pasaran" subtitle={`${filtered.length} pasaran tampil`} />
+        <div className="min-h-[40svh] space-y-2.5">
+          {showInitialSkeleton ? (
+            Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
+          ) : filtered.length === 0 ? (
+            <div className="animate-soft-pop depth-1 rounded-3xl border border-dashed py-14 text-center">
+              <Coins className="mx-auto mb-3 text-text-soft" />
+              <p className="px-6 text-xs uppercase tracking-wide text-text-muted">
+                {search ? "Pasaran tidak ditemukan" : "Belum ada rekomendasi yang memenuhi kriteria"}
               </p>
-            )}
-          </div>
-        ) : (
-          filtered.map((market, index) => (
-            <MarketRow
-              key={market.marketId}
-              market={market}
-              index={index}
-              open={openId === market.marketId}
-              onToggle={() => toggle(market.marketId)}
-              onOpenRekap={(pair, filters) => handleOpenRekap(market.marketId, pair, filters)}
-            />
-          ))
-        )}
-      </div>
-
-      {/* Toast VIP */}
-      {toast && (
-        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
-          <div className="animate-soft-pop rounded-2xl border border-primary/30 bg-bg-deep/95 px-5 py-3 text-center text-xs font-bold text-primary-soft shadow-lg backdrop-blur-xl">
-            {toast}
-          </div>
+              {!search && (
+                <p className="mx-auto mt-1.5 max-w-[38ch] px-6 text-[11px] leading-snug text-text-soft">
+                  Rekomendasi muncul setelah ditemukan kombinasi dengan performa yang cukup kuat pada hasil terbaru.
+                </p>
+              )}
+            </div>
+          ) : (
+            filtered.map((market, index) => (
+              <MarketRow
+                key={market.marketId}
+                market={market}
+                index={index}
+                open={openId === market.marketId}
+                onToggle={() => toggle(market.marketId)}
+                onOpenRekap={(pair, filters) => handleOpenRekap(market.marketId, pair, filters)}
+              />
+            ))
+          )}
         </div>
-      )}
+      </section>
+
+      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenVipLogin={openLoginPanel} feature="rekap" />
+      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
+  );
+}
+
+function SummaryChip({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/15 px-3 py-2 text-center">
+      <p className="num truncate text-sm font-black text-accent">{value}</p>
+      <p className={`mt-0.5 truncate font-bold uppercase tracking-wide text-text-soft ${compact ? "text-[8px]" : "text-[9px]"}`}>{label}</p>
+    </div>
+  );
+}
+
+function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-1">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="accent-bg-soft accent-text flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10">{icon}</span>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-wide text-text">{title}</p>
+          <p className="truncate text-[10px] font-semibold text-text-soft">{subtitle}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetricChip({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="rounded-full border border-border-soft bg-white/[0.035] px-2 py-1 text-[9px] font-black uppercase tracking-wide text-text-soft">
+      {label} <span className="text-text-muted">{value}</span>
+    </span>
+  );
+}
+
+function TopComboCard({ item, index, onOpen }: { item: TopInvestCombo; index: number; onOpen: () => void }) {
+  const combo = item.combo;
+  const hot = combo.avgWins15 >= 14;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="pressable depth-1 animate-soft-pop w-full rounded-3xl border p-3.5 text-left hover:border-border hover:bg-white/[0.045]"
+      style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="accent-bg-soft accent-text rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
+              {item.pairLabel}
+            </span>
+            {hot && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-400">Kuat</span>}
+          </div>
+          <p className="display mt-2 truncate text-sm text-text">{item.marketName}</p>
+          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">{combo.label}</p>
+        </div>
+        <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black uppercase tracking-wide">
+          Rekap <ChevronRight size={13} />
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <MetricChip label="Riwayat" value={`${Math.round(combo.avgWins15)}/15`} />
+        <MetricChip label="Lines" value={String(combo.expectedLines)} />
+        <MetricChip label="Score" value={formatScore(combo.avgScore)} />
+      </div>
+    </button>
   );
 }
 
@@ -235,6 +371,7 @@ function MarketRow({
   onOpenRekap: (pair: InvestPair["pair"], filters: InvestFilter[]) => void;
 }) {
   const total = market.pairs.reduce((sum, p) => sum + p.combos.length, 0);
+  const best = market.pairs.flatMap((p) => p.combos).sort((a, b) => b.avgWins15 - a.avgWins15)[0];
 
   return (
     <div
@@ -247,10 +384,13 @@ function MarketRow({
         aria-expanded={open}
         className="pressable flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-white/[0.04]"
       >
-        <h3 className="display truncate text-base text-text">{market.marketName}</h3>
+        <div className="min-w-0">
+          <h3 className="display truncate text-base text-text">{market.marketName}</h3>
+          {best && <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Terbaik {Math.round(best.avgWins15)}/15</p>}
+        </div>
         <div className="flex shrink-0 items-center gap-2.5">
           <span className="num rounded-full bg-accent/12 px-2.5 py-1 text-[11px] font-black text-accent">
-            {total} rekomendasi
+            {total}
           </span>
           <ChevronDown
             size={18}
@@ -310,22 +450,33 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
     <button
       type="button"
       onClick={onOpen}
-      className="pressable depth-2 flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left hover:bg-white/[0.05]"
+      className="pressable depth-2 w-full rounded-2xl border px-3 py-3 text-left hover:bg-white/[0.05]"
     >
-      <div className="min-w-0 flex-1">
-        <p className="display text-[12.5px] leading-snug text-text">{combo.label}</p>
-        {hot && (
-          <span className="mt-1.5 inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-400">
-            Sedang Kuat
-          </span>
-        )}
-        <p className="mt-1.5 text-[10px] font-bold uppercase tracking-wide text-text-soft">
-          Riwayat {akurat}/15
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {hot && (
+              <span className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-400">
+                Sedang Kuat
+              </span>
+            )}
+            {combo.access === "VIP" && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary-soft">
+                <Lock size={9} /> VIP
+              </span>
+            )}
+          </div>
+          <p className="display mt-1.5 text-[12.5px] leading-snug text-text">{combo.label}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 rounded-xl bg-accent/12 px-3 py-1.5">
+          <span className="text-[11px] font-black uppercase tracking-wide text-accent">Rekap</span>
+          <ChevronRight size={14} className="text-accent" />
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2 rounded-xl bg-accent/12 px-3 py-1.5">
-        <span className="text-[11px] font-black uppercase tracking-wide text-accent">Rekap</span>
-        <ChevronRight size={14} className="text-accent" />
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <MetricChip label="Riwayat" value={`${akurat}/15`} />
+        <MetricChip label="Lines" value={String(combo.expectedLines)} />
+        <MetricChip label="Score" value={formatScore(combo.avgScore)} />
       </div>
     </button>
   );
