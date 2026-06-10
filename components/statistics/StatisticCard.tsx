@@ -8,11 +8,13 @@ import {
   movementTone,
   positionPairSubtitle,
   relatedLabels,
-  statAccent,
-  statAccentSoft,
-  statGold,
   statTitle,
 } from "@/lib/analysis/statistics";
+
+const solidAccentStyle = {
+  background: "linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 76%,#2ec96f))",
+  color: "#03120d",
+};
 
 export function StatisticCard({
   item,
@@ -39,8 +41,12 @@ export function StatisticCard({
       <div className="flex items-start gap-3">
         <div className="flex w-14 shrink-0 flex-col items-center gap-1.5">
           <div
-            className={topRank ? "display flex h-12 w-12 items-center justify-center rounded-2xl text-[13px] shadow-sm" : "display depth-3 flex h-12 w-12 items-center justify-center rounded-2xl border text-[13px]"}
-            style={{ background: topRank ? statGold : undefined, color: topRank ? "#120d02" : statAccent }}
+            className={
+              topRank
+                ? "display flex h-12 w-12 items-center justify-center rounded-2xl text-[13px] shadow-sm"
+                : "display accent-text depth-3 flex h-12 w-12 items-center justify-center rounded-2xl border text-[13px]"
+            }
+            style={topRank ? solidAccentStyle : undefined}
           >
             #{index + 1}
           </div>
@@ -58,7 +64,7 @@ export function StatisticCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="display truncate text-base text-text">{marketName}</p>
-              <p className="mt-1 text-[11px] font-black uppercase tracking-wide" style={{ color: statAccent }}>
+              <p className="accent-text mt-1 text-[11px] font-black uppercase tracking-wide">
                 {statTitle(item)}
               </p>
               {item.group_key === "off_digit" && (
@@ -72,10 +78,7 @@ export function StatisticCard({
                 </p>
               )}
             </div>
-            <span
-              className="depth-3 shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-wide"
-              style={{ color: statGold }}
-            >
+            <span className="accent-bg-soft accent-text shrink-0 rounded-full border border-border-soft px-2.5 py-1 text-[11px] font-black uppercase tracking-wide">
               {badgeLabel(item)}
             </span>
           </div>
@@ -83,13 +86,13 @@ export function StatisticCard({
           <div className="mt-3 grid grid-cols-2 gap-2 text-center">
             <div className="depth-2 rounded-2xl border p-2">
               <p className="text-[10px] font-black uppercase tracking-wide text-text-muted">Riwayat</p>
-              <p className="display text-[13px]" style={{ color: statGold }}>
+              <p className="display accent-text text-[13px]">
                 {item.wins_15}/15
               </p>
             </div>
             <div className="depth-2 rounded-2xl border p-2">
               <p className="text-[10px] font-black uppercase tracking-wide text-text-muted">Terbaru</p>
-              <p className="display text-[13px]" style={{ color: statAccent }}>
+              <p className="display accent-text text-[13px]">
                 {item.wins_last_5}/5
               </p>
             </div>
@@ -98,7 +101,7 @@ export function StatisticCard({
           {alsoLabels.length > 0 && (
             <div className="depth-2 mt-3 rounded-2xl border px-3 py-2">
               <p className="text-[10px] font-black uppercase tracking-wide text-text-muted">Juga unggul</p>
-              <p className="mt-1 text-[11px] font-black uppercase leading-4 tracking-wide" style={{ color: statAccent }}>
+              <p className="accent-text mt-1 text-[11px] font-black uppercase leading-4 tracking-wide">
                 {alsoLabels.join(" · ")}
               </p>
             </div>
@@ -107,8 +110,8 @@ export function StatisticCard({
           <button
             type="button"
             onClick={() => onOpen(marketUrl(item))}
-            className="pressable mt-3 w-full rounded-2xl px-4 py-2.5 text-[11px] font-black uppercase tracking-wide"
-            style={{ background: topRank ? statGold : statAccentSoft, color: topRank ? "#120d02" : statAccent }}
+            className="pressable accent-bg-soft accent-text accent-border mt-3 w-full rounded-2xl border px-4 py-2.5 text-[11px] font-black uppercase tracking-wide hover:bg-white/[0.06]"
+            style={topRank ? solidAccentStyle : undefined}
           >
             Buka Pasaran
           </button>
