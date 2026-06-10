@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Lock } from "lucide-react";
 import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
 import { useAuth } from "@/components/auth/auth-context";
 import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
+import { VipBadge } from "@/components/ui/VipBadge";
 import {
   canUseAnalysisScope,
   canUseCustomFocus,
@@ -66,14 +66,6 @@ export function analysisScopeLabel(scope: AnalysisScope | null) {
 
 type SelectOption = { key: string; title: string; subtitle: string };
 
-function VipBadge() {
-  return (
-    <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-primary-soft/80">
-      <Lock size={9} /> VIP
-    </span>
-  );
-}
-
 function SelectorPanel({
   title,
   subtitle,
@@ -114,7 +106,7 @@ function SelectorButton({
       }`}
       style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}
     >
-      {locked && <VipBadge />}
+      {locked && <VipBadge className="absolute right-4 top-4" />}
       <span className={`display block text-[15px] ${locked ? "text-text-muted/80" : ""}`}>{option.title}</span>
       <span className={`mt-2 block text-[11px] font-bold uppercase tracking-wide ${locked ? "text-text-soft/70" : "text-text-muted"}`}>
         {option.subtitle}
