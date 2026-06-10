@@ -192,10 +192,13 @@ export default function RekomendasiPage() {
       </Button>
 
       <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-5">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-accent/10 blur-3xl" />
+        <div
+          className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full blur-3xl"
+          style={{ backgroundColor: "color-mix(in srgb, var(--accent) 10%, transparent)" }}
+        />
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-accent">
+            <div className="accent-text flex items-center gap-2 text-[11px] font-black uppercase tracking-wide">
               <Coins size={14} />
               <span>Invest 2D</span>
             </div>
@@ -294,7 +297,7 @@ export default function RekomendasiPage() {
 function SummaryChip({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-black/15 px-3 py-2 text-center">
-      <p className="num truncate text-sm font-black text-accent">{value}</p>
+      <p className="num accent-text truncate text-sm font-black">{value}</p>
       <p className={`mt-0.5 truncate font-bold uppercase tracking-wide text-text-soft ${compact ? "text-[8px]" : "text-[9px]"}`}>{label}</p>
     </div>
   );
@@ -389,7 +392,7 @@ function MarketRow({
           {best && <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Terbaik {Math.round(best.avgWins15)}/15</p>}
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
-          <span className="num rounded-full bg-accent/12 px-2.5 py-1 text-[11px] font-black text-accent">
+          <span className="num accent-bg-soft accent-text rounded-full px-2.5 py-1 text-[11px] font-black">
             {total}
           </span>
           <ChevronDown
@@ -420,7 +423,7 @@ function PairBlock({
   return (
     <div>
       <div className="mb-2 flex items-center gap-2">
-        <span className="text-[11px] font-black uppercase tracking-wide text-accent">{block.pairLabel}</span>
+        <span className="accent-text text-[11px] font-black uppercase tracking-wide">{block.pairLabel}</span>
         <span className="h-px flex-1 bg-white/10" />
         <span className="text-[10px] font-bold uppercase tracking-wide text-text-soft">
           {block.combos.length ? `${block.combos.length} kandidat` : ""}
@@ -468,9 +471,9 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
           </div>
           <p className="display mt-1.5 text-[12.5px] leading-snug text-text">{combo.label}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2 rounded-xl bg-accent/12 px-3 py-1.5">
-          <span className="text-[11px] font-black uppercase tracking-wide text-accent">Rekap</span>
-          <ChevronRight size={14} className="text-accent" />
+        <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5">
+          <span className="text-[11px] font-black uppercase tracking-wide">Rekap</span>
+          <ChevronRight size={14} />
         </div>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-1.5">
