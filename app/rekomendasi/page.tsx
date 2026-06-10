@@ -82,7 +82,7 @@ function totalCombos(markets: InvestMarket[]) {
   return markets.reduce((sum, market) => sum + market.pairs.reduce((pairSum, pair) => pairSum + pair.combos.length, 0), 0);
 }
 
-function buildTopCombos(markets: InvestMarket[], limit = 6): TopInvestCombo[] {
+function buildTopCombos(markets: InvestMarket[]): TopInvestCombo[] {
   return markets
     .flatMap((market) =>
       market.pairs.flatMap((pair) =>
@@ -95,8 +95,8 @@ function buildTopCombos(markets: InvestMarket[], limit = 6): TopInvestCombo[] {
         })),
       ),
     )
-    .sort((a, b) => (b.combo.avgScore || b.combo.avgWins15) - (a.combo.avgScore || a.combo.avgWins15))
-    .slice(0, limit);
+    .filter((item) => Math.round(item.combo.avgWins15) >= 15)
+    .sort((a, b) => (b.combo.avgScore || b.combo.avgWins15) - (a.combo.avgScore || a.combo.avgWins15));
 }
 
 const PAIR_POS: Record<InvestPair["pair"], { d1: string; d2: string }> = {
@@ -213,7 +213,7 @@ export default function RekomendasiPage() {
             </div>
             <h2 className="display mt-2 text-3xl text-text">Invest Terarah</h2>
             <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
-              Pilihan kombinasi terbaik dari hasil terbaru. Pilih rekomendasi, lalu buka di Rekap untuk membentuk angka bermain.
+              Pilihan kombinasi terbaik dari hasil terbaru. Pilih rekomendasi, lalu buka di Rekap untuk menyusun hasil akhir.
             </p>
           </div>
           <button
@@ -240,7 +240,7 @@ export default function RekomendasiPage() {
 
       {!showInitialSkeleton && topCombos.length > 0 && !search && (
         <section className="animate-soft-pop space-y-3">
-          <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Teratas" subtitle="Pilihan terbaik dari seluruh pasaran" />
+          <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Sempurna" subtitle="Semua pilihan dengan riwayat 15/15" />
           <div className="grid gap-2.5">
             {topCombos.map((item, index) => (
               <TopComboCard
