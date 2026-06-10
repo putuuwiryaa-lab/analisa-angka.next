@@ -27,6 +27,9 @@ type BBFSDigit = 7 | 8 | 9;
 type Ai3DDigit = 1 | 3 | 5;
 type Ai4DDigit = 1 | 2 | 4;
 
+const RECOMMENDATION_STALE_TIME = 5 * 60 * 1000;
+const RECOMMENDATION_GC_TIME = 30 * 60 * 1000;
+
 const pairLabel: Record<TargetPair, string> = {
   depan: "DEPAN",
   tengah: "TENGAH",
@@ -112,6 +115,9 @@ export function CustomDigitBuilder({
     queryKey: ["customDigitRecommendations", marketId, customFocus],
     queryFn: () => loadCustomDigitRecommendations(marketId, customFocus),
     enabled: show && !!marketId,
+    staleTime: RECOMMENDATION_STALE_TIME,
+    gcTime: RECOMMENDATION_GC_TIME,
+    refetchOnWindowFocus: false,
   });
 
   const visiblePositions = customFocusPositions(customFocus);
