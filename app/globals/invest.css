@@ -1,0 +1,6 @@
+:root {
+  --color-mode-invest: #c084fc;
+}
+[data-mode="invest"] {
+  --accent: var(--color-mode-invest);
+}
