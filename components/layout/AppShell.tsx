@@ -47,23 +47,47 @@ function HeroHeader() {
 }
 
 function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () => void }) {
+  const statsActive = pathname === "/pantauan-rekap";
   const investActive = pathname === "/rekomendasi";
-  const pill = "pressable relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3";
+  const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3 hover:border-border hover:bg-white/[0.075]";
+  const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
+  const activeGlow = "0 0 32px color-mix(in srgb, var(--accent) 24%, transparent)";
 
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3">
-        <Link href="/pantauan-rekap" className={`${pill} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_24px_rgba(16,185,129,0.16)] hover:bg-emerald-500/20`} aria-label="Statistik Pasaran">
+        <Link
+          data-mode="statistics"
+          href="/pantauan-rekap"
+          aria-current={statsActive ? "page" : undefined}
+          className={pill}
+          style={{ boxShadow: statsActive ? activeGlow : softGlow }}
+          aria-label="Statistik Pasaran"
+        >
           <BarChart3 size={20} />
           <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
         </Link>
 
-        <button type="button" onClick={onOpenFree} className="pressable -mt-4 flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-full border border-primary/55 bg-primary/18 text-primary-soft shadow-[0_0_36px_rgba(124,58,237,0.30)] hover:border-primary/70 hover:bg-primary/24" aria-label="Akun VIP">
+        <button
+          data-mode="vip"
+          type="button"
+          onClick={onOpenFree}
+          className="pressable accent-bg-soft accent-text accent-border -mt-4 flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-full border hover:border-border hover:bg-white/[0.075]"
+          style={{ boxShadow: "0 0 36px color-mix(in srgb, var(--accent) 28%, transparent)" }}
+          aria-label="Akun VIP"
+        >
           <UserRoundCheck size={21} />
           <span className="text-[10px] font-black uppercase tracking-wide">VIP</span>
         </button>
 
-        <Link data-mode="invest" href="/rekomendasi" aria-current={investActive ? "page" : undefined} className={`${pill} accent-bg-soft accent-text hover:border-border hover:bg-white/[0.075] ${investActive ? "border-border" : "border-border-soft"}`} style={{ boxShadow: investActive ? "0 0 32px color-mix(in srgb, var(--accent) 24%, transparent)" : "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)" }} aria-label="Rekomendasi Invest">
+        <Link
+          data-mode="invest"
+          href="/rekomendasi"
+          aria-current={investActive ? "page" : undefined}
+          className={pill}
+          style={{ boxShadow: investActive ? activeGlow : softGlow }}
+          aria-label="Rekomendasi Invest"
+        >
           <Coins size={20} />
           <span className="text-sm font-black uppercase tracking-wide">Invest</span>
         </Link>
