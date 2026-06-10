@@ -60,7 +60,7 @@ function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () 
 
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-3xl items-center gap-2.5 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2.5">
+      <div className="mx-auto flex max-w-3xl items-end gap-2.5 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3">
         <Link
           href="/pantauan-rekap"
           className={`${pill} border-emerald-400/35 bg-emerald-500/15 text-emerald-300 shadow-[0_0_24px_rgba(16,185,129,0.16)] hover:bg-emerald-500/20`}
@@ -69,6 +69,16 @@ function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () 
           <BarChart3 size={20} />
           <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
         </Link>
+
+        <button
+          type="button"
+          onClick={onOpenFree}
+          className="pressable -mt-4 flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-1 rounded-full border border-primary/55 bg-primary/18 text-primary-soft shadow-[0_0_36px_rgba(124,58,237,0.30)] hover:border-primary/70 hover:bg-primary/24"
+          aria-label="Akun VIP"
+        >
+          <UserRoundCheck size={21} />
+          <span className="text-[10px] font-black uppercase tracking-wide">VIP</span>
+        </button>
 
         <Link
           data-mode="invest"
@@ -87,16 +97,6 @@ function BottomNav({ pathname, onOpenFree }: { pathname: string; onOpenFree: () 
           <Coins size={20} />
           <span className="text-sm font-black uppercase tracking-wide">Invest</span>
         </Link>
-
-        <button
-          type="button"
-          onClick={onOpenFree}
-          className="pressable flex h-14 flex-[0.7] flex-col items-center justify-center gap-1 rounded-2xl border border-border-soft bg-white/[0.035] text-text-muted hover:border-primary/40 hover:bg-primary/10 hover:text-primary-soft"
-          aria-label="Akun VIP"
-        >
-          <UserRoundCheck size={18} />
-          <span className="text-[11px] font-semibold">VIP</span>
-        </button>
       </div>
     </nav>
   );
