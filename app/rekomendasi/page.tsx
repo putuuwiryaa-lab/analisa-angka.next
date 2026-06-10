@@ -127,7 +127,7 @@ export default function RekomendasiPage() {
   };
 
   return (
-    <div className="animate-rise space-y-4 pb-4">
+    <div data-mode="invest" className="animate-rise space-y-4 pb-4">
       <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
         <ArrowLeft size={16} /> Beranda
       </Button>
@@ -329,4 +329,4 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
       </div>
     </button>
   );
- }                                            
+}
