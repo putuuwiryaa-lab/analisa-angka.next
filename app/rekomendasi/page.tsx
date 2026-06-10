@@ -300,12 +300,9 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
           Riwayat {akurat}/15
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="text-right">
-          <p className="num text-lg font-black leading-none text-accent">~{Math.round(combo.expectedLines)}</p>
-          <p className="text-[9px] font-bold uppercase tracking-wide text-text-soft">estimasi</p>
-        </div>
-        <ChevronRight size={18} className="text-text-soft" />
+      <div className="flex shrink-0 items-center gap-2 rounded-xl bg-accent/12 px-3 py-1.5">
+        <span className="text-[11px] font-black uppercase tracking-wide text-accent">Rekap</span>
+        <ChevronRight size={14} className="text-accent" />
       </div>
     </button>
   );
