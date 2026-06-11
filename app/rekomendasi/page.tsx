@@ -84,7 +84,7 @@ function totalCombos(markets: InvestMarket[]) {
 }
 
 function buildTopCombos(markets: InvestMarket[]): TopInvestCombo[] {
-  return markets
+  const sorted = markets
     .flatMap((market) =>
       market.pairs.flatMap((pair) =>
         pair.combos.map((combo) => ({
@@ -98,6 +98,13 @@ function buildTopCombos(markets: InvestMarket[]): TopInvestCombo[] {
     )
     .filter((item) => Math.round(item.combo.avgWins15) >= 15)
     .sort((a, b) => (b.combo.avgScore || b.combo.avgWins15) - (a.combo.avgScore || a.combo.avgWins15));
+
+  const bestByMarket = new Map<string, TopInvestCombo>();
+  for (const item of sorted) {
+    if (!bestByMarket.has(item.marketId)) bestByMarket.set(item.marketId, item);
+  }
+
+  return Array.from(bestByMarket.values());
 }
 
 const PAIR_POS: Record<InvestPair["pair"], { d1: string; d2: string }> = {
@@ -241,7 +248,7 @@ export default function RekomendasiPage() {
 
       {!showInitialSkeleton && topCombos.length > 0 && !search && (
         <section className="animate-soft-pop space-y-3">
-          <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Sempurna" subtitle="Semua pilihan dengan riwayat 15/15" />
+          <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Sempurna" subtitle="Satu pilihan 15/15 terbaik dari tiap pasaran" />
           <div className="grid gap-2.5">
             {topCombos.map((item, index) => (
               <TopComboCard
