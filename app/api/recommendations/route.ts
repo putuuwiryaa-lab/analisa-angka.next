@@ -9,18 +9,18 @@ export const dynamic = "force-dynamic";
 const RECOMMENDATION_SAMPLE_SIZE = 15;
 const RECOMMENDATION_MIN_SAMPLE = 10;
 
-const AI_WIN_THRESHOLDS: Record<number, number> = { 1: 9, 2: 9, 3: 11, 4: 11, 5: 13, 6: 13 };
-const AI_DERIVED_WIN_THRESHOLDS: Record<number, number> = { 1: 9 };
-const BBFS_WIN_THRESHOLDS: Record<number, number> = { 7: 8, 8: 10, 9: 12 };
-const MATI_WIN_THRESHOLDS: Record<number, number> = { 1: 14, 2: 13, 3: 11 };
-const JUMLAH_WIN_THRESHOLDS: Record<number, number> = { 1: 14, 2: 12, 3: 11 };
+const AI_WIN_THRESHOLDS: Record<number, number> = { 1: 9, 2: 9, 3: 11, 4: 11, 5: 12, 6: 13 };
+const AI_DERIVED_WIN_THRESHOLDS: Record<number, number> = { 1: 12 };
+const BBFS_WIN_THRESHOLDS: Record<number, number> = { 7: 10, 8: 11, 9: 13 };
+const MATI_WIN_THRESHOLDS: Record<number, number> = { 1: 14, 2: 13, 3: 12 };
+const JUMLAH_WIN_THRESHOLDS: Record<number, number> = { 1: 14, 2: 13, 3: 12 };
 const SHIO_WIN_THRESHOLDS: Record<number, number> = { 1: 14, 2: 13, 3: 12 };
 
-const AI_PARTIAL_WIN_RATES: Record<number, number> = { 1: 9 / 15, 2: 9 / 15, 3: 11 / 15, 4: 11 / 15, 5: 13 / 15, 6: 13 / 15 };
-const AI_DERIVED_PARTIAL_WIN_RATES: Record<number, number> = { 1: 9 / 15 };
-const BBFS_PARTIAL_WIN_RATES: Record<number, number> = { 7: 8 / 15, 8: 10 / 15, 9: 12 / 15 };
-const MATI_PARTIAL_WIN_RATES: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 11 / 15 };
-const JUMLAH_PARTIAL_WIN_RATES: Record<number, number> = { 1: 14 / 15, 2: 12 / 15, 3: 11 / 15 };
+const AI_PARTIAL_WIN_RATES: Record<number, number> = { 1: 9 / 15, 2: 9 / 15, 3: 11 / 15, 4: 11 / 15, 5: 12 / 15, 6: 13 / 15 };
+const AI_DERIVED_PARTIAL_WIN_RATES: Record<number, number> = { 1: 12 / 15 };
+const BBFS_PARTIAL_WIN_RATES: Record<number, number> = { 7: 10 / 15, 8: 11 / 15, 9: 13 / 15 };
+const MATI_PARTIAL_WIN_RATES: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 12 / 15 };
+const JUMLAH_PARTIAL_WIN_RATES: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 12 / 15 };
 const SHIO_PARTIAL_WIN_RATES: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 12 / 15 };
 
 const VALID_FOCUS = new Set(["depan", "tengah", "belakang", "3d", "4d"]);
@@ -80,7 +80,8 @@ function scoreParam(rows: any[], param: number, group: RecommendationGroup) {
 
   const isRecommended = sample.length >= RECOMMENDATION_SAMPLE_SIZE ? wins >= fullThreshold : wins / sample.length >= partialWinRate;
   if (!isRecommended) return null;
-  return { param, badge: isPerfect ? "fire" as const : "thumb" as const };
+
+  return { param, badge: isPerfect ? ("fire" as const) : ("thumb" as const) };
 }
 
 function scoreParams(rows: any[], params: number[], group: RecommendationGroup) {
@@ -97,9 +98,17 @@ function setBadge(next: RecommendedMap, key: string, badge: RecommendationBadge)
   if (badge === "fire" || next[key] !== "fire") next[key] = badge;
 }
 
-function applyRecommendationBadges(next: RecommendedMap, keyForParam: (param: number) => string, rows: any[], params: number[], prefer: "low" | "high", group: RecommendationGroup) {
+function applyRecommendationBadges(
+  next: RecommendedMap,
+  keyForParam: (param: number) => string,
+  rows: any[],
+  params: number[],
+  prefer: "low" | "high",
+  group: RecommendationGroup,
+) {
   const scored = scoreParams(rows, params, group);
   const pick = pickRecommendationFromScores(scored, prefer);
+
   if (pick) setBadge(next, keyForParam(pick.param), pick.badge);
   scored.filter((item) => item.badge === "fire").forEach((item) => setBadge(next, keyForParam(item.param), "fire"));
 }
@@ -107,14 +116,24 @@ function applyRecommendationBadges(next: RecommendedMap, keyForParam: (param: nu
 async function resolveMarketIds(supabase: SupabaseClient, marketId: string) {
   const ids = new Set(marketCandidates(marketId));
   const { data } = await supabase.from("markets").select("id,name").in("id", Array.from(ids));
+
   for (const market of ((data || []) as MarketRow[])) {
     if (market.id) ids.add(String(market.id));
     if (market.name) ids.add(String(market.name));
   }
+
   return Array.from(ids);
 }
 
-async function loadRows(supabase: SupabaseClient, marketIds: string[], mode: string, position: string, params: number[], targetPair: TargetPair = "belakang", analysisScope = "default") {
+async function loadRows(
+  supabase: SupabaseClient,
+  marketIds: string[],
+  mode: string,
+  position: string,
+  params: number[],
+  targetPair: TargetPair = "belakang",
+  analysisScope = "default",
+) {
   const { data, error } = await supabase
     .from("analysis_evaluations")
     .select("param,is_hit,status,evaluated_at,target_pair,analysis_scope,market_id")
@@ -136,20 +155,23 @@ async function buildRecommendations(supabase: SupabaseClient, marketIds: string[
   const bbfsScope = customFocusToBBFSScope(customFocus);
   const next: RecommendedMap = {};
 
-  await Promise.all(pairs.map(async (pair) => {
-    const [aiRows, aiParityRows, aiSizeRows, jumlahRows, shioRows] = await Promise.all([
-      loadRows(supabase, marketIds, "ai", "all", [2, 4, 6], pair),
-      loadRows(supabase, marketIds, "ai_parity", "all", [1], pair),
-      loadRows(supabase, marketIds, "ai_size", "all", [1], pair),
-      loadRows(supabase, marketIds, "jumlah", "all", [1, 2, 3], pair),
-      loadRows(supabase, marketIds, "shio", "all", [1, 2, 3], pair),
-    ]);
-    applyRecommendationBadges(next, (param) => `ai-${pair}-${param}`, aiRows, [2, 4, 6], "low", "ai");
-    applyRecommendationBadges(next, () => `ai-${pair}-7`, aiParityRows, [1], "low", "ai_parity");
-    applyRecommendationBadges(next, () => `ai-${pair}-8`, aiSizeRows, [1], "low", "ai_size");
-    applyRecommendationBadges(next, (param) => `jumlah-${pair}-${param}`, jumlahRows, [1, 2, 3], "high", "jumlah");
-    applyRecommendationBadges(next, (param) => `shio-${pair}-${param}`, shioRows, [1, 2, 3], "high", "shio");
-  }));
+  await Promise.all(
+    pairs.map(async (pair) => {
+      const [aiRows, aiParityRows, aiSizeRows, jumlahRows, shioRows] = await Promise.all([
+        loadRows(supabase, marketIds, "ai", "all", [2, 4, 6], pair),
+        loadRows(supabase, marketIds, "ai_parity", "all", [1], pair),
+        loadRows(supabase, marketIds, "ai_size", "all", [1], pair),
+        loadRows(supabase, marketIds, "jumlah", "all", [1, 2, 3], pair),
+        loadRows(supabase, marketIds, "shio", "all", [1, 2, 3], pair),
+      ]);
+
+      applyRecommendationBadges(next, (param) => `ai-${pair}-${param}`, aiRows, [2, 4, 6], "low", "ai");
+      applyRecommendationBadges(next, () => `ai-${pair}-7`, aiParityRows, [1], "low", "ai_parity");
+      applyRecommendationBadges(next, () => `ai-${pair}-8`, aiSizeRows, [1], "low", "ai_size");
+      applyRecommendationBadges(next, (param) => `jumlah-${pair}-${param}`, jumlahRows, [1, 2, 3], "high", "jumlah");
+      applyRecommendationBadges(next, (param) => `shio-${pair}-${param}`, shioRows, [1, 2, 3], "high", "shio");
+    }),
+  );
 
   if (customFocus === "3d" || customFocus === "4d") {
     const [ai3dRows, ai3dParityRows, ai3dSizeRows] = await Promise.all([
@@ -157,6 +179,7 @@ async function buildRecommendations(supabase: SupabaseClient, marketIds: string[
       loadRows(supabase, marketIds, "ai_parity", "all", [1], "belakang", "3d"),
       loadRows(supabase, marketIds, "ai_size", "all", [1], "belakang", "3d"),
     ]);
+
     applyRecommendationBadges(next, (param) => `ai3d-${param}`, ai3dRows, [1, 3, 5], "low", "ai");
     applyRecommendationBadges(next, () => "ai3d-7", ai3dParityRows, [1], "low", "ai_parity");
     applyRecommendationBadges(next, () => "ai3d-8", ai3dSizeRows, [1], "low", "ai_size");
@@ -167,7 +190,14 @@ async function buildRecommendations(supabase: SupabaseClient, marketIds: string[
     applyRecommendationBadges(next, (param) => `ai4d-${param}`, ai4dRows, [1, 2, 4], "low", "ai");
   }
 
-  const bbfsTargetPair = bbfsScope.includes("2d_") ? bbfsScope === "2d_depan" ? "depan" : bbfsScope === "2d_tengah" ? "tengah" : "belakang" : "belakang";
+  const bbfsTargetPair = bbfsScope.includes("2d_")
+    ? bbfsScope === "2d_depan"
+      ? "depan"
+      : bbfsScope === "2d_tengah"
+        ? "tengah"
+        : "belakang"
+    : "belakang";
+
   const bbfsRows = await loadRows(supabase, marketIds, "bbfs", "all", [7, 8, 9], bbfsTargetPair, bbfsScope);
   applyRecommendationBadges(next, (param) => `bbfs-${param}`, bbfsRows, [7, 8, 9], "low", "bbfs");
 
@@ -177,6 +207,7 @@ async function buildRecommendations(supabase: SupabaseClient, marketIds: string[
     loadRows(supabase, marketIds, "mati", "kepala", [1, 2, 3]),
     loadRows(supabase, marketIds, "mati", "ekor", [1, 2, 3]),
   ]);
+
   applyRecommendationBadges(next, (param) => `as-${param}`, asRows, [1, 2, 3], "high", "mati");
   applyRecommendationBadges(next, (param) => `kop-${param}`, kopRows, [1, 2, 3], "high", "mati");
   applyRecommendationBadges(next, (param) => `kepala-${param}`, kepalaRows, [1, 2, 3], "high", "mati");
@@ -198,6 +229,7 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
     const marketIds = await resolveMarketIds(supabase, marketId);
     const badges = await buildRecommendations(supabase, marketIds, customFocus);
 
@@ -206,4 +238,4 @@ export async function GET(request: NextRequest) {
     const message = e instanceof Error ? e.message : "Gagal memuat rekomendasi";
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+                                                                           }
