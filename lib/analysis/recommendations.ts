@@ -1,3 +1,4 @@
+import { deviceAuthHeader } from "@/lib/auth/device";
 import type { CustomFocus } from "./customDigit";
 
 /** Badge rekomendasi. Didefinisikan di sini; komponen mengimpor dari modul ini. */
@@ -12,6 +13,11 @@ function safeDecode(value: string) {
   }
 }
 
+function getStoredToken() {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("aa_token") || "";
+}
+
 export async function loadCustomDigitRecommendations(
   marketId: string,
   customFocus: CustomFocus,
@@ -21,7 +27,14 @@ export async function loadCustomDigitRecommendations(
     customFocus,
   });
 
-  const response = await fetch(`/api/recommendations?${params.toString()}`, { cache: "no-store" });
+  const token = getStoredToken();
+  const response = await fetch(`/api/recommendations?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...deviceAuthHeader(),
+    },
+    cache: "no-store",
+  });
   const json = await response.json();
 
   if (!response.ok) throw new Error(json?.error || "Gagal memuat rekomendasi");
