@@ -67,8 +67,14 @@ type AngkaJadiState = {
 
 const TOP_PAIR_ORDER: InvestPair["pair"][] = ["depan", "tengah", "belakang"];
 
-async function fetchInvest(): Promise<InvestMarket[]> {
-  const res = await fetch("/api/invest");
+async function fetchInvest(token: string | null): Promise<InvestMarket[]> {
+  const res = await fetch("/api/invest", {
+    headers: {
+      Authorization: `Bearer ${token || ""}`,
+      ...deviceAuthHeader(),
+    },
+    cache: "no-store",
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || "Gagal memuat rekomendasi");
@@ -165,8 +171,9 @@ export default function RekomendasiPage() {
     isFetching,
     dataUpdatedAt,
   } = useQuery({
-    queryKey: ["invest"],
-    queryFn: fetchInvest,
+    queryKey: ["invest", token],
+    queryFn: () => fetchInvest(token),
+    enabled: Boolean(token),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     placeholderData: keepPreviousData,
@@ -186,7 +193,7 @@ export default function RekomendasiPage() {
   }, [withRecs, search]);
 
   const errorMessage = error instanceof Error ? error.message : "";
-  const showInitialSkeleton = isPending && markets.length === 0;
+  const showInitialSkeleton = (!token || isPending) && markets.length === 0;
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
