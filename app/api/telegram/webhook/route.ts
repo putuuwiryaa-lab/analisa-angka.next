@@ -75,6 +75,10 @@ function isValidWebhookSecret(request: Request) {
   return submitted === expected;
 }
 
+function isFutureDate(value: string | null | undefined) {
+  return Boolean(value && new Date(value).getTime() > Date.now());
+}
+
 function generateLoginCode() {
   return String(randomInt(100000, 1000000));
 }
@@ -84,12 +88,29 @@ function hashLoginCode(code: string) {
 }
 
 function resolveCodeType(account: TelegramUserRow) {
-  const now = Date.now();
-  const proExpiresAt = account.pro_expires_at ? new Date(account.pro_expires_at).getTime() : 0;
-
-  if (account.plan === "PRO" && proExpiresAt > now) return "PRO_LOGIN";
+  if (account.plan === "PRO" && isFutureDate(account.pro_expires_at)) return "PRO_LOGIN";
   if (!account.trial_used) return "TRIAL_LOGIN";
   return "LOGIN";
+}
+
+function canCreateLoginCode(account: TelegramUserRow) {
+  const proActive = account.plan === "PRO" && isFutureDate(account.pro_expires_at);
+  const trialActive = account.plan === "TRIAL" && isFutureDate(account.trial_expires_at);
+
+  if (proActive || trialActive || !account.trial_used) {
+    return { ok: true as const };
+  }
+
+  return {
+    ok: false as const,
+    reason: "trial_expired_without_pro",
+    message: [
+      "Trial akun ini sudah pernah digunakan dan masa aktifnya sudah habis.",
+      "",
+      "Kode login baru tidak dibuat.",
+      "Silakan upgrade ke PRO untuk melanjutkan akses.",
+    ].join("\n"),
+  };
 }
 
 async function sendTelegramMessage(chatId: number, text: string) {
@@ -277,6 +298,27 @@ export async function POST(request: Request) {
 
     if (text === "/kode" || text.startsWith("/kode ")) {
       const account = await upsertTelegramUser(user, chatId);
+      const gate = canCreateLoginCode(account);
+
+      if (!gate.ok) {
+        await recordAccessEvent({
+          userId: account.id,
+          telegramUserId: account.telegram_user_id,
+          chatId,
+          eventType: "REQUEST_CODE_DENIED",
+          eventDetail: gate.reason,
+          metadata: {
+            plan: account.plan,
+            trial_used: account.trial_used,
+            trial_expires_at: account.trial_expires_at,
+            pro_expires_at: account.pro_expires_at,
+          },
+        });
+
+        await sendTelegramMessage(chatId, gate.message);
+        return NextResponse.json({ ok: true, handled: "kode_denied" });
+      }
+
       const loginCode = await createLoginCode(account, chatId);
 
       await sendTelegramMessage(chatId, codeMessage(loginCode));
