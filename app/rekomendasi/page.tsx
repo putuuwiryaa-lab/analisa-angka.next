@@ -21,6 +21,7 @@ type InvestCombo = {
   avgWins15: number;
   avgScore: number;
   filters: InvestFilter[];
+  cachedLineCount?: number;
 };
 
 type InvestPair = {
@@ -156,9 +157,11 @@ function lineDisplayText(lines: string[] = []) {
   return lines.join(" * ");
 }
 
-function lineMetricValue(state?: AngkaJadiState) {
-  const count = state?.result?.lines?.length || 0;
-  return count > 0 ? String(count) : "-";
+function lineMetricValue(combo: InvestCombo, state?: AngkaJadiState) {
+  const actualCount = state?.result?.lines?.length || 0;
+  if (actualCount > 0) return String(actualCount);
+  const cachedCount = Number(combo.cachedLineCount || 0);
+  return cachedCount > 0 ? String(cachedCount) : "-";
 }
 
 export default function RekomendasiPage() {
@@ -504,7 +507,7 @@ function TopComboCard({
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <MetricChip label="Riwayat" value={`${Math.round(combo.avgWins15)}/15`} />
-          <MetricChip label="Line" value={lineMetricValue(angkaJadi)} />
+          <MetricChip label="Line" value={lineMetricValue(combo, angkaJadi)} />
           <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
         </div>
       </button>
@@ -654,7 +657,7 @@ function ComboRow({
         </div>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <MetricChip label="Riwayat" value={`${akurat}/15`} />
-          <MetricChip label="Line" value={lineMetricValue(angkaJadi)} />
+          <MetricChip label="Line" value={lineMetricValue(combo, angkaJadi)} />
           <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
         </div>
       </button>
