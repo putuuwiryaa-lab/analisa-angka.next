@@ -168,10 +168,6 @@ export default function KodeLoginPage() {
             </button>
           </form>
 
-          <p className="mt-4 text-center text-[11px] font-bold leading-5 text-text-soft">
-            Kode hanya berlaku 10 menit dan hanya bisa dipakai satu kali.
-          </p>
-
           {result && (
             <div
               className={`mt-4 rounded-[1.35rem] border p-4 text-sm font-bold leading-6 ${
@@ -196,10 +192,6 @@ export default function KodeLoginPage() {
             </div>
           )}
         </div>
-
-        <p className="mx-auto mt-5 max-w-sm text-center text-xs font-semibold leading-5 text-text-soft">
-          Satu akun Telegram hanya bisa aktif di satu perangkat.
-        </p>
       </section>
     </main>
   );
