@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,10 +33,31 @@ type TelegramUpdate = {
   message?: TelegramMessage;
 };
 
+type TelegramUserRow = {
+  id: string;
+  telegram_user_id: number;
+  plan: "NONE" | "TRIAL" | "PRO";
+  trial_used: boolean;
+  trial_expires_at: string | null;
+  pro_expires_at: string | null;
+};
+
 function getBotToken() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN belum diatur");
   return token;
+}
+
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL belum diatur");
+  if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY belum diatur");
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 function isValidWebhookSecret(request: Request) {
@@ -66,17 +88,71 @@ async function sendTelegramMessage(chatId: number, text: string) {
   }
 }
 
-function startMessage(user: TelegramUser) {
+async function upsertTelegramUser(user: TelegramUser, chatId: number) {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from("telegram_users")
+    .upsert(
+      {
+        telegram_user_id: user.id,
+        chat_id: chatId,
+        telegram_username: user.username || null,
+        telegram_first_name: user.first_name || null,
+        telegram_last_name: user.last_name || null,
+        telegram_language_code: user.language_code || null,
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: "telegram_user_id" },
+    )
+    .select("id, telegram_user_id, plan, trial_used, trial_expires_at, pro_expires_at")
+    .single<TelegramUserRow>();
+
+  if (error) throw error;
+
+  await supabase.from("telegram_access_events").insert({
+    user_id: data.id,
+    telegram_user_id: user.id,
+    chat_id: chatId,
+    event_type: "START",
+    event_detail: "Telegram user opened bot start command",
+    metadata: {
+      username: user.username || null,
+      first_name: user.first_name || null,
+      last_name: user.last_name || null,
+      language_code: user.language_code || null,
+    },
+  });
+
+  return data;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "-";
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Makassar",
+  }).format(new Date(value));
+}
+
+function startMessage(user: TelegramUser, account: TelegramUserRow) {
   const telegramId = user.id ? String(user.id) : "tidak terbaca";
   const name = user.first_name || user.username || "teman teman";
+  const plan = account.plan || "NONE";
+  const accessUntil = plan === "PRO" ? account.pro_expires_at : account.trial_expires_at;
 
   return [
     `Selamat datang di <b>Analisa Angka</b>.`,
     "",
     `Nama Telegram: <b>${name}</b>`,
     `ID Telegram: <code>${telegramId}</code>`,
+    `Status: <b>${plan}</b>`,
+    `Trial pernah dipakai: <b>${account.trial_used ? "YA" : "BELUM"}</b>`,
+    `Akses sampai: <b>${formatDate(accessUntil)}</b>`,
     "",
-    "ID ini nanti dipakai untuk mengikat akses Trial 7 hari atau PRO.",
+    "ID ini dipakai untuk mengikat akses Trial 7 hari atau PRO.",
   ].join("\n");
 }
 
@@ -97,7 +173,8 @@ export async function POST(request: Request) {
     }
 
     if (text === "/start" || text.startsWith("/start ")) {
-      await sendTelegramMessage(chatId, startMessage(user));
+      const account = await upsertTelegramUser(user, chatId);
+      await sendTelegramMessage(chatId, startMessage(user, account));
       return NextResponse.json({ ok: true, handled: "start" });
     }
 
