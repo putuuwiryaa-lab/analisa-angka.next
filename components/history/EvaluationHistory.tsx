@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/components/auth/auth-context";
+import { deviceAuthHeader } from "@/lib/auth/device";
 
 type EvaluationMode = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
 type EvaluationPosition = "all" | "as" | "kop" | "kepala" | "ekor";
@@ -65,7 +66,7 @@ async function fetchEvaluations(
 
   const response = await fetch(`/api/evaluations?${params.toString()}`, {
     cache: "no-store",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, ...deviceAuthHeader() },
   });
   const json = await response.json();
 
