@@ -4,33 +4,19 @@ import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 const PUBLIC_PATHS = ["/kode-login"];
-const TOKEN_KEYS = ["aa_token", "supreme_token"];
-const AUTH_KEYS = [
-  "aa_token",
-  "aa_role",
-  "aa_expires_at",
-  "aa_telegram_user_id",
-  "supreme_token",
-  "supreme_role",
-  "supreme_device_id",
-  "supreme_display_code",
-];
+const AUTH_KEYS = ["aa_token", "aa_role", "aa_expires_at", "aa_telegram_user_id"];
+const OLD_AUTH_KEYS = ["supreme_token", "supreme_role", "supreme_device_id", "supreme_display_code"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-function getStoredToken() {
-  for (const key of TOKEN_KEYS) {
-    const token = localStorage.getItem(key);
-    if (token) return token;
-  }
-
-  return "";
+function clearStoredAuth() {
+  [...AUTH_KEYS, ...OLD_AUTH_KEYS].forEach((key) => localStorage.removeItem(key));
 }
 
-function clearStoredAuth() {
-  AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
+function clearOldAuthKeys() {
+  OLD_AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
 }
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -42,12 +28,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function verify() {
+      clearOldAuthKeys();
+
       if (isPublicPath(pathname)) {
         setStatus("allowed");
         return;
       }
 
-      const token = getStoredToken();
+      const token = localStorage.getItem("aa_token") || "";
 
       if (!token) {
         clearStoredAuth();
@@ -69,13 +57,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
           localStorage.setItem("aa_role", json.role || "TRIAL");
           localStorage.setItem("aa_expires_at", json.expires_at || "");
           localStorage.setItem("aa_telegram_user_id", String(json.telegram_user_id || ""));
-          localStorage.setItem("supreme_token", token);
-          localStorage.setItem("supreme_role", json.role || "TRIAL");
           setStatus("allowed");
           return;
         }
       } catch {
-        // Lanjut ke redirect di bawah.
       }
 
       if (!cancelled) {
