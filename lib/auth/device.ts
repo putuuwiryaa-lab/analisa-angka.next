@@ -8,7 +8,7 @@ function createDeviceId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
-export function getDeviceId() {
+export function getDeviceId(): string {
   if (typeof window === "undefined") return "";
 
   const saved = localStorage.getItem(DEVICE_ID_KEY);
@@ -19,7 +19,13 @@ export function getDeviceId() {
   return next;
 }
 
-export function deviceAuthHeader() {
+export function deviceAuthHeader(): Record<string, string> {
   const deviceId = getDeviceId();
-  return deviceId ? { "x-aa-device-id": deviceId } : {};
+  const headers: Record<string, string> = {};
+
+  if (deviceId) {
+    headers["x-aa-device-id"] = deviceId;
+  }
+
+  return headers;
 }
