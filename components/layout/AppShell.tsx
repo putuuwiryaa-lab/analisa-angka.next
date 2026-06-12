@@ -10,25 +10,25 @@ import { Logo } from "@/components/ui/Logo";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const isHome = pathname === "/";
 
-  const hideShell =
-    pathname === "/kode-login" ||
-    pathname.startsWith("/analyze/");
+  const hideHeader = pathname === "/kode-login" || pathname.startsWith("/analyze/");
+  const showBottomNav = isHome;
 
   return (
-    <div className={cnPad(hideShell)}>
-      {!hideShell && <HeroHeader />}
+    <div className={cnPad(hideHeader, showBottomNav)}>
+      {!hideHeader && <HeroHeader />}
       <main className="min-w-0 flex-1">{children}</main>
-      {!hideShell && <BottomNav />}
-      {!hideShell && <InstallAppBanner />}
+      {showBottomNav && <BottomNav />}
+      {!hideHeader && <InstallAppBanner />}
     </div>
   );
 }
 
-function cnPad(hideShell: boolean) {
+function cnPad(hideHeader: boolean, showBottomNav: boolean) {
   return [
     "relative mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 sm:px-6",
-    hideShell ? "pb-6 pt-4" : "pb-32 pt-4",
+    hideHeader ? "pb-6 pt-4" : showBottomNav ? "pb-32 pt-4" : "pb-6 pt-4",
   ].join(" ");
 }
 
