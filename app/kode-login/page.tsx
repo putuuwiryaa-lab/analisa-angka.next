@@ -23,6 +23,23 @@ function formatDate(value?: string) {
   }).format(new Date(value));
 }
 
+function saveAuth(json: LoginResponse) {
+  if (!json.token) return;
+
+  const role = json.role || "TRIAL";
+  const expiresAt = json.expires_at || "";
+  const telegramUserId = String(json.telegram_user_id || "");
+
+  localStorage.setItem("aa_token", json.token);
+  localStorage.setItem("aa_role", role);
+  localStorage.setItem("aa_expires_at", expiresAt);
+  localStorage.setItem("aa_telegram_user_id", telegramUserId);
+
+  // Key lama ikut diisi agar komponen lama yang masih membaca supreme_* tetap jalan.
+  localStorage.setItem("supreme_token", json.token);
+  localStorage.setItem("supreme_role", role);
+}
+
 export default function KodeLoginPage() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -52,10 +69,7 @@ export default function KodeLoginPage() {
       const json = (await response.json().catch(() => ({}))) as LoginResponse;
 
       if (json.success && json.token) {
-        localStorage.setItem("aa_token", json.token);
-        localStorage.setItem("aa_role", json.role || "TRIAL");
-        localStorage.setItem("aa_expires_at", json.expires_at || "");
-        localStorage.setItem("aa_telegram_user_id", String(json.telegram_user_id || ""));
+        saveAuth(json);
       }
 
       setResult(json);
