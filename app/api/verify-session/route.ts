@@ -20,5 +20,6 @@ export async function GET(request: Request) {
     telegram_user_id: access.telegramUserId,
     expires_at: access.expiresAt,
     session_id: access.sessionId,
+    device_bound: access.deviceBound,
   });
 }
