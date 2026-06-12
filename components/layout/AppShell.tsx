@@ -1,9 +1,10 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Coins } from "lucide-react";
+import { BarChart3, Coins, UserRound } from "lucide-react";
+import { AccountPanel } from "@/components/account/AccountPanel";
 import { InstallAppBanner } from "@/components/install/InstallAppBanner";
 import { Logo } from "@/components/ui/Logo";
 
@@ -12,9 +13,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const hideShell =
     pathname === "/kode-login" ||
-    pathname.startsWith("/analyze/") ||
-    pathname === "/pantauan-rekap" ||
-    pathname === "/rekomendasi";
+    pathname.startsWith("/analyze/");
 
   return (
     <div className={cnPad(hideShell)}>
@@ -29,7 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 function cnPad(hideShell: boolean) {
   return [
     "relative mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 sm:px-6",
-    hideShell ? "pb-6 pt-4" : "pb-28 pt-4",
+    hideShell ? "pb-6 pt-4" : "pb-32 pt-4",
   ].join(" ");
 }
 
@@ -49,34 +48,49 @@ function HeroHeader() {
 }
 
 function BottomNav() {
+  const [accountOpen, setAccountOpen] = useState(false);
   const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3 hover:border-border hover:bg-white/[0.075]";
   const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
 
   return (
-    <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3">
-        <Link
-          data-mode="statistics"
-          href="/pantauan-rekap"
-          className={pill}
-          style={{ boxShadow: softGlow }}
-          aria-label="Statistik Pasaran"
-        >
-          <BarChart3 size={20} />
-          <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
-        </Link>
+    <>
+      <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
+        <div className="mx-auto grid max-w-3xl grid-cols-[1fr_auto_1fr] items-end gap-3 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3">
+          <Link
+            data-mode="statistics"
+            href="/pantauan-rekap"
+            className={pill}
+            style={{ boxShadow: softGlow }}
+            aria-label="Statistik Pasaran"
+          >
+            <BarChart3 size={20} />
+            <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
+          </Link>
 
-        <Link
-          data-mode="invest"
-          href="/rekomendasi"
-          className={pill}
-          style={{ boxShadow: softGlow }}
-          aria-label="Rekomendasi Invest"
-        >
-          <Coins size={20} />
-          <span className="text-sm font-black uppercase tracking-wide">Invest</span>
-        </Link>
-      </div>
-    </nav>
+          <button
+            type="button"
+            onClick={() => setAccountOpen(true)}
+            className="pressable relative -mt-10 flex h-[4.7rem] w-[4.7rem] items-center justify-center rounded-full border border-primary/45 bg-bg-deep text-accent shadow-[0_0_0_6px_rgba(13,10,26,0.92),0_0_38px_rgba(124,58,237,0.38),0_18px_45px_rgba(0,0,0,0.35)] hover:border-border hover:bg-surface"
+            aria-label="Panel Akun"
+          >
+            <span className="pointer-events-none absolute inset-2 rounded-full bg-primary/12 blur-sm" />
+            <UserRound className="relative" size={28} strokeWidth={2.7} />
+          </button>
+
+          <Link
+            data-mode="invest"
+            href="/rekomendasi"
+            className={pill}
+            style={{ boxShadow: softGlow }}
+            aria-label="Rekomendasi Invest"
+          >
+            <Coins size={20} />
+            <span className="text-sm font-black uppercase tracking-wide">Invest</span>
+          </Link>
+        </div>
+      </nav>
+
+      <AccountPanel open={accountOpen} onClose={() => setAccountOpen(false)} />
+    </>
   );
 }
