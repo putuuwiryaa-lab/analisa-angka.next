@@ -117,7 +117,7 @@ async function failLogin(params: {
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const code = normalizeCode(body.code);
-  const deviceId = normalizeDeviceId(body.device_id);
+  const deviceId = normalizeDeviceId(body.device_id || request.headers.get("x-aa-device-id"));
 
   let jwtSecret = "";
   try {
@@ -133,17 +133,11 @@ export async function POST(request: Request) {
   const ipHash = hashValue(getClientIp(request.headers), jwtSecret);
   const userAgentHash = hashValue(request.headers.get("user-agent") || "unknown", jwtSecret);
   const deviceHash = deviceId ? hashValue(deviceId, jwtSecret) : "";
+  const deviceBound = Boolean(deviceHash);
 
   if (code.length !== 6) {
     return NextResponse.json(
       { success: false, error: "Kode login harus 6 digit" },
-      { status: 400 },
-    );
-  }
-
-  if (!deviceHash) {
-    return NextResponse.json(
-      { success: false, error: "Device tidak valid. Muat ulang halaman lalu coba lagi." },
       { status: 400 },
     );
   }
@@ -231,9 +225,9 @@ export async function POST(request: Request) {
     let updatePayload: Record<string, unknown> = {
       active_session_id: sessionId,
       active_session_at: now.toISOString(),
-      active_device_hash: deviceHash,
-      active_device_at: now.toISOString(),
-      active_device_user_agent_hash: userAgentHash,
+      active_device_hash: deviceBound ? deviceHash : null,
+      active_device_at: deviceBound ? now.toISOString() : null,
+      active_device_user_agent_hash: deviceBound ? userAgentHash : null,
       last_seen_at: now.toISOString(),
     };
 
@@ -308,7 +302,7 @@ export async function POST(request: Request) {
         role,
         expires_at: expiresAt,
         session_id: sessionId,
-        device_bound: true,
+        device_bound: deviceBound,
       },
       ipHash,
       userAgentHash,
@@ -330,7 +324,7 @@ export async function POST(request: Request) {
       telegram_user_id: user.telegram_user_id,
       expires_at: expiresAt,
       session_id: sessionId,
-      device_bound: true,
+      device_bound: deviceBound,
     });
   } catch (e) {
     console.error("CODE_LOGIN_ERROR", e);
