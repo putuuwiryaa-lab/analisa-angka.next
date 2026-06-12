@@ -1,3 +1,4 @@
+import { deviceAuthHeader } from "@/lib/auth/device";
 import type { TargetPair } from "@/lib/analysis/customDigit";
 import type { AnalysisScope } from "./ScopeSelectors";
 
@@ -18,7 +19,11 @@ export async function postAnalyzeRequest({
 }) {
   const response = await fetch("/api/analyze", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token || ""}`,
+      ...deviceAuthHeader(),
+    },
     body: JSON.stringify({
       type,
       data,
