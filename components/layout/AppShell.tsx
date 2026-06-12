@@ -12,14 +12,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const hideShell = pathname.startsWith("/analyze/") || pathname === "/pantauan-rekap" || pathname === "/rekomendasi";
+  const hideShell =
+    pathname === "/kode-login" ||
+    pathname.startsWith("/analyze/") ||
+    pathname === "/pantauan-rekap" ||
+    pathname === "/rekomendasi";
+
   return (
     <div className={cnPad(hideShell)}>
       {!hideShell && <HeroHeader />}
       <main className="min-w-0 flex-1">{children}</main>
       {!hideShell && <BottomNav onOpenFree={() => setLoginOpen(true)} />}
       {!hideShell && <InstallAppBanner />}
-      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
+      {!hideShell && <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />}
     </div>
   );
 }
