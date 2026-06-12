@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { deviceAuthHeader } from "@/lib/auth/device";
 
 const PUBLIC_PATHS = ["/kode-login"];
 const AUTH_KEYS = ["aa_token", "aa_role", "aa_expires_at", "aa_telegram_user_id"];
@@ -52,7 +53,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       try {
         const response = await fetch("/api/verify-session", {
           method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}`, ...deviceAuthHeader() },
           cache: "no-store",
         });
         const json = await response.json().catch(() => ({}));
