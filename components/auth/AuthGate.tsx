@@ -5,18 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 
 const PUBLIC_PATHS = ["/kode-login"];
 const AUTH_KEYS = ["aa_token", "aa_role", "aa_expires_at", "aa_telegram_user_id"];
-const OLD_AUTH_KEYS = ["supreme_token", "supreme_role", "supreme_device_id", "supreme_display_code"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
 function clearStoredAuth() {
-  [...AUTH_KEYS, ...OLD_AUTH_KEYS].forEach((key) => localStorage.removeItem(key));
-}
-
-function clearOldAuthKeys() {
-  OLD_AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
+  AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
 }
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -28,8 +23,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function verify() {
-      clearOldAuthKeys();
-
       if (isPublicPath(pathname)) {
         setStatus("allowed");
         return;
