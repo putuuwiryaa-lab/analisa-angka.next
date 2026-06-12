@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireEnv } from "@/lib/server/env";
-import { getBearerToken } from "@/lib/server/jwt";
-import { verifyActiveVipSession } from "@/lib/server/vip-session";
+import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 import { runAnalysis } from "@/lib/server/engines/predictionEngine";
-import { canUseParam, type LockableMode, type LockableScope } from "@/lib/access/freeAccess";
 
 export const runtime = "nodejs";
-
-const VIP_LOCK_MESSAGE =
-  "Fitur ini dibatasi untuk pengguna Free agar performa server tetap stabil dan akses analisa tetap lancar. Login VIP untuk membuka fitur ini.";
 
 type TargetPair = "depan" | "tengah" | "belakang";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
@@ -63,57 +58,6 @@ function aiParamIsValid(param: number, scope: AnalysisScope) {
   return [2, 4, 6, 7, 8].includes(param);
 }
 
-type AccessResult =
-  | { ok: true; role: string }
-  | { ok: false; status: number; error: string };
-
-async function validateAccess(headers: Headers): Promise<AccessResult> {
-  const token = getBearerToken(headers);
-  if (!token || token === "null" || token === "undefined") {
-    return { ok: true, role: "FREE" };
-  }
-
-  const access = await verifyActiveVipSession(headers);
-  if (!access.ok) return access;
-
-  return { ok: true, role: access.role };
-}
-
-function canRoleAnalyze({
-  role,
-  type,
-  param,
-  rawScope,
-  targetPair,
-}: {
-  role: string;
-  type: string;
-  param: number;
-  rawScope: AnalysisScope;
-  targetPair: TargetPair;
-}) {
-  if (!["ai", "bbfs", "mati", "jumlah", "shio", "rekap"].includes(type)) {
-    return false;
-  }
-
-  if (type === "rekap") {
-    return role === "PRO" || role === "MASTER";
-  }
-
-  const accessScope =
-    type === "ai" && rawScope === "default" && targetPair === "belakang"
-      ? "2d_belakang"
-      : rawScope;
-
-  return canUseParam(
-    role,
-    type as LockableMode,
-    param,
-    accessScope as LockableScope,
-    targetPair,
-  );
-}
-
 export async function POST(request: Request) {
   try {
     requireEnv("JWT_SECRET");
@@ -138,10 +82,8 @@ export async function POST(request: Request) {
       submittedInternalSecret === expectedInternalSecret,
   );
 
-  let role = "FREE";
-
   if (!isInternalRequest) {
-    const access = await validateAccess(request.headers);
+    const access = await verifyActiveTelegramSession(request.headers);
 
     if (!access.ok) {
       return NextResponse.json(
@@ -149,8 +91,6 @@ export async function POST(request: Request) {
         { status: access.status },
       );
     }
-
-    role = access.role;
   }
 
   try {
@@ -188,22 +128,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Invalid request" },
         { status: 400 },
-      );
-    }
-
-    if (
-      !isInternalRequest &&
-      !canRoleAnalyze({
-        role,
-        type,
-        param: safeParam,
-        rawScope,
-        targetPair,
-      })
-    ) {
-      return NextResponse.json(
-        { error: VIP_LOCK_MESSAGE },
-        { status: 403 },
       );
     }
 
