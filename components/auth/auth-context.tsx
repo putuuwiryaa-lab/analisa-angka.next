@@ -9,10 +9,10 @@ import {
   type ReactNode,
 } from "react";
 
-export type Role = "TRIAL" | "PRO" | "MASTER" | "FREE";
+export type Role = "TRIAL" | "PRO" | "MASTER";
 
 interface AuthState {
-  role: Role;
+  role: Role | null;
   token: string | null;
   verifying: boolean;
   login: (role: string, token: string) => void;
@@ -24,37 +24,40 @@ const AuthContext = createContext<AuthState | null>(null);
 const TOKEN_KEY = "aa_token";
 const ROLE_KEY = "aa_role";
 const EXPIRES_KEY = "aa_expires_at";
-const LEGACY_TOKEN_KEY = "supreme_token";
-const LEGACY_ROLE_KEY = "supreme_role";
-const ACCESS_ROLES: Role[] = ["TRIAL", "PRO", "MASTER"];
+const TELEGRAM_ID_KEY = "aa_telegram_user_id";
 
 function clearStoredAuth() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(ROLE_KEY);
   localStorage.removeItem(EXPIRES_KEY);
-  localStorage.removeItem("aa_telegram_user_id");
-  localStorage.removeItem(LEGACY_TOKEN_KEY);
-  localStorage.removeItem(LEGACY_ROLE_KEY);
+  localStorage.removeItem(TELEGRAM_ID_KEY);
+
+  // Bersihkan sisa storage dari sistem lama.
+  localStorage.removeItem("supreme_token");
+  localStorage.removeItem("supreme_role");
+  localStorage.removeItem("supreme_device_id");
+  localStorage.removeItem("supreme_display_code");
+}
+
+function normalizeRole(value: unknown): Role | null {
+  return value === "TRIAL" || value === "PRO" || value === "MASTER" ? value : null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<Role>("FREE");
+  const [role, setRole] = useState<Role | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
-    localStorage.removeItem("supreme_device_id");
-    localStorage.removeItem("supreme_display_code");
+    clearStoredAuth();
 
-    const saved = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+    const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) return;
 
     setToken(saved);
 
-    const cachedRole = (localStorage.getItem(ROLE_KEY) || localStorage.getItem(LEGACY_ROLE_KEY)) as Role | null;
-    if (cachedRole && ACCESS_ROLES.includes(cachedRole)) {
-      setRole(cachedRole);
-    }
+    const cachedRole = normalizeRole(localStorage.getItem(ROLE_KEY));
+    if (cachedRole) setRole(cachedRole);
 
     setVerifying(true);
     (async () => {
@@ -66,23 +69,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const json = await res.json().catch(() => ({}));
 
         if (res.ok && json.success) {
-          const verifiedRole = String(json.role || "TRIAL") as Role;
+          const verifiedRole = normalizeRole(json.role) || "TRIAL";
           setRole(verifiedRole);
           setToken(saved);
           localStorage.setItem(TOKEN_KEY, saved);
           localStorage.setItem(ROLE_KEY, verifiedRole);
           localStorage.setItem(EXPIRES_KEY, json.expires_at || "");
-          localStorage.setItem("aa_telegram_user_id", String(json.telegram_user_id || ""));
-          localStorage.setItem(LEGACY_TOKEN_KEY, saved);
-          localStorage.setItem(LEGACY_ROLE_KEY, verifiedRole);
+          localStorage.setItem(TELEGRAM_ID_KEY, String(json.telegram_user_id || ""));
         } else {
           clearStoredAuth();
           setToken(null);
-          setRole("FREE");
+          setRole(null);
         }
       } catch {
-        // Jika jaringan gagal, biarkan role lokal sementara.
-        // AuthGate tetap akan cek ulang saat membuka halaman terkunci.
+        // AuthGate tetap melakukan validasi ulang saat halaman terkunci dibuka.
       } finally {
         setVerifying(false);
       }
@@ -90,18 +90,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback((r: string, t: string) => {
+    const nextRole = normalizeRole(r) || "TRIAL";
     localStorage.setItem(TOKEN_KEY, t);
-    localStorage.setItem(ROLE_KEY, r);
-    localStorage.setItem(LEGACY_TOKEN_KEY, t);
-    localStorage.setItem(LEGACY_ROLE_KEY, r);
+    localStorage.setItem(ROLE_KEY, nextRole);
     setToken(t);
-    setRole(r as Role);
+    setRole(nextRole);
   }, []);
 
   const logout = useCallback(() => {
     clearStoredAuth();
     setToken(null);
-    setRole("FREE");
+    setRole(null);
   }, []);
 
   return (
