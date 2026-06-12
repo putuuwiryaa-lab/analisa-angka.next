@@ -156,6 +156,11 @@ function lineDisplayText(lines: string[] = []) {
   return lines.join(" * ");
 }
 
+function lineMetricValue(state?: AngkaJadiState) {
+  const count = state?.result?.lines?.length || 0;
+  return count > 0 ? String(count) : "-";
+}
+
 export default function RekomendasiPage() {
   const router = useRouter();
   const { token } = useAuth();
@@ -499,7 +504,7 @@ function TopComboCard({
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <MetricChip label="Riwayat" value={`${Math.round(combo.avgWins15)}/15`} />
-          <MetricChip label="Line" value={String(combo.expectedLines)} />
+          <MetricChip label="Line" value={lineMetricValue(angkaJadi)} />
           <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
         </div>
       </button>
@@ -649,7 +654,7 @@ function ComboRow({
         </div>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <MetricChip label="Riwayat" value={`${akurat}/15`} />
-          <MetricChip label="Line" value={String(combo.expectedLines)} />
+          <MetricChip label="Line" value={lineMetricValue(angkaJadi)} />
           <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
         </div>
       </button>
