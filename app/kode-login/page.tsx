@@ -103,7 +103,7 @@ export default function KodeLoginPage() {
           <p className="text-[11px] font-black uppercase tracking-[0.22em] text-accent">Analisa Angka</p>
           <h1 className="mt-2 text-3xl font-black leading-tight text-text">Masuk Aplikasi</h1>
           <p className="mx-auto mt-3 max-w-xs text-sm font-semibold leading-6 text-text-muted">
-            Gunakan kode dari bot Telegram untuk membuka akses teman teman.
+            Gunakan kode dari bot Telegram untuk membuka akses.
           </p>
         </div>
 
