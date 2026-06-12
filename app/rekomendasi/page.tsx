@@ -44,6 +44,12 @@ type TopInvestCombo = {
   combo: InvestCombo;
 };
 
+type TopInvestGroup = {
+  pair: InvestPair["pair"];
+  pairLabel: string;
+  items: TopInvestCombo[];
+};
+
 type AngkaJadiResult = {
   lines?: string[];
   cached?: boolean;
@@ -58,6 +64,8 @@ type AngkaJadiState = {
   result?: AngkaJadiResult;
   copied?: boolean;
 };
+
+const TOP_PAIR_ORDER: InvestPair["pair"][] = ["depan", "tengah", "belakang"];
 
 async function fetchInvest(): Promise<InvestMarket[]> {
   const res = await fetch("/api/invest");
@@ -97,27 +105,37 @@ function totalCombos(markets: InvestMarket[]) {
 }
 
 function buildTopCombos(markets: InvestMarket[]): TopInvestCombo[] {
-  const sorted = markets
+  return markets
     .flatMap((market) =>
-      market.pairs.flatMap((pair) =>
-        pair.combos.map((combo) => ({
+      market.pairs.flatMap((pair) => {
+        const best = pair.combos.find((combo) => Math.round(combo.avgWins15) >= 15);
+        if (!best) return [];
+        return [{
           marketId: market.marketId,
           marketName: market.marketName,
           pair: pair.pair,
           pairLabel: pair.pairLabel,
-          combo,
-        })),
-      ),
+          combo: best,
+        }];
+      }),
     )
-    .filter((item) => Math.round(item.combo.avgWins15) >= 15)
-    .sort((a, b) => (b.combo.avgScore || b.combo.avgWins15) - (a.combo.avgScore || a.combo.avgWins15));
+    .sort(
+      (a, b) =>
+        TOP_PAIR_ORDER.indexOf(a.pair) - TOP_PAIR_ORDER.indexOf(b.pair) ||
+        a.marketName.localeCompare(b.marketName) ||
+        (b.combo.avgScore || b.combo.avgWins15) - (a.combo.avgScore || a.combo.avgWins15),
+    );
+}
 
-  const bestByMarket = new Map<string, TopInvestCombo>();
-  for (const item of sorted) {
-    if (!bestByMarket.has(item.marketId)) bestByMarket.set(item.marketId, item);
-  }
-
-  return Array.from(bestByMarket.values());
+function groupTopCombos(items: TopInvestCombo[]): TopInvestGroup[] {
+  return TOP_PAIR_ORDER.map((pair) => {
+    const grouped = items.filter((item) => item.pair === pair);
+    return {
+      pair,
+      pairLabel: grouped[0]?.pairLabel || `2D ${pair.toUpperCase()}`,
+      items: grouped,
+    };
+  }).filter((group) => group.items.length > 0);
 }
 
 function comboKey(marketId: string, pair: InvestPair["pair"], comboId: string) {
@@ -156,6 +174,7 @@ export default function RekomendasiPage() {
 
   const withRecs = useMemo(() => markets.filter((m) => m.hasAny), [markets]);
   const topCombos = useMemo(() => buildTopCombos(withRecs), [withRecs]);
+  const topComboGroups = useMemo(() => groupTopCombos(topCombos), [topCombos]);
   const allComboCount = useMemo(() => totalCombos(withRecs), [withRecs]);
 
   const filtered = useMemo(() => {
@@ -265,23 +284,36 @@ export default function RekomendasiPage() {
         </div>
       )}
 
-      {!showInitialSkeleton && topCombos.length > 0 && !search && (
+      {!showInitialSkeleton && topComboGroups.length > 0 && !search && (
         <section className="animate-soft-pop space-y-3">
-          <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Sempurna" subtitle="Satu pilihan 15/15 terbaik dari tiap pasaran" />
-          <div className="grid gap-2.5">
-            {topCombos.map((item, index) => {
-              const key = comboKey(item.marketId, item.pair, item.combo.id);
-              return (
-                <TopComboCard
-                  key={key}
-                  item={item}
-                  index={index}
-                  angkaJadi={angkaJadi[key]}
-                  onOpen={() => handleOpenAngkaJadi(key, item.marketId, item.pair, item.combo.filters)}
-                  onCopy={() => handleCopyAngkaJadi(key)}
-                />
-              );
-            })}
+          <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Sempurna" subtitle="Dikelompokkan dari 2D depan, tengah, belakang" />
+          <div className="grid gap-3">
+            {topComboGroups.map((group) => (
+              <div key={group.pair} className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="accent-text text-[11px] font-black uppercase tracking-wide">{group.pairLabel}</span>
+                  <span className="h-px flex-1 bg-white/10" />
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-text-soft">
+                    {group.items.length} pasaran
+                  </span>
+                </div>
+                <div className="grid gap-2.5">
+                  {group.items.map((item, index) => {
+                    const key = comboKey(item.marketId, item.pair, item.combo.id);
+                    return (
+                      <TopComboCard
+                        key={key}
+                        item={item}
+                        index={index}
+                        angkaJadi={angkaJadi[key]}
+                        onOpen={() => handleOpenAngkaJadi(key, item.marketId, item.pair, item.combo.filters)}
+                        onCopy={() => handleCopyAngkaJadi(key)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}
