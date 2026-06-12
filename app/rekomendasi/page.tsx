@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, ChevronRight, Coins, Copy, Loader2, RefreshCw, Search, Trophy } from "lucide-react";
+import { ArrowLeft, ChevronDown, Coins, Copy, Loader2, RefreshCw, Search, Trophy } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-context";
 import { deviceAuthHeader } from "@/lib/auth/device";
 import { Button } from "@/components/ui/Button";
@@ -52,6 +52,7 @@ type AngkaJadiResult = {
 };
 
 type AngkaJadiState = {
+  open?: boolean;
   loading?: boolean;
   error?: string;
   result?: AngkaJadiResult;
@@ -172,9 +173,19 @@ export default function RekomendasiPage() {
 
   const handleOpenAngkaJadi = async (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
     const existing = angkaJadi[key];
-    if (existing?.loading || existing?.result) return;
+    if (existing?.loading) return;
 
-    setAngkaJadi((prev) => ({ ...prev, [key]: { loading: true } }));
+    if (existing?.open) {
+      setAngkaJadi((prev) => ({ ...prev, [key]: { ...prev[key], open: false } }));
+      return;
+    }
+
+    if (existing?.result || existing?.error) {
+      setAngkaJadi((prev) => ({ ...prev, [key]: { ...prev[key], open: true } }));
+      return;
+    }
+
+    setAngkaJadi((prev) => ({ ...prev, [key]: { loading: true, open: true } }));
 
     try {
       const response = await fetch("/api/invest/angka-jadi", {
@@ -192,10 +203,10 @@ export default function RekomendasiPage() {
         throw new Error(json.error || "Gagal membuat Angka Jadi.");
       }
 
-      setAngkaJadi((prev) => ({ ...prev, [key]: { loading: false, result: json } }));
+      setAngkaJadi((prev) => ({ ...prev, [key]: { loading: false, open: true, result: json } }));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Gagal membuat Angka Jadi.";
-      setAngkaJadi((prev) => ({ ...prev, [key]: { loading: false, error: message } }));
+      setAngkaJadi((prev) => ({ ...prev, [key]: { loading: false, open: true, error: message } }));
     }
   };
 
@@ -354,8 +365,17 @@ function MetricChip({ label, value }: { label: string; value: string }) {
   );
 }
 
+function AngkaJadiAction({ open, size = 14 }: { open?: boolean; size?: number }) {
+  return (
+    <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black uppercase tracking-wide">
+      Angka Jadi
+      <ChevronDown size={size} className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+    </div>
+  );
+}
+
 function AngkaJadiPanel({ state, onCopy }: { state?: AngkaJadiState; onCopy: () => void }) {
-  if (!state) return null;
+  if (!state?.open) return null;
   if (state.loading) {
     return (
       <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl border border-border-soft bg-black/20 p-4 text-xs font-black uppercase tracking-wide text-text-muted">
@@ -431,9 +451,7 @@ function TopComboCard({
             <p className="display mt-2 truncate text-sm text-text">{item.marketName}</p>
             <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">{combo.label}</p>
           </div>
-          <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black uppercase tracking-wide">
-            Angka Jadi <ChevronRight size={13} />
-          </div>
+          <AngkaJadiAction open={angkaJadi?.open} size={13} />
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <MetricChip label="Riwayat" value={`${Math.round(combo.avgWins15)}/15`} />
@@ -583,10 +601,7 @@ function ComboRow({
             </div>
             <p className="display mt-1.5 text-[12.5px] leading-snug text-text">{combo.label}</p>
           </div>
-          <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5">
-            <span className="text-[11px] font-black uppercase tracking-wide">Angka Jadi</span>
-            <ChevronRight size={14} />
-          </div>
+          <AngkaJadiAction open={angkaJadi?.open} />
         </div>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <MetricChip label="Riwayat" value={`${akurat}/15`} />
