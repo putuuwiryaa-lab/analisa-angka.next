@@ -2,7 +2,9 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Send, ShieldCheck } from "lucide-react";
+
+const TELEGRAM_BOT_URL = "https://t.me/analisaangka_bot";
 
 type LoginResponse = {
   success?: boolean;
@@ -87,7 +89,7 @@ export default function KodeLoginPage() {
 
       setResult(json);
     } catch {
-      setResult({ success: false, error: "Gagal menghubungi server." });
+      setResult({ success: false, error: "Tidak bisa tersambung. Coba lagi sebentar." });
     } finally {
       setLoading(false);
     }
@@ -99,21 +101,52 @@ export default function KodeLoginPage() {
       <div className="pointer-events-none absolute bottom-[-16%] right-[-30%] h-[38%] w-[80%] rounded-full bg-cyan-400/10 blur-3xl" />
 
       <section className="relative mx-auto w-full max-w-[420px]">
-        <div className="mb-6 text-center">
+        <div className="mb-5 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[1.45rem] border border-primary/35 bg-primary/15 shadow-[0_0_42px_rgba(124,58,237,0.22)]">
             <ShieldCheck className="text-accent" size={30} strokeWidth={2.7} />
           </div>
           <p className="text-[11px] font-black uppercase tracking-[0.22em] text-accent">Analisa Angka</p>
-          <h1 className="mt-2 text-3xl font-black leading-tight text-text">Masuk dengan Kode</h1>
+          <h1 className="mt-2 text-3xl font-black leading-tight text-text">Masuk Aplikasi</h1>
           <p className="mx-auto mt-3 max-w-xs text-sm font-semibold leading-6 text-text-muted">
-            Buka bot Telegram, kirim <span className="font-black text-text">/kode</span>, lalu masukkan 6 digit kode di sini.
+            Gunakan kode dari bot Telegram untuk membuka akses teman teman.
           </p>
         </div>
 
         <div className="depth-1 rounded-[2rem] border bg-bg-deep/60 p-5 backdrop-blur-xl">
+          <a
+            href={TELEGRAM_BOT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pressable mb-4 flex h-13 min-h-13 items-center justify-center gap-2 rounded-[1.35rem] border border-cyan-300/25 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100"
+          >
+            <Send size={18} />
+            Buka Bot Telegram
+            <ExternalLink size={16} />
+          </a>
+
+          <div className="mb-4 rounded-[1.35rem] border border-border-soft bg-white/[0.025] p-4">
+            <p className="mb-3 text-xs font-black uppercase tracking-wide text-text-muted">Cara mendapatkan kode</p>
+            <div className="space-y-3 text-sm font-bold leading-5 text-text-muted">
+              <div className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-soft text-[11px] text-text">1</span>
+                <p>Buka bot Telegram Analisa Angka.</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-soft text-[11px] text-text">2</span>
+                <p>
+                  Kirim perintah <span className="font-black text-text">/kode</span>.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-soft text-[11px] text-text">3</span>
+                <p>Salin 6 digit kode, lalu masukkan di bawah.</p>
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={submitLogin} className="space-y-4">
             <label className="block">
-              <span className="mb-2 block text-xs font-black uppercase tracking-wide text-text-muted">Kode Login</span>
+              <span className="mb-2 block text-xs font-black uppercase tracking-wide text-text-muted">Masukkan Kode</span>
               <input
                 inputMode="numeric"
                 autoComplete="one-time-code"
@@ -135,11 +168,9 @@ export default function KodeLoginPage() {
             </button>
           </form>
 
-          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[10px] font-black uppercase tracking-wide text-text-soft">
-            <div className="rounded-2xl border border-border-soft bg-white/[0.025] px-2 py-3">Kode 6 Digit</div>
-            <div className="rounded-2xl border border-border-soft bg-white/[0.025] px-2 py-3">Sekali Pakai</div>
-            <div className="rounded-2xl border border-border-soft bg-white/[0.025] px-2 py-3">10 Menit</div>
-          </div>
+          <p className="mt-4 text-center text-[11px] font-bold leading-5 text-text-soft">
+            Kode hanya berlaku 10 menit dan hanya bisa dipakai satu kali.
+          </p>
 
           {result && (
             <div
@@ -153,21 +184,21 @@ export default function KodeLoginPage() {
                 <div className="flex gap-3">
                   <CheckCircle2 className="mt-0.5 shrink-0" size={20} />
                   <div>
-                    <p className="font-black">Login berhasil.</p>
-                    <p>Status: {result.role}</p>
-                    <p>Akses sampai: {formatDate(result.expires_at)}</p>
+                    <p className="font-black">Berhasil masuk.</p>
+                    <p>Status akses: {result.role}</p>
+                    <p>Berlaku sampai: {formatDate(result.expires_at)}</p>
                     <p className="mt-2 text-xs opacity-80">Membuka aplikasi...</p>
                   </div>
                 </div>
               ) : (
-                <p>{result.error || "Login gagal."}</p>
+                <p>{result.error || "Kode belum bisa digunakan."}</p>
               )}
             </div>
           )}
         </div>
 
         <p className="mx-auto mt-5 max-w-sm text-center text-xs font-semibold leading-5 text-text-soft">
-          Akses terikat ke akun Telegram. Satu akun hanya memiliki satu sesi aktif.
+          Satu akun Telegram hanya bisa aktif di satu perangkat.
         </p>
       </section>
     </main>
