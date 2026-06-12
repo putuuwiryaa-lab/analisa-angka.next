@@ -4,13 +4,9 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronDown, ChevronRight, Coins, RefreshCw, Search, Trophy } from "lucide-react";
-import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
-import { useAuth } from "@/components/auth/auth-context";
-import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { VipBadge } from "@/components/ui/VipBadge";
 
 type InvestFilter = { kind: string; param: number };
 
@@ -151,11 +147,8 @@ function buildRekapUrl(marketId: string, pair: InvestPair["pair"], filters: Inve
 
 export default function RekomendasiPage() {
   const router = useRouter();
-  const { role } = useAuth();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
 
   const {
     data: markets = [],
@@ -189,16 +182,7 @@ export default function RekomendasiPage() {
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
-  function openLoginPanel() {
-    setUpgradeOpen(false);
-    setLoginOpen(true);
-  }
-
   const handleOpenRekap = (marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
-    if (role === "FREE") {
-      setUpgradeOpen(true);
-      return;
-    }
     router.push(buildRekapUrl(marketId, pair, filters));
   };
 
@@ -304,9 +288,6 @@ export default function RekomendasiPage() {
           )}
         </div>
       </section>
-
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenVipLogin={openLoginPanel} feature="rekap" />
-      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
 }
@@ -480,7 +461,6 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
             <span className="accent-bg-soft accent-text inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
               {strengthLabel}
             </span>
-            {combo.access === "VIP" && <VipBadge />}
           </div>
           <p className="display mt-1.5 text-[12.5px] leading-snug text-text">{combo.label}</p>
         </div>
