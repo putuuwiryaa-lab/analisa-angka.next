@@ -15,17 +15,20 @@ export function isModeLockedForRole(role: string | null | undefined, mode: Locka
 }
 
 export function canUseStatistics(role: string | null | undefined) {
-  return isVipRole(role);
+  void role;
+  return true;
 }
 
 export function canUseEvaluationHistory(role: string | null | undefined) {
-  return isVipRole(role);
+  void role;
+  return true;
 }
 
 export function canUseAnalysisScope(role: string | null | undefined, mode: LockableMode, scope: LockableScope) {
+  void role;
   void mode;
   void scope;
-  return isVipRole(role);
+  return true;
 }
 
 export function canUseTargetPair(
@@ -33,9 +36,10 @@ export function canUseTargetPair(
   mode: LockableMode,
   targetPair: LockableTargetPair,
 ) {
+  void role;
   void mode;
   void targetPair;
-  return isVipRole(role);
+  return true;
 }
 
 export function canUseParam(
@@ -45,14 +49,16 @@ export function canUseParam(
   scope: LockableScope = "default",
   targetPair: LockableTargetPair = "belakang",
 ) {
+  void role;
   void mode;
   void param;
   void scope;
   void targetPair;
-  return isVipRole(role);
+  return true;
 }
 
 export function canUseCustomFocus(role: string | null | undefined, focus: LockableCustomFocus) {
+  void role;
   void focus;
-  return isVipRole(role);
+  return true;
 }
