@@ -19,6 +19,7 @@ type TelegramUserRow = {
   suspended_at: string | null;
   active_session_id: string | null;
   active_device_hash: string | null;
+  active_device_user_agent_hash: string | null;
 };
 
 export type TelegramSessionResult =
@@ -52,6 +53,7 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
     return { ok: false, status: 401, error: "Silakan login terlebih dahulu." };
   }
 
+  const userAgentHash = hashValue(headers.get("user-agent") || "unknown");
   const deviceId = normalizeDeviceId(headers.get(DEVICE_HEADER));
   const deviceHash = deviceId ? hashValue(deviceId) : "";
 
@@ -81,7 +83,7 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
   const supabase = createAdminClient();
   const { data: user, error } = await supabase
     .from("telegram_users")
-    .select("id, telegram_user_id, plan, trial_expires_at, pro_expires_at, is_active, suspended_at, active_session_id, active_device_hash")
+    .select("id, telegram_user_id, plan, trial_expires_at, pro_expires_at, is_active, suspended_at, active_session_id, active_device_hash, active_device_user_agent_hash")
     .eq("id", accountId)
     .maybeSingle<TelegramUserRow>();
 
@@ -101,18 +103,17 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
     return { ok: false, status: 401, error: "Session sudah diganti perangkat lain. Silakan login ulang." };
   }
 
-  if (user.active_device_hash && !deviceHash) {
+  if (user.active_device_hash && !deviceHash && user.active_device_user_agent_hash !== userAgentHash) {
     return { ok: false, status: 401, error: "Device tidak valid. Silakan login ulang." };
   }
 
-  if (user.active_device_hash && user.active_device_hash !== deviceHash) {
+  if (user.active_device_hash && deviceHash && user.active_device_hash !== deviceHash) {
     return { ok: false, status: 401, error: "Akun sedang aktif di device lain. Silakan login ulang." };
   }
 
   let deviceBound = Boolean(user.active_device_hash);
 
   if (!user.active_device_hash && deviceHash) {
-    const userAgentHash = hashValue(headers.get("user-agent") || "unknown");
     const { error: bindError } = await supabase
       .from("telegram_users")
       .update({
