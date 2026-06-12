@@ -212,24 +212,13 @@ async function createLoginCode(account: TelegramUserRow, chatId: number) {
     metadata: { code_type: codeType, expires_at: expiresAt },
   });
 
-  return { code, codeType, expiresAt };
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "-";
-
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Makassar",
-  }).format(new Date(value));
+  return { code, codeType };
 }
 
 function startMessage(user: TelegramUser, account: TelegramUserRow) {
   const telegramId = user.id ? String(user.id) : "tidak terbaca";
   const name = user.first_name || user.username || "teman teman";
   const plan = account.plan || "NONE";
-  const accessUntil = plan === "PRO" ? account.pro_expires_at : account.trial_expires_at;
 
   return [
     `Selamat datang di <b>Analisa Angka</b>.`,
@@ -238,21 +227,18 @@ function startMessage(user: TelegramUser, account: TelegramUserRow) {
     `ID Telegram: <code>${telegramId}</code>`,
     `Status: <b>${plan}</b>`,
     `Trial pernah dipakai: <b>${account.trial_used ? "YA" : "BELUM"}</b>`,
-    `Akses sampai: <b>${formatDate(accessUntil)}</b>`,
     "",
     "Ketik /kode untuk membuat kode login.",
   ].join("\n");
 }
 
-function codeMessage(params: { code: string; codeType: string; expiresAt: string }) {
+function codeMessage(params: { code: string; codeType: string }) {
   const label = params.codeType === "TRIAL_LOGIN" ? "TRIAL" : params.codeType === "PRO_LOGIN" ? "PRO" : "LOGIN";
 
   return [
-    `Kode login <b>${label}</b>:`,
+    `Kode login <b>${label}</b>:` ,
     "",
     `<code>${params.code}</code>`,
-    "",
-    `Berlaku sampai: <b>${formatDate(params.expiresAt)}</b>`,
     "",
     "Masukkan kode ini di halaman login Analisa Angka.",
     "Kode lama otomatis dinonaktifkan.",
