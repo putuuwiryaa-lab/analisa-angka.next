@@ -17,7 +17,7 @@ export function canRunAnalysisForRole({
   isBBFS,
   needsTargetPair,
 }: {
-  role: string;
+  role: string | null;
   type: string;
   selectedParam: number;
   selectedScope: AnalysisScope;
