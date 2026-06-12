@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, ExternalLink, Loader2, Send } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
+import { getDeviceId } from "@/lib/auth/device";
 
 const TELEGRAM_BOT_URL = "https://t.me/analisaangka_bot";
 
@@ -15,6 +16,7 @@ type LoginResponse = {
   telegram_user_id?: number;
   expires_at?: string;
   session_id?: string;
+  device_bound?: boolean;
 };
 
 function formatDate(value?: string) {
@@ -62,7 +64,7 @@ export default function KodeLoginPage() {
       const response = await fetch("/api/code-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: cleanCode }),
+        body: JSON.stringify({ code: cleanCode, device_id: getDeviceId() }),
       });
 
       const json = (await response.json().catch(() => ({}))) as LoginResponse;
