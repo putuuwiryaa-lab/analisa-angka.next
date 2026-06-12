@@ -1,443 +1,630 @@
 # Analisa Angka
 
-Analisa Angka adalah aplikasi web berbasis Next.js untuk membantu proses analisa angka per pasaran. Aplikasi ini menyediakan beberapa metode analisa, sistem akses Free/VIP, riwayat evaluasi, statistik pasaran, dan rekap angka.
+Analisa Angka adalah aplikasi web berbasis Next.js untuk membantu proses analisa angka per pasaran. Aplikasi ini menggabungkan menu analisa, rekap angka, statistik, riwayat evaluasi, rekomendasi Invest 2D, dan sistem login Telegram dengan kontrol sesi berbasis device.
 
-Dokumen ini menjelaskan arsitektur, fitur, aturan akses, konfigurasi environment, struktur data Supabase, alur login VIP, sistem anti-sharing akun, serta panduan development dan deployment.
+Dokumen ini menjelaskan status sistem terbaru, struktur fitur, flow login, API, database Supabase, cache Invest Angka Jadi, environment variables, serta panduan development dan deployment.
 
 ---
 
 ## 1. Ringkasan Sistem
 
-Aplikasi menggunakan pendekatan freemium.
+Analisa Angka berjalan sebagai aplikasi web/PWA dengan stack utama:
 
-Pengguna Free tetap dapat memakai fitur dasar untuk mencoba value utama aplikasi. Fitur yang lebih berat atau lebih bernilai dikunci untuk VIP agar beban server tetap terkendali dan fitur premium tetap punya nilai yang jelas.
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- Supabase
+- Telegram Bot Login
+- JWT session
+- Device binding
+- Vercel deployment
 
-Akses VIP berbasis akun Supabase Auth, bukan device lokal. User login dengan nomor WhatsApp dan password yang dibuat oleh admin. Setelah login, server menerbitkan JWT yang berisi role, accountId, phone, dan sessionId.
+Model akses saat ini tidak lagi memakai login VIP WhatsApp/password lama. Akses utama memakai kode login dari Telegram Bot.
 
-Sistem juga menerapkan satu akun satu sesi aktif. Jika akun yang sama login di browser atau device lain, sesi lama otomatis tidak valid. Jika pergantian sesi terlalu sering dalam 24 jam, akun VIP dapat dikunci sementara selama 24 jam.
+Flow ringkas:
+
+```txt
+User buka Telegram Bot
+→ bot membuat kode login 6 digit
+→ user memasukkan kode di halaman /kode-login
+→ server validasi kode + device
+→ server menerbitkan JWT
+→ aplikasi menyimpan session di browser
+→ API protected membaca token + device id
+```
 
 ---
 
 ## 2. Tech Stack
 
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Supabase
-- Supabase Auth
-- Supabase Service Role untuk server route
-- TanStack React Query
-- JWT untuk token VIP aplikasi
-- Vercel untuk deployment
+| Area | Teknologi |
+|---|---|
+| Framework | Next.js 16 |
+| UI | React 19 |
+| Bahasa | TypeScript |
+| Styling | Tailwind CSS 4 |
+| Database | Supabase PostgreSQL |
+| Server client | Supabase Service Role |
+| State data | TanStack React Query |
+| Auth app | Telegram code login + JWT |
+| Device control | Local device id + server hash |
+| Icon | Lucide React |
+| Deploy | Vercel |
+| Runtime | Node.js >= 20.9 |
 
 ---
 
 ## 3. Fitur Utama
 
-### 3.1 Dashboard Pasaran
+### 3.1 Dashboard / Beranda
 
-Halaman utama menampilkan daftar pasaran yang tersedia. User dapat:
+Halaman utama menampilkan daftar pasaran dan navigasi utama.
 
-- melihat update terakhir pasaran,
+Fungsi utama:
+
+- melihat daftar pasaran,
 - mencari pasaran,
 - membuka halaman analisa per pasaran,
-- request penambahan pasaran lewat WhatsApp admin.
+- membuka Statistik,
+- membuka Invest,
+- membuka panel akun.
 
-### 3.2 Menu Analisa
+Bottom navigation hanya tampil di Beranda (`/`) agar halaman lain lebih fokus dan tidak tertutup navigasi.
 
-Setiap pasaran memiliki menu analisa. Menu dapat dibuka atau dikunci tergantung role user.
+### 3.2 Menu Analisa Pasaran
 
-Mode utama:
+Setiap pasaran memiliki halaman analisa dengan beberapa metode:
 
-- Angka Ikut
+- Angka Ikut / AI
 - BBFS
 - Angka Mati
 - Jumlah Mati
 - Shio Mati
 - Rekap / Racik Angka
+- Custom focus 2D / 3D / 4D
 
-### 3.3 Angka Ikut
+Output analisa dipakai sebagai dasar penyaringan angka dan penyusunan kombinasi akhir.
 
-Mode Angka Ikut membantu membaca digit yang berpotensi ikut pada posisi tertentu.
+### 3.3 Rekap / Angka Jadi
 
-Cakupan posisi:
+Rekap menggabungkan hasil beberapa metode menjadi angka siap pakai.
 
-- 2D Depan
-- 2D Tengah
-- 2D Belakang
-- 3D
-- 4D
-
-Untuk Free, hanya 2D Belakang yang dibuka.
-
-### 3.4 Angka Mati
-
-Mode Angka Mati membantu membaca digit yang sebaiknya dihindari pada posisi tertentu.
-
-Untuk Free, Angka Mati dibuka semua parameter.
-
-### 3.5 BBFS
-
-BBFS membantu menyaring digit utama yang relevan untuk pasaran tertentu. Mode ini cocok dipakai sebagai dasar penyaringan sebelum menyusun kombinasi angka.
-
-Untuk Free, BBFS dikunci.
-
-### 3.6 Jumlah Mati
-
-Jumlah Mati membantu membaca nilai jumlah yang sebaiknya dihindari pada posisi tertentu. Fitur ini berguna untuk mempersempit pilihan angka.
-
-Untuk Free, Jumlah Mati dikunci.
-
-### 3.7 Shio Mati
-
-Shio Mati membantu membaca shio yang sebaiknya dihindari sebagai filter tambahan sebelum menentukan kombinasi angka akhir.
-
-Untuk Free, Shio Mati dikunci.
-
-### 3.8 Statistik VIP
-
-Statistik menampilkan ranking statistik dari berbagai metode, parameter, dan pasaran. Fitur ini membantu user membandingkan performa antar metode untuk melihat mana yang sedang lebih stabil dan layak dijadikan fokus analisa.
-
-Manfaat utama:
-
-- melihat ranking pasaran,
-- membandingkan metode,
-- membandingkan parameter,
-- menyusun rencana analisa atau betting dengan lebih terarah,
-- tidak hanya mengandalkan satu hasil analisa terakhir.
-
-Statistik hanya untuk VIP.
-
-### 3.9 Riwayat Evaluasi VIP
-
-Riwayat Evaluasi menampilkan hasil evaluasi analisa hingga 2 minggu terakhir. Dari data ini user dapat melihat apakah metode dan parameter tertentu masih stabil, mulai menurun, atau kurang cocok untuk pasaran tertentu.
-
-Manfaat utama:
-
-- melihat performa historis,
-- membandingkan hasil sebelumnya,
-- menilai kestabilan metode,
-- menghindari pemilihan metode hanya berdasarkan hasil terakhir.
-
-Riwayat Evaluasi hanya untuk VIP.
-
-### 3.10 Rekap Angka VIP
-
-Rekap membantu menggabungkan hasil dari beberapa metode analisa menjadi kombinasi angka yang lebih siap digunakan. Sistem juga dapat menampilkan badge khusus untuk membantu membaca kombinasi yang relevan pada pasaran tertentu.
-
-Manfaat utama:
-
-- mempercepat proses penyaringan angka,
-- menggabungkan beberapa sumber analisa,
-- membantu menentukan kombinasi prioritas,
-- membaca pola gabungan dengan lebih mudah.
-
-Rekap hanya untuk VIP.
-
----
-
-## 4. Aturan Akses Free dan VIP
-
-Role yang digunakan:
-
-- FREE
-- PRO
-- MASTER
-
-TRIAL masih ada di type, tetapi akses VIP utama saat ini difokuskan ke PRO dan MASTER.
-
-### 4.1 Akses Free
-
-Free dapat memakai:
-
-- Angka Ikut 2D Belakang: semua parameter Free yang tersedia.
-- Angka Mati: semua parameter.
-
-Free tidak dapat memakai:
-
-- BBFS
-- Jumlah Mati
-- Shio Mati
-- Statistik
-- Riwayat Evaluasi
-- Rekap / Racik Angka
-
-### 4.2 Akses PRO
-
-PRO dapat memakai fitur VIP penuh selama masa aktif belum habis dan akun tidak disuspend.
-
-Token PRO berlaku 60 hari.
-
-### 4.3 Akses MASTER
-
-MASTER dapat memakai fitur VIP penuh dengan durasi token lebih panjang.
-
-Token MASTER berlaku 365 hari.
-
----
-
-## 5. Sistem Login VIP
-
-Login VIP berbasis akun Supabase Auth.
-
-User login dengan:
-
-- nomor WhatsApp,
-- password dari admin.
-
-Nomor WhatsApp dinormalisasi menjadi format Indonesia:
-
-- `081234567890` menjadi `6281234567890`
-- `81234567890` menjadi `6281234567890`
-- `6281234567890` tetap sama
-
-Email internal Supabase dibuat dari nomor WhatsApp:
+Prinsip penting:
 
 ```txt
-6281234567890@vip.local
+Satu engine hitung dipakai bersama oleh Rekap dan Invest Angka Jadi.
 ```
 
-Password tidak disimpan di tabel custom secara plain text. Password dikelola oleh Supabase Auth.
+Tujuannya agar hasil yang muncul di Invest konsisten dengan hasil yang muncul di Rekap.
 
-Setelah Supabase Auth menerima password, server mengecek data di `vip_profiles`. Jika valid, server menerbitkan JWT aplikasi.
+### 3.4 Statistik Pasaran
 
-Payload token berisi:
+Halaman Statistik membaca data dari `market_statistics`.
+
+Fungsi utama:
+
+- menampilkan performa metode,
+- membandingkan parameter,
+- membaca stabilitas pasaran,
+- melihat ranking berdasarkan riwayat evaluasi.
+
+Statistik memakai data evaluasi yang sudah diproses sebelumnya oleh evaluator/importer.
+
+### 3.5 Riwayat Evaluasi
+
+Riwayat Evaluasi membaca data dari `analysis_evaluations`.
+
+Fungsi utama:
+
+- melihat hasil evaluasi sebelumnya,
+- memeriksa hit/patah metode,
+- membandingkan parameter,
+- membantu user tidak hanya bergantung pada hasil analisa terakhir.
+
+### 3.6 Invest 2D
+
+Halaman Invest menampilkan rekomendasi kombinasi filter terbaik untuk:
+
+- 2D Depan,
+- 2D Tengah,
+- 2D Belakang.
+
+Rekomendasi diambil dari performa pada hasil evaluasi terbaru, terutama riwayat 15 hasil terakhir.
+
+Halaman Invest terdiri dari:
+
+- Rekomendasi Sempurna,
+- Semua Pasaran,
+- grup 2D Depan / Tengah / Belakang,
+- card rekomendasi per pasaran,
+- tombol Angka Jadi yang bisa dibuka-tutup.
+
+### 3.7 Invest Angka Jadi
+
+Fitur terbaru pada halaman Invest.
+
+Alur:
+
+```txt
+User klik Angka Jadi di card Invest
+→ frontend memanggil /api/invest/angka-jadi
+→ server menjalankan engine Rekap yang sama
+→ server mengembalikan angka jadi
+→ UI menampilkan angka langsung di card
+→ user bisa copy angka jadi
+```
+
+Catatan penting:
+
+- Invest tidak membuka halaman Rekap di background.
+- Invest memakai engine Rekap yang sama di server.
+- Hasil bisa dibaca dari cache jika kombinasi yang sama sudah pernah dihitung.
+- Panel Angka Jadi bisa dibuka dan ditutup.
+- Jika sudah pernah dihitung di client, buka ulang tidak menghitung ulang dari client state.
+
+---
+
+## 4. Role dan Akses
+
+Role JWT yang didukung:
+
+```txt
+TRIAL
+PRO
+MASTER
+```
+
+Pada data Telegram user, plan utama yang aktif adalah:
+
+```txt
+NONE
+TRIAL
+PRO
+```
+
+Ringkasan:
+
+| Plan | Fungsi |
+|---|---|
+| NONE | Belum punya akses aktif. Bisa minta kode jika trial belum pernah dipakai. |
+| TRIAL | Akses percobaan dengan masa berlaku tertentu. |
+| PRO | Akses aktif berbayar. |
+| MASTER | Role token cadangan untuk kebutuhan internal/admin jika digunakan. |
+
+Saat ini trial pada endpoint code login dikonfigurasi melalui konstanta:
+
+```ts
+const TRIAL_DAYS = 7;
+```
+
+File:
+
+```txt
+app/api/code-login/route.ts
+```
+
+Jika ingin trial 14 hari, ubah konstanta tersebut menjadi:
+
+```ts
+const TRIAL_DAYS = 14;
+```
+
+---
+
+## 5. Sistem Login Telegram
+
+### 5.1 Telegram Bot
+
+User meminta kode login melalui Telegram Bot.
+
+Bot menerima pesan dari user, membuat kode 6 digit, lalu menyimpan hash kode ke database.
+
+Endpoint webhook:
+
+```txt
+/api/telegram/webhook
+```
+
+Bot mengirim kode login ke user melalui Telegram.
+
+### 5.2 Halaman Login
+
+Halaman login aplikasi:
+
+```txt
+/kode-login
+```
+
+User memasukkan kode 6 digit dari bot.
+
+Frontend mengirim:
 
 ```json
 {
-  "role": "PRO",
-  "accountId": "supabase-user-id",
-  "phone": "6281234567890",
-  "sessionId": "random-uuid",
+  "code": "123456",
+  "device_id": "local-device-id"
+}
+```
+
+Server memvalidasi:
+
+- hash kode,
+- masa berlaku kode,
+- status kode sudah dipakai atau belum,
+- plan user,
+- status trial/pro,
+- device binding,
+- active session.
+
+### 5.3 Token JWT
+
+Setelah login berhasil, server membuat JWT.
+
+Payload inti:
+
+```json
+{
+  "role": "TRIAL",
+  "accountId": "telegram-user-row-id",
+  "sessionId": "active-session-id",
   "tokenVersion": 2
 }
 ```
 
-Token disimpan di browser melalui localStorage sebagai:
+Token disimpan di browser dengan key:
 
 ```txt
-supreme_token
+aa_token
+```
+
+Storage pendukung:
+
+```txt
+aa_role
+aa_expires_at
+aa_telegram_user_id
+aa_device_id
 ```
 
 ---
 
-## 6. Sistem Satu Akun Satu Sesi Aktif
+## 6. Device Binding dan Anti Sharing
 
-Aplikasi menerapkan satu akun hanya boleh memiliki satu sesi VIP aktif.
+Aplikasi menerapkan kontrol satu akun aktif berbasis session dan device.
 
-Saat user login:
+### 6.1 Device ID
 
-1. Server membuat `sessionId` baru.
-2. Server menyimpan sessionId tersebut ke `vip_profiles.active_session_id`.
-3. Token yang dikirim ke browser berisi sessionId yang sama.
+Client membuat device id lokal dan menyimpannya di:
 
-Saat user mengakses API VIP:
+```txt
+aa_device_id
+```
 
-1. Server membaca token dari header Authorization.
-2. Server memverifikasi JWT.
-3. Server mengecek `accountId` dan `sessionId` ke Supabase.
-4. Jika `token.sessionId` berbeda dari `vip_profiles.active_session_id`, request ditolak.
+Device id dikirim ke server melalui header:
+
+```txt
+x-aa-device-id
+```
+
+Server tidak menyimpan device id mentah. Server menyimpan hash device id.
+
+### 6.2 Active Session
+
+Saat login sukses:
+
+```txt
+telegram_users.active_session_id = session baru
+telegram_users.active_device_hash = hash device
+telegram_users.active_device_at = waktu login
+```
+
+Jika user login dari device lain, session lama menjadi tidak valid.
+
+### 6.3 Proteksi API
+
+API protected memanggil verifier:
+
+```txt
+verifyActiveTelegramSession()
+```
+
+Verifier mengecek:
+
+- Authorization Bearer token,
+- token valid,
+- tokenVersion valid,
+- active_session_id cocok,
+- device hash cocok,
+- user aktif,
+- plan belum expired.
+
+Jika token dicopy ke device lain, request ditolak karena device id tidak cocok.
+
+---
+
+## 7. API Routes
+
+### 7.1 Auth dan Telegram
+
+| Endpoint | Method | Fungsi |
+|---|---:|---|
+| `/api/telegram/webhook` | POST | Menerima update dari Telegram Bot dan membuat kode login. |
+| `/api/code-login` | POST | Menukar kode Telegram menjadi JWT aplikasi. |
+| `/api/verify-session` | GET/POST | Memeriksa validitas token dan device session. |
+
+### 7.2 Data dan Analisa
+
+| Endpoint | Method | Fungsi |
+|---|---:|---|
+| `/api/markets` | GET | Mengambil daftar pasaran. |
+| `/api/analyze` | POST | Menjalankan engine analisa. |
+| `/api/statistics` | GET | Mengambil statistik pasaran/metode. |
+| `/api/evaluations` | GET | Mengambil riwayat evaluasi. |
+
+### 7.3 Invest
+
+| Endpoint | Method | Fungsi |
+|---|---:|---|
+| `/api/invest` | GET | Mengambil overview rekomendasi Invest. |
+| `/api/invest?marketId=...` | GET | Mengambil rekomendasi Invest untuk satu pasaran. |
+| `/api/invest/angka-jadi` | POST | Menghasilkan Angka Jadi dari rekomendasi Invest. |
+
+---
+
+## 8. Invest Angka Jadi dan Cache
+
+### 8.1 Tujuan Cache
+
+Cache dipakai agar kombinasi Invest yang sama tidak dihitung berulang untuk semua user.
 
 Contoh:
 
 ```txt
-Browser A login:
-active_session_id = session_A
-Token A berisi session_A
+User A klik Angka Jadi untuk PASARAN X 2D BELAKANG filter tertentu
+→ server hitung dan simpan cache
 
-Browser B login akun yang sama:
-active_session_id = session_B
-Token B berisi session_B
-
-Browser A akses API:
-session_A != session_B
-Request ditolak
+User B klik rekomendasi yang sama
+→ server langsung ambil cache
 ```
 
-Efeknya, user yang membagikan akun akan saling menendang sesi.
+### 8.2 Cache Key
 
----
-
-## 7. Sistem Penalty Anti-Sharing
-
-Selain satu sesi aktif, sistem juga memiliki penalty untuk mencegah akun dipakai bergantian terlalu sering.
-
-Aturan saat ini:
-
-- Login pertama tanpa sesi aktif tidak dihitung switch.
-- Login berikutnya saat akun sudah punya sesi aktif dihitung sebagai session switch.
-- Maksimal session switch dalam 24 jam: 3.
-- Switch ke-4 dalam 24 jam membuat akun dikunci sementara selama 24 jam.
-
-Konstanta ada di:
+Cache key dibentuk dari:
 
 ```txt
-app/api/account-login/route.ts
+marketId + pair + filters + latestResult + formulaVersion
+```
+
+Jika hasil terbaru berubah, `latestResult` berubah, sehingga cache lama otomatis tidak dipakai.
+
+### 8.3 TTL Cache
+
+Konfigurasi saat ini di:
+
+```txt
+app/api/invest/angka-jadi/route.ts
 ```
 
 Nilai utama:
 
 ```ts
-const SWITCH_WINDOW_MS = 24 * 60 * 60 * 1000;
-const PENALTY_MS = 24 * 60 * 60 * 1000;
-const MAX_SWITCHES_PER_WINDOW = 3;
+const CACHE_TTL_HOURS = 12;
+const CACHE_CLEANUP_GRACE_HOURS = 24;
 ```
 
-Jika penalty aktif, endpoint login mengembalikan HTTP status:
+Artinya:
 
-```txt
-423 Locked
+- cache valid selama 12 jam,
+- cache lama yang sudah expired lebih dari 24 jam bisa dibersihkan otomatis oleh endpoint.
+
+### 8.4 Tabel Cache
+
+Tabel cache bersifat opsional. Jika tabel belum dibuat, fitur Angka Jadi tetap berjalan, tetapi tanpa cache.
+
+SQL:
+
+```sql
+create table if not exists public.invest_angka_jadi_cache (
+  id uuid primary key default gen_random_uuid(),
+
+  cache_key text not null unique,
+  market_id text not null,
+  pair text not null,
+  filters_json jsonb not null,
+
+  latest_result text,
+  formula_version text not null,
+
+  angka_jadi jsonb not null,
+  line_count int,
+
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+
+create index if not exists idx_invest_angka_jadi_cache_expires
+on public.invest_angka_jadi_cache (expires_at);
+
+create index if not exists idx_invest_angka_jadi_cache_market_pair
+on public.invest_angka_jadi_cache (market_id, pair);
 ```
-
-User tetap dapat memakai aplikasi sebagai Free, tetapi tidak dapat login VIP sampai masa penalty selesai.
 
 ---
 
-## 8. Environment Variables
+## 9. Environment Variables
 
-Environment variable wajib diatur di Vercel dan local development.
-
-### 8.1 Wajib
+### 9.1 Wajib
 
 ```env
 SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 JWT_SECRET=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=
 ```
 
-### 8.2 Opsional / Kondisional
+### 9.2 Opsional
 
 ```env
-SUPABASE_ANON_KEY=
+TELEGRAM_LOGIN_CODE_SECRET=
+TOKEN_VERSION=2
 INTERNAL_API_SECRET=
 ```
 
-Keterangan:
+### 9.3 Keterangan
 
-- `SUPABASE_URL` digunakan oleh server route.
-- `SUPABASE_SERVICE_ROLE_KEY` digunakan oleh server untuk akses admin Supabase. Jangan expose ke client.
-- `JWT_SECRET` digunakan untuk sign dan verify token aplikasi.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` digunakan untuk login via Supabase Auth password grant.
-- `SUPABASE_ANON_KEY` dapat dipakai sebagai fallback server-side jika public anon key tidak tersedia.
-- `INTERNAL_API_SECRET` dipakai untuk request internal yang boleh bypass guard tertentu.
+| Variable | Fungsi |
+|---|---|
+| `SUPABASE_URL` | Dipakai server helper `createAdminClient()`. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Dipakai route Telegram webhook dan client/public config bila dibutuhkan. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Dipakai server untuk akses database Supabase tanpa RLS. Jangan expose ke client. |
+| `JWT_SECRET` | Secret untuk sign dan verify JWT aplikasi. |
+| `TELEGRAM_BOT_TOKEN` | Token bot Telegram. |
+| `TELEGRAM_WEBHOOK_SECRET` | Secret token untuk validasi webhook Telegram. |
+| `TELEGRAM_LOGIN_CODE_SECRET` | Secret khusus hashing kode login. Jika kosong, fallback ke `TELEGRAM_WEBHOOK_SECRET`. |
+| `TOKEN_VERSION` | Versi token JWT. Default `2`. Naikkan untuk invalidasi semua token lama. |
+| `INTERNAL_API_SECRET` | Secret internal jika ada route yang membutuhkan bypass tertentu. |
 
-Jangan pernah commit file `.env` yang berisi credential asli.
+Jangan commit `.env` yang berisi credential asli.
 
 ---
 
-## 9. Struktur Database Supabase
+## 10. Struktur Database Supabase
 
-Bagian ini berisi struktur penting yang dipakai sistem VIP. Struktur tabel analisa seperti markets, market_statistics, dan analysis_evaluations dapat disesuaikan dengan evaluator/importer data yang digunakan.
+Bagian ini berisi tabel inti yang dipakai aplikasi. Struktur detail bisa disesuaikan dengan migrasi yang sudah ada, tetapi kolom-kolom berikut adalah yang penting untuk sistem berjalan.
 
-### 9.1 vip_profiles
+### 10.1 `telegram_users`
 
-Tabel ini menyimpan status VIP user.
+Menyimpan akun Telegram, status trial/pro, session aktif, dan device aktif.
 
-Minimal kolom yang dibutuhkan:
+Kolom penting:
 
 ```sql
-create table if not exists vip_profiles (
-  user_id uuid primary key,
-  phone text not null unique,
-  role text not null check (role in ('PRO', 'MASTER')),
-  expires_at timestamptz,
+create table if not exists public.telegram_users (
+  id uuid primary key default gen_random_uuid(),
+  telegram_user_id bigint not null unique,
+  chat_id bigint,
+  telegram_username text,
+  telegram_first_name text,
+  telegram_last_name text,
+  telegram_language_code text,
+
+  plan text not null default 'NONE',
+  trial_used boolean not null default false,
+  trial_started_at timestamptz,
+  trial_expires_at timestamptz,
+  pro_started_at timestamptz,
+  pro_expires_at timestamptz,
+
   is_active boolean not null default true,
   suspended_at timestamptz,
+
   active_session_id text,
   active_session_at timestamptz,
-  last_login_ip_hash text,
-  last_login_user_agent_hash text,
-  penalty_until timestamptz,
-  penalty_reason text,
-  session_switch_count int not null default 0,
-  session_switch_window_start timestamptz,
+  active_device_hash text,
+  active_device_at timestamptz,
+  active_device_user_agent_hash text,
+
+  last_seen_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 ```
 
-Jika tabel sudah ada, tambahkan kolom berikut:
+Tambahan jika tabel sudah ada:
 
 ```sql
-alter table vip_profiles
+alter table public.telegram_users
 add column if not exists active_session_id text,
 add column if not exists active_session_at timestamptz,
-add column if not exists last_login_ip_hash text,
-add column if not exists last_login_user_agent_hash text,
-add column if not exists penalty_until timestamptz,
-add column if not exists penalty_reason text,
-add column if not exists session_switch_count int not null default 0,
-add column if not exists session_switch_window_start timestamptz,
-add column if not exists suspended_at timestamptz,
-add column if not exists updated_at timestamptz not null default now();
+add column if not exists active_device_hash text,
+add column if not exists active_device_at timestamptz,
+add column if not exists active_device_user_agent_hash text;
 ```
 
-### 9.2 vip_login_events
+### 10.2 `telegram_login_codes`
 
-Tabel ini menyimpan log login untuk monitoring.
+Menyimpan kode login dari Telegram dalam bentuk hash.
 
 ```sql
-create table if not exists vip_login_events (
-  id bigserial primary key,
-  user_id uuid,
-  phone text not null,
-  ip_hash text not null,
-  user_agent_hash text not null,
-  success boolean not null,
-  reason text not null,
+create table if not exists public.telegram_login_codes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  telegram_user_id bigint not null,
+  chat_id bigint,
+  code_hash text not null,
+  code_type text not null,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  consumed_session_id text,
   created_at timestamptz not null default now()
 );
 
-create index if not exists vip_login_events_user_id_idx on vip_login_events(user_id);
-create index if not exists vip_login_events_phone_idx on vip_login_events(phone);
-create index if not exists vip_login_events_created_at_idx on vip_login_events(created_at desc);
+create index if not exists telegram_login_codes_hash_idx
+on public.telegram_login_codes (code_hash);
+
+create index if not exists telegram_login_codes_user_idx
+on public.telegram_login_codes (user_id, created_at desc);
 ```
 
-### 9.3 Auth Users
+### 10.3 `telegram_access_events`
 
-Akun login dibuat di Supabase Auth.
+Menyimpan event login, gagal login, dan aktivitas akses penting.
 
-Email internal menggunakan format:
+```sql
+create table if not exists public.telegram_access_events (
+  id bigserial primary key,
+  user_id uuid,
+  telegram_user_id bigint,
+  chat_id bigint,
+  event_type text not null,
+  event_detail text,
+  metadata jsonb not null default '{}',
+  ip_hash text,
+  user_agent_hash text,
+  created_at timestamptz not null default now()
+);
 
-```txt
-<phone>@vip.local
+create index if not exists telegram_access_events_user_idx
+on public.telegram_access_events (user_id, created_at desc);
+
+create index if not exists telegram_access_events_telegram_idx
+on public.telegram_access_events (telegram_user_id, created_at desc);
 ```
 
-Contoh:
+### 10.4 `markets`
 
-```txt
-6281234567890@vip.local
-```
+Menyimpan daftar pasaran dan data histori.
 
-Password diatur di Supabase Auth, bukan disimpan di `vip_profiles`.
-
-### 9.4 markets
-
-Tabel pasaran dipakai untuk daftar pasaran dan pencocokan nama/id.
-
-Kolom yang umum dipakai:
+Kolom yang umum dipakai oleh sistem:
 
 ```txt
 id
 name
+history_data / historyData / history / data / results / result
 updated_at
-lastResult atau field hasil terakhir sesuai mapping API
 ```
 
-Pastikan endpoint `/api/markets` mengembalikan array pasaran.
+Data histori dibaca sebagai token 4 digit, contoh:
 
-### 9.5 market_statistics
+```txt
+1234 5678 9012 3456
+```
 
-Tabel ini dipakai halaman Statistik VIP.
+### 10.5 `market_statistics`
 
-Kolom yang sering dipakai oleh route statistik:
+Dipakai untuk Statistik dan Invest.
+
+Kolom penting:
 
 ```txt
 market_id
+market_name
 group_key
 mode
+position
 param
 target_pair
 analysis_scope
@@ -449,19 +636,18 @@ score
 updated_at
 ```
 
-Jika statistik tidak tampil untuk VIP, cek:
+Invest hanya mengambil kombinasi yang memenuhi standar statistik aktif, antara lain:
 
-- apakah token VIP dikirim di header Authorization,
-- apakah data `market_statistics` ada,
-- apakah `is_active = true`,
-- apakah data memenuhi filter `wins_15`, `wins_last_5`, dan `max_loss_streak`,
-- apakah scope/mode/param cocok dengan query UI.
+- `is_active = true`,
+- `wins_15` memenuhi batas minimum,
+- `wins_last_5` memenuhi batas minimum,
+- `max_loss_streak` tidak melewati batas.
 
-### 9.6 analysis_evaluations
+### 10.6 `analysis_evaluations`
 
-Tabel ini dipakai Riwayat Evaluasi VIP.
+Dipakai untuk riwayat evaluasi.
 
-Kolom yang sering dipakai:
+Kolom umum:
 
 ```txt
 id
@@ -479,257 +665,33 @@ detail
 evaluated_at
 ```
 
-Jika riwayat evaluasi kosong, cek:
-
-- apakah user VIP,
-- apakah token dikirim,
-- apakah marketId cocok,
-- apakah mode/param/target_pair/analysis_scope cocok,
-- apakah evaluator sudah menulis data ke tabel.
-
 ---
 
-## 10. Membuat Akun VIP Manual
-
-Alur yang disarankan:
-
-1. User mengirim nomor WhatsApp ke admin.
-2. Admin membuat user di Supabase Auth.
-3. Admin mengisi `vip_profiles` dengan user_id dari Supabase Auth.
-4. Admin memberikan password ke user.
-
-Contoh mapping:
-
-```txt
-Nomor WA: 081234567890
-Phone normalized: 6281234567890
-Auth email: 6281234567890@vip.local
-Role: PRO
-Masa aktif: 60 hari
-```
-
-Contoh insert profile:
-
-```sql
-insert into vip_profiles (
-  user_id,
-  phone,
-  role,
-  expires_at,
-  is_active
-) values (
-  'AUTH_USER_UUID_HERE',
-  '6281234567890',
-  'PRO',
-  now() + interval '60 days',
-  true
-);
-```
-
-Untuk MASTER:
-
-```sql
-insert into vip_profiles (
-  user_id,
-  phone,
-  role,
-  expires_at,
-  is_active
-) values (
-  'AUTH_USER_UUID_HERE',
-  '6281234567890',
-  'MASTER',
-  now() + interval '365 days',
-  true
-);
-```
-
----
-
-## 11. Suspend dan Unsuspend Akun
-
-Suspend akun:
-
-```sql
-update vip_profiles
-set
-  is_active = false,
-  suspended_at = now(),
-  updated_at = now()
-where phone = '6281234567890';
-```
-
-Aktifkan kembali:
-
-```sql
-update vip_profiles
-set
-  is_active = true,
-  suspended_at = null,
-  penalty_until = null,
-  penalty_reason = null,
-  updated_at = now()
-where phone = '6281234567890';
-```
-
-Reset penalty:
-
-```sql
-update vip_profiles
-set
-  penalty_until = null,
-  penalty_reason = null,
-  session_switch_count = 0,
-  session_switch_window_start = null,
-  updated_at = now()
-where phone = '6281234567890';
-```
-
-Force logout semua sesi akun:
-
-```sql
-update vip_profiles
-set
-  active_session_id = null,
-  active_session_at = null,
-  updated_at = now()
-where phone = '6281234567890';
-```
-
----
-
-## 12. API Routes Penting
-
-### 12.1 `/api/account-login`
-
-Method: POST
-
-Fungsi:
-
-- menerima nomor WA dan password,
-- login ke Supabase Auth,
-- cek profile VIP,
-- cek expired/suspended/penalty,
-- generate sessionId,
-- update active_session_id,
-- generate JWT,
-- tulis log login.
-
-Body:
-
-```json
-{
-  "phone": "081234567890",
-  "password": "password-vip"
-}
-```
-
-Response sukses:
-
-```json
-{
-  "success": true,
-  "role": "PRO",
-  "token": "jwt-token",
-  "phone": "6281234567890",
-  "expires_at": "2026-01-01T00:00:00.000Z",
-  "session_switch_count": 0
-}
-```
-
-Response penalty:
-
-```json
-{
-  "success": false,
-  "error": "Akun VIP dikunci sementara...",
-  "penalty_until": "2026-01-01T00:00:00.000Z"
-}
-```
-
-Status penalty:
-
-```txt
-423 Locked
-```
-
-### 12.2 `/api/verify`
-
-Method: POST
-
-Fungsi:
-
-- memverifikasi JWT,
-- mengecek sessionId masih aktif di server,
-- mengembalikan role valid.
-
-Dipakai saat app boot/refresh.
-
-### 12.3 `/api/analyze`
-
-Method: POST
-
-Fungsi:
-
-- menjalankan engine analisa,
-- menjaga akses Free/VIP,
-- menolak request yang tidak sesuai akses role,
-- memvalidasi token VIP bila ada.
-
-### 12.4 `/api/statistics`
-
-Method: GET
-
-Fungsi:
-
-- mengambil ranking statistik pasaran,
-- hanya bisa diakses VIP,
-- membutuhkan Authorization Bearer token valid.
-
-### 12.5 `/api/evaluations`
-
-Method: GET
-
-Fungsi:
-
-- mengambil riwayat evaluasi,
-- hanya bisa diakses VIP,
-- membutuhkan Authorization Bearer token valid.
-
-### 12.6 `/api/markets`
-
-Method: GET
-
-Fungsi:
-
-- mengambil daftar pasaran untuk dashboard dan menu analisa.
-
----
-
-## 13. Struktur Folder Penting
+## 11. Struktur Folder Penting
 
 ```txt
 app/
   api/
-    account-login/
     analyze/
+    code-login/
     evaluations/
+    invest/
     markets/
     statistics/
-    verify/
-  analyze/
+    telegram/webhook/
+    verify-session/
+  kode-login/
+  rekomendasi/
   pantauan-rekap/
-  page.tsx
+  analyze/[market]/
 
 components/
+  account/
   analysis/
   auth/
-  history/
+  install/
   layout/
-  pwa/
-  statistics/
   ui/
-  upgrade/
 
 lib/
   access/
@@ -739,269 +701,158 @@ lib/
   server/
 ```
 
-Keterangan:
+Folder inti:
 
-- `app/page.tsx`: dashboard pasaran.
-- `app/analyze/[marketId]/page.tsx`: menu analisa pasaran.
-- `app/analyze/[marketId]/[mode]/page.tsx`: halaman analisa per mode.
-- `components/auth/VipLoginPanel.tsx`: panel login/status VIP.
-- `components/upgrade/UpgradeLockPanel.tsx`: modal informasi fitur VIP terkunci.
-- `lib/access/freeAccess.ts`: pusat aturan Free/VIP.
-- `lib/server/jwt.ts`: sign/verify JWT aplikasi.
-- `lib/server/vip-session.ts`: validasi sessionId aktif.
-- `lib/server/supabase-admin.ts`: Supabase service role client server-side.
-
----
-
-## 14. Development Lokal
-
-Install dependency:
-
-```bash
-npm install
-```
-
-Jalankan development server:
-
-```bash
-npm run dev
-```
-
-Build production:
-
-```bash
-npm run build
-```
-
-Start production lokal:
-
-```bash
-npm run start
-```
-
-Typecheck:
-
-```bash
-npm run typecheck
-```
-
-Lint:
-
-```bash
-npm run lint
-```
-
-Format:
-
-```bash
-npm run format
-```
+| Folder | Fungsi |
+|---|---|
+| `app/api` | Route handler server. |
+| `components/analysis` | UI dan client controller fitur analisa. |
+| `lib/analysis` | Helper/engine analisa yang bisa dipakai ulang. |
+| `lib/server` | Helper server-only: Supabase admin, JWT, session verifier, engines. |
+| `components/auth` | Auth context dan AuthGate. |
+| `components/layout` | Shell aplikasi dan navigasi. |
 
 ---
 
-## 15. Deployment Vercel
+## 12. Development Lokal
 
-Deployment utama menggunakan Vercel.
+### 12.1 Install dependency
 
-Checklist sebelum deploy:
-
-1. Semua env wajib sudah diisi di Vercel.
-2. Supabase Auth aktif.
-3. Tabel `vip_profiles` tersedia.
-4. Tabel `vip_login_events` tersedia.
-5. Tabel data pasaran/statistik/evaluasi tersedia.
-6. Branch yang dideploy benar.
-7. Build `npm run build` sukses.
-
-Catatan Node.js:
-
-`package.json` menggunakan:
-
-```json
-{
-  "engines": {
-    "node": ">=20.9.0"
-  }
-}
+```bash
+pnpm install
 ```
 
-Vercel dapat otomatis naik major Node.js di masa depan. Jika ingin stabil, pin versi Node.js secara lebih spesifik di Vercel atau `package.json`.
+### 12.2 Jalankan development server
 
----
+```bash
+pnpm dev
+```
 
-## 16. Testing Manual Setelah Deploy
-
-### 16.1 Test Free
-
-1. Buka aplikasi tanpa login.
-2. Pastikan dashboard tampil.
-3. Buka salah satu pasaran.
-4. Pastikan Angka Ikut 2D Belakang bisa dipakai.
-5. Pastikan Angka Mati bisa dipakai.
-6. Pastikan BBFS, Jumlah Mati, Shio Mati, Statistik, Riwayat Evaluasi, dan Rekap terkunci.
-7. Klik fitur terkunci dan pastikan modal menjelaskan fungsi fitur dengan profesional.
-
-### 16.2 Test Login VIP
-
-1. Buka menu VIP.
-2. Masukkan nomor WA dan password.
-3. Pastikan login sukses.
-4. Buka fitur VIP.
-5. Pastikan Statistik tampil.
-6. Pastikan Riwayat Evaluasi tampil jika data tersedia.
-7. Pastikan Rekap dapat digunakan.
-
-### 16.3 Test Satu Akun Satu Sesi
-
-1. Login akun VIP di browser A.
-2. Login akun yang sama di browser B.
-3. Refresh browser A.
-4. Browser A harus kembali Free atau token invalid.
-5. Akses fitur VIP dari browser A harus gagal.
-6. Browser B tetap valid.
-
-### 16.4 Test Penalty
-
-1. Login akun VIP di browser A.
-2. Login akun yang sama di browser B.
-3. Login lagi di browser A.
-4. Login lagi di browser B.
-5. Login berikutnya harus terkena penalty jika sudah melebihi batas switch.
-6. Panel VIP harus menampilkan pesan kunci sementara.
-
----
-
-## 17. Troubleshooting
-
-### 17.1 Statistik tidak tampil padahal VIP
-
-Cek:
-
-- token tersimpan di localStorage sebagai `supreme_token`,
-- request `/api/statistics` membawa header Authorization,
-- token belum expired,
-- `active_session_id` cocok dengan token sessionId,
-- data `market_statistics` tersedia,
-- filter statistik tidak terlalu ketat.
-
-### 17.2 Riwayat Evaluasi tidak tampil
-
-Cek:
-
-- user sudah VIP,
-- token dikirim ke `/api/evaluations`,
-- tabel `analysis_evaluations` berisi data,
-- marketId cocok,
-- mode/param/target_pair/analysis_scope cocok.
-
-### 17.3 Login VIP gagal
-
-Cek:
-
-- nomor WA sudah dinormalisasi benar,
-- email Supabase Auth sesuai `<phone>@vip.local`,
-- password benar,
-- `vip_profiles.user_id` sama dengan Auth user id,
-- `vip_profiles.phone` sama dengan nomor normalisasi,
-- `is_active = true`,
-- `suspended_at is null`,
-- `expires_at` belum lewat,
-- `penalty_until` tidak aktif.
-
-### 17.4 Token lama masih ada tapi VIP gagal
-
-Kemungkinan akun login di device/browser lain. Token lama tidak valid jika sessionId sudah diganti di `vip_profiles.active_session_id`.
-
-Solusi:
-
-- login ulang,
-- atau reset sesi aktif dari Supabase jika perlu.
-
-### 17.5 Build error karena module not found
-
-Biasanya ada import lama yang file-nya sudah dihapus atau diganti.
-
-Cari di repository:
+Aplikasi berjalan di:
 
 ```txt
-PinActivationPanel
-deviceId
-displayCode
+http://localhost:3000
 ```
 
-Jika masih ada, hapus import dan pemakaiannya.
+### 12.3 Build production
+
+```bash
+pnpm build
+```
+
+### 12.4 Typecheck
+
+```bash
+pnpm typecheck
+```
+
+### 12.5 Format
+
+```bash
+pnpm format
+```
 
 ---
 
-## 18. Prinsip Keamanan
+## 13. Deployment Vercel
 
-- Jangan simpan password VIP di tabel custom.
-- Gunakan Supabase Auth untuk password.
+Checklist deployment:
+
+1. Pastikan semua environment variables sudah diisi di Vercel.
+2. Pastikan tabel Supabase sudah tersedia.
+3. Pastikan Telegram webhook sudah diarahkan ke domain production.
+4. Jalankan build.
+5. Test login dari Telegram.
+6. Test halaman utama, analisa, statistik, Invest, dan Angka Jadi Invest.
+
+Command build:
+
+```bash
+pnpm build
+```
+
+Jika deploy di Vercel gagal, cek log pada bagian:
+
+- TypeScript error,
+- missing environment variable,
+- import path salah,
+- route server memakai package client-only,
+- tabel Supabase belum ada.
+
+---
+
+## 14. Setup Telegram Webhook
+
+Contoh setup webhook:
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://www.analisa-angka.site/api/telegram/webhook",
+    "secret_token": "<TELEGRAM_WEBHOOK_SECRET>"
+  }'
+```
+
+Cek webhook:
+
+```bash
+curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
+```
+
+---
+
+## 15. Catatan Keamanan
+
 - Jangan expose `SUPABASE_SERVICE_ROLE_KEY` ke client.
-- Semua route VIP harus cek token server-side.
-- UI lock hanya untuk pengalaman user, bukan keamanan utama.
-- Backend guard adalah sumber keamanan utama.
-- Token lama harus ditolak jika sessionId tidak cocok dengan active_session_id.
-- Suspended account harus ditolak saat login dan saat validasi session.
+- Jangan commit `.env`.
+- Jangan simpan kode login dalam bentuk plain text.
+- Kode login harus disimpan dalam bentuk hash.
+- Device id mentah tidak disimpan di database.
+- JWT harus selalu diverifikasi di server.
+- Route protected harus memakai `verifyActiveTelegramSession()`.
+- Jika token bocor, naikkan `TOKEN_VERSION` untuk invalidasi token lama.
 
 ---
 
-## 19. Catatan Produk
+## 16. Catatan Produk
 
-Aplikasi ini membantu proses analisa berbasis data dan metode historis. Hasil analisa tidak boleh dianggap sebagai jaminan hasil. User tetap perlu menggunakan pertimbangan sendiri dan mengelola risiko.
-
-Fitur VIP dibuat bukan hanya sebagai paywall, tetapi juga untuk menjaga beban server karena fitur seperti statistik, riwayat evaluasi, dan rekap membutuhkan query dan pemrosesan yang lebih berat.
+Analisa Angka adalah alat bantu analisa berbasis data historis dan evaluasi sistem. Hasil analisa bukan jaminan hasil akhir. User tetap perlu memahami risiko dan memakai fitur sebagai alat bantu penyaringan, bukan kepastian.
 
 ---
 
-## 20. Roadmap Teknis yang Disarankan
+## 17. Status Fitur Terbaru
 
-Prioritas berikutnya:
+Fitur terbaru yang sudah masuk:
 
-1. Admin panel pembuatan akun VIP.
-2. Reset password VIP dari admin panel.
-3. Monitoring akun dengan banyak penalty.
-4. Dashboard admin untuk melihat login events.
-5. Tombol suspend/unsuspend dari admin panel.
-6. Export data statistik.
-7. Build evaluator scheduler yang lebih terstruktur.
-8. Tambah unit test untuk `freeAccess.ts`.
-9. Tambah integration test untuk `/api/account-login`.
-10. Tambah audit log untuk perubahan role dan masa aktif.
+- Login Telegram berbasis kode.
+- Device binding untuk mengurangi sharing akun.
+- Panel akun di aplikasi.
+- Bottom navigation hanya di Beranda.
+- Invest 2D dengan grouping Depan / Tengah / Belakang.
+- Invest Angka Jadi langsung di halaman Invest.
+- Copy Angka Jadi dari card Invest.
+- Cache Invest Angka Jadi di Supabase.
+- Auto cleanup cache expired melalui endpoint Angka Jadi.
 
 ---
 
-## 21. File Penting Saat Mengubah Sistem Akses
-
-Jika ingin mengubah fitur Free/VIP, mulai dari:
+## 18. Ringkasan Alur Invest Angka Jadi
 
 ```txt
-lib/access/freeAccess.ts
+User buka Invest
+→ pilih 2D Depan / Tengah / Belakang
+→ klik Angka Jadi pada card pasaran
+→ API cek cache
+→ jika cache valid, langsung return
+→ jika cache miss, hitung dengan engine Rekap
+→ simpan cache 12 jam
+→ tampilkan angka jadi
+→ user copy angka
 ```
 
-Lalu cek UI yang menampilkan copy fitur:
+Prinsip utama:
 
 ```txt
-components/auth/VipLoginPanel.tsx
-components/upgrade/UpgradeLockPanel.tsx
-components/analysis/ParamSelector.tsx
-components/analysis/ScopeSelectors.tsx
-app/analyze/[marketId]/page.tsx
-components/layout/AppShell.tsx
+Rekap dan Invest memakai engine hitung yang sama.
 ```
-
-Route backend yang harus tetap sinkron:
-
-```txt
-app/api/analyze/route.ts
-app/api/statistics/route.ts
-app/api/evaluations/route.ts
-app/api/verify/route.ts
-app/api/account-login/route.ts
-```
-
----
-
-## 22. Lisensi dan Akses
-
-Repository ini bersifat private/internal. Jangan membagikan credential, service role key, atau data user ke pihak luar.
