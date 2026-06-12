@@ -1,16 +1,14 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Coins, UserRoundCheck } from "lucide-react";
-import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
+import { BarChart3, Coins } from "lucide-react";
 import { InstallAppBanner } from "@/components/install/InstallAppBanner";
 import { Logo } from "@/components/ui/Logo";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [loginOpen, setLoginOpen] = useState(false);
 
   const hideShell =
     pathname === "/kode-login" ||
@@ -22,9 +20,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className={cnPad(hideShell)}>
       {!hideShell && <HeroHeader />}
       <main className="min-w-0 flex-1">{children}</main>
-      {!hideShell && <BottomNav onOpenFree={() => setLoginOpen(true)} />}
+      {!hideShell && <BottomNav />}
       {!hideShell && <InstallAppBanner />}
-      {!hideShell && <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />}
     </div>
   );
 }
@@ -51,7 +48,7 @@ function HeroHeader() {
   );
 }
 
-function BottomNav({ onOpenFree }: { onOpenFree: () => void }) {
+function BottomNav() {
   const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3 hover:border-border hover:bg-white/[0.075]";
   const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
 
@@ -68,18 +65,6 @@ function BottomNav({ onOpenFree }: { onOpenFree: () => void }) {
           <BarChart3 size={20} />
           <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
         </Link>
-
-        <button
-          data-mode="vip"
-          type="button"
-          onClick={onOpenFree}
-          className="pressable accent-bg-soft accent-text accent-border -mt-4 flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-full border hover:border-border hover:bg-white/[0.075]"
-          style={{ boxShadow: "0 0 36px color-mix(in srgb, var(--accent) 28%, transparent)" }}
-          aria-label="Akun VIP"
-        >
-          <UserRoundCheck size={21} />
-          <span className="text-[10px] font-black uppercase tracking-wide">VIP</span>
-        </button>
 
         <Link
           data-mode="invest"
