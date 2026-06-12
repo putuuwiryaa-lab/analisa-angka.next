@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, ChevronRight, Coins, RefreshCw, Search, Trophy } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Coins, Copy, Loader2, RefreshCw, Search, Trophy } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-context";
+import { deviceAuthHeader } from "@/lib/auth/device";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -40,6 +42,20 @@ type TopInvestCombo = {
   pair: InvestPair["pair"];
   pairLabel: string;
   combo: InvestCombo;
+};
+
+type AngkaJadiResult = {
+  lines?: string[];
+  cached?: boolean;
+  latest_result?: string;
+  formula_version?: string;
+};
+
+type AngkaJadiState = {
+  loading?: boolean;
+  error?: string;
+  result?: AngkaJadiResult;
+  copied?: boolean;
 };
 
 async function fetchInvest(): Promise<InvestMarket[]> {
@@ -103,52 +119,24 @@ function buildTopCombos(markets: InvestMarket[]): TopInvestCombo[] {
   return Array.from(bestByMarket.values());
 }
 
-const PAIR_POS: Record<InvestPair["pair"], { d1: string; d2: string }> = {
-  depan: { d1: "as", d2: "kop" },
-  tengah: { d1: "kop", d2: "kepala" },
-  belakang: { d1: "kepala", d2: "ekor" },
-};
+function comboKey(marketId: string, pair: InvestPair["pair"], comboId: string) {
+  return `${marketId}::${pair}::${comboId}`;
+}
 
-function buildRekapUrl(marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) {
-  const p = new URLSearchParams();
-  p.set("custom_focus", pair);
-  p.set("invest", "1");
-  const pos = PAIR_POS[pair];
-  for (const f of filters) {
-    switch (f.kind) {
-      case "ai":
-        p.set("iv_ai", String(f.param));
-        break;
-      case "parity":
-        p.set("iv_par", "1");
-        break;
-      case "size":
-        p.set("iv_size", "1");
-        break;
-      case "bbfs":
-        p.set("iv_bbfs", String(f.param));
-        break;
-      case "off_shio":
-        p.set("iv_shio", String(f.param));
-        break;
-      case "off_jumlah":
-        p.set("iv_jml", String(f.param));
-        break;
-      case "off_kepala":
-        p.set(`iv_off_${pos.d1}`, String(f.param));
-        break;
-      case "off_ekor":
-        p.set(`iv_off_${pos.d2}`, String(f.param));
-        break;
-    }
-  }
-  return `/analyze/${encodeURIComponent(marketId)}/rekap?${p.toString()}`;
+function lineCopyText(lines: string[] = []) {
+  return lines.join("*");
+}
+
+function lineDisplayText(lines: string[] = []) {
+  return lines.join(" * ");
 }
 
 export default function RekomendasiPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [angkaJadi, setAngkaJadi] = useState<Record<string, AngkaJadiState>>({});
 
   const {
     data: markets = [],
@@ -182,8 +170,44 @@ export default function RekomendasiPage() {
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
-  const handleOpenAngkaJadi = (marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
-    router.push(buildRekapUrl(marketId, pair, filters));
+  const handleOpenAngkaJadi = async (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
+    const existing = angkaJadi[key];
+    if (existing?.loading || existing?.result) return;
+
+    setAngkaJadi((prev) => ({ ...prev, [key]: { loading: true } }));
+
+    try {
+      const response = await fetch("/api/invest/angka-jadi", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token || ""}`,
+          ...deviceAuthHeader(),
+        },
+        body: JSON.stringify({ marketId, pair, filters }),
+      });
+      const json = await response.json().catch(() => ({}));
+
+      if (!response.ok || !json.success) {
+        throw new Error(json.error || "Gagal membuat Angka Jadi.");
+      }
+
+      setAngkaJadi((prev) => ({ ...prev, [key]: { loading: false, result: json } }));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Gagal membuat Angka Jadi.";
+      setAngkaJadi((prev) => ({ ...prev, [key]: { loading: false, error: message } }));
+    }
+  };
+
+  const handleCopyAngkaJadi = async (key: string) => {
+    const lines = angkaJadi[key]?.result?.lines || [];
+    if (!lines.length) return;
+
+    await navigator.clipboard?.writeText(lineCopyText(lines));
+    setAngkaJadi((prev) => ({ ...prev, [key]: { ...prev[key], copied: true } }));
+    window.setTimeout(() => {
+      setAngkaJadi((prev) => ({ ...prev, [key]: { ...prev[key], copied: false } }));
+    }, 1200);
   };
 
   return (
@@ -205,7 +229,7 @@ export default function RekomendasiPage() {
             </div>
             <h2 className="display mt-2 text-3xl text-text">Invest Terarah</h2>
             <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
-              Pilihan kombinasi terbaik dari hasil terbaru. Pilih rekomendasi, lalu buka Angka Jadi yang siap disalin.
+              Pilihan kombinasi terbaik dari hasil terbaru. Klik Angka Jadi untuk menghitung hasil yang siap disalin.
             </p>
           </div>
           <button
@@ -234,14 +258,19 @@ export default function RekomendasiPage() {
         <section className="animate-soft-pop space-y-3">
           <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Sempurna" subtitle="Satu pilihan 15/15 terbaik dari tiap pasaran" />
           <div className="grid gap-2.5">
-            {topCombos.map((item, index) => (
-              <TopComboCard
-                key={`${item.marketId}-${item.pair}-${item.combo.id}`}
-                item={item}
-                index={index}
-                onOpen={() => handleOpenAngkaJadi(item.marketId, item.pair, item.combo.filters)}
-              />
-            ))}
+            {topCombos.map((item, index) => {
+              const key = comboKey(item.marketId, item.pair, item.combo.id);
+              return (
+                <TopComboCard
+                  key={key}
+                  item={item}
+                  index={index}
+                  angkaJadi={angkaJadi[key]}
+                  onOpen={() => handleOpenAngkaJadi(key, item.marketId, item.pair, item.combo.filters)}
+                  onCopy={() => handleCopyAngkaJadi(key)}
+                />
+              );
+            })}
           </div>
         </section>
       )}
@@ -281,8 +310,10 @@ export default function RekomendasiPage() {
                 market={market}
                 index={index}
                 open={openId === market.marketId}
+                angkaJadiMap={angkaJadi}
                 onToggle={() => toggle(market.marketId)}
-                onOpenAngkaJadi={(pair, filters) => handleOpenAngkaJadi(market.marketId, pair, filters)}
+                onOpenAngkaJadi={(key, pair, combo) => handleOpenAngkaJadi(key, market.marketId, pair, combo.filters)}
+                onCopyAngkaJadi={handleCopyAngkaJadi}
               />
             ))
           )}
@@ -323,40 +354,95 @@ function MetricChip({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TopComboCard({ item, index, onOpen }: { item: TopInvestCombo; index: number; onOpen: () => void }) {
+function AngkaJadiPanel({ state, onCopy }: { state?: AngkaJadiState; onCopy: () => void }) {
+  if (!state) return null;
+  if (state.loading) {
+    return (
+      <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl border border-border-soft bg-black/20 p-4 text-xs font-black uppercase tracking-wide text-text-muted">
+        <Loader2 size={16} className="animate-spin" /> Menghitung Angka Jadi
+      </div>
+    );
+  }
+  if (state.error) {
+    return (
+      <div className="mt-3 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-center text-xs font-bold text-danger">
+        {state.error}
+      </div>
+    );
+  }
+
+  const lines = state.result?.lines || [];
+  if (!lines.length) return null;
+
+  return (
+    <div className="mt-3 space-y-3 rounded-2xl border border-border-soft bg-surface p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="display text-xs text-text">Angka Jadi</span>
+        <div className="flex items-center gap-1.5">
+          {state.result?.cached && <span className="rounded-full border border-border-soft px-2 py-1 text-[9px] font-black uppercase tracking-wide text-text-soft">Cache</span>}
+          <span className="accent-bg-soft accent-text rounded-full px-3 py-1 text-[11px] font-black">
+            {lines.length} LINE
+          </span>
+        </div>
+      </div>
+      <div className="num accent-text max-h-[220px] overflow-y-auto rounded-2xl border border-border-soft bg-black/30 p-3 text-sm font-bold leading-8">
+        {lineDisplayText(lines)}
+      </div>
+      <button
+        type="button"
+        onClick={onCopy}
+        className="accent-bg-soft accent-text flex w-full items-center justify-center gap-2 rounded-2xl p-3 text-xs font-black uppercase tracking-wider"
+      >
+        <Copy size={16} /> {state.copied ? "Tersalin" : "Copy Angka Jadi"}
+      </button>
+    </div>
+  );
+}
+
+function TopComboCard({
+  item,
+  index,
+  angkaJadi,
+  onOpen,
+  onCopy,
+}: {
+  item: TopInvestCombo;
+  index: number;
+  angkaJadi?: AngkaJadiState;
+  onOpen: () => void;
+  onCopy: () => void;
+}) {
   const combo = item.combo;
   const strengthLabel = comboStrengthLabel(combo.avgWins15);
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="pressable depth-1 animate-soft-pop w-full rounded-3xl border p-3.5 text-left hover:border-border hover:bg-white/[0.045]"
-      style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="accent-bg-soft accent-text rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
-              {item.pairLabel}
-            </span>
-            <span className="accent-bg-soft accent-text rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
-              {strengthLabel}
-            </span>
+    <div className="animate-soft-pop depth-1 rounded-3xl border p-3.5" style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}>
+      <button type="button" onClick={onOpen} className="pressable w-full text-left">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="accent-bg-soft accent-text rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
+                {item.pairLabel}
+              </span>
+              <span className="accent-bg-soft accent-text rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
+                {strengthLabel}
+              </span>
+            </div>
+            <p className="display mt-2 truncate text-sm text-text">{item.marketName}</p>
+            <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">{combo.label}</p>
           </div>
-          <p className="display mt-2 truncate text-sm text-text">{item.marketName}</p>
-          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">{combo.label}</p>
+          <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black uppercase tracking-wide">
+            Angka Jadi <ChevronRight size={13} />
+          </div>
         </div>
-        <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black uppercase tracking-wide">
-          Angka Jadi <ChevronRight size={13} />
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <MetricChip label="Riwayat" value={`${Math.round(combo.avgWins15)}/15`} />
+          <MetricChip label="Line" value={String(combo.expectedLines)} />
+          <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
         </div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        <MetricChip label="Riwayat" value={`${Math.round(combo.avgWins15)}/15`} />
-        <MetricChip label="Line" value={String(combo.expectedLines)} />
-        <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
-      </div>
-    </button>
+      </button>
+      <AngkaJadiPanel state={angkaJadi} onCopy={onCopy} />
+    </div>
   );
 }
 
@@ -364,14 +450,18 @@ function MarketRow({
   market,
   index,
   open,
+  angkaJadiMap,
   onToggle,
   onOpenAngkaJadi,
+  onCopyAngkaJadi,
 }: {
   market: InvestMarket;
   index: number;
   open: boolean;
+  angkaJadiMap: Record<string, AngkaJadiState>;
   onToggle: () => void;
-  onOpenAngkaJadi: (pair: InvestPair["pair"], filters: InvestFilter[]) => void;
+  onOpenAngkaJadi: (key: string, pair: InvestPair["pair"], combo: InvestCombo) => void;
+  onCopyAngkaJadi: (key: string) => void;
 }) {
   const total = market.pairs.reduce((sum, p) => sum + p.combos.length, 0);
   const best = market.pairs.flatMap((p) => p.combos).sort((a, b) => b.avgWins15 - a.avgWins15)[0];
@@ -405,7 +495,14 @@ function MarketRow({
       {open && (
         <div className="animate-fade-in space-y-4 border-t border-border-soft px-4 pb-4 pt-3.5">
           {market.pairs.map((p) => (
-            <PairBlock key={p.pair} block={p} onOpenAngkaJadi={onOpenAngkaJadi} />
+            <PairBlock
+              key={p.pair}
+              marketId={market.marketId}
+              block={p}
+              angkaJadiMap={angkaJadiMap}
+              onOpenAngkaJadi={onOpenAngkaJadi}
+              onCopyAngkaJadi={onCopyAngkaJadi}
+            />
           ))}
         </div>
       )}
@@ -414,11 +511,17 @@ function MarketRow({
 }
 
 function PairBlock({
+  marketId,
   block,
+  angkaJadiMap,
   onOpenAngkaJadi,
+  onCopyAngkaJadi,
 }: {
+  marketId: string;
   block: InvestPair;
-  onOpenAngkaJadi: (pair: InvestPair["pair"], filters: InvestFilter[]) => void;
+  angkaJadiMap: Record<string, AngkaJadiState>;
+  onOpenAngkaJadi: (key: string, pair: InvestPair["pair"], combo: InvestCombo) => void;
+  onCopyAngkaJadi: (key: string) => void;
 }) {
   return (
     <div>
@@ -436,44 +539,62 @@ function PairBlock({
         </p>
       ) : (
         <div className="space-y-2">
-          {block.combos.map((c) => (
-            <ComboRow key={c.id} combo={c} onOpen={() => onOpenAngkaJadi(block.pair, c.filters)} />
-          ))}
+          {block.combos.map((c) => {
+            const key = comboKey(marketId, block.pair, c.id);
+            return (
+              <ComboRow
+                key={key}
+                combo={c}
+                angkaJadi={angkaJadiMap[key]}
+                onOpen={() => onOpenAngkaJadi(key, block.pair, c)}
+                onCopy={() => onCopyAngkaJadi(key)}
+              />
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void }) {
+function ComboRow({
+  combo,
+  angkaJadi,
+  onOpen,
+  onCopy,
+}: {
+  combo: InvestCombo;
+  angkaJadi?: AngkaJadiState;
+  onOpen: () => void;
+  onCopy: () => void;
+}) {
   const strengthLabel = comboStrengthLabel(combo.avgWins15);
   const akurat = Math.round(combo.avgWins15);
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="pressable depth-2 w-full rounded-2xl border px-3 py-3 text-left hover:bg-white/[0.05]"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="accent-bg-soft accent-text inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
-              {strengthLabel}
-            </span>
+    <div className="depth-2 rounded-2xl border px-3 py-3">
+      <button type="button" onClick={onOpen} className="pressable w-full text-left">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="accent-bg-soft accent-text inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">
+                {strengthLabel}
+              </span>
+            </div>
+            <p className="display mt-1.5 text-[12.5px] leading-snug text-text">{combo.label}</p>
           </div>
-          <p className="display mt-1.5 text-[12.5px] leading-snug text-text">{combo.label}</p>
+          <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5">
+            <span className="text-[11px] font-black uppercase tracking-wide">Angka Jadi</span>
+            <ChevronRight size={14} />
+          </div>
         </div>
-        <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5">
-          <span className="text-[11px] font-black uppercase tracking-wide">Angka Jadi</span>
-          <ChevronRight size={14} />
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <MetricChip label="Riwayat" value={`${akurat}/15`} />
+          <MetricChip label="Line" value={String(combo.expectedLines)} />
+          <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
         </div>
-      </div>
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
-        <MetricChip label="Riwayat" value={`${akurat}/15`} />
-        <MetricChip label="Line" value={String(combo.expectedLines)} />
-        <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
-      </div>
-    </button>
+      </button>
+      <AngkaJadiPanel state={angkaJadi} onCopy={onCopy} />
+    </div>
   );
 }
