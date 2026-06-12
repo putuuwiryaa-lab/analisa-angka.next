@@ -1,6 +1,10 @@
 import "server-only";
+import crypto from "crypto";
 import { createAdminClient } from "@/lib/server/supabase-admin";
+import { requireEnv } from "@/lib/server/env";
 import { getBearerToken, TOKEN_VERSION, verifyToken, type Role } from "@/lib/server/jwt";
+
+const DEVICE_HEADER = "x-aa-device-id";
 
 type TelegramPlan = "NONE" | "TRIAL" | "PRO";
 type AccessRole = Extract<Role, "TRIAL" | "PRO">;
@@ -14,6 +18,7 @@ type TelegramUserRow = {
   is_active: boolean;
   suspended_at: string | null;
   active_session_id: string | null;
+  active_device_hash: string | null;
 };
 
 export type TelegramSessionResult =
@@ -24,6 +29,7 @@ export type TelegramSessionResult =
       telegramUserId: number;
       expiresAt: string;
       sessionId: string;
+      deviceBound: boolean;
     }
   | { ok: false; status: number; error: string };
 
@@ -31,11 +37,26 @@ function isFutureDate(value: string | null | undefined) {
   return Boolean(value && new Date(value).getTime() > Date.now());
 }
 
+function normalizeDeviceId(value: string | null) {
+  return String(value || "").trim().slice(0, 120);
+}
+
+function hashValue(value: string) {
+  return crypto.createHmac("sha256", requireEnv("JWT_SECRET")).update(value).digest("hex");
+}
+
 export async function verifyActiveTelegramSession(headers: Headers): Promise<TelegramSessionResult> {
   const token = getBearerToken(headers);
 
   if (!token || token === "null" || token === "undefined") {
     return { ok: false, status: 401, error: "Silakan login terlebih dahulu." };
+  }
+
+  const deviceId = normalizeDeviceId(headers.get(DEVICE_HEADER));
+  const deviceHash = deviceId ? hashValue(deviceId) : "";
+
+  if (!deviceHash) {
+    return { ok: false, status: 401, error: "Device tidak valid. Silakan login ulang." };
   }
 
   let payload;
@@ -64,7 +85,7 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
   const supabase = createAdminClient();
   const { data: user, error } = await supabase
     .from("telegram_users")
-    .select("id, telegram_user_id, plan, trial_expires_at, pro_expires_at, is_active, suspended_at, active_session_id")
+    .select("id, telegram_user_id, plan, trial_expires_at, pro_expires_at, is_active, suspended_at, active_session_id, active_device_hash")
     .eq("id", accountId)
     .maybeSingle<TelegramUserRow>();
 
@@ -84,6 +105,27 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
     return { ok: false, status: 401, error: "Session sudah diganti perangkat lain. Silakan login ulang." };
   }
 
+  if (user.active_device_hash && user.active_device_hash !== deviceHash) {
+    return { ok: false, status: 401, error: "Akun sedang aktif di device lain. Silakan login ulang." };
+  }
+
+  if (!user.active_device_hash) {
+    const userAgentHash = hashValue(headers.get("user-agent") || "unknown");
+    const { error: bindError } = await supabase
+      .from("telegram_users")
+      .update({
+        active_device_hash: deviceHash,
+        active_device_at: new Date().toISOString(),
+        active_device_user_agent_hash: userAgentHash,
+      })
+      .eq("id", user.id)
+      .eq("active_session_id", sessionId);
+
+    if (bindError) {
+      return { ok: false, status: 500, error: "Gagal mengunci device." };
+    }
+  }
+
   const expiresAt = role === "PRO" ? user.pro_expires_at : user.trial_expires_at;
 
   if (!isFutureDate(expiresAt)) {
@@ -97,5 +139,6 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
     telegramUserId: user.telegram_user_id,
     expiresAt: expiresAt as string,
     sessionId,
+    deviceBound: true,
   };
 }
