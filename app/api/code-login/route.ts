@@ -22,6 +22,9 @@ type TelegramUserRow = {
   pro_expires_at: string | null;
   is_active: boolean;
   suspended_at: string | null;
+  active_session_id?: string | null;
+  active_device_hash?: string | null;
+  active_device_user_agent_hash?: string | null;
 };
 
 type LoginCodeRow = {
@@ -32,6 +35,7 @@ type LoginCodeRow = {
   code_type: "LOGIN" | "TRIAL_LOGIN" | "PRO_LOGIN";
   expires_at: string;
   used_at: string | null;
+  consumed_session_id: string | null;
 };
 
 function getCodeSecret() {
@@ -61,6 +65,24 @@ function isFutureDate(value: string | null | undefined) {
 function secondsUntil(value: string) {
   const seconds = Math.floor((new Date(value).getTime() - Date.now()) / 1000);
   return Math.max(seconds, 60);
+}
+
+function isRecent(value: string | null | undefined, minutes = 10) {
+  if (!value) return false;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) && Date.now() - ms <= minutes * 60 * 1000;
+}
+
+function activeRoleAndExpiry(user: TelegramUserRow): { role: Role; expiresAt: string } | null {
+  if (user.plan === "PRO" && isFutureDate(user.pro_expires_at)) {
+    return { role: "PRO", expiresAt: user.pro_expires_at as string };
+  }
+
+  if (user.plan === "TRIAL" && isFutureDate(user.trial_expires_at)) {
+    return { role: "TRIAL", expiresAt: user.trial_expires_at as string };
+  }
+
+  return null;
 }
 
 async function writeAccessEvent(params: {
@@ -148,7 +170,7 @@ export async function POST(request: Request) {
 
     const { data: loginCode, error: codeError } = await supabase
       .from("telegram_login_codes")
-      .select("id, user_id, telegram_user_id, chat_id, code_type, expires_at, used_at")
+      .select("id, user_id, telegram_user_id, chat_id, code_type, expires_at, used_at, consumed_session_id")
       .eq("code_hash", codeHash)
       .maybeSingle<LoginCodeRow>();
 
@@ -164,8 +186,69 @@ export async function POST(request: Request) {
     }
 
     if (loginCode.used_at) {
+      const { data: usedUser, error: usedUserError } = await supabase
+        .from("telegram_users")
+        .select("id, telegram_user_id, chat_id, plan, trial_used, trial_started_at, trial_expires_at, pro_started_at, pro_expires_at, is_active, suspended_at, active_session_id, active_device_hash, active_device_user_agent_hash")
+        .eq("id", loginCode.user_id)
+        .maybeSingle<TelegramUserRow>();
+
+      if (usedUserError) throw usedUserError;
+
+      const active = usedUser ? activeRoleAndExpiry(usedUser) : null;
+      const canRecover = Boolean(
+        usedUser &&
+          active &&
+          usedUser.is_active &&
+          !usedUser.suspended_at &&
+          loginCode.consumed_session_id &&
+          usedUser.active_session_id === loginCode.consumed_session_id &&
+          isRecent(loginCode.used_at) &&
+          (!usedUser.active_device_hash ||
+            (deviceHash && usedUser.active_device_hash === deviceHash) ||
+            (!deviceHash && usedUser.active_device_user_agent_hash === userAgentHash)),
+      );
+
+      if (canRecover && active && usedUser && loginCode.consumed_session_id) {
+        const token = signToken(
+          {
+            role: active.role,
+            accountId: usedUser.id,
+            sessionId: loginCode.consumed_session_id,
+          },
+          secondsUntil(active.expiresAt),
+        );
+
+        await writeAccessEvent({
+          userId: usedUser.id,
+          telegramUserId: usedUser.telegram_user_id,
+          chatId: usedUser.chat_id || loginCode.chat_id,
+          eventType: "LOGIN_RECOVERED",
+          eventDetail: "used_code_active_session_recovered",
+          metadata: {
+            code_type: loginCode.code_type,
+            role: active.role,
+            expires_at: active.expiresAt,
+            session_id: loginCode.consumed_session_id,
+            device_bound: Boolean(usedUser.active_device_hash),
+          },
+          ipHash,
+          userAgentHash,
+        });
+
+        return NextResponse.json({
+          success: true,
+          role: active.role,
+          token,
+          telegram_user_id: usedUser.telegram_user_id,
+          expires_at: active.expiresAt,
+          session_id: loginCode.consumed_session_id,
+          device_bound: Boolean(usedUser.active_device_hash),
+          recovered: true,
+        });
+      }
+
       return failLogin({
-        error: "Kode login sudah digunakan",
+        error: "Kode login sudah digunakan. Ambil kode baru dari bot Telegram.",
         reason: "code_already_used",
         code: loginCode,
         ipHash,
