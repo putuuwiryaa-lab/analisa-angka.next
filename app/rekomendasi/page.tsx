@@ -182,7 +182,7 @@ export default function RekomendasiPage() {
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
-  const handleOpenRekap = (marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
+  const handleOpenAngkaJadi = (marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
     router.push(buildRekapUrl(marketId, pair, filters));
   };
 
@@ -205,7 +205,7 @@ export default function RekomendasiPage() {
             </div>
             <h2 className="display mt-2 text-3xl text-text">Invest Terarah</h2>
             <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
-              Pilihan kombinasi terbaik dari hasil terbaru. Pilih rekomendasi, lalu buka di Rekap untuk menyusun hasil akhir.
+              Pilihan kombinasi terbaik dari hasil terbaru. Pilih rekomendasi, lalu buka Angka Jadi yang siap disalin.
             </p>
           </div>
           <button
@@ -239,7 +239,7 @@ export default function RekomendasiPage() {
                 key={`${item.marketId}-${item.pair}-${item.combo.id}`}
                 item={item}
                 index={index}
-                onOpen={() => handleOpenRekap(item.marketId, item.pair, item.combo.filters)}
+                onOpen={() => handleOpenAngkaJadi(item.marketId, item.pair, item.combo.filters)}
               />
             ))}
           </div>
@@ -282,7 +282,7 @@ export default function RekomendasiPage() {
                 index={index}
                 open={openId === market.marketId}
                 onToggle={() => toggle(market.marketId)}
-                onOpenRekap={(pair, filters) => handleOpenRekap(market.marketId, pair, filters)}
+                onOpenAngkaJadi={(pair, filters) => handleOpenAngkaJadi(market.marketId, pair, filters)}
               />
             ))
           )}
@@ -348,7 +348,7 @@ function TopComboCard({ item, index, onOpen }: { item: TopInvestCombo; index: nu
           <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">{combo.label}</p>
         </div>
         <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black uppercase tracking-wide">
-          Buka Rekap <ChevronRight size={13} />
+          Angka Jadi <ChevronRight size={13} />
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -365,13 +365,13 @@ function MarketRow({
   index,
   open,
   onToggle,
-  onOpenRekap,
+  onOpenAngkaJadi,
 }: {
   market: InvestMarket;
   index: number;
   open: boolean;
   onToggle: () => void;
-  onOpenRekap: (pair: InvestPair["pair"], filters: InvestFilter[]) => void;
+  onOpenAngkaJadi: (pair: InvestPair["pair"], filters: InvestFilter[]) => void;
 }) {
   const total = market.pairs.reduce((sum, p) => sum + p.combos.length, 0);
   const best = market.pairs.flatMap((p) => p.combos).sort((a, b) => b.avgWins15 - a.avgWins15)[0];
@@ -405,7 +405,7 @@ function MarketRow({
       {open && (
         <div className="animate-fade-in space-y-4 border-t border-border-soft px-4 pb-4 pt-3.5">
           {market.pairs.map((p) => (
-            <PairBlock key={p.pair} block={p} onOpenRekap={onOpenRekap} />
+            <PairBlock key={p.pair} block={p} onOpenAngkaJadi={onOpenAngkaJadi} />
           ))}
         </div>
       )}
@@ -415,10 +415,10 @@ function MarketRow({
 
 function PairBlock({
   block,
-  onOpenRekap,
+  onOpenAngkaJadi,
 }: {
   block: InvestPair;
-  onOpenRekap: (pair: InvestPair["pair"], filters: InvestFilter[]) => void;
+  onOpenAngkaJadi: (pair: InvestPair["pair"], filters: InvestFilter[]) => void;
 }) {
   return (
     <div>
@@ -437,7 +437,7 @@ function PairBlock({
       ) : (
         <div className="space-y-2">
           {block.combos.map((c) => (
-            <ComboRow key={c.id} combo={c} onOpen={() => onOpenRekap(block.pair, c.filters)} />
+            <ComboRow key={c.id} combo={c} onOpen={() => onOpenAngkaJadi(block.pair, c.filters)} />
           ))}
         </div>
       )}
@@ -465,7 +465,7 @@ function ComboRow({ combo, onOpen }: { combo: InvestCombo; onOpen: () => void })
           <p className="display mt-1.5 text-[12.5px] leading-snug text-text">{combo.label}</p>
         </div>
         <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5">
-          <span className="text-[11px] font-black uppercase tracking-wide">Buka Rekap</span>
+          <span className="text-[11px] font-black uppercase tracking-wide">Angka Jadi</span>
           <ChevronRight size={14} />
         </div>
       </div>
