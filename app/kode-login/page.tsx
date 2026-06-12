@@ -2,7 +2,8 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ExternalLink, Loader2, Send, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Send } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 const TELEGRAM_BOT_URL = "https://t.me/analisaangka_bot";
 
@@ -88,14 +89,14 @@ export default function KodeLoginPage() {
   }
 
   return (
-    <main className="relative -mx-4 -my-4 flex min-h-[100svh] flex-col justify-center overflow-hidden px-4 py-6 sm:-mx-6">
+    <main className="relative -mx-4 -my-4 flex min-h-[100svh] flex-col items-center overflow-hidden px-4 pb-6 pt-7 sm:-mx-6 sm:pt-10">
       <div className="pointer-events-none absolute inset-x-0 top-[-20%] h-[42%] rounded-full bg-primary/20 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-16%] right-[-30%] h-[38%] w-[80%] rounded-full bg-cyan-400/10 blur-3xl" />
 
       <section className="relative mx-auto w-full max-w-[420px]">
         <div className="mb-5 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[1.45rem] border border-primary/35 bg-primary/15 shadow-[0_0_42px_rgba(124,58,237,0.22)]">
-            <ShieldCheck className="text-accent" size={30} strokeWidth={2.7} />
+            <Logo className="h-9 w-9" />
           </div>
           <p className="text-[11px] font-black uppercase tracking-[0.22em] text-accent">Analisa Angka</p>
           <h1 className="mt-2 text-3xl font-black leading-tight text-text">Masuk Aplikasi</h1>
