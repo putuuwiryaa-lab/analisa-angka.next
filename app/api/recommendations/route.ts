@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { customFocusPairs, customFocusToBBFSScope, type CustomFocus, type TargetPair } from "@/lib/analysis/customDigit";
 import type { RecommendationBadge, RecommendedMap } from "@/lib/analysis/recommendations";
+import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -218,6 +219,11 @@ async function buildRecommendations(supabase: SupabaseClient, marketIds: string[
 
 export async function GET(request: NextRequest) {
   try {
+    const access = await verifyActiveTelegramSession(request.headers);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
     if (!supabaseUrl || !supabaseKey) throw new Error("Konfigurasi Supabase belum lengkap.");
 
     const marketId = safeDecode(request.nextUrl.searchParams.get("marketId") || "").trim();
@@ -235,7 +241,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(badges, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Gagal memuat rekomendasi";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("RECOMMENDATIONS_API_ERROR", e);
+    return NextResponse.json({ error: "Gagal memuat rekomendasi" }, { status: 500 });
   }
-                                                                           }
+}
