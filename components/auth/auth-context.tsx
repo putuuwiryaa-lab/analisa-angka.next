@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { deviceAuthHeader } from "@/lib/auth/device";
 
 export type Role = "TRIAL" | "PRO" | "MASTER";
 
@@ -56,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await fetch("/api/verify-session", {
           method: "GET",
-          headers: { Authorization: `Bearer ${saved}` },
+          headers: { Authorization: `Bearer ${saved}`, ...deviceAuthHeader() },
+          cache: "no-store",
         });
         const json = await res.json().catch(() => ({}));
 
