@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isVipRole } from "@/lib/access/freeAccess";
 import {
   MARKET_STAT_SELECT,
   MAX_LOSS_STREAK_ALLOWED,
@@ -17,8 +16,7 @@ import {
   type TargetPair,
   type VisibleCategoryKey,
 } from "@/lib/analysis/statistics";
-import { getBearerToken } from "@/lib/server/jwt";
-import { verifyActiveVipSession } from "@/lib/server/vip-session";
+import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,8 +25,6 @@ const VALID_CATEGORIES = new Set(["ai", "bbfs", "off_digit", "off_jumlah", "off_
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 const VALID_AI_SCOPES = new Set(["4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
-const STATISTICS_LOCK_MESSAGE =
-  "Statistik performa untuk fitur analisa gratis tersedia di akses VIP. Statistik lain dibuka sebagai preview performa fitur lanjutan.";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -49,25 +45,16 @@ function parseAnalysisScope(value: string | null): AnalysisScope {
   return VALID_ANALYSIS_SCOPES.has(value || "") ? (value as AnalysisScope) : "2d_belakang";
 }
 
-async function roleFromRequest(headers: Headers) {
-  const token = getBearerToken(headers);
-  if (!token || token === "null" || token === "undefined") return "FREE";
-
-  try {
-    const access = await verifyActiveVipSession(headers);
-    return access.ok ? access.role : "FREE";
-  } catch {
-    return "FREE";
-  }
-}
-
-function isLockedForFree(category: VisibleCategoryKey, aiScope: AiStatScope) {
-  return category === "off_digit" || (category === "ai" && aiScope === "2d_belakang");
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const role = await roleFromRequest(request.headers);
+    const access = await verifyActiveTelegramSession(request.headers);
+
+    if (!access.ok) {
+      return NextResponse.json(
+        { error: access.error },
+        { status: access.status, headers: { "Cache-Control": "no-store" } },
+      );
+    }
 
     if (!supabaseUrl || !supabaseKey) throw new Error("Konfigurasi Supabase belum lengkap.");
 
@@ -79,10 +66,6 @@ export async function GET(request: NextRequest) {
     const param = Number(search.get("param") || 0);
 
     if (!Number.isFinite(param) || param <= 0) throw new Error("Parameter statistik tidak valid.");
-
-    if (!isVipRole(role) && isLockedForFree(category, aiScope)) {
-      return NextResponse.json({ error: STATISTICS_LOCK_MESSAGE }, { status: 403, headers: { "Cache-Control": "no-store" } });
-    }
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
