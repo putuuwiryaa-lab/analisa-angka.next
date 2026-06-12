@@ -287,13 +287,18 @@ export default function RekomendasiPage() {
       {!showInitialSkeleton && topComboGroups.length > 0 && !search && (
         <section className="animate-soft-pop space-y-3">
           <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Sempurna" subtitle="Dikelompokkan dari 2D depan, tengah, belakang" />
-          <div className="grid gap-3">
+          <div className="grid gap-4">
             {topComboGroups.map((group) => (
-              <div key={group.pair} className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                  <span className="accent-text text-[11px] font-black uppercase tracking-wide">{group.pairLabel}</span>
-                  <span className="h-px flex-1 bg-white/10" />
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-text-soft">
+              <div key={group.pair} className="depth-2 rounded-3xl border p-3.5">
+                <div className="depth-3 mb-3 flex items-center justify-between gap-3 rounded-2xl border px-3 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="accent-bg h-10 w-1.5 shrink-0 rounded-full" />
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-black uppercase tracking-[0.22em] text-text-soft">Kategori Invest</p>
+                      <h3 className="display accent-text truncate text-xl leading-none">{group.pairLabel}</h3>
+                    </div>
+                  </div>
+                  <span className="accent-bg-soft accent-text shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide">
                     {group.items.length} pasaran
                   </span>
                 </div>
