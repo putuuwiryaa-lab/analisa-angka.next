@@ -26,17 +26,19 @@ const ROLE_KEY = "aa_role";
 const EXPIRES_KEY = "aa_expires_at";
 const TELEGRAM_ID_KEY = "aa_telegram_user_id";
 
+function clearOldAuthKeys() {
+  localStorage.removeItem("supreme_token");
+  localStorage.removeItem("supreme_role");
+  localStorage.removeItem("supreme_device_id");
+  localStorage.removeItem("supreme_display_code");
+}
+
 function clearStoredAuth() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(ROLE_KEY);
   localStorage.removeItem(EXPIRES_KEY);
   localStorage.removeItem(TELEGRAM_ID_KEY);
-
-  // Bersihkan sisa storage dari sistem lama.
-  localStorage.removeItem("supreme_token");
-  localStorage.removeItem("supreme_role");
-  localStorage.removeItem("supreme_device_id");
-  localStorage.removeItem("supreme_display_code");
+  clearOldAuthKeys();
 }
 
 function normalizeRole(value: unknown): Role | null {
@@ -49,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
-    clearStoredAuth();
+    clearOldAuthKeys();
 
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) return;
@@ -82,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
         }
       } catch {
-        // AuthGate tetap melakukan validasi ulang saat halaman terkunci dibuka.
       } finally {
         setVerifying(false);
       }
