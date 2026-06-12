@@ -1,19 +1,12 @@
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Lock } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { ANALYSIS_MENU, CUSTOM_MENU, MODES, type ModeKey } from "@/components/analysis/modes";
-import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
-import { useAuth } from "@/components/auth/auth-context";
-import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
 import { Button } from "@/components/ui/Button";
-import { VipBadge } from "@/components/ui/VipBadge";
-import { isModeLockedForRole } from "@/lib/access/freeAccess";
-
-type UpgradeFeature = "default" | "statistics" | "evaluation" | "rekap" | "mode";
 
 function safeDecode(value: string) {
   try {
@@ -48,58 +41,28 @@ function SubMenuCard({
   label,
   mode,
   marketId,
-  locked = false,
-  onLockedClick,
   index = 0,
 }: {
   label: string;
   mode: ModeKey;
   marketId: string;
-  locked?: boolean;
-  onLockedClick?: () => void;
   index?: number;
 }) {
   const { Icon } = MODES[mode];
-  const className = `pressable animate-soft-pop depth-1 group relative flex min-h-[72px] w-full items-center gap-3 overflow-hidden rounded-3xl border px-4 py-3 text-left hover:border-border ${
-    locked ? "opacity-80 hover:bg-white/[0.045]" : ""
-  }`;
-  const content = (
-    <>
-      <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-[var(--accent)] opacity-70" />
-      <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-150 group-hover:scale-[1.035]">
-        {locked ? <Lock size={20} strokeWidth={1.9} /> : <Icon size={20} strokeWidth={1.9} />}
-      </div>
-      <span className="accent-text display flex-1 text-[13px]">{label}</span>
-      {locked ? (
-        <VipBadge className="text-[10px]" iconSize={10} />
-      ) : (
-        <ChevronRight size={18} className="text-text-soft transition-transform duration-150 group-hover:translate-x-0.5" />
-      )}
-    </>
-  );
-
-  if (locked) {
-    return (
-      <button
-        type="button"
-        data-mode={mode}
-        onClick={onLockedClick}
-        className={className}
-        style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
-      >
-        {content}
-      </button>
-    );
-  }
 
   return (
     <Link
       href={`/analyze/${encodeURIComponent(safeDecode(marketId))}/${mode}`}
       data-mode={mode}
-      className={className}
+      className="pressable animate-soft-pop depth-1 group relative flex min-h-[72px] w-full items-center gap-3 overflow-hidden rounded-3xl border px-4 py-3 text-left hover:border-border"
       style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
     >
-      {content}
+      <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-[var(--accent)] opacity-70" />
+      <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-150 group-hover:scale-[1.035]">
+        <Icon size={20} strokeWidth={1.9} />
+      </div>
+      <span className="accent-text display flex-1 text-[13px]">{label}</span>
+      <ChevronRight size={18} className="text-text-soft transition-transform duration-150 group-hover:translate-x-0.5" />
     </Link>
   );
 }
@@ -107,10 +70,6 @@ function SubMenuCard({
 export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId: string }> }) {
   const { marketId } = use(params);
   const router = useRouter();
-  const { role } = useAuth();
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [upgradeFeature, setUpgradeFeature] = useState<UpgradeFeature>("mode");
-  const [loginOpen, setLoginOpen] = useState(false);
   const decodedMarketId = safeDecode(marketId);
 
   const { data: marketName = decodedMarketId } = useQuery({
@@ -118,16 +77,6 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
     queryFn: () => fetchMarketName(decodedMarketId),
     enabled: !!decodedMarketId,
   });
-
-  function openLoginPanel() {
-    setUpgradeOpen(false);
-    setLoginOpen(true);
-  }
-
-  function openUpgrade(feature: UpgradeFeature) {
-    setUpgradeFeature(feature);
-    setUpgradeOpen(true);
-  }
 
   return (
     <div className="animate-rise pb-4">
@@ -152,8 +101,6 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
             label={item.label}
             mode={item.mode}
             marketId={decodedMarketId}
-            locked={isModeLockedForRole(role, item.mode)}
-            onLockedClick={() => openUpgrade("mode")}
             index={index}
           />
         ))}
@@ -170,15 +117,10 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
             label={item.label}
             mode={item.mode}
             marketId={decodedMarketId}
-            locked={isModeLockedForRole(role, item.mode)}
-            onLockedClick={() => openUpgrade("rekap")}
             index={ANALYSIS_MENU.length + index}
           />
         ))}
       </div>
-
-      <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenVipLogin={openLoginPanel} feature={upgradeFeature} />
-      <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
 }
