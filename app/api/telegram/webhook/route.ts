@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createHash, randomInt } from "node:crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,6 +49,12 @@ function getBotToken() {
   return token;
 }
 
+function getCodeSecret() {
+  const secret = process.env.TELEGRAM_LOGIN_CODE_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!secret) throw new Error("TELEGRAM_LOGIN_CODE_SECRET atau TELEGRAM_WEBHOOK_SECRET belum diatur");
+  return secret;
+}
+
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -66,6 +73,23 @@ function isValidWebhookSecret(request: Request) {
 
   const submitted = request.headers.get("x-telegram-bot-api-secret-token") || "";
   return submitted === expected;
+}
+
+function generateLoginCode() {
+  return String(randomInt(100000, 1000000));
+}
+
+function hashLoginCode(code: string) {
+  return createHash("sha256").update(`${getCodeSecret()}:${code}`).digest("hex");
+}
+
+function resolveCodeType(account: TelegramUserRow) {
+  const now = Date.now();
+  const proExpiresAt = account.pro_expires_at ? new Date(account.pro_expires_at).getTime() : 0;
+
+  if (account.plan === "PRO" && proExpiresAt > now) return "PRO_LOGIN";
+  if (!account.trial_used) return "TRIAL_LOGIN";
+  return "LOGIN";
 }
 
 async function sendTelegramMessage(chatId: number, text: string) {
@@ -109,22 +133,65 @@ async function upsertTelegramUser(user: TelegramUser, chatId: number) {
     .single<TelegramUserRow>();
 
   if (error) throw error;
+  return data;
+}
 
-  await supabase.from("telegram_access_events").insert({
-    user_id: data.id,
-    telegram_user_id: user.id,
-    chat_id: chatId,
-    event_type: "START",
-    event_detail: "Telegram user opened bot start command",
-    metadata: {
-      username: user.username || null,
-      first_name: user.first_name || null,
-      last_name: user.last_name || null,
-      language_code: user.language_code || null,
-    },
+async function recordAccessEvent(params: {
+  userId?: string;
+  telegramUserId?: number;
+  chatId?: number;
+  eventType: string;
+  eventDetail?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const supabase = getSupabaseAdmin();
+
+  const { error } = await supabase.from("telegram_access_events").insert({
+    user_id: params.userId || null,
+    telegram_user_id: params.telegramUserId || null,
+    chat_id: params.chatId || null,
+    event_type: params.eventType,
+    event_detail: params.eventDetail || null,
+    metadata: params.metadata || {},
   });
 
-  return data;
+  if (error) throw error;
+}
+
+async function createLoginCode(account: TelegramUserRow, chatId: number) {
+  const supabase = getSupabaseAdmin();
+  const code = generateLoginCode();
+  const codeHash = hashLoginCode(code);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const codeType = resolveCodeType(account);
+
+  await supabase
+    .from("telegram_login_codes")
+    .update({ used_at: new Date().toISOString() })
+    .eq("telegram_user_id", account.telegram_user_id)
+    .is("used_at", null);
+
+  const { error } = await supabase.from("telegram_login_codes").insert({
+    user_id: account.id,
+    telegram_user_id: account.telegram_user_id,
+    chat_id: chatId,
+    code_hash: codeHash,
+    code_type: codeType,
+    expires_at: expiresAt,
+  });
+
+  if (error) throw error;
+
+  await recordAccessEvent({
+    userId: account.id,
+    telegramUserId: account.telegram_user_id,
+    chatId,
+    eventType: "REQUEST_CODE",
+    eventDetail: "Telegram user requested a login code",
+    metadata: { code_type: codeType, expires_at: expiresAt },
+  });
+
+  return { code, codeType, expiresAt };
 }
 
 function formatDate(value: string | null) {
@@ -152,7 +219,22 @@ function startMessage(user: TelegramUser, account: TelegramUserRow) {
     `Trial pernah dipakai: <b>${account.trial_used ? "YA" : "BELUM"}</b>`,
     `Akses sampai: <b>${formatDate(accessUntil)}</b>`,
     "",
-    "ID ini dipakai untuk mengikat akses Trial 7 hari atau PRO.",
+    "Ketik /kode untuk membuat kode login.",
+  ].join("\n");
+}
+
+function codeMessage(params: { code: string; codeType: string; expiresAt: string }) {
+  const label = params.codeType === "TRIAL_LOGIN" ? "TRIAL" : params.codeType === "PRO_LOGIN" ? "PRO" : "LOGIN";
+
+  return [
+    `Kode login <b>${label}</b>:`,
+    "",
+    `<code>${params.code}</code>`,
+    "",
+    `Berlaku sampai: <b>${formatDate(params.expiresAt)}</b>`,
+    "",
+    "Masukkan kode ini di halaman login Analisa Angka.",
+    "Kode lama otomatis dinonaktifkan.",
   ].join("\n");
 }
 
@@ -174,13 +256,36 @@ export async function POST(request: Request) {
 
     if (text === "/start" || text.startsWith("/start ")) {
       const account = await upsertTelegramUser(user, chatId);
+
+      await recordAccessEvent({
+        userId: account.id,
+        telegramUserId: user.id,
+        chatId,
+        eventType: "START",
+        eventDetail: "Telegram user opened bot start command",
+        metadata: {
+          username: user.username || null,
+          first_name: user.first_name || null,
+          last_name: user.last_name || null,
+          language_code: user.language_code || null,
+        },
+      });
+
       await sendTelegramMessage(chatId, startMessage(user, account));
       return NextResponse.json({ ok: true, handled: "start" });
     }
 
+    if (text === "/kode" || text.startsWith("/kode ")) {
+      const account = await upsertTelegramUser(user, chatId);
+      const loginCode = await createLoginCode(account, chatId);
+
+      await sendTelegramMessage(chatId, codeMessage(loginCode));
+      return NextResponse.json({ ok: true, handled: "kode" });
+    }
+
     await sendTelegramMessage(
       chatId,
-      "Perintah belum tersedia. Ketik /start untuk melihat ID Telegram teman teman.",
+      "Perintah belum tersedia. Ketik /start untuk melihat ID Telegram atau /kode untuk membuat kode login.",
     );
 
     return NextResponse.json({ ok: true, handled: "fallback" });
