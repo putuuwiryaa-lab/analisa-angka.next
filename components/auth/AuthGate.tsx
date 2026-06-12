@@ -14,6 +14,12 @@ function clearStoredAuth() {
   AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
 }
 
+function hasCachedValidAccess() {
+  const expiresAt = localStorage.getItem("aa_expires_at") || "";
+  const expiresMs = new Date(expiresAt).getTime();
+  return Number.isFinite(expiresMs) && expiresMs > Date.now();
+}
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -36,12 +42,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
         return;
       }
 
-      setStatus("checking");
+      const allowImmediately = hasCachedValidAccess();
+      if (allowImmediately) {
+        setStatus("allowed");
+      } else {
+        setStatus("checking");
+      }
 
       try {
         const response = await fetch("/api/verify-session", {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
         });
         const json = await response.json().catch(() => ({}));
 
@@ -53,12 +65,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
           setStatus("allowed");
           return;
         }
-      } catch {
-      }
 
-      if (!cancelled) {
-        clearStoredAuth();
-        router.replace(`/kode-login?from=${encodeURIComponent(pathname || "/")}`);
+        if (!cancelled) {
+          clearStoredAuth();
+          router.replace(`/kode-login?from=${encodeURIComponent(pathname || "/")}`);
+        }
+      } catch {
+        if (!cancelled && !allowImmediately) {
+          clearStoredAuth();
+          router.replace(`/kode-login?from=${encodeURIComponent(pathname || "/")}`);
+        }
       }
     }
 
