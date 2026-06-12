@@ -55,10 +55,6 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
   const deviceId = normalizeDeviceId(headers.get(DEVICE_HEADER));
   const deviceHash = deviceId ? hashValue(deviceId) : "";
 
-  if (!deviceHash) {
-    return { ok: false, status: 401, error: "Device tidak valid. Silakan login ulang." };
-  }
-
   let payload;
   try {
     payload = verifyToken(token);
@@ -105,11 +101,17 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
     return { ok: false, status: 401, error: "Session sudah diganti perangkat lain. Silakan login ulang." };
   }
 
+  if (user.active_device_hash && !deviceHash) {
+    return { ok: false, status: 401, error: "Device tidak valid. Silakan login ulang." };
+  }
+
   if (user.active_device_hash && user.active_device_hash !== deviceHash) {
     return { ok: false, status: 401, error: "Akun sedang aktif di device lain. Silakan login ulang." };
   }
 
-  if (!user.active_device_hash) {
+  let deviceBound = Boolean(user.active_device_hash);
+
+  if (!user.active_device_hash && deviceHash) {
     const userAgentHash = hashValue(headers.get("user-agent") || "unknown");
     const { error: bindError } = await supabase
       .from("telegram_users")
@@ -124,6 +126,8 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
     if (bindError) {
       return { ok: false, status: 500, error: "Gagal mengunci device." };
     }
+
+    deviceBound = true;
   }
 
   const expiresAt = role === "PRO" ? user.pro_expires_at : user.trial_expires_at;
@@ -139,6 +143,6 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
     telegramUserId: user.telegram_user_id,
     expiresAt: expiresAt as string,
     sessionId,
-    deviceBound: true,
+    deviceBound,
   };
 }
