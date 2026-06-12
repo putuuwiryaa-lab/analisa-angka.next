@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { canUseEvaluationHistory } from "@/lib/access/freeAccess";
-import { getBearerToken } from "@/lib/server/jwt";
-import { verifyActiveVipSession } from "@/lib/server/vip-session";
+import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,8 +13,6 @@ const LIMIT = 15;
 const VALID_MODES = new Set(["ai", "ai_parity", "ai_size", "bbfs", "mati", "jumlah", "shio"]);
 const VALID_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
-const VIP_LOCK_MESSAGE =
-  "Riwayat evaluasi dibatasi untuk pengguna Free agar performa server tetap stabil. Akses VIP tersedia melalui menu VIP.";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -46,33 +42,17 @@ function shouldUseAi2DScopeFallback(mode: EvaluationMode, analysisScope: Analysi
   return mode === "ai" && analysisScope !== "3d" && analysisScope !== "4d";
 }
 
-async function roleFromRequest(headers: Headers) {
-  const token = getBearerToken(headers);
-
-  if (!token || token === "null" || token === "undefined") {
-    return "FREE";
-  }
-
-  const access = await verifyActiveVipSession(headers);
+export async function GET(request: NextRequest) {
+  const access = await verifyActiveTelegramSession(request.headers);
 
   if (!access.ok) {
-    throw new Error(access.error);
+    return NextResponse.json(
+      { error: access.error },
+      { status: access.status, headers: { "Cache-Control": "no-store" } },
+    );
   }
 
-  return access.role;
-}
-
-export async function GET(request: NextRequest) {
   try {
-    const role = await roleFromRequest(request.headers);
-
-    if (!canUseEvaluationHistory(role)) {
-      return NextResponse.json(
-        { error: VIP_LOCK_MESSAGE },
-        { status: 403, headers: { "Cache-Control": "no-store" } },
-      );
-    }
-
     if (!supabaseUrl || !supabaseKey) {
       throw new Error("Konfigurasi Supabase belum lengkap.");
     }
