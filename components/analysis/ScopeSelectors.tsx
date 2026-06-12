@@ -1,15 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { VipLoginPanel } from "@/components/auth/VipLoginPanel";
-import { useAuth } from "@/components/auth/auth-context";
-import { UpgradeLockPanel } from "@/components/upgrade/UpgradeLockPanel";
-import { VipBadge } from "@/components/ui/VipBadge";
-import {
-  canUseAnalysisScope,
-  canUseCustomFocus,
-  canUseTargetPair,
-} from "@/lib/access/freeAccess";
 import {
   CUSTOM_FOCUS_OPTIONS,
   customFocusSubtitle,
@@ -25,8 +15,6 @@ type ScopeOption = {
   title: string;
   subtitle: string;
 };
-
-type UpgradeFeature = "default" | "statistics" | "evaluation" | "rekap" | "mode";
 
 export const TARGET_PAIR_OPTIONS: Array<{ key: TargetPair; title: string; subtitle: string }> = [
   { key: "depan", title: "2D DEPAN", subtitle: "AS - KOP" },
@@ -89,78 +77,34 @@ function SelectorPanel({
 function SelectorButton({
   option,
   onClick,
-  locked = false,
   index = 0,
 }: {
   option: SelectOption;
   onClick: () => void;
-  locked?: boolean;
   index?: number;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`pressable animate-soft-pop depth-3 accent-text relative min-h-16 w-full rounded-3xl border px-5 py-4 text-center hover:border-border hover:bg-white/[0.06] ${
-        locked ? "border-border-soft/70 bg-white/[0.015] opacity-55 hover:bg-white/[0.025]" : ""
-      }`}
+      className="pressable animate-soft-pop depth-3 accent-text relative min-h-16 w-full rounded-3xl border px-5 py-4 text-center hover:border-border hover:bg-white/[0.06]"
       style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}
     >
-      {locked && <VipBadge className="absolute right-4 top-4" />}
-      <span className={`display block text-[15px] ${locked ? "text-text-muted/80" : ""}`}>{option.title}</span>
-      <span className={`mt-2 block text-[11px] font-bold uppercase tracking-wide ${locked ? "text-text-soft/70" : "text-text-muted"}`}>
+      <span className="display block text-[15px]">{option.title}</span>
+      <span className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
         {option.subtitle}
       </span>
     </button>
   );
 }
 
-function useUpgradePanels(feature: UpgradeFeature = "mode") {
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
-
-  function openUpgrade() {
-    setUpgradeOpen(true);
-  }
-
-  function openLogin() {
-    setUpgradeOpen(false);
-    setLoginOpen(true);
-  }
-
-  return {
-    openUpgrade,
-    panels: (
-      <>
-        <UpgradeLockPanel open={upgradeOpen} onClose={() => setUpgradeOpen(false)} onOpenVipLogin={openLogin} feature={feature} />
-        <VipLoginPanel open={loginOpen} onClose={() => setLoginOpen(false)} />
-      </>
-    ),
-  };
-}
-
 export function TargetPairSelector({ onSelect }: { onSelect: (pair: TargetPair) => void }) {
-  const { role } = useAuth();
-  const { openUpgrade, panels } = useUpgradePanels("mode");
-
   return (
-    <>
-      <SelectorPanel title="Pilih Fokus 2D" subtitle="Pilih posisi angka yang mau dianalisa.">
-        {TARGET_PAIR_OPTIONS.map((o, index) => {
-          const locked = !canUseTargetPair(role, "jumlah", o.key);
-          return (
-            <SelectorButton
-              key={o.key}
-              option={o}
-              onClick={() => (locked ? openUpgrade() : onSelect(o.key))}
-              locked={locked}
-              index={index}
-            />
-          );
-        })}
-      </SelectorPanel>
-      {panels}
-    </>
+    <SelectorPanel title="Pilih Fokus 2D" subtitle="Pilih posisi angka yang mau dianalisa.">
+      {TARGET_PAIR_OPTIONS.map((o, index) => (
+        <SelectorButton key={o.key} option={o} onClick={() => onSelect(o.key)} index={index} />
+      ))}
+    </SelectorPanel>
   );
 }
 
@@ -169,27 +113,12 @@ export function BBFSScopeSelector({
 }: {
   onSelect: (scope: Exclude<AnalysisScope, "default">) => void;
 }) {
-  const { role } = useAuth();
-  const { openUpgrade, panels } = useUpgradePanels("mode");
-
   return (
-    <>
-      <SelectorPanel title="Pilih Jenis BBFS" subtitle="Pilih target backtest BBFS.">
-        {BBFS_SCOPE_OPTIONS.map((o, index) => {
-          const locked = !canUseAnalysisScope(role, "bbfs", o.key);
-          return (
-            <SelectorButton
-              key={o.key}
-              option={o}
-              onClick={() => (locked ? openUpgrade() : onSelect(o.key))}
-              locked={locked}
-              index={index}
-            />
-          );
-        })}
-      </SelectorPanel>
-      {panels}
-    </>
+    <SelectorPanel title="Pilih Jenis BBFS" subtitle="Pilih target backtest BBFS.">
+      {BBFS_SCOPE_OPTIONS.map((o, index) => (
+        <SelectorButton key={o.key} option={o} onClick={() => onSelect(o.key)} index={index} />
+      ))}
+    </SelectorPanel>
   );
 }
 
@@ -198,51 +127,26 @@ export function AIScopeSelector({
 }: {
   onSelect: (scope: Exclude<AnalysisScope, "default">) => void;
 }) {
-  const { role } = useAuth();
-  const { openUpgrade, panels } = useUpgradePanels("mode");
-
   return (
-    <>
-      <SelectorPanel title="Pilih Jenis Angka Ikut" subtitle="Pilih target AI yang mau dianalisa.">
-        {AI_SCOPE_OPTIONS.map((o, index) => {
-          const locked = !canUseAnalysisScope(role, "ai", o.key);
-          return (
-            <SelectorButton
-              key={o.key}
-              option={o}
-              onClick={() => (locked ? openUpgrade() : onSelect(o.key))}
-              locked={locked}
-              index={index}
-            />
-          );
-        })}
-      </SelectorPanel>
-      {panels}
-    </>
+    <SelectorPanel title="Pilih Jenis Angka Ikut" subtitle="Pilih target AI yang mau dianalisa.">
+      {AI_SCOPE_OPTIONS.map((o, index) => (
+        <SelectorButton key={o.key} option={o} onClick={() => onSelect(o.key)} index={index} />
+      ))}
+    </SelectorPanel>
   );
 }
 
 export function RekapFocusSelector({ onSelect }: { onSelect: (focus: CustomFocus) => void }) {
-  const { role } = useAuth();
-  const { openUpgrade, panels } = useUpgradePanels("rekap");
-
   return (
-    <>
-      <SelectorPanel title="Pilih Jenis Rekap" subtitle="Pilih dulu jenis line yang mau dibuat.">
-        {CUSTOM_FOCUS_OPTIONS.map((item, index) => {
-          const locked = !canUseCustomFocus(role, item.key);
-          return (
-            <SelectorButton
-              key={item.key}
-              option={{ key: item.key, title: item.title, subtitle: customFocusSubtitle(item.key) }}
-              onClick={() => (locked ? openUpgrade() : onSelect(item.key))}
-              locked={locked}
-              index={index}
-            />
-          );
-        })}
-      </SelectorPanel>
-      {panels}
-    </>
+    <SelectorPanel title="Pilih Jenis Rekap" subtitle="Pilih dulu jenis line yang mau dibuat.">
+      {CUSTOM_FOCUS_OPTIONS.map((item, index) => (
+        <SelectorButton
+          key={item.key}
+          option={{ key: item.key, title: item.title, subtitle: customFocusSubtitle(item.key) }}
+          onClick={() => onSelect(item.key)}
+          index={index}
+        />
+      ))}
+    </SelectorPanel>
   );
 }
