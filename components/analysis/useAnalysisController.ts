@@ -3,14 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-context";
-import { canUseCustomFocus } from "@/lib/access/freeAccess";
 import type { CustomFocus, TargetPair } from "@/lib/analysis/customDigit";
 import { analysisCacheKey, readAnalysisCache, writeAnalysisCache } from "@/lib/analysis/sessionCache";
 import type { AnalysisScope } from "./ScopeSelectors";
-import { canRunAnalysisForRole } from "./analysisAccessGuards";
 import { postAnalyzeRequest } from "./analysisApiClient";
 import { buildAnalysisControllerFlags } from "./analysisControllerFlags";
-import { VIP_LOCK_MESSAGE } from "./analysisControllerMessages";
 import {
   type FlowUrlState,
   parseAnalysisScope,
@@ -34,7 +31,7 @@ type ResultData = Record<string, any>;
 export function useAnalysisController({ type, marketId }: { type: string; marketId: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { token, role } = useAuth();
+  const { token } = useAuth();
   const { getMarketData } = useMarketHistoryData(marketId);
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
@@ -187,7 +184,6 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   };
 
   const selectCustomFocus = (focus: CustomFocus) => {
-    if (!canUseCustomFocus(role, focus)) return setError(VIP_LOCK_MESSAGE);
     rekap.setters.setCustomFocus(focus);
     rekap.handlers.resetCustomRekapSelections();
     setResult(null);
@@ -211,19 +207,6 @@ export function useAnalysisController({ type, marketId }: { type: string; market
       isBBFS || isAI ? targetPairFromScope(selectedScope) : selectedTargetPair || targetPair || "belakang";
 
     if (needsTargetPair && !finalTargetPair) return setError("Pilih fokus 2D dulu.");
-
-    const allowed = canRunAnalysisForRole({
-      role,
-      type,
-      selectedParam,
-      selectedScope,
-      finalTargetPair,
-      isAI,
-      isBBFS,
-      needsTargetPair,
-    });
-
-    if (!allowed) return setError(VIP_LOCK_MESSAGE);
 
     setTargetPair(finalTargetPair);
     setParam(selectedParam);
@@ -326,7 +309,6 @@ export function useAnalysisController({ type, marketId }: { type: string; market
 
   const runCustomGenerate = async (genState: any) => {
     if (!genState.customFocus) return setError("Pilih jenis rekap dulu.");
-    if (!canUseCustomFocus(role, genState.customFocus)) return setError(VIP_LOCK_MESSAGE);
     if (!hasAnyCustomFilter(genState)) return setError("Pilih minimal satu filter dulu.");
 
     pushFlowUrl({ customFocus: genState.customFocus, param: 3, result: true });
