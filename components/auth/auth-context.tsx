@@ -14,61 +14,75 @@ export type Role = "TRIAL" | "PRO" | "MASTER" | "FREE";
 interface AuthState {
   role: Role;
   token: string | null;
-  verifying: boolean; // true selagi /api/verify jalan di background (opsional dipakai UI)
+  verifying: boolean;
   login: (role: string, token: string) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const TOKEN_KEY = "supreme_token";
-const ROLE_KEY = "supreme_role";
-const VIP_ROLES: Role[] = ["PRO", "MASTER"];
+const TOKEN_KEY = "aa_token";
+const ROLE_KEY = "aa_role";
+const EXPIRES_KEY = "aa_expires_at";
+const LEGACY_TOKEN_KEY = "supreme_token";
+const LEGACY_ROLE_KEY = "supreme_role";
+const ACCESS_ROLES: Role[] = ["TRIAL", "PRO", "MASTER"];
+
+function clearStoredAuth() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(ROLE_KEY);
+  localStorage.removeItem(EXPIRES_KEY);
+  localStorage.removeItem("aa_telegram_user_id");
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_ROLE_KEY);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Mulai FREE agar cocok dengan render server (hindari hydration mismatch).
   const [role, setRole] = useState<Role>("FREE");
   const [token, setToken] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
-    // Bersihkan sisa key lama dari versi sebelumnya.
     localStorage.removeItem("supreme_device_id");
     localStorage.removeItem("supreme_display_code");
 
-    const saved = localStorage.getItem(TOKEN_KEY);
-    if (!saved) return; // tetap FREE, app sudah tampil — tanpa spinner
+    const saved = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+    if (!saved) return;
 
     setToken(saved);
 
-    // OPTIMIS: pakai role terakhir yang diketahui supaya VIP langsung kebuka
-    // tanpa menunggu jaringan. Server tetap re-validasi tiap aksi terkunci,
-    // jadi ini aman walau token ternyata sudah kadaluarsa.
-    const cachedRole = localStorage.getItem(ROLE_KEY) as Role | null;
-    if (cachedRole && VIP_ROLES.includes(cachedRole)) setRole(cachedRole);
+    const cachedRole = (localStorage.getItem(ROLE_KEY) || localStorage.getItem(LEGACY_ROLE_KEY)) as Role | null;
+    if (cachedRole && ACCESS_ROLES.includes(cachedRole)) {
+      setRole(cachedRole);
+    }
 
-    // Verifikasi di BACKGROUND — tidak memblok tampilan.
     setVerifying(true);
     (async () => {
       try {
-        const res = await fetch("/api/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: saved }),
+        const res = await fetch("/api/verify-session", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${saved}` },
         });
-        const json = await res.json();
-        if (json.valid) {
-          setRole(json.role);
-          localStorage.setItem(ROLE_KEY, json.role);
+        const json = await res.json().catch(() => ({}));
+
+        if (res.ok && json.success) {
+          const verifiedRole = String(json.role || "TRIAL") as Role;
+          setRole(verifiedRole);
+          setToken(saved);
+          localStorage.setItem(TOKEN_KEY, saved);
+          localStorage.setItem(ROLE_KEY, verifiedRole);
+          localStorage.setItem(EXPIRES_KEY, json.expires_at || "");
+          localStorage.setItem("aa_telegram_user_id", String(json.telegram_user_id || ""));
+          localStorage.setItem(LEGACY_TOKEN_KEY, saved);
+          localStorage.setItem(LEGACY_ROLE_KEY, verifiedRole);
         } else {
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem(ROLE_KEY);
+          clearStoredAuth();
           setToken(null);
           setRole("FREE");
         }
       } catch {
-        // Jaringan gagal: biarkan role optimis apa adanya.
-        // Aksi VIP tetap dijaga server, jadi offline pun tetap nyaman.
+        // Jika jaringan gagal, biarkan role lokal sementara.
+        // AuthGate tetap akan cek ulang saat membuka halaman terkunci.
       } finally {
         setVerifying(false);
       }
@@ -78,13 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback((r: string, t: string) => {
     localStorage.setItem(TOKEN_KEY, t);
     localStorage.setItem(ROLE_KEY, r);
+    localStorage.setItem(LEGACY_TOKEN_KEY, t);
+    localStorage.setItem(LEGACY_ROLE_KEY, r);
     setToken(t);
     setRole(r as Role);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(ROLE_KEY);
+    clearStoredAuth();
     setToken(null);
     setRole("FREE");
   }, []);
