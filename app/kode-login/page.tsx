@@ -112,22 +112,39 @@ export default function KodeLoginPage() {
         </div>
 
         <div className="depth-1 rounded-[2rem] border bg-bg-deep/60 p-5 backdrop-blur-xl">
+          <div className="mb-3 rounded-[1.2rem] border border-cyan-300/25 bg-cyan-300/10 p-3 text-center">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100">Langkah pertama</p>
+            <p className="mt-1 text-xs font-bold leading-5 text-cyan-100/80">
+              Tekan tombol Telegram di bawah untuk mengambil kode login.
+            </p>
+          </div>
+
           <a
             href={TELEGRAM_BOT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="pressable flex h-13 min-h-13 items-center justify-center gap-2 rounded-[1.35rem] border border-cyan-300/25 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100"
+            className="pressable relative flex min-h-[4.25rem] items-center justify-center gap-3 overflow-hidden rounded-[1.55rem] border border-cyan-200/50 bg-cyan-300/20 px-4 py-4 text-base font-black text-cyan-50 shadow-[0_0_34px_rgba(34,211,238,0.24)] ring-2 ring-cyan-300/20 animate-pulse"
           >
-            <Send size={18} />
-            Buka Bot Telegram
-            <ExternalLink size={16} />
+            <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-cyan-100/30 bg-cyan-300/20">
+              <Send size={19} />
+            </span>
+            <span className="relative flex min-w-0 flex-col items-start leading-tight">
+              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100/80">Klik tombol ini</span>
+              <span className="text-base font-black">Buka Telegram</span>
+            </span>
+            <ExternalLink className="relative shrink-0" size={17} />
           </a>
+
+          <p className="mt-2 text-center text-[11px] font-bold leading-5 text-text-soft">
+            Tombol di atas bisa dipencet. Setelah Telegram terbuka, kirim <span className="font-black text-text">/kode</span>.
+          </p>
 
           <a
             href={ADMIN_CONTACT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="pressable mt-2 flex min-h-12 items-center justify-center gap-2 rounded-[1.35rem] border border-border-soft bg-white/[0.035] px-4 py-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] hover:text-text"
+            className="pressable mt-3 flex min-h-12 items-center justify-center gap-2 rounded-[1.35rem] border border-border-soft bg-white/[0.035] px-4 py-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] hover:text-text"
           >
             <MessageCircle size={16} />
             Hubungi Admin
@@ -139,12 +156,12 @@ export default function KodeLoginPage() {
             <div className="space-y-3 text-sm font-bold leading-5 text-text-muted">
               <div className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-soft text-[11px] text-text">1</span>
-                <p>Buka bot Telegram Analisa Angka.</p>
+                <p>Tekan tombol <span className="font-black text-text">Buka Telegram</span>.</p>
               </div>
               <div className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-soft text-[11px] text-text">2</span>
                 <p>
-                  Kirim perintah <span className="font-black text-text">/kode</span>.
+                  Kirim perintah <span className="font-black text-text">/kode</span> di bot.
                 </p>
               </div>
               <div className="flex gap-3">
