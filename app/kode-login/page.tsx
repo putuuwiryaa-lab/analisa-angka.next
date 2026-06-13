@@ -7,7 +7,10 @@ import { Logo } from "@/components/ui/Logo";
 import { getDeviceId } from "@/lib/auth/device";
 
 const TELEGRAM_BOT_URL = "https://t.me/analisaangka_bot";
-const ADMIN_CONTACT_URL = process.env.NEXT_PUBLIC_ADMIN_CONTACT_URL || "https://t.me/putuuwiryaa";
+const ADMIN_WA_NUMBER = "6285119341538";
+const ADMIN_CONTACT_URL = `https://wa.me/${ADMIN_WA_NUMBER}?text=${encodeURIComponent(
+  "Halo admin, saya butuh bantuan login Analisa Angka.",
+)}`;
 
 type LoginResponse = {
   success?: boolean;
