@@ -2,11 +2,12 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ExternalLink, Loader2, Send } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, MessageCircle, Send } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { getDeviceId } from "@/lib/auth/device";
 
 const TELEGRAM_BOT_URL = "https://t.me/analisaangka_bot";
+const ADMIN_CONTACT_URL = process.env.NEXT_PUBLIC_ADMIN_CONTACT_URL || "https://t.me/putuuwiryaa";
 
 type LoginResponse = {
   success?: boolean;
@@ -112,14 +113,25 @@ export default function KodeLoginPage() {
             href={TELEGRAM_BOT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="pressable mb-4 flex h-13 min-h-13 items-center justify-center gap-2 rounded-[1.35rem] border border-cyan-300/25 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100"
+            className="pressable flex h-13 min-h-13 items-center justify-center gap-2 rounded-[1.35rem] border border-cyan-300/25 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100"
           >
             <Send size={18} />
             Buka Bot Telegram
             <ExternalLink size={16} />
           </a>
 
-          <div className="mb-4 rounded-[1.35rem] border border-border-soft bg-white/[0.025] p-4">
+          <a
+            href={ADMIN_CONTACT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pressable mt-2 flex min-h-12 items-center justify-center gap-2 rounded-[1.35rem] border border-border-soft bg-white/[0.035] px-4 py-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] hover:text-text"
+          >
+            <MessageCircle size={16} />
+            Hubungi Admin
+            <ExternalLink size={14} />
+          </a>
+
+          <div className="my-4 rounded-[1.35rem] border border-border-soft bg-white/[0.025] p-4">
             <p className="mb-3 text-xs font-black uppercase tracking-wide text-text-muted">Cara mendapatkan kode</p>
             <div className="space-y-3 text-sm font-bold leading-5 text-text-muted">
               <div className="flex gap-3">
