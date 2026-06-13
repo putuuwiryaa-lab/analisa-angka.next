@@ -115,7 +115,7 @@ export default function KodeLoginPage() {
           <div className="mb-3 rounded-[1.2rem] border border-cyan-300/25 bg-cyan-300/10 p-3 text-center">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100">Langkah pertama</p>
             <p className="mt-1 text-xs font-bold leading-5 text-cyan-100/80">
-              Tekan tombol Telegram di bawah untuk mengambil kode login.
+              Buka Telegram untuk mengambil kode login.
             </p>
           </div>
 
@@ -130,15 +130,11 @@ export default function KodeLoginPage() {
               <Send size={19} />
             </span>
             <span className="relative flex min-w-0 flex-col items-start leading-tight">
-              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100/80">Klik tombol ini</span>
-              <span className="text-base font-black">Buka Telegram</span>
+              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100/80">Buka Telegram</span>
+              <span className="text-base font-black">Ambil Kode Login</span>
             </span>
             <ExternalLink className="relative shrink-0" size={17} />
           </a>
-
-          <p className="mt-2 text-center text-[11px] font-bold leading-5 text-text-soft">
-            Tombol di atas bisa dipencet. Setelah Telegram terbuka, kirim <span className="font-black text-text">/kode</span>.
-          </p>
 
           <a
             href={ADMIN_CONTACT_URL}
@@ -156,7 +152,7 @@ export default function KodeLoginPage() {
             <div className="space-y-3 text-sm font-bold leading-5 text-text-muted">
               <div className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-soft text-[11px] text-text">1</span>
-                <p>Tekan tombol <span className="font-black text-text">Buka Telegram</span>.</p>
+                <p>Buka Telegram.</p>
               </div>
               <div className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-soft text-[11px] text-text">2</span>
