@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, ExternalLink, Loader2, MessageCircle, Send } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
+import { useAuth } from "@/components/auth/auth-context";
 import { getDeviceId } from "@/lib/auth/device";
 
 const TELEGRAM_BOT_URL = "https://t.me/analisaangka_bot";
@@ -44,6 +45,7 @@ function saveAuth(json: LoginResponse) {
 
 export default function KodeLoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LoginResponse | null>(null);
@@ -75,6 +77,7 @@ export default function KodeLoginPage() {
 
       if (json.success && json.token) {
         saveAuth(json);
+        login(json.role || "TRIAL", json.token);
         setResult(json);
 
         window.setTimeout(() => {
