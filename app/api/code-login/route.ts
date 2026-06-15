@@ -360,19 +360,32 @@ export async function POST(request: Request) {
       });
     }
 
+    const { data: consumedCode, error: consumeError } = await supabase
+      .from("telegram_login_codes")
+      .update({ used_at: now.toISOString(), consumed_session_id: sessionId })
+      .eq("id", loginCode.id)
+      .is("used_at", null)
+      .select("id")
+      .maybeSingle();
+
+    if (consumeError) throw consumeError;
+
+    if (!consumedCode) {
+      return failLogin({
+        error: "Kode login sudah digunakan. Ambil kode baru dari bot Telegram.",
+        reason: "code_already_used",
+        code: loginCode,
+        ipHash,
+        userAgentHash,
+      });
+    }
+
     const { error: userUpdateError } = await supabase
       .from("telegram_users")
       .update(updatePayload)
       .eq("id", user.id);
 
     if (userUpdateError) throw userUpdateError;
-
-    const { error: codeUpdateError } = await supabase
-      .from("telegram_login_codes")
-      .update({ used_at: now.toISOString(), consumed_session_id: sessionId })
-      .eq("id", loginCode.id);
-
-    if (codeUpdateError) throw codeUpdateError;
 
     await writeAccessEvent({
       userId: user.id,
