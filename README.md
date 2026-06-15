@@ -172,7 +172,6 @@ Role JWT yang didukung:
 ```txt
 TRIAL
 PRO
-MASTER
 ```
 
 Pada data Telegram user, plan utama yang aktif adalah:
