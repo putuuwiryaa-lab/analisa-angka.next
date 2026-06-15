@@ -10,7 +10,7 @@ import {
 } from "react";
 import { deviceAuthHeader } from "@/lib/auth/device";
 
-export type Role = "TRIAL" | "PRO" | "MASTER";
+export type Role = "TRIAL" | "PRO";
 
 interface AuthState {
   role: Role | null;
@@ -35,7 +35,7 @@ function clearStoredAuth() {
 }
 
 function normalizeRole(value: unknown): Role | null {
-  return value === "TRIAL" || value === "PRO" || value === "MASTER" ? value : null;
+  return value === "TRIAL" || value === "PRO" ? value : null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
