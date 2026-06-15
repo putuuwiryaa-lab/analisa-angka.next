@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-context";
 import { ANALYSIS_MENU, CUSTOM_MENU, MODES, type ModeKey } from "@/components/analysis/modes";
 import { Button } from "@/components/ui/Button";
+import { fetchMarkets } from "@/lib/markets/client";
 
 function safeDecode(value: string) {
   try {
@@ -20,15 +22,11 @@ function normalizeId(value: string) {
   return safeDecode(value).trim().toLowerCase();
 }
 
-async function fetchMarketName(marketId: string) {
-  const response = await fetch("/api/markets", { cache: "no-store" });
-  const json = await response.json();
+async function fetchMarketName(marketId: string, token: string) {
+  const markets = await fetchMarkets(token);
   const decodedMarketId = safeDecode(marketId);
-
-  if (!response.ok || !Array.isArray(json)) return decodedMarketId;
-
   const requestedId = normalizeId(marketId);
-  const market = json.find((item: any) => {
+  const market = markets.find((item) => {
     const id = item?.id ? normalizeId(String(item.id)) : "";
     const name = item?.name ? normalizeId(String(item.name)) : "";
     return id === requestedId || name === requestedId;
@@ -70,17 +68,18 @@ function SubMenuCard({
 export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId: string }> }) {
   const { marketId } = use(params);
   const router = useRouter();
+  const { token } = useAuth();
   const decodedMarketId = safeDecode(marketId);
 
   const { data: marketName = decodedMarketId } = useQuery({
     queryKey: ["marketName", decodedMarketId],
-    queryFn: () => fetchMarketName(decodedMarketId),
-    enabled: !!decodedMarketId,
+    queryFn: () => fetchMarketName(decodedMarketId, token || ""),
+    enabled: Boolean(decodedMarketId && token),
   });
 
   return (
     <div className="animate-rise pb-4">
-      <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push("/")}>
+      <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push("/")}> 
         <ArrowLeft size={16} /> Beranda
       </Button>
 
