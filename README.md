@@ -189,7 +189,6 @@ Ringkasan:
 | NONE | Belum punya akses aktif. Bisa minta kode jika trial belum pernah dipakai. |
 | TRIAL | Akses percobaan dengan masa berlaku tertentu. |
 | PRO | Akses aktif berbayar. |
-| MASTER | Role token cadangan untuk kebutuhan internal/admin jika digunakan. |
 
 Saat ini trial pada endpoint code login dikonfigurasi melalui konstanta:
 
