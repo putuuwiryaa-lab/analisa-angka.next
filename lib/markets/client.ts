@@ -1,3 +1,5 @@
+import { deviceAuthHeader } from "@/lib/auth/device";
+
 export const MARKETS_QUERY_KEY = ["markets"] as const;
 export const MARKETS_STALE_TIME = 10 * 60 * 1000;
 export const MARKETS_GC_TIME = 60 * 60 * 1000;
@@ -72,8 +74,14 @@ export function findMarketByIdOrName(markets: Market[], marketId: string) {
   });
 }
 
-export async function fetchMarkets(): Promise<Market[]> {
-  const response = await fetch("/api/markets", { cache: "no-store" });
+export async function fetchMarkets(token: string): Promise<Market[]> {
+  const response = await fetch("/api/markets", {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...deviceAuthHeader(),
+    },
+  });
   const json = await response.json();
 
   if (!response.ok) {
