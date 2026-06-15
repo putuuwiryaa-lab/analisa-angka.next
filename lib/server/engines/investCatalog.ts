@@ -282,6 +282,6 @@ export function evaluateInvestCombo(combo: InvestCombo, b: InvestBundle): Invest
 
 /** Combo yang boleh dipakai sebuah role (FREE tidak boleh shio/jumlah/bbfs). */
 export function catalogForRole(role: string): InvestCombo[] {
-  const isVip = role === "PRO" || role === "MASTER" || role === "TRIAL";
+  const isVip = role === "PRO" || role === "TRIAL";
   return isVip ? INVEST_CATALOG : INVEST_CATALOG.filter((c) => c.access === "FREE");
 }
