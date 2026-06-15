@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,8 +32,13 @@ function normalizeMarket(market: RawMarket) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const session = await verifyActiveTelegramSession(request.headers);
+    if (!session.ok) {
+      return NextResponse.json({ success: false, error: session.error }, { status: session.status });
+    }
+
     if (!supabaseUrl || !supabaseKey) {
       throw new Error("Konfigurasi Supabase belum lengkap.");
     }
@@ -51,12 +57,11 @@ export async function GET() {
 
     return NextResponse.json(markets, {
       headers: {
-        "Access-Control-Allow-Origin": "*",
         "Cache-Control": "no-store",
       },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat markets";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
