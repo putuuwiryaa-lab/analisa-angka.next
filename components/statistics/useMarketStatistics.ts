@@ -21,6 +21,14 @@ export function aiParamOptions(scope: AiStatScope) {
   return [2, 4, 6, 7, 8];
 }
 
+function paramOptionsForCategory(category: VisibleCategoryKey, aiScope: AiStatScope) {
+  if (category === "ai_parity") return [7];
+  if (category === "ai_size") return [8];
+  if (category === "ai") return aiParamOptions(aiScope);
+  if (category === "bbfs") return [7, 8, 9];
+  return [1, 2, 3];
+}
+
 async function fetchStatistics(args: {
   category: VisibleCategoryKey;
   targetPair: TargetPair;
@@ -59,11 +67,9 @@ export function useMarketStatistics() {
   const [param, setParam] = useState<number>(4);
 
   useEffect(() => {
-    if (category === "ai" && !aiParamOptions(aiScope).includes(param)) setParam(aiParamOptions(aiScope)[0]);
-    if (category === "bbfs" && ![7, 8, 9].includes(param)) setParam(8);
-    if (!["ai", "bbfs"].includes(category) && ![1, 2, 3].includes(param)) setParam(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, aiScope]);
+    const options = paramOptionsForCategory(category, aiScope);
+    if (!options.includes(param)) setParam(options[0]);
+  }, [category, aiScope, param]);
 
   const query = useQuery({
     queryKey: ["marketStatistics", category, targetPair, aiScope, bbfsScope, param],
