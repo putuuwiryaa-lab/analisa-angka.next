@@ -9,6 +9,7 @@ import {
   aiParamStatParam,
   aiScopeMeta,
   bbfsScopeMeta,
+  isAiFamilyCategory,
   type AiStatScope,
   type AnalysisScope,
   type MarketStatistic,
@@ -21,7 +22,7 @@ import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VALID_CATEGORIES = new Set(["ai", "bbfs", "off_digit", "off_jumlah", "off_shio"]);
+const VALID_CATEGORIES = new Set(["ai", "ai_parity", "ai_size", "bbfs", "off_digit", "off_jumlah", "off_shio"]);
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 const VALID_AI_SCOPES = new Set(["4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
@@ -45,6 +46,12 @@ function parseAnalysisScope(value: string | null): AnalysisScope {
   return VALID_ANALYSIS_SCOPES.has(value || "") ? (value as AnalysisScope) : "2d_belakang";
 }
 
+function normalizeAiParam(category: VisibleCategoryKey, param: number) {
+  if (category === "ai_parity") return 7;
+  if (category === "ai_size") return 8;
+  return param;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const access = await verifyActiveTelegramSession(request.headers);
@@ -63,7 +70,8 @@ export async function GET(request: NextRequest) {
     const targetPair = parseTargetPair(search.get("targetPair"));
     const aiScope = parseAiScope(search.get("aiScope"));
     const bbfsScope = parseAnalysisScope(search.get("bbfsScope"));
-    const param = Number(search.get("param") || 0);
+    const rawParam = Number(search.get("param") || 0);
+    const param = normalizeAiParam(category, rawParam);
 
     if (!Number.isFinite(param) || param <= 0) throw new Error("Parameter statistik tidak valid.");
 
@@ -73,13 +81,13 @@ export async function GET(request: NextRequest) {
 
     const isPositionCategory = category === "off_digit";
     const isBBFSCategory = category === "bbfs";
-    const isAICategory = category === "ai";
+    const isAiCategory = isAiFamilyCategory(category);
     const isPairCategory = category === "off_digit" || category === "off_jumlah" || category === "off_shio";
 
     const selectedBBFS = bbfsScopeMeta(bbfsScope);
     const selectedAI = aiScopeMeta(aiScope);
-    const queryGroupKey = isAICategory ? aiParamGroupKey(param) : category;
-    const queryParam = isAICategory ? aiParamStatParam(param) : param;
+    const queryGroupKey = category === "ai" ? aiParamGroupKey(param) : category;
+    const queryParam = isAiCategory ? aiParamStatParam(param) : param;
 
     let query = supabase
       .from("market_statistics")
@@ -97,7 +105,7 @@ export async function GET(request: NextRequest) {
       query = query.eq("mode", "mati_2d").eq("param", queryParam).eq("target_pair", targetPair).eq("analysis_scope", "default");
     } else if (isBBFSCategory) {
       query = query.eq("mode", "bbfs").eq("param", queryParam).eq("target_pair", selectedBBFS.targetPair).eq("analysis_scope", bbfsScope);
-    } else if (isAICategory) {
+    } else if (isAiCategory) {
       query = query.eq("param", queryParam).eq("target_pair", selectedAI.targetPair).eq("analysis_scope", selectedAI.analysisScope);
     } else {
       query = query.eq("param", queryParam).eq("analysis_scope", "default");

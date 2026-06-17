@@ -7,7 +7,7 @@ export const MAX_LOSS_STREAK_ALLOWED = 2;
 export const MARKET_STAT_SELECT = "id,market_id,market_name,group_key,group_label,mode,param,position,target_pair,analysis_scope,wins_15,wins_last_5,max_loss_streak,sample_size,score,previous_rank,rank_movement,latest_is_hit,latest_status,updated_at";
 
 export type CategoryKey = "ai" | "ai_parity" | "ai_size" | "bbfs" | "off_digit" | "off_jumlah" | "off_shio";
-export type VisibleCategoryKey = "ai" | "bbfs" | "off_digit" | "off_jumlah" | "off_shio";
+export type VisibleCategoryKey = CategoryKey;
 export type TargetPair = "depan" | "tengah" | "belakang";
 export type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
 export type AiStatScope = "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
@@ -40,8 +40,10 @@ export type PositionPairMeta = { label: string; subtitle: string };
 
 export const categories: Array<{ key: VisibleCategoryKey; title: string }> = [
   { key: "ai", title: "AI" },
+  { key: "ai_parity", title: "Ganjil Genap" },
+  { key: "ai_size", title: "Besar Kecil" },
   { key: "bbfs", title: "BBFS" },
-  { key: "off_digit", title: "Posisi" },
+  { key: "off_digit", title: "OFF 2D" },
   { key: "off_jumlah", title: "Jumlah" },
   { key: "off_shio", title: "Shio" },
 ];
@@ -115,6 +117,10 @@ export function aiParamGroupKey(value: number): CategoryKey {
 
 export function aiParamStatParam(value: number) {
   return value === 7 || value === 8 ? 1 : value;
+}
+
+export function isAiFamilyCategory(value: string): value is "ai" | "ai_parity" | "ai_size" {
+  return value === "ai" || value === "ai_parity" || value === "ai_size";
 }
 
 export function bbfsScopeMeta(value?: string) {
