@@ -186,7 +186,7 @@ export default function KodeLoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !isComplete}
               className="pressable depth-3 flex h-14 w-full items-center justify-center gap-2 rounded-[1.45rem] border bg-white/[0.07] text-sm font-black uppercase tracking-wide text-text disabled:opacity-60"
             >
               {loading && <Loader2 size={18} className="animate-spin" />}
