@@ -33,10 +33,25 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+function ThemeInitScript() {
+  const script = `
+try {
+  const stored = localStorage.getItem("aa_theme");
+  const theme = stored === "light" || stored === "dark" ? stored : "dark";
+  document.documentElement.dataset.theme = theme;
+} catch (_) {
+  document.documentElement.dataset.theme = "dark";
+}
+`.trim();
+
+  return <script dangerouslySetInnerHTML={{ __html: script }} />;
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="id" className={`${geistSans.variable} ${geistMono.variable}`} data-theme="dark" suppressHydrationWarning>
       <body>
+        <ThemeInitScript />
         <Providers>
           <AuthGate>
             <AppShell>{children}</AppShell>
