@@ -10,7 +10,6 @@ import {
   catalogForRole,
   type InvestCombo,
   type InvestFilter,
-  type InvestAccess,
 } from "./investCatalog";
 
 export type InvestPair = "depan" | "tengah" | "belakang";
@@ -104,7 +103,6 @@ function buildWinningMap(rows: StatRow[]) {
 export interface InvestComboResult {
   id: string;
   label: string;
-  access: InvestAccess;
   expectedLines: number;
   hitRate: number;
   avgWins15: number;
@@ -149,7 +147,6 @@ export function evaluateMarketInvest(
       combos.push({
         id: combo.id,
         label: combo.label,
-        access: combo.access,
         expectedLines: combo.expectedLines,
         hitRate: combo.hitRate,
         avgWins15: round1(avg(wins)),
