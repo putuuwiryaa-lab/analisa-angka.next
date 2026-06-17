@@ -13,6 +13,7 @@ import {
 } from "./investCatalog";
 
 export type InvestPair = "depan" | "tengah" | "belakang";
+export type InvestRecommendationStatus = "UTAMA" | "ROTASI" | "PANAS";
 
 const PAIRS: InvestPair[] = ["depan", "tengah", "belakang"];
 
@@ -104,9 +105,15 @@ export interface InvestComboResult {
   id: string;
   label: string;
   expectedLines: number;
+  cachedLineCount?: number;
   hitRate: number;
   avgWins15: number;
+  avgWinsLast5: number;
+  maxLossStreak: number;
   avgScore: number;
+  recommendationScore: number;
+  recommendationStatus: InvestRecommendationStatus;
+  riskNote: string;
   filters: InvestFilter[];
 }
 
@@ -124,8 +131,113 @@ export interface InvestMarketResult {
 }
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+const max = (xs: number[]) => (xs.length ? Math.max(...xs) : 0);
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+function stableHashScore(seed: string, maxScore: number) {
+  if (!seed || maxScore <= 0) return 0;
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % (maxScore + 1);
+}
+
+function lineCountOf(combo: InvestComboResult) {
+  return Number(combo.cachedLineCount || combo.expectedLines || 0);
+}
+
+function historyScore(wins15: number) {
+  if (wins15 >= 15) return 32;
+  if (wins15 >= 14) return 35;
+  if (wins15 >= 13) return 26;
+  return 0;
+}
+
+function lossStreakScore(maxLossStreak: number) {
+  if (maxLossStreak <= 0) return 20;
+  if (maxLossStreak === 1) return 17;
+  if (maxLossStreak === 2) return 10;
+  return 0;
+}
+
+function lineScore(lineCount: number) {
+  if (lineCount < 53 || lineCount > 67) return 0;
+  return Math.max(0, 15 - Math.abs(lineCount - 60));
+}
+
+function overheatPenalty(combo: InvestComboResult) {
+  let penalty = 0;
+  if (combo.avgWins15 >= 15) penalty += 8;
+  if (combo.avgWins15 >= 15 && combo.avgWinsLast5 >= 5) penalty += 8;
+  if (combo.avgWins15 >= 15 && combo.maxLossStreak <= 0) penalty += 4;
+  return penalty;
+}
+
+function rotationBonus(combo: InvestComboResult, seed: string) {
+  if (!seed) return 0;
+  if (combo.avgWins15 >= 15) return stableHashScore(seed, 3);
+  if (combo.avgWins15 >= 14) return stableHashScore(seed, 8);
+  if (combo.avgWins15 >= 13) return stableHashScore(seed, 10);
+  return 0;
+}
+
+function statusOf(combo: InvestComboResult, score: number): InvestRecommendationStatus {
+  if (combo.avgWins15 >= 15 && combo.avgWinsLast5 >= 5) return "PANAS";
+  if (score >= 80) return "UTAMA";
+  return "ROTASI";
+}
+
+function riskNoteOf(status: InvestRecommendationStatus) {
+  if (status === "PANAS") return "Kuat, perlu dipantau";
+  if (status === "UTAMA") return "Stabil dan realistis";
+  return "Kandidat rotasi";
+}
+
+function scoreInvestCombo(combo: InvestComboResult, seed: string) {
+  const quality =
+    historyScore(combo.avgWins15) +
+    Math.min(20, combo.avgWinsLast5 * 4) +
+    lossStreakScore(combo.maxLossStreak) +
+    lineScore(lineCountOf(combo));
+
+  if (quality <= 0) return 0;
+  return round2(quality - overheatPenalty(combo) + rotationBonus(combo, `${seed}:${combo.id}`));
+}
+
+export function rankInvestMarkets(
+  markets: InvestMarketResult[],
+  latestResultByMarket: Record<string, string> = {},
+): InvestMarketResult[] {
+  return markets.map((market) => ({
+    ...market,
+    pairs: market.pairs.map((pair) => {
+      const seed = [market.marketId, pair.pair, latestResultByMarket[market.marketId] || ""].join("::");
+      const combos = pair.combos
+        .map((combo) => {
+          const recommendationScore = scoreInvestCombo(combo, seed);
+          const recommendationStatus = statusOf(combo, recommendationScore);
+          return {
+            ...combo,
+            recommendationScore,
+            recommendationStatus,
+            riskNote: riskNoteOf(recommendationStatus),
+          };
+        })
+        .sort(
+          (a, b) =>
+            b.recommendationScore - a.recommendationScore ||
+            b.avgScore - a.avgScore ||
+            b.avgWins15 - a.avgWins15 ||
+            a.expectedLines - b.expectedLines,
+        );
+
+      return { ...pair, combos };
+    }),
+  }));
+}
 
 export function evaluateMarketInvest(
   marketId: string,
@@ -142,26 +254,27 @@ export function evaluateMarketInvest(
       const matches = combo.filters.map((f) => winMap.get(statKey(filterDescriptor(f, pair))));
       if (matches.some((m) => !m)) continue;
 
-      const wins = matches.map((m) => m!.wins_15);
+      const wins15 = matches.map((m) => m!.wins_15);
+      const winsLast5 = matches.map((m) => m!.wins_last_5);
+      const lossStreaks = matches.map((m) => m!.max_loss_streak);
       const scores = matches.map((m) => m!.score ?? 0);
-      combos.push({
+      const baseCombo: InvestComboResult = {
         id: combo.id,
         label: combo.label,
         expectedLines: combo.expectedLines,
         hitRate: combo.hitRate,
-        avgWins15: round1(avg(wins)),
+        avgWins15: round1(avg(wins15)),
+        avgWinsLast5: round1(avg(winsLast5)),
+        maxLossStreak: max(lossStreaks),
         avgScore: round2(avg(scores)),
+        recommendationScore: 0,
+        recommendationStatus: "ROTASI",
+        riskNote: "Kandidat rotasi",
         filters: combo.filters,
-      });
-    }
+      };
 
-    combos.sort(
-      (a, b) =>
-        b.avgScore - a.avgScore ||
-        b.avgWins15 - a.avgWins15 ||
-        b.hitRate - a.hitRate ||
-        a.expectedLines - b.expectedLines,
-    );
+      combos.push(baseCombo);
+    }
 
     return { pair, pairLabel: PAIR_LABEL[pair], combos };
   });
