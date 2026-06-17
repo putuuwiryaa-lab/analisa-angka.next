@@ -16,6 +16,7 @@ import {
   bbfsScopes,
   categories,
   formatUpdatedAt,
+  isAiFamilyCategory,
   positionPairSubtitle,
   targetPairLabel,
   targetPairs,
@@ -79,16 +80,16 @@ export default function StatisticsPage() {
 
   const isPosition = s.category === "off_digit";
   const isBBFS = s.category === "bbfs";
-  const isAI = s.category === "ai";
+  const isAiFamily = isAiFamilyCategory(s.category);
   const selectedAI = aiScopeMeta(s.aiScope);
   const selectedBBFS = bbfsScopeMeta(s.bbfsScope);
   const categoryMeta = categories.find((c) => c.key === s.category) || categories[0];
 
-  const paramOptions = isAI ? aiParamOptions(s.aiScope) : isBBFS ? [7, 8, 9] : [1, 2, 3];
+  const paramOptions = s.category === "ai_parity" ? [7] : s.category === "ai_size" ? [8] : s.category === "ai" ? aiParamOptions(s.aiScope) : isBBFS ? [7, 8, 9] : [1, 2, 3];
   const filterLabel = isBBFS
     ? `${categoryMeta.title} ${selectedBBFS.label} ${s.param} Angka`
-    : isAI
-      ? `${selectedAI.label} ${aiParamLabel(s.param)}`
+    : isAiFamily
+      ? `${selectedAI.label} ${s.category === "ai" ? aiParamLabel(s.param) : categoryMeta.title}`
       : isPosition
         ? `2D ${targetPairLabel(s.targetPair)} OFF ${s.param}`
         : `${categoryMeta.title} ${targetPairLabel(s.targetPair)} OFF ${s.param}`;
@@ -138,7 +139,7 @@ export default function StatisticsPage() {
 
       <section className="animate-soft-pop">
         <SectionLabel title="Mode Statistik" />
-        <div className="depth-1 grid grid-cols-5 gap-1.5 rounded-3xl border p-2">
+        <div className="depth-1 grid grid-cols-3 gap-1.5 rounded-3xl border p-2 sm:grid-cols-7">
           {categories.map((item) => (
             <Pill key={item.key} active={item.key === s.category} onClick={() => s.setCategory(item.key)}>
               {item.title}
@@ -150,7 +151,7 @@ export default function StatisticsPage() {
       <section className="animate-soft-pop">
         <SectionLabel title="Filter Ranking" right={filterLabel} />
         <div className="depth-1 space-y-4 rounded-3xl border p-4">
-          {isAI && (
+          {isAiFamily && (
             <div className="depth-2 space-y-3 rounded-3xl border p-3">
               <div className="grid grid-cols-2 gap-2">
                 {aiScopes.map((item) => (
@@ -190,7 +191,7 @@ export default function StatisticsPage() {
             </div>
           )}
 
-          {!isAI && !isBBFS && (
+          {!isAiFamily && !isBBFS && (
             <div className="depth-2 space-y-3 rounded-3xl border p-3">
               <div className="grid grid-cols-3 gap-2">
                 {targetPairs.map((item) => (
@@ -215,10 +216,10 @@ export default function StatisticsPage() {
                   key={value}
                   tone="gold"
                   active={s.param === value}
-                  full={isAI && value >= 7}
+                  full={isAiFamily && value >= 7}
                   onClick={() => s.setParam(value)}
                 >
-                  {isAI ? aiParamLabel(value) : String(value)}
+                  {isAiFamily ? aiParamLabel(value) : String(value)}
                 </Pill>
               ))}
             </div>
