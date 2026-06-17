@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BarChart3, Coins, UserRound } from "lucide-react";
 import { AccountPanel } from "@/components/account/AccountPanel";
 import { InstallAppBanner } from "@/components/install/InstallAppBanner";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Logo } from "@/components/ui/Logo";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -40,9 +41,12 @@ function HeroHeader() {
         <h1 className="display max-w-[11.5ch] whitespace-normal break-words text-[2.1rem] uppercase leading-[0.98] text-text sm:max-w-none sm:text-4xl">ANALISA ANGKA</h1>
         <p className="mt-2 text-sm font-medium leading-snug text-text-soft sm:text-base">Prediksi berbasis matematis</p>
       </div>
-      <div className="animate-soft-pop relative mr-3 mt-1 flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-[1.7rem] border border-primary/45 bg-primary/18 shadow-[0_0_34px_rgba(124,58,237,0.30),0_0_54px_rgba(40,215,255,0.10)] sm:mr-0 sm:mt-0 sm:h-20 sm:w-20">
-        <div className="pointer-events-none absolute inset-[-0.45rem] rounded-[2rem] bg-primary/10 blur-xl" />
-        <Logo className="relative h-11 w-11 sm:h-12 sm:w-12" />
+      <div className="flex shrink-0 items-start gap-2 sm:items-center">
+        <ThemeToggle />
+        <div className="animate-soft-pop relative mr-1 mt-0 flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-[1.7rem] border border-primary/45 bg-primary/18 shadow-[0_0_34px_rgba(124,58,237,0.30),0_0_54px_rgba(40,215,255,0.10)] sm:mr-0 sm:h-20 sm:w-20">
+          <div className="pointer-events-none absolute inset-[-0.45rem] rounded-[2rem] bg-primary/10 blur-xl" />
+          <Logo className="relative h-11 w-11 sm:h-12 sm:w-12" />
+        </div>
       </div>
     </header>
   );
@@ -50,7 +54,7 @@ function HeroHeader() {
 
 function BottomNav() {
   const [accountOpen, setAccountOpen] = useState(false);
-  const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3 hover:border-border hover:bg-white/[0.075]";
+  const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3 hover:border-border hover:bg-surface";
   const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
 
   return (
@@ -71,7 +75,7 @@ function BottomNav() {
           <button
             type="button"
             onClick={() => setAccountOpen(true)}
-            className="pressable relative -mt-10 flex h-[4.7rem] w-[4.7rem] items-center justify-center rounded-full border border-primary/45 bg-bg-deep text-accent shadow-[0_0_0_6px_rgba(13,10,26,0.92),0_0_38px_rgba(124,58,237,0.38),0_18px_45px_rgba(0,0,0,0.35)] hover:border-border hover:bg-surface"
+            className="pressable relative -mt-10 flex h-[4.7rem] w-[4.7rem] items-center justify-center rounded-full border border-primary/45 bg-bg-deep text-accent shadow-[0_0_0_6px_color-mix(in_srgb,var(--color-bg-deep)_92%,transparent),0_0_38px_rgba(124,58,237,0.38),0_18px_45px_rgba(0,0,0,0.35)] hover:border-border hover:bg-surface"
             aria-label="Panel Akun"
           >
             <span className="pointer-events-none absolute inset-2 rounded-full bg-primary/12 blur-sm" />
