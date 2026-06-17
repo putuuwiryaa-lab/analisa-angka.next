@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { loadInvestOverview, loadInvestForMarket, type InvestMarketResult, type InvestPair } from "@/lib/server/engines/investEngine";
+import {
+  loadInvestOverview,
+  loadInvestForMarket,
+  rankInvestMarkets,
+  type InvestMarketResult,
+  type InvestPair,
+} from "@/lib/server/engines/investEngine";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 
@@ -143,12 +149,14 @@ async function readCachedLineCounts(cacheKeys: string[]) {
 
 async function attachCachedLineCounts(markets: InvestMarketResult[]) {
   const cacheInfoByMarket = await loadMarketCacheInfo(collectMarketIds(markets));
+  const latestResultByMarket: Record<string, string> = {};
   const comboCacheKeys = new Map<string, string>();
   const keys: string[] = [];
 
   for (const market of markets) {
     const cacheInfo = cacheInfoByMarket.get(market.marketId);
     if (!cacheInfo) continue;
+    latestResultByMarket[market.marketId] = cacheInfo.latestResult;
 
     for (const pair of market.pairs) {
       for (const combo of pair.combos) {
@@ -166,7 +174,7 @@ async function attachCachedLineCounts(markets: InvestMarketResult[]) {
 
   const lineCounts = await readCachedLineCounts(keys);
 
-  return markets.map((market) => ({
+  const withLineCounts = markets.map((market) => ({
     ...market,
     pairs: market.pairs.map((pair) => ({
       ...pair,
@@ -177,6 +185,8 @@ async function attachCachedLineCounts(markets: InvestMarketResult[]) {
       }),
     })),
   }));
+
+  return rankInvestMarkets(withLineCounts, latestResultByMarket);
 }
 
 export async function GET(request: Request) {
