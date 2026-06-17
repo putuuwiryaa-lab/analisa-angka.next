@@ -87,6 +87,15 @@ function hashLoginCode(code: string) {
   return createHash("sha256").update(`${getCodeSecret()}:${code}`).digest("hex");
 }
 
+function escapeTelegramHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function resolveCodeType(account: TelegramUserRow) {
   if (account.plan === "PRO" && isFutureDate(account.pro_expires_at)) return "PRO_LOGIN";
   if (!account.trial_used) return "TRIAL_LOGIN";
@@ -216,9 +225,10 @@ async function createLoginCode(account: TelegramUserRow, chatId: number) {
 }
 
 function startMessage(user: TelegramUser, account: TelegramUserRow) {
-  const telegramId = user.id ? String(user.id) : "tidak terbaca";
-  const name = user.first_name || user.username || "teman teman";
-  const plan = account.plan || "NONE";
+  const telegramId = escapeTelegramHtml(user.id ? String(user.id) : "tidak terbaca");
+  const name = escapeTelegramHtml(user.first_name || user.username || "teman teman");
+  const plan = escapeTelegramHtml(account.plan || "NONE");
+  const trialUsed = escapeTelegramHtml(account.trial_used ? "YA" : "BELUM");
 
   return [
     `Selamat datang di <b>Analisa Angka</b>.`,
@@ -226,7 +236,7 @@ function startMessage(user: TelegramUser, account: TelegramUserRow) {
     `Nama Telegram: <b>${name}</b>`,
     `ID Telegram: <code>${telegramId}</code>`,
     `Status: <b>${plan}</b>`,
-    `Trial pernah dipakai: <b>${account.trial_used ? "YA" : "BELUM"}</b>`,
+    `Trial pernah dipakai: <b>${trialUsed}</b>`,
     "",
     "Ketik /kode untuk membuat kode login.",
   ].join("\n");
@@ -234,11 +244,13 @@ function startMessage(user: TelegramUser, account: TelegramUserRow) {
 
 function codeMessage(params: { code: string; codeType: string }) {
   const label = params.codeType === "TRIAL_LOGIN" ? "TRIAL" : params.codeType === "PRO_LOGIN" ? "PRO" : "LOGIN";
+  const safeLabel = escapeTelegramHtml(label);
+  const safeCode = escapeTelegramHtml(params.code);
 
   return [
-    `Kode login <b>${label}</b>:` ,
+    `Kode login <b>${safeLabel}</b>:`,
     "",
-    `<code>${params.code}</code>`,
+    `<code>${safeCode}</code>`,
     "",
     "Masukkan kode ini di halaman login Analisa Angka.",
     "Kode lama otomatis dinonaktifkan.",
