@@ -56,6 +56,7 @@ function BottomNav() {
   const [accountOpen, setAccountOpen] = useState(false);
   const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3 hover:border-border hover:bg-surface";
   const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
+  const accountGlow = "0 0 0 6px color-mix(in srgb, var(--color-bg-deep) 92%, transparent), 0 0 38px rgba(124, 58, 237, 0.38), 0 18px 45px rgba(0, 0, 0, 0.35)";
 
   return (
     <>
@@ -75,7 +76,8 @@ function BottomNav() {
           <button
             type="button"
             onClick={() => setAccountOpen(true)}
-            className="pressable relative -mt-10 flex h-[4.7rem] w-[4.7rem] items-center justify-center rounded-full border border-primary/45 bg-bg-deep text-accent shadow-[0_0_0_6px_color-mix(in_srgb,var(--color-bg-deep)_92%,transparent),0_0_38px_rgba(124,58,237,0.38),0_18px_45px_rgba(0,0,0,0.35)] hover:border-border hover:bg-surface"
+            className="pressable relative -mt-10 flex h-[4.7rem] w-[4.7rem] items-center justify-center rounded-full border border-primary/45 bg-bg-deep text-accent hover:border-border hover:bg-surface"
+            style={{ boxShadow: accountGlow }}
             aria-label="Panel Akun"
           >
             <span className="pointer-events-none absolute inset-2 rounded-full bg-primary/12 blur-sm" />
