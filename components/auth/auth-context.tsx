@@ -34,6 +34,12 @@ function clearStoredAuth() {
   localStorage.removeItem(TELEGRAM_ID_KEY);
 }
 
+function hasCachedValidAccess() {
+  const expiresAt = localStorage.getItem(EXPIRES_KEY) || "";
+  const expiresMs = new Date(expiresAt).getTime();
+  return Number.isFinite(expiresMs) && expiresMs > Date.now();
+}
+
 function normalizeRole(value: unknown): Role | null {
   return value === "TRIAL" || value === "PRO" ? value : null;
 }
@@ -41,11 +47,14 @@ function normalizeRole(value: unknown): Role | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [verifying, setVerifying] = useState(false);
+  const [verifying, setVerifying] = useState(true);
 
   useEffect(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
-    if (!saved) return;
+    if (!saved) {
+      setVerifying(false);
+      return;
+    }
 
     setToken(saved);
 
@@ -76,6 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
         }
       } catch {
+        if (!hasCachedValidAccess()) {
+          clearStoredAuth();
+          setToken(null);
+          setRole(null);
+        }
       } finally {
         setVerifying(false);
       }
