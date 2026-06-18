@@ -10,7 +10,7 @@ import {
 } from "react";
 import { deviceAuthHeader } from "@/lib/auth/device";
 
-export type Role = "TRIAL" | "PRO";
+export type Role = "TRIAL" | "PRO" | "SUPER";
 
 interface AuthState {
   role: Role | null;
@@ -41,7 +41,7 @@ function hasCachedValidAccess() {
 }
 
 function normalizeRole(value: unknown): Role | null {
-  return value === "TRIAL" || value === "PRO" ? value : null;
+  return value === "TRIAL" || value === "PRO" || value === "SUPER" ? value : null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
