@@ -4,7 +4,7 @@ import { requireEnv } from "./env";
 
 export const TOKEN_VERSION = Number(process.env.TOKEN_VERSION || 2);
 
-export type Role = "TRIAL" | "PRO";
+export type Role = "TRIAL" | "PRO" | "SUPER";
 
 export interface TokenPayload {
   role: Role;
@@ -12,6 +12,9 @@ export interface TokenPayload {
   accountId?: string;
   phone?: string;
   sessionId?: string;
+  deviceHash?: string;
+  userAgentHash?: string;
+  exp?: number;
 }
 
 export function signToken(
