@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/auth-context";
 import { getDeviceId } from "@/lib/auth/device";
 
 const TELEGRAM_BOT_URL = "https://t.me/analisaangka_bot";
+const ANGKA_PRO_URL = "https://angkapro.online";
 const ADMIN_WA_NUMBER = "6285119341538";
 const ADMIN_CONTACT_URL = `https://wa.me/${ADMIN_WA_NUMBER}?text=${encodeURIComponent(
   "Halo admin, saya butuh bantuan login Analisa Angka.",
@@ -137,6 +138,31 @@ export default function KodeLoginPage() {
               <span className="text-base font-black">Ambil Kode Login</span>
             </span>
             <ExternalLink className="relative shrink-0" size={17} />
+          </a>
+
+          <a
+            href={ANGKA_PRO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pressable group relative mt-3 block overflow-hidden rounded-[1.55rem] border border-amber-300/35 bg-gradient-to-br from-amber-300/15 via-white/[0.035] to-cyan-300/10 p-4 text-left shadow-[0_0_34px_rgba(251,191,36,0.10)] transition hover:border-amber-200/60 hover:shadow-[0_0_42px_rgba(251,191,36,0.18)]"
+          >
+            <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-amber-100/10 to-transparent opacity-70" />
+            <div className="relative flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-200">ANGKA PRO</p>
+                <h2 className="mt-1 text-base font-black leading-tight text-text">Belum ingin login Telegram?</h2>
+                <p className="mt-1.5 text-xs font-bold leading-5 text-text-muted">
+                  Coba versi ringan untuk melihat analisa pasaran lebih cepat.
+                </p>
+              </div>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-200/30 bg-amber-300/15 text-amber-100 transition group-hover:bg-amber-300/25">
+                <ExternalLink size={17} />
+              </span>
+            </div>
+            <div className="relative mt-3 inline-flex items-center gap-1 text-xs font-black uppercase tracking-wide text-amber-200">
+              Coba ANGKA PRO
+              <span aria-hidden="true">→</span>
+            </div>
           </a>
 
           <a
