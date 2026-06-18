@@ -7,7 +7,7 @@ import { getBearerToken, TOKEN_VERSION, verifyToken, type Role } from "@/lib/ser
 const DEVICE_HEADER = "x-aa-device-id";
 
 type TelegramPlan = "NONE" | "TRIAL" | "PRO";
-type AccessRole = Extract<Role, "TRIAL" | "PRO">;
+type AccessRole = Extract<Role, "TRIAL" | "PRO" | "SUPER">;
 
 type TelegramUserRow = {
   id: string;
@@ -46,6 +46,12 @@ function hashValue(value: string) {
   return crypto.createHmac("sha256", requireEnv("JWT_SECRET")).update(value).digest("hex");
 }
 
+function tokenExpiresAt(exp?: number) {
+  return typeof exp === "number"
+    ? new Date(exp * 1000).toISOString()
+    : "9999-12-31T00:00:00.000Z";
+}
+
 export async function verifyActiveTelegramSession(headers: Headers): Promise<TelegramSessionResult> {
   const token = getBearerToken(headers);
 
@@ -69,7 +75,7 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
   }
 
   const role = String(payload.role || "");
-  if (role !== "TRIAL" && role !== "PRO") {
+  if (role !== "TRIAL" && role !== "PRO" && role !== "SUPER") {
     return { ok: false, status: 403, error: "Akses tidak valid." };
   }
 
@@ -78,6 +84,29 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
 
   if (!accountId || !sessionId) {
     return { ok: false, status: 401, error: "Session tidak lengkap. Silakan login ulang." };
+  }
+
+  if (role === "SUPER") {
+    const tokenDeviceHash = String(payload.deviceHash || "");
+    const tokenUserAgentHash = String(payload.userAgentHash || "");
+
+    if (tokenDeviceHash && (!deviceHash || tokenDeviceHash !== deviceHash)) {
+      return { ok: false, status: 401, error: "Akun sedang aktif di device lain. Silakan login ulang." };
+    }
+
+    if (!tokenDeviceHash && tokenUserAgentHash && tokenUserAgentHash !== userAgentHash) {
+      return { ok: false, status: 401, error: "Device tidak valid. Silakan login ulang." };
+    }
+
+    return {
+      ok: true,
+      role: "SUPER",
+      accountId,
+      telegramUserId: 0,
+      expiresAt: tokenExpiresAt(payload.exp),
+      sessionId,
+      deviceBound: Boolean(tokenDeviceHash),
+    };
   }
 
   const supabase = createAdminClient();
@@ -139,7 +168,7 @@ export async function verifyActiveTelegramSession(headers: Headers): Promise<Tel
 
   return {
     ok: true,
-    role,
+    role: role as Extract<Role, "TRIAL" | "PRO">,
     accountId,
     telegramUserId: user.telegram_user_id,
     expiresAt: expiresAt as string,
