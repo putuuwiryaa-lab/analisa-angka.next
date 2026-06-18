@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TRIAL_DAYS = 7;
+const SUPER_ACCESS_DAYS = 3650;
 
 type TelegramUserRow = {
   id: string;
@@ -162,6 +163,52 @@ export async function POST(request: Request) {
       { success: false, error: "Kode login harus 6 digit" },
       { status: 400 },
     );
+  }
+
+  const superPin = normalizeCode(process.env.SUPER_USER_PIN);
+
+  if (superPin && code === superPin) {
+    const sessionId = crypto.randomUUID();
+    const expiresAt = new Date(
+      Date.now() + SUPER_ACCESS_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    const token = signToken(
+      {
+        role: "SUPER",
+        accountId: "super",
+        sessionId,
+        deviceHash: deviceHash || undefined,
+        userAgentHash,
+      },
+      secondsUntil(expiresAt),
+    );
+
+    await writeAccessEvent({
+      userId: null,
+      telegramUserId: null,
+      chatId: null,
+      eventType: "SUPER_LOGIN_SUCCESS",
+      eventDetail: "super_pin_login",
+      metadata: {
+        role: "SUPER",
+        expires_at: expiresAt,
+        session_id: sessionId,
+        device_bound: deviceBound,
+      },
+      ipHash,
+      userAgentHash,
+    });
+
+    return NextResponse.json({
+      success: true,
+      role: "SUPER",
+      token,
+      telegram_user_id: 0,
+      expires_at: expiresAt,
+      session_id: sessionId,
+      device_bound: deviceBound,
+    });
   }
 
   try {
@@ -430,4 +477,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
+ }
