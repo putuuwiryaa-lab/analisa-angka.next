@@ -21,11 +21,15 @@ export function aiParamOptions(scope: AiStatScope) {
   return [2, 4, 6, 7, 8];
 }
 
-function paramOptionsForCategory(category: VisibleCategoryKey, aiScope: AiStatScope) {
+function bbfsParamOptions(scope: AnalysisScope) {
+  return scope === "4d" ? [7, 8, 9] : [7, 8, 9, 10];
+}
+
+function paramOptionsForCategory(category: VisibleCategoryKey, aiScope: AiStatScope, bbfsScope: AnalysisScope) {
   if (category === "ai_parity") return [7];
   if (category === "ai_size") return [8];
   if (category === "ai") return aiParamOptions(aiScope);
-  if (category === "bbfs") return [7, 8, 9];
+  if (category === "bbfs") return bbfsParamOptions(bbfsScope);
   return [1, 2, 3];
 }
 
@@ -67,9 +71,9 @@ export function useMarketStatistics() {
   const [param, setParam] = useState<number>(4);
 
   useEffect(() => {
-    const options = paramOptionsForCategory(category, aiScope);
+    const options = paramOptionsForCategory(category, aiScope, bbfsScope);
     if (!options.includes(param)) setParam(options[0]);
-  }, [category, aiScope, param]);
+  }, [category, aiScope, bbfsScope, param]);
 
   const query = useQuery({
     queryKey: ["marketStatistics", category, targetPair, aiScope, bbfsScope, param],
