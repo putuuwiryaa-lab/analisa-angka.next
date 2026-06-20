@@ -12,6 +12,15 @@ type TargetPair = 'depan' | 'tengah' | 'belakang';
 type AnalysisScope = 'default' | '4d' | '3d' | '2d_depan' | '2d_tengah' | '2d_belakang';
 type RunAnalysisOptions = { analysisScope?: AnalysisScope; targetPair?: TargetPair; forceDigitResult?: boolean };
 
+const BBFS_GGBK_PARAM = 10;
+const ALL_DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+const BBFS_GGBK_DIGITS: Record<string, number[]> = {
+  'GENAP|BESAR': [0, 2, 4, 5, 6, 7, 8, 9],
+  'GENAP|KECIL': [0, 1, 2, 3, 4, 6, 8],
+  'GANJIL|BESAR': [1, 3, 5, 6, 7, 8, 9],
+  'GANJIL|KECIL': [0, 1, 2, 3, 4, 5, 7, 9],
+};
+
 function pairTargetIndexes(targetPair: TargetPair = 'belakang') {
   if (targetPair === 'depan') return [0, 1];
   if (targetPair === 'tengah') return [1, 2];
@@ -60,6 +69,26 @@ function buildAiSize(vote: AiVote) {
   return { dominant, bigVote, smallVote };
 }
 
+function buildBbfsGgbk(vote: AiVote, parity: string, size: string) {
+  const key = `${parity}|${size}`;
+  const baseDigits = [...(BBFS_GGBK_DIGITS[key] || [])].sort((a, b) => a - b);
+  const missingDigits = ALL_DIGITS.filter((digit) => !baseDigits.includes(digit));
+  const rescueDigit =
+    baseDigits.length < 8
+      ? [...missingDigits].sort((a, b) => (vote[b] !== vote[a] ? vote[b] - vote[a] : a - b))[0] ?? null
+      : null;
+  const finalDigits = [...new Set(rescueDigit === null ? baseDigits : [...baseDigits, rescueDigit])].sort((a, b) => a - b);
+
+  return {
+    label: `${parity} × ${size}`,
+    baseDigits,
+    missingDigits,
+    rescueDigit,
+    finalDigits,
+    rescueSource: rescueDigit === null ? null : 'ai_vote',
+  };
+}
+
 export function runAnalysis(type: string, payload: string[], param: number, options: RunAnalysisOptions = {}) {
   const D = payload;
   const U = D.slice(-17);
@@ -79,11 +108,32 @@ export function runAnalysis(type: string, payload: string[], param: number, opti
     // seleksi digit, ganjil/genap, dan besar/kecil.
     const { sr, elitCount, vote, fallback } = runAiValidation(D, targetIndexes, thresholds);
 
-    const aiResultParam = forceDigitResult ? param : type === 'ai' && param !== 7 && param !== 8 ? param : 6;
+    const isBbfsGgbk = forceDigitResult && param === BBFS_GGBK_PARAM;
+    const aiResultParam = isBbfsGgbk ? 8 : forceDigitResult ? param : type === 'ai' && param !== 7 && param !== 8 ? param : 6;
     const aiResult = selectAiDigits(D, vote, aiResultParam, targetIndexes);
     const parity = buildAiParity(vote);
     const size = buildAiSize(vote);
     const stats = sr.filter(s => s.lolos);
+
+    if (isBbfsGgbk) {
+      const bbfsGgbk = buildBbfsGgbk(vote, parity.dominant, size.dominant);
+      return {
+        success: true,
+        data: {
+          stats,
+          elitCount,
+          fallback,
+          result: bbfsGgbk.finalDigits,
+          parity,
+          size,
+          sourceResult: aiResult,
+          bbfsGgbk,
+          displayLabel: 'BBFS GGBK 8D',
+          evaluationMode: 'bbfs',
+          evaluationParam: BBFS_GGBK_PARAM,
+        },
+      };
+    }
 
     if (!forceDigitResult && (type === 'ai_parity' || (type === 'ai' && param === 7))) {
       return { success: true, data: { stats, elitCount, fallback, result: [parity.dominant], parity, sourceResult: aiResult, displayLabel: 'GANJIL GENAP', evaluationMode: 'ai_parity', evaluationParam: 1 } };
@@ -176,4 +226,4 @@ export function runAnalysis(type: string, payload: string[], param: number, opti
   }
 
   return { success: false, message: "Type not supported yet" };
-                     }
+}
