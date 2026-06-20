@@ -121,12 +121,13 @@ function MainResultCard({
   shio = false,
   singleLine = false,
   stacked = false,
+  badge,
 }: {
-  label?: string;
   values: any;
   shio?: boolean;
   singleLine?: boolean;
   stacked?: boolean;
+  badge?: string;
 }) {
   const arr = safeArray(values);
   const useStacked = stacked || shio;
@@ -137,6 +138,11 @@ function MainResultCard({
         <div className="depth-3 accent-text inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide">
           <Trophy size={12} /> Hasil Utama
         </div>
+        {badge && (
+          <span className="depth-3 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide text-text-soft">
+            {badge}
+          </span>
+        )}
       </div>
       {useStacked ? (
         <div className="depth-2 relative rounded-3xl border p-4 text-center">
@@ -227,48 +233,11 @@ function MatiEvaluationTabs({ marketId, param }: { marketId: string; param: numb
   );
 }
 
-function BbfsGgbkMeta({ detail }: { detail?: any }) {
-  if (!detail) return null;
-  const rescue = detail.rescueDigit === null || detail.rescueDigit === undefined ? "-" : String(detail.rescueDigit);
-  const baseDigits = safeArray(detail.baseDigits).join("");
-  const finalDigits = safeArray(detail.finalDigits).join("");
-
-  return (
-    <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
-      <div className="mb-3 flex items-center justify-between gap-3 px-1">
-        <span className="accent-text text-[11px] font-black uppercase tracking-wide">Detail GGBK</span>
-        <span className="text-[10px] font-bold uppercase tracking-wide text-text-soft">GG × BK</span>
-      </div>
-
-      <div className="depth-2 rounded-3xl border p-4 text-center">
-        <div className="text-[10px] font-black uppercase tracking-wide text-text-muted">Pola</div>
-        <div className="display accent-text mt-1 text-[15px]">{detail.label || "GGBK"}</div>
-      </div>
-
-      <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
-        <div className="depth-2 rounded-2xl border px-3 py-3 text-center">
-          <div className="text-[10px] font-black uppercase tracking-wide text-text-muted">Base</div>
-          <div className="num mt-1 text-[13px] font-black text-text">{baseDigits || "-"}</div>
-        </div>
-        <div className="depth-2 min-w-[92px] rounded-2xl border px-3 py-3 text-center">
-          <div className="text-[10px] font-black uppercase tracking-wide text-text-muted">Rescue</div>
-          <div className="num mt-1 text-[13px] font-black text-text">{rescue}</div>
-        </div>
-      </div>
-
-      <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
-        Final: {finalDigits || "-"}
-      </p>
-    </div>
-  );
-}
-
 export function AnalysisResult({
   type,
   result,
   param,
   marketId,
-  label,
   targetPair = "belakang",
   analysisScope = "default",
   detailValidationOpen,
@@ -333,18 +302,17 @@ export function AnalysisResult({
   const isBBFSResult = type === "bbfs";
   const isAIResult = type === "ai";
   const isBbfsGgbkResult = isBBFSResult && effectiveParam === 10 && Boolean(result.bbfsGgbk);
-  const resultLabel = result.displayLabel || (isBBFSResult ? "BBFS" : label);
+  const resultBadge = isBbfsGgbkResult ? result.bbfsGgbk?.label : undefined;
 
   return (
     <div className="animate-rise space-y-4">
       <MainResultCard
-        label={resultLabel}
         values={displayResult}
         shio={type === "shio"}
         singleLine={isBBFSResult || isAIResult}
         stacked={type === "ai" || type === "bbfs"}
+        badge={resultBadge}
       />
-      {isBbfsGgbkResult && <BbfsGgbkMeta detail={result.bbfsGgbk} />}
       <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
         <DetailValidationHeader
           activeLabel={`RUMUS ACTIVE ${active}/${formulaTotal}`}
