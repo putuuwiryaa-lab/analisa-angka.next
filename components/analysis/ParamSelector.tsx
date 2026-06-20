@@ -41,8 +41,8 @@ export function ParamSelector({
     bbfs: {
       title: "Pilih Output BBFS",
       values: bbfsValues,
-      labels: { 10: "GGBK 8D" },
-      hints: { 10: "GANJIL GENAP × BESAR KECIL" },
+      labels: { 10: "GENAP GANJIL × BESAR KECIL" },
+      hints: { 10: "8 DIGIT" },
     },
     mati: { title: "Pilih Jumlah Digit OFF", values: [1, 2, 3], hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" } },
     jumlah: { title: "Pilih Jumlah OFF", values: [1, 2, 3], hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" } },
@@ -85,7 +85,7 @@ export function ParamSelector({
                 </span>
               )}
               {hint && (
-                <span className={cn("mt-2 block text-[10px] font-bold uppercase tracking-wide", isBbfsGgbk ? "text-text" : "text-text-muted")}>
+                <span className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-text-muted">
                   {hint}
                 </span>
               )}
