@@ -234,6 +234,29 @@ function MatiEvaluationTabs({ marketId, param }: { marketId: string; param: numb
   );
 }
 
+function BbfsGgbkMeta({ detail }: { detail?: any }) {
+  if (!detail) return null;
+  const rescue = detail.rescueDigit === null || detail.rescueDigit === undefined ? "-" : String(detail.rescueDigit);
+  const baseDigits = safeArray(detail.baseDigits).join("");
+
+  return (
+    <div className="animate-soft-pop depth-1 grid gap-2 rounded-3xl border p-4 text-center sm:grid-cols-3">
+      <div className="depth-2 rounded-2xl border p-3">
+        <div className="text-[10px] font-black uppercase tracking-wide text-text-muted">Pola</div>
+        <div className="display accent-text mt-1 text-[13px]">{detail.label || "GGBK"}</div>
+      </div>
+      <div className="depth-2 rounded-2xl border p-3">
+        <div className="text-[10px] font-black uppercase tracking-wide text-text-muted">Base</div>
+        <div className="num mt-1 text-[13px] font-black text-text">{baseDigits || "-"}</div>
+      </div>
+      <div className="depth-2 rounded-2xl border p-3">
+        <div className="text-[10px] font-black uppercase tracking-wide text-text-muted">Rescue</div>
+        <div className="num mt-1 text-[13px] font-black text-text">{rescue}</div>
+      </div>
+    </div>
+  );
+}
+
 export function AnalysisResult({
   type,
   result,
@@ -303,6 +326,7 @@ export function AnalysisResult({
     type === "ai" || type === "bbfs" ? 35 : type === "jumlah" ? 56 : type === "shio" ? 60 : 50;
   const isBBFSResult = type === "bbfs";
   const isAIResult = type === "ai";
+  const isBbfsGgbkResult = isBBFSResult && effectiveParam === 10 && Boolean(result.bbfsGgbk);
   const resultLabel = result.displayLabel || (isBBFSResult ? "BBFS" : label);
 
   return (
@@ -314,6 +338,7 @@ export function AnalysisResult({
         singleLine={isBBFSResult || isAIResult}
         stacked={type === "ai" || type === "bbfs"}
       />
+      {isBbfsGgbkResult && <BbfsGgbkMeta detail={result.bbfsGgbk} />}
       <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
         <DetailValidationHeader
           activeLabel={`RUMUS ACTIVE ${active}/${formulaTotal}`}
@@ -335,6 +360,7 @@ export function AnalysisResult({
             param={effectiveParam}
             targetPair={targetPair}
             analysisScope={effectiveAnalysisScope}
+            title={isBbfsGgbkResult ? "Riwayat BBFS GGBK 8D" : undefined}
           />
         </div>
       )}
