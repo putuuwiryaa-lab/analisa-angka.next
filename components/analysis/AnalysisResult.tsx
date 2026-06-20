@@ -139,7 +139,7 @@ function MainResultCard({
           <Trophy size={12} /> Hasil Utama
         </div>
         {badge && (
-          <span className="depth-3 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide text-text-soft">
+          <span className="depth-3 accent-text rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide">
             {badge}
           </span>
         )}
