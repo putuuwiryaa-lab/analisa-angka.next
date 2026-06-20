@@ -9,6 +9,10 @@ type ParamConfig = {
   hints?: Record<number, string>;
 };
 
+function isBbfsGgbkScope(scope: string) {
+  return scope === "3d" || scope === "2d_depan" || scope === "2d_tengah" || scope === "2d_belakang";
+}
+
 export function ParamSelector({
   type,
   param,
@@ -30,10 +34,16 @@ export function ParamSelector({
       : analysisScope === "4d"
         ? "Pilih Jenis Angka Ikut 4D"
         : "Pilih Jenis Angka Ikut 2D";
+  const bbfsValues = isBbfsGgbkScope(analysisScope) ? [7, 8, 9, 10] : [7, 8, 9];
 
   const options: Record<string, ParamConfig> = {
-    ai: { title: aiTitle, values: aiValues, labels: { 7: "GENAP GANJIL", 8: "BESAR KECIL" } },
-    bbfs: { title: "Pilih Jumlah Digit BBFS", values: [7, 8, 9] },
+    ai: { title: aiTitle, values: aiValues, labels: { 7: "GANJIL GENAP", 8: "BESAR KECIL" } },
+    bbfs: {
+      title: "Pilih Output BBFS",
+      values: bbfsValues,
+      labels: { 10: "GGBK 8D" },
+      hints: { 10: "AI GG × BK" },
+    },
     mati: { title: "Pilih Jumlah Digit OFF", values: [1, 2, 3], hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" } },
     jumlah: { title: "Pilih Jumlah OFF", values: [1, 2, 3], hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" } },
     shio: { title: "Pilih Jumlah Shio Mati", values: [1, 2, 3], hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" } },
@@ -41,7 +51,8 @@ export function ParamSelector({
 
   const cfg = options[type] || options.ai;
   const isAiMode = type === "ai";
-  const isGridThree = isAiMode || type === "bbfs" || type === "mati" || type === "jumlah" || type === "shio";
+  const isBBFSMode = type === "bbfs";
+  const isGridThree = isAiMode || isBBFSMode || type === "mati" || type === "jumlah" || type === "shio";
 
   return (
     <div className="animate-soft-pop depth-1 mt-4 rounded-3xl border p-4">
@@ -52,9 +63,10 @@ export function ParamSelector({
 
       <div className={cn("grid gap-2.5", isGridThree ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4")}>
         {cfg.values.map((value, index) => {
-          const isSpecial = isAiMode && (value === 7 || value === 8);
+          const isBbfsGgbk = isBBFSMode && value === 10;
+          const isSpecial = (isAiMode && (value === 7 || value === 8)) || isBbfsGgbk;
           const hint = cfg.hints?.[value];
-          const label = isSpecial ? cfg.labels![value] : String(value);
+          const label = cfg.labels?.[value] || String(value);
 
           return (
             <button
@@ -67,7 +79,7 @@ export function ParamSelector({
               style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}
             >
               <span className={cn("display block", isSpecial ? "text-[15px] leading-5" : "text-2xl")}>{label}</span>
-              {((isAiMode && !isSpecial) || type === "bbfs") && (
+              {((isAiMode && !isSpecial) || (isBBFSMode && !isBbfsGgbk)) && (
                 <span className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-text-muted">
                   DIGIT
                 </span>
