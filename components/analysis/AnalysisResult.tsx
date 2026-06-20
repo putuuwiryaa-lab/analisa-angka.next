@@ -117,13 +117,12 @@ function ResultRow({ label, values, shio = false }: { label: string; values: any
 }
 
 function MainResultCard({
-  label,
   values,
   shio = false,
   singleLine = false,
   stacked = false,
 }: {
-  label: string;
+  label?: string;
   values: any;
   shio?: boolean;
   singleLine?: boolean;
@@ -141,25 +140,19 @@ function MainResultCard({
       </div>
       {useStacked ? (
         <div className="depth-2 relative rounded-3xl border p-4 text-center">
-          <h3 className="text-[11px] font-bold uppercase tracking-wide text-text-soft">{label}</h3>
-          <div className="mt-4">
-            {shio ? (
-              <div className="flex flex-wrap justify-center gap-2">
-                {arr.map((s, i) => (
-                  <ShioChip key={`${s}-${i}`} value={s} />
-                ))}
-              </div>
-            ) : (
-              <DigitPills items={arr} compact={false} singleLine={singleLine} center />
-            )}
-          </div>
+          {shio ? (
+            <div className="flex flex-wrap justify-center gap-2">
+              {arr.map((s, i) => (
+                <ShioChip key={`${s}-${i}`} value={s} />
+              ))}
+            </div>
+          ) : (
+            <DigitPills items={arr} compact={false} singleLine={singleLine} center />
+          )}
         </div>
       ) : (
-        <div className="depth-2 relative flex items-center justify-between gap-3 rounded-3xl border p-4">
-          <h3 className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-text-soft">{label}</h3>
-          <div className="min-w-0 flex-1">
-            <DigitPills items={arr} compact={false} singleLine={singleLine} />
-          </div>
+        <div className="depth-2 relative rounded-3xl border p-4">
+          <DigitPills items={arr} compact={false} singleLine={singleLine} center />
         </div>
       )}
     </div>
