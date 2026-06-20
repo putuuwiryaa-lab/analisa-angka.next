@@ -12,6 +12,7 @@ import {
   aiScopeMeta,
   aiScopes,
   aiScopeSubtitle,
+  bbfsParamLabel,
   bbfsScopeMeta,
   bbfsScopes,
   categories,
@@ -74,6 +75,10 @@ function SectionLabel({ title, right }: { title: string; right?: string }) {
   );
 }
 
+function bbfsParamOptions(scope: string) {
+  return scope === "4d" ? [7, 8, 9] : [7, 8, 9, 10];
+}
+
 export default function StatisticsPage() {
   const router = useRouter();
   const s = useMarketStatistics();
@@ -85,9 +90,9 @@ export default function StatisticsPage() {
   const selectedBBFS = bbfsScopeMeta(s.bbfsScope);
   const categoryMeta = categories.find((c) => c.key === s.category) || categories[0];
 
-  const paramOptions = s.category === "ai_parity" ? [7] : s.category === "ai_size" ? [8] : s.category === "ai" ? aiParamOptions(s.aiScope) : isBBFS ? [7, 8, 9] : [1, 2, 3];
+  const paramOptions = s.category === "ai_parity" ? [7] : s.category === "ai_size" ? [8] : s.category === "ai" ? aiParamOptions(s.aiScope) : isBBFS ? bbfsParamOptions(s.bbfsScope) : [1, 2, 3];
   const filterLabel = isBBFS
-    ? `${categoryMeta.title} ${selectedBBFS.label} ${s.param} Angka`
+    ? `${categoryMeta.title} ${selectedBBFS.label} ${bbfsParamLabel(s.param)}`
     : isAiFamily
       ? `${selectedAI.label} ${s.category === "ai" ? aiParamLabel(s.param) : categoryMeta.title}`
       : isPosition
@@ -216,10 +221,10 @@ export default function StatisticsPage() {
                   key={value}
                   tone="gold"
                   active={s.param === value}
-                  full={isAiFamily && value >= 7}
+                  full={(isAiFamily && value >= 7) || (isBBFS && value === 10)}
                   onClick={() => s.setParam(value)}
                 >
-                  {isAiFamily ? aiParamLabel(value) : String(value)}
+                  {isAiFamily ? aiParamLabel(value) : isBBFS ? bbfsParamLabel(value) : String(value)}
                 </Pill>
               ))}
             </div>
