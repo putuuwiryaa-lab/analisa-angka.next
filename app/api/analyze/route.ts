@@ -8,6 +8,8 @@ export const runtime = "nodejs";
 type TargetPair = "depan" | "tengah" | "belakang";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
 
+const BBFS_GGBK_PARAM = 10;
+
 function sanitizeData(data: unknown): string[] | null {
   if (!Array.isArray(data)) return null;
 
@@ -40,6 +42,10 @@ function isAi2DScope(scope: AnalysisScope): boolean {
   return scope === "2d_depan" || scope === "2d_tengah" || scope === "2d_belakang";
 }
 
+function isBbfsGgbkScope(scope: AnalysisScope): boolean {
+  return scope === "3d" || isAi2DScope(scope);
+}
+
 function normalizeScopeForType(type: string, scope: AnalysisScope): AnalysisScope {
   if (type === "ai" && isAi2DScope(scope)) return "default";
   return scope;
@@ -56,6 +62,11 @@ function aiParamIsValid(param: number, scope: AnalysisScope) {
   if (scope === "3d") return [1, 3, 5, 7, 8].includes(param);
   if (scope === "4d") return [1, 2, 4].includes(param);
   return [2, 4, 6, 7, 8].includes(param);
+}
+
+function bbfsParamIsValid(param: number, scope: AnalysisScope) {
+  if ([7, 8, 9].includes(param)) return true;
+  return param === BBFS_GGBK_PARAM && isBbfsGgbkScope(scope);
 }
 
 export async function POST(request: Request) {
@@ -113,7 +124,7 @@ export async function POST(request: Request) {
         : sanitizeTargetPair(target_pair);
 
     const paramIsValid = isBBFS
-      ? [7, 8, 9].includes(safeParam)
+      ? bbfsParamIsValid(safeParam, safeScope)
       : isAI
         ? aiParamIsValid(safeParam, safeScope)
         : Number.isInteger(safeParam) && safeParam >= 1 && safeParam <= 8;
