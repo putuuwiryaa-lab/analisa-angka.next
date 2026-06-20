@@ -40,8 +40,6 @@ export type PositionPairMeta = { label: string; subtitle: string };
 
 export const categories: Array<{ key: VisibleCategoryKey; title: string }> = [
   { key: "ai", title: "AI" },
-  { key: "ai_parity", title: "Ganjil Genap" },
-  { key: "ai_size", title: "Besar Kecil" },
   { key: "bbfs", title: "BBFS" },
   { key: "off_digit", title: "OFF 2D" },
   { key: "off_jumlah", title: "Jumlah" },
