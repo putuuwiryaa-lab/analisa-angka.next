@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 import { runAnalysis } from "@/lib/server/engines/predictionEngine";
@@ -17,8 +16,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const FORMULA_VERSION = "invest-angka-jadi-v1";
-const CACHE_TTL_HOURS = 12;
-const CACHE_CLEANUP_GRACE_HOURS = 24;
 
 type InvestFilter = { kind: string; param: number };
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
@@ -79,20 +76,6 @@ function sanitizeFilters(value: unknown): InvestFilter[] {
     }))
     .filter((item) => item.kind && Number.isInteger(item.param) && item.param > 0 && item.param <= 9)
     .sort((a, b) => (a.kind === b.kind ? a.param - b.param : a.kind.localeCompare(b.kind)));
-}
-
-function stableFiltersKey(filters: InvestFilter[]) {
-  return filters.map((item) => `${item.kind}:${item.param}`).join("|");
-}
-
-function cacheKey(input: {
-  marketId: string;
-  pair: TargetPair;
-  filters: InvestFilter[];
-  latestResult: string;
-}) {
-  const raw = [input.marketId, input.pair, stableFiltersKey(input.filters), input.latestResult, FORMULA_VERSION].join("::");
-  return crypto.createHash("sha256").update(raw).digest("hex");
 }
 
 function normalizeScopeForType(type: string, scope: AnalysisScope): AnalysisScope {
@@ -273,56 +256,6 @@ async function generateAngkaJadi(data: string[], pair: TargetPair, filters: Inve
   };
 }
 
-async function readCache(key: string) {
-  try {
-    const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("invest_angka_jadi_cache")
-      .select("angka_jadi, line_count, created_at, expires_at")
-      .eq("cache_key", key)
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
-    if (error) return null;
-    return data as any;
-  } catch {
-    return null;
-  }
-}
-
-async function writeCache(params: {
-  key: string;
-  marketId: string;
-  pair: TargetPair;
-  filters: InvestFilter[];
-  latestResult: string;
-  result: Record<string, any>;
-}) {
-  try {
-    const supabase = createAdminClient();
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000).toISOString();
-
-    await supabase
-      .from("invest_angka_jadi_cache")
-      .delete()
-      .lt("expires_at", new Date(Date.now() - CACHE_CLEANUP_GRACE_HOURS * 60 * 60 * 1000).toISOString());
-
-    await supabase.from("invest_angka_jadi_cache").upsert({
-      cache_key: params.key,
-      market_id: params.marketId,
-      pair: params.pair,
-      filters_json: params.filters,
-      latest_result: params.latestResult,
-      formula_version: FORMULA_VERSION,
-      angka_jadi: params.result,
-      line_count: Array.isArray(params.result.lines) ? params.result.lines.length : 0,
-      expires_at: expiresAt,
-    });
-  } catch {
-    // Cache table is optional. If it does not exist yet, calculation still returns normally.
-  }
-}
-
 export async function POST(request: Request) {
   const access = await verifyActiveTelegramSession(request.headers);
   if (!access.ok) {
@@ -340,28 +273,10 @@ export async function POST(request: Request) {
     }
 
     const { market, history, latestResult } = await loadMarketData(marketId);
-    const key = cacheKey({ marketId: marketIdOf(market), pair, filters, latestResult });
-    const cached = await readCache(key);
-
-    if (cached?.angka_jadi) {
-      return NextResponse.json({
-        success: true,
-        cached: true,
-        formula_version: FORMULA_VERSION,
-        market_id: marketIdOf(market),
-        market_name: marketNameOf(market),
-        pair,
-        latest_result: latestResult,
-        ...cached.angka_jadi,
-      });
-    }
-
     const result = await generateAngkaJadi(history, pair, filters);
-    await writeCache({ key, marketId: marketIdOf(market), pair, filters, latestResult, result });
 
     return NextResponse.json({
       success: true,
-      cached: false,
       formula_version: FORMULA_VERSION,
       market_id: marketIdOf(market),
       market_name: marketNameOf(market),
