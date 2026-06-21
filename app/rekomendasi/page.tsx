@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronDown, Coins, Copy, Loader2, RefreshCw, Search, Trophy } from "lucide-react";
@@ -21,7 +21,6 @@ type InvestCombo = {
   avgWins15: number;
   avgScore: number;
   filters: InvestFilter[];
-  cachedLineCount?: number;
 };
 
 type InvestPair = {
@@ -53,7 +52,6 @@ type TopInvestGroup = {
 
 type AngkaJadiResult = {
   lines?: string[];
-  cached?: boolean;
   latest_result?: string;
   formula_version?: string;
 };
@@ -157,11 +155,9 @@ function lineDisplayText(lines: string[] = []) {
   return lines.join(" * ");
 }
 
-function lineMetricValue(combo: InvestCombo, state?: AngkaJadiState) {
+function lineMetricValue(state?: AngkaJadiState) {
   const actualCount = state?.result?.lines?.length || 0;
-  if (actualCount > 0) return String(actualCount);
-  const cachedCount = Number(combo.cachedLineCount || 0);
-  return cachedCount > 0 ? String(cachedCount) : "-";
+  return actualCount > 0 ? String(actualCount) : "-";
 }
 
 export default function RekomendasiPage() {
@@ -187,6 +183,10 @@ export default function RekomendasiPage() {
     placeholderData: keepPreviousData,
   });
 
+  useEffect(() => {
+    if (dataUpdatedAt) setAngkaJadi({});
+  }, [dataUpdatedAt]);
+
   const withRecs = useMemo(() => markets.filter((m) => m.hasAny), [markets]);
   const topCombos = useMemo(() => buildTopCombos(withRecs), [withRecs]);
   const topComboGroups = useMemo(() => groupTopCombos(topCombos), [topCombos]);
@@ -205,17 +205,17 @@ export default function RekomendasiPage() {
 
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
+  const handleRefresh = () => {
+    setAngkaJadi({});
+    void refetch();
+  };
+
   const handleOpenAngkaJadi = async (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
     const existing = angkaJadi[key];
     if (existing?.loading) return;
 
     if (existing?.open) {
       setAngkaJadi((prev) => ({ ...prev, [key]: { ...prev[key], open: false } }));
-      return;
-    }
-
-    if (existing?.result || existing?.error) {
-      setAngkaJadi((prev) => ({ ...prev, [key]: { ...prev[key], open: true } }));
       return;
     }
 
@@ -274,11 +274,11 @@ export default function RekomendasiPage() {
             </div>
             <h2 className="display mt-2 text-3xl text-text">Invest Terarah</h2>
             <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
-              Pilihan kombinasi terbaik dari hasil terbaru. Klik Angka Jadi untuk menghitung hasil yang siap disalin.
+              Pilihan kombinasi terbaik dari hasil terbaru. Klik Angka Jadi untuk menghitung fresh hasil yang siap disalin.
             </p>
           </div>
           <button
-            onClick={() => refetch()}
+            onClick={handleRefresh}
             className="pressable depth-3 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075]"
             aria-label="Perbarui rekomendasi"
           >
@@ -451,7 +451,6 @@ function AngkaJadiPanel({ state, onCopy }: { state?: AngkaJadiState; onCopy: () 
       <div className="flex items-center justify-between gap-3">
         <span className="display text-xs text-text">Angka Jadi</span>
         <div className="flex items-center gap-1.5">
-          {state.result?.cached && <span className="rounded-full border border-border-soft px-2 py-1 text-[9px] font-black uppercase tracking-wide text-text-soft">Cache</span>}
           <span className="accent-bg-soft accent-text rounded-full px-3 py-1 text-[11px] font-black">
             {lines.length} LINE
           </span>
@@ -507,7 +506,7 @@ function TopComboCard({
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <MetricChip label="Riwayat" value={`${Math.round(combo.avgWins15)}/15`} />
-          <MetricChip label="Line" value={lineMetricValue(combo, angkaJadi)} />
+          <MetricChip label="Line" value={lineMetricValue(angkaJadi)} />
           <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
         </div>
       </button>
@@ -657,7 +656,7 @@ function ComboRow({
         </div>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <MetricChip label="Riwayat" value={`${akurat}/15`} />
-          <MetricChip label="Line" value={lineMetricValue(combo, angkaJadi)} />
+          <MetricChip label="Line" value={lineMetricValue(angkaJadi)} />
           <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
         </div>
       </button>
