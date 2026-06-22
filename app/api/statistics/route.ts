@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 import {
   MARKET_STAT_SELECT,
   MAX_LOSS_STREAK_ALLOWED,
-  MIN_WINS_15,
   MIN_WINS_LAST_5,
   aiParamGroupKey,
   aiParamStatParam,
@@ -26,6 +25,8 @@ const VALID_CATEGORIES = new Set(["ai", "ai_parity", "ai_size", "bbfs", "off_dig
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 const VALID_AI_SCOPES = new Set(["4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
+
+const STATISTICS_MIN_WINS_15 = 12;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
       .select(MARKET_STAT_SELECT)
       .eq("is_active", true)
       .eq("group_key", queryGroupKey)
-      .gte("wins_15", MIN_WINS_15)
+      .gte("wins_15", STATISTICS_MIN_WINS_15)
       .gte("wins_last_5", MIN_WINS_LAST_5)
       .lte("max_loss_streak", MAX_LOSS_STREAK_ALLOWED)
       .order("score", { ascending: false })
@@ -128,7 +129,7 @@ export async function GET(request: NextRequest) {
       .select(MARKET_STAT_SELECT)
       .eq("is_active", true)
       .in("market_id", marketIds)
-      .gte("wins_15", MIN_WINS_15)
+      .gte("wins_15", STATISTICS_MIN_WINS_15)
       .gte("wins_last_5", MIN_WINS_LAST_5)
       .lte("max_loss_streak", MAX_LOSS_STREAK_ALLOWED)
       .order("score", { ascending: false })
