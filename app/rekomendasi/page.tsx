@@ -96,12 +96,16 @@ function formatScore(value: number) {
   return value % 1 === 0 ? String(value) : value.toFixed(1);
 }
 
+function formatWins15(value: number) {
+  if (!Number.isFinite(value)) return "0";
+  return value % 1 === 0 ? String(value) : value.toFixed(1);
+}
+
 function comboStrengthLabel(avgWins15: number) {
-  const wins = Math.round(avgWins15);
-  if (wins >= 15) return "Sempurna";
-  if (wins >= 14) return "Kuat";
-  if (wins >= 13) return "Stabil";
-  if (wins >= 12) return "Potensial";
+  if (avgWins15 >= 15) return "Sempurna";
+  if (avgWins15 >= 14) return "Kuat";
+  if (avgWins15 >= 13) return "Stabil";
+  if (avgWins15 >= 12) return "Potensial";
   return "Pantauan";
 }
 
@@ -113,7 +117,7 @@ function buildTopCombos(markets: InvestMarket[]): TopInvestCombo[] {
   return markets
     .flatMap((market) =>
       market.pairs.flatMap((pair) => {
-        const best = pair.combos.find((combo) => Math.round(combo.avgWins15) >= 15);
+        const best = pair.combos.find((combo) => combo.avgWins15 >= 15);
         if (!best) return [];
         return [{
           marketId: market.marketId,
@@ -505,7 +509,7 @@ function TopComboCard({
           <AngkaJadiAction open={angkaJadi?.open} size={13} />
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <MetricChip label="Riwayat" value={`${Math.round(combo.avgWins15)}/15`} />
+          <MetricChip label="Riwayat" value={`${formatWins15(combo.avgWins15)}/15`} />
           <MetricChip label="Line" value={lineMetricValue(angkaJadi)} />
           <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
         </div>
@@ -548,7 +552,7 @@ function MarketRow({
       >
         <div className="min-w-0">
           <h3 className="display truncate text-base text-text">{market.marketName}</h3>
-          {best && <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Terbaik {Math.round(best.avgWins15)}/15</p>}
+          {best && <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Terbaik {formatWins15(best.avgWins15)}/15</p>}
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
           <span className="num accent-bg-soft accent-text rounded-full px-2.5 py-1 text-[11px] font-black">
@@ -638,7 +642,7 @@ function ComboRow({
   onCopy: () => void;
 }) {
   const strengthLabel = comboStrengthLabel(combo.avgWins15);
-  const akurat = Math.round(combo.avgWins15);
+  const akurat = formatWins15(combo.avgWins15);
 
   return (
     <div className="depth-2 rounded-2xl border px-3 py-3">
