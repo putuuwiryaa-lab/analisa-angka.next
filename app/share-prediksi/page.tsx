@@ -12,7 +12,7 @@ type ShareResponse = { rows: ShareRow[] };
 type PickItem = { key: string; label: string };
 type PickerKey = "jenis" | "target" | "output" | "";
 
-const SEPARATOR = "◆";
+const SEPARATOR = "⟢";
 const MODE_LABEL: Record<string, string> = { ai: "Angka Ikut", bbfs: "BBFS", mati: "Angka Mati", jumlah: "Jumlah Mati", shio: "Shio Mati" };
 const TARGET_LABEL: Record<string, string> = { default: "", "2d_depan": "2D Depan", "2d_tengah": "2D Tengah", "2d_belakang": "2D Belakang", "3d": "3D", "4d": "4D" };
 const TARGET_PAIR_LABEL: Record<string, string> = { depan: "2D Depan", tengah: "2D Tengah", belakang: "2D Belakang" };
