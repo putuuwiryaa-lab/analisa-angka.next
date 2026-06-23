@@ -17,7 +17,44 @@ function is2DAnalysisResult(result: any) {
   return scope === "default" || scope === "2d_depan" || scope === "2d_tengah" || scope === "2d_belakang";
 }
 
+function digitParity(digit: number) {
+  return digit % 2 === 0 ? "GENAP" : "GANJIL";
+}
+
+function digitSize(digit: number) {
+  return digit >= 5 ? "BESAR" : "KECIL";
+}
+
+function resultText(result: any) {
+  return String(safeArray(result?.result)[0] || "").trim().toUpperCase();
+}
+
+function buildAiGgbkAngkaJadi(result: any): LineSection[] {
+  if (!is2DAnalysisResult(result)) return [];
+
+  const mode = String(result?.evaluationMode || "").trim();
+  const selected = resultText(result);
+  const isParity = mode === "ai_parity" || selected === "GANJIL" || selected === "GENAP";
+  const isSize = mode === "ai_size" || selected === "BESAR" || selected === "KECIL";
+
+  if (!isParity && !isSize) return [];
+
+  const lines: string[] = [];
+  for (let k = 0; k <= 9; k++) {
+    for (let e = 0; e <= 9; e++) {
+      const hit = isParity
+        ? digitParity(k) === selected || digitParity(e) === selected
+        : digitSize(k) === selected || digitSize(e) === selected;
+      if (hit) lines.push(`${k}${e}`);
+    }
+  }
+
+  return [{ label: "ANGKA JADI 2D", lines }];
+}
+
 function buildAiAngkaJadi(result: any): LineSection[] {
+  const ggbkSections = buildAiGgbkAngkaJadi(result);
+  if (ggbkSections.length) return ggbkSections;
   if (!is2DAnalysisResult(result)) return [];
 
   const ikut = toNumberList(result.result).filter((digit) => digit >= 0 && digit <= 9);
