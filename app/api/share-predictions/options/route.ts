@@ -32,6 +32,13 @@ function optionKey(mode: string, param: number, targetPair: string, analysisScop
   return `${mode}|${param}|${targetPair}|${analysisScope}`;
 }
 
+function isAllowedOption(mode: string, param: number, targetPair: string, analysisScope: string) {
+  if (mode === "mati") return analysisScope === "default" && targetPair === "belakang" && [1, 2, 3].includes(param);
+  if (mode === "jumlah" || mode === "shio") return analysisScope === "default" && [1, 2, 3].includes(param);
+  if (mode === "bbfs") return [7, 8, 9, 10].includes(param);
+  return true;
+}
+
 function normalizeOption(row: SnapshotOptionRow) {
   const mode = String(row.mode || "");
   const param = Number(row.param || 0);
@@ -43,7 +50,8 @@ function normalizeOption(row: SnapshotOptionRow) {
     !Number.isFinite(param) ||
     param <= 0 ||
     !VALID_TARGET_PAIRS.has(targetPair) ||
-    !VALID_SCOPES.has(analysisScope)
+    !VALID_SCOPES.has(analysisScope) ||
+    !isAllowedOption(mode, param, targetPair, analysisScope)
   ) {
     return null;
   }
