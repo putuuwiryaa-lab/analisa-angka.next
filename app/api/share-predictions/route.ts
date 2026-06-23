@@ -92,7 +92,9 @@ export async function GET(request: NextRequest) {
     const marketMap = new Map<string, MarketRow>();
     markets.forEach((market) => marketMap.set(key(market.id), market));
 
-    const rows = snapshots
+    const activeSnapshots = snapshots.filter((row) => marketMap.has(key(row.market_id)));
+
+    const rows = activeSnapshots
       .sort((a, b) => {
         const aMarket = marketMap.get(key(a.market_id));
         const bMarket = marketMap.get(key(b.market_id));
