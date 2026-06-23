@@ -27,6 +27,13 @@ function key(value: string | null | undefined) {
   return String(value || "").trim().toLowerCase();
 }
 
+function isAllowedOption(mode: string, param: number, targetPair: string, analysisScope: string) {
+  if (mode === "mati") return analysisScope === "default" && targetPair === "belakang" && [1, 2, 3].includes(param);
+  if (mode === "jumlah" || mode === "shio") return analysisScope === "default" && [1, 2, 3].includes(param);
+  if (mode === "bbfs") return [7, 8, 9, 10].includes(param);
+  return true;
+}
+
 function readParams(request: NextRequest) {
   const search = request.nextUrl.searchParams;
   const mode = search.get("mode") || "";
@@ -38,6 +45,7 @@ function readParams(request: NextRequest) {
   if (!Number.isFinite(param) || param <= 0) throw new Error("Param tidak valid.");
   if (!VALID_TARGET_PAIRS.has(targetPair)) throw new Error("Target tidak valid.");
   if (!VALID_SCOPES.has(analysisScope)) throw new Error("Scope tidak valid.");
+  if (!isAllowedOption(mode, param, targetPair, analysisScope)) throw new Error("Pilihan prediksi tidak aktif.");
 
   return { mode, param, targetPair, analysisScope };
 }
