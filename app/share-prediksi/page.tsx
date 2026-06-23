@@ -130,7 +130,7 @@ function PickerField({ id, label, value, options, openPicker, onOpen, onChange }
 
 export default function SharePrediksiPage() {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, verifying } = useAuth();
   const [options, setOptions] = useState<ShareOption[]>([]);
   const [selectedMode, setSelectedMode] = useState("");
   const [selectedTarget, setSelectedTarget] = useState("");
@@ -153,7 +153,11 @@ export default function SharePrediksiPage() {
   const previewText = useMemo(() => buildPreviewText(selectedOption, rows), [selectedOption, rows]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!verifying && !token) router.replace("/kode-login");
+  }, [router, token, verifying]);
+
+  useEffect(() => {
+    if (verifying || !token) return;
     let active = true;
     setLoadingOptions(true);
     setError("");
@@ -162,14 +166,14 @@ export default function SharePrediksiPage() {
       .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat pilihan share prediksi."); })
       .finally(() => { if (active) setLoadingOptions(false); });
     return () => { active = false; };
-  }, [token]);
+  }, [token, verifying]);
 
   useEffect(() => { if (modeOptions.length && !modeOptions.some((option) => option.key === selectedMode)) setSelectedMode(modeOptions[0].key); }, [modeOptions, selectedMode]);
   useEffect(() => { if (!targetOptions.length) { setSelectedTarget(""); return; } if (!targetOptions.some((option) => option.key === selectedTarget)) setSelectedTarget(targetOptions[0].key); }, [targetOptions, selectedTarget]);
   useEffect(() => { if (!outputOptions.length) { setSelectedOutput(""); return; } if (!outputOptions.some((option) => option.key === selectedOutput)) setSelectedOutput(outputOptions[0].key); }, [outputOptions, selectedOutput]);
 
   useEffect(() => {
-    if (!token || !selectedOption) return;
+    if (verifying || !token || !selectedOption) return;
     const params = new URLSearchParams({ mode: selectedOption.mode, param: String(selectedOption.param), targetPair: selectedOption.targetPair, analysisScope: selectedOption.analysisScope });
     let active = true;
     setLoadingRows(true);
@@ -181,10 +185,23 @@ export default function SharePrediksiPage() {
       .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat data share prediksi."); })
       .finally(() => { if (active) setLoadingRows(false); });
     return () => { active = false; };
-  }, [token, selectedOption]);
+  }, [token, verifying, selectedOption]);
 
   async function handleCopy() { if (!shareText) return; await navigator.clipboard.writeText(shareText); setCopied(true); window.setTimeout(() => setCopied(false), 1600); }
   async function handleShare() { if (!shareText) return; if (navigator.share) { await navigator.share({ text: shareText }); return; } await handleCopy(); }
+
+  if (verifying || !token) {
+    return (
+      <div className="animate-rise pb-8">
+        <div className="depth-1 rounded-3xl border p-4 text-center">
+          <div className="depth-2 rounded-3xl border px-4 py-10">
+            <Loader2 className="mx-auto mb-3 animate-spin text-text-soft" size={22} />
+            <p className="text-xs font-black uppercase tracking-wide text-text-muted">Memeriksa akses…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-rise pb-8">
@@ -192,7 +209,7 @@ export default function SharePrediksiPage() {
       <section className="depth-1 mb-4 rounded-3xl border p-4 text-center"><div className="depth-2 rounded-3xl border px-4 py-6"><div className="display text-2xl text-text">Share Prediksi</div><p className="mt-2 text-xs font-semibold leading-relaxed text-text-muted">Pilih filter prediksi aktif, lalu salin atau bagikan semua pasaran.</p></div></section>
       <div className="depth-2 mb-4 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-[11px] font-bold leading-relaxed text-text-muted"><span className="accent-text font-black">Catatan update:</span> bagikan prediksi sedekat mungkin dengan jam update pasaran. Cek baris <span className="text-text">Data</span> pada preview sebelum share.</div>
       {error && <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">{error}</div>}
-      <section className="depth-1 mb-4 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Filter Prediksi</span>{loadingOptions && <Loader2 size={15} className="animate-spin text-text-soft" />}</div>{!token ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memeriksa akses…</div> : loadingOptions ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pilihan…</div> : options.length === 0 ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Belum ada snapshot prediksi aktif</div> : <div className="grid grid-cols-1 gap-3"><PickerField id="jenis" label="Jenis" value={selectedMode} options={modeOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedMode} /><PickerField id="target" label="Target" value={selectedTarget} options={targetOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedTarget} /><PickerField id="output" label="Output" value={selectedOutput} options={outputOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedOutput} /></div>}</section>
+      <section className="depth-1 mb-4 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Filter Prediksi</span>{loadingOptions && <Loader2 size={15} className="animate-spin text-text-soft" />}</div>{loadingOptions ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pilihan…</div> : options.length === 0 ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Belum ada snapshot prediksi aktif</div> : <div className="grid grid-cols-1 gap-3"><PickerField id="jenis" label="Jenis" value={selectedMode} options={modeOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedMode} /><PickerField id="target" label="Target" value={selectedTarget} options={targetOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedTarget} /><PickerField id="output" label="Output" value={selectedOutput} options={outputOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedOutput} /></div>}</section>
       <section className="depth-1 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Preview Singkat</span>{loadingRows && <Loader2 size={15} className="animate-spin text-text-soft" />}</div><pre className="depth-2 min-h-[150px] whitespace-pre-wrap rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">{loadingRows ? "Memuat preview…" : previewText || "Pilih prediksi dulu."}</pre><p className="mt-2 px-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Copy dan Share tetap mengirim semua pasaran.</p><div className="mt-3 grid grid-cols-2 gap-2.5"><button type="button" onClick={handleCopy} disabled={!shareText || loadingRows} className="pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45"><ClipboardCopy size={16} /> {copied ? "Tersalin" : "Copy"}</button><button type="button" onClick={handleShare} disabled={!shareText || loadingRows} className="pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45"><Share2 size={16} /> Share</button></div></section>
     </div>
   );
