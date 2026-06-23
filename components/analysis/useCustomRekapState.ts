@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { CustomFocus, TargetPair } from "@/lib/analysis/customDigit";
 import type { PairAiMap, PairBoolMap, PairCountMap } from "./customDigitGenerate";
 
-export type BBFSDigit = 7 | 8 | 9;
+export type BBFSDigit = 7 | 8 | 9 | 10;
 
 export type CustomRekapState = {
   customFocus: CustomFocus | null;
