@@ -20,6 +20,9 @@ export type PostAnalyze = (
 export type PairAiMap = Partial<Record<TargetPair, 2 | 4 | 6 | null>>;
 export type PairBoolMap = Partial<Record<TargetPair, boolean>>;
 export type PairCountMap = Partial<Record<TargetPair, number | null>>;
+export type PairBBFSMap = Partial<Record<TargetPair, 7 | 8 | 9 | 10 | null>>;
+
+type BBFSDigit = 7 | 8 | 9 | 10;
 
 export interface CustomDigitState {
   customFocus: CustomFocus;
@@ -30,7 +33,8 @@ export interface CustomDigitState {
   customAi3dParity: boolean;
   customAi3dSize: boolean;
   customAi4dDigit: 1 | 2 | 4 | null;
-  customBBFSDigit: 7 | 8 | 9 | 10 | null;
+  customBBFSDigit: BBFSDigit | null;
+  customBBFSDigitByPair: PairBBFSMap;
   customOffAsCount: number | null;
   customOffKopCount: number | null;
   customOffKepalaCount: number | null;
@@ -39,7 +43,10 @@ export interface CustomDigitState {
   customOffShioCountByPair: PairCountMap;
 }
 
-/** Cek apakah minimal satu filter dipilih sebelum generate. */
+function pairScope(pair: TargetPair): AnalysisScope {
+  return `2d_${pair}` as AnalysisScope;
+}
+
 export function hasAnyCustomFilter(s: CustomDigitState): boolean {
   const pairs = customFocusPairs(s.customFocus);
   const hasAnyPairFilter = pairs.some(
@@ -47,6 +54,7 @@ export function hasAnyCustomFilter(s: CustomDigitState): boolean {
       s.customAiDigitByPair[pair] ||
       s.customAiParityByPair[pair] ||
       s.customAiSizeByPair[pair] ||
+      s.customBBFSDigitByPair[pair] ||
       s.customOffJumlahCountByPair[pair] ||
       s.customOffShioCountByPair[pair],
   );
@@ -64,7 +72,6 @@ export function hasAnyCustomFilter(s: CustomDigitState): boolean {
   );
 }
 
-/** Jalankan semua sub-analisa lalu rakit hasil rekap custom digit. */
 export async function runCustomDigitGenerate(
   postAnalyze: PostAnalyze,
   data: string[],
@@ -76,6 +83,8 @@ export async function runCustomDigitGenerate(
   const aiByPair: Partial<Record<TargetPair, number[]>> = {};
   const aiParityByPair: Partial<Record<TargetPair, string>> = {};
   const aiSizeByPair: Partial<Record<TargetPair, string>> = {};
+  const bbfsByPair: Partial<Record<TargetPair, number[]>> = {};
+  const bbfsGgbkByPair: Partial<Record<TargetPair, any>> = {};
   const jumlahByPair: Partial<Record<TargetPair, number[]>> = {};
   const shioByPair: Partial<Record<TargetPair, number[]>> = {};
   const matiCache: Partial<Record<number, any>> = {};
@@ -88,8 +97,10 @@ export async function runCustomDigitGenerate(
 
   for (const pair of pairs) {
     const aiDigit = s.customAiDigitByPair[pair];
+    const bbfsDigit = s.customBBFSDigitByPair[pair];
     const jumlahCount = s.customOffJumlahCountByPair[pair];
     const shioCount = s.customOffShioCountByPair[pair];
+
     if (aiDigit) aiByPair[pair] = toNumberList((await postAnalyze("ai", data, aiDigit, pair))?.result);
     if (s.customAiParityByPair[pair]) {
       const raw = (await postAnalyze("ai", data, 7, pair))?.result;
@@ -98,6 +109,11 @@ export async function runCustomDigitGenerate(
     if (s.customAiSizeByPair[pair]) {
       const raw = (await postAnalyze("ai", data, 8, pair))?.result;
       aiSizeByPair[pair] = String((Array.isArray(raw) ? raw[0] : raw) || "").trim().toUpperCase();
+    }
+    if (bbfsDigit) {
+      const bbfsResult = await postAnalyze("bbfs", data, bbfsDigit, pair, pairScope(pair));
+      bbfsByPair[pair] = toNumberList(bbfsResult?.result);
+      if (bbfsResult?.bbfsGgbk) bbfsGgbkByPair[pair] = bbfsResult.bbfsGgbk;
     }
     if (jumlahCount) jumlahByPair[pair] = toNumberList((await postAnalyze("jumlah", data, jumlahCount, pair))?.result);
     if (shioCount) shioByPair[pair] = toNumberList((await postAnalyze("shio", data, shioCount, pair))?.result);
@@ -150,6 +166,7 @@ export async function runCustomDigitGenerate(
     ai3dParity,
     ai3dSize,
     ai4d,
+    bbfsByPair,
     bbfsGlobal,
     offAs,
     offKop,
@@ -170,6 +187,8 @@ export async function runCustomDigitGenerate(
     ai3dParity,
     ai3dSize,
     ai4d,
+    bbfsByPair,
+    bbfsGgbkByPair,
     bbfsGlobal,
     bbfsGgbk,
     offAs,
