@@ -30,19 +30,23 @@ function optionKey(mode: string, param: number, targetPair: string, analysisScop
   return `${mode}|${param}|${targetPair}|${analysisScope}`;
 }
 
-function isValidOption(row: SnapshotOptionRow): row is Required<SnapshotOptionRow> {
+function normalizeOption(row: SnapshotOptionRow) {
   const mode = String(row.mode || "");
   const param = Number(row.param || 0);
   const targetPair = String(row.target_pair || "belakang");
   const analysisScope = String(row.analysis_scope || "default");
 
-  return (
-    VALID_MODES.has(mode) &&
-    Number.isFinite(param) &&
-    param > 0 &&
-    VALID_TARGET_PAIRS.has(targetPair) &&
-    VALID_SCOPES.has(analysisScope)
-  );
+  if (
+    !VALID_MODES.has(mode) ||
+    !Number.isFinite(param) ||
+    param <= 0 ||
+    !VALID_TARGET_PAIRS.has(targetPair) ||
+    !VALID_SCOPES.has(analysisScope)
+  ) {
+    return null;
+  }
+
+  return { mode, param, targetPair, analysisScope };
 }
 
 export async function GET(request: Request) {
@@ -68,12 +72,10 @@ export async function GET(request: Request) {
     const options = new Map<string, ShareOption>();
 
     for (const row of (data || []) as SnapshotOptionRow[]) {
-      if (!isValidOption(row)) continue;
+      const normalized = normalizeOption(row);
+      if (!normalized) continue;
 
-      const mode = row.mode;
-      const param = Number(row.param);
-      const targetPair = row.target_pair || "belakang";
-      const analysisScope = row.analysis_scope || "default";
+      const { mode, param, targetPair, analysisScope } = normalized;
       const key = optionKey(mode, param, targetPair, analysisScope);
 
       if (!options.has(key)) {
