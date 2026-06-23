@@ -6,11 +6,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type SnapshotOptionRow = {
+  market_id: string | null;
   mode: string | null;
   param: number | null;
   target_pair: string | null;
   analysis_scope: string | null;
   updated_at: string | null;
+};
+
+type MarketRow = {
+  id: string | null;
 };
 
 type ShareOption = {
@@ -30,6 +35,10 @@ const MAX_ROWS = 30000;
 
 function optionKey(mode: string, param: number, targetPair: string, analysisScope: string) {
   return `${mode}|${param}|${targetPair}|${analysisScope}`;
+}
+
+function key(value: string | null | undefined) {
+  return String(value || "").trim().toLowerCase();
 }
 
 function isAllowedOption(mode: string, param: number, targetPair: string, analysisScope: string) {
@@ -77,7 +86,7 @@ export async function GET(request: Request) {
       const to = from + PAGE_SIZE - 1;
       const { data, error } = await supabase
         .from("analysis_snapshots")
-        .select("mode,param,target_pair,analysis_scope,updated_at")
+        .select("market_id,mode,param,target_pair,analysis_scope,updated_at")
         .order("updated_at", { ascending: false })
         .range(from, to);
 
@@ -86,16 +95,31 @@ export async function GET(request: Request) {
       const rows = (data || []) as SnapshotOptionRow[];
       if (!rows.length) break;
 
+      const ids = Array.from(new Set(rows.map((row) => row.market_id).filter(Boolean).map(String)));
+      let activeMarketIds = new Set<string>();
+
+      if (ids.length) {
+        const { data: markets, error: marketError } = await supabase
+          .from("markets")
+          .select("id")
+          .in("id", ids);
+
+        if (marketError) throw marketError;
+        activeMarketIds = new Set(((markets || []) as MarketRow[]).map((market) => key(market.id)).filter(Boolean));
+      }
+
       for (const row of rows) {
+        if (!activeMarketIds.has(key(row.market_id))) continue;
+
         const normalized = normalizeOption(row);
         if (!normalized) continue;
 
         const { mode, param, targetPair, analysisScope } = normalized;
-        const key = optionKey(mode, param, targetPair, analysisScope);
+        const keyValue = optionKey(mode, param, targetPair, analysisScope);
 
-        if (!options.has(key)) {
-          options.set(key, {
-            key,
+        if (!options.has(keyValue)) {
+          options.set(keyValue, {
+            key: keyValue,
             mode,
             param,
             targetPair,
