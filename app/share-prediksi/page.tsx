@@ -46,8 +46,6 @@ const MARKET_ALIAS: Record<string, string> = {
 
 const MODE_LABEL: Record<string, string> = {
   ai: "Angka Ikut",
-  ai_parity: "Ganjil Genap",
-  ai_size: "Besar Kecil",
   bbfs: "BBFS",
   mati: "Angka Mati",
   jumlah: "Jumlah Mati",
@@ -71,12 +69,10 @@ const TARGET_PAIR_LABEL: Record<string, string> = {
 
 const MODE_ORDER: Record<string, number> = {
   ai: 1,
-  ai_parity: 2,
-  ai_size: 3,
-  bbfs: 4,
-  mati: 5,
-  jumlah: 6,
-  shio: 7,
+  bbfs: 2,
+  mati: 3,
+  jumlah: 4,
+  shio: 5,
 };
 
 const TARGET_ORDER: Record<string, number> = {
@@ -107,6 +103,25 @@ function listText(value: unknown, joiner: "" | "." = "") {
   return items.length ? items.join(joiner) : "-";
 }
 
+function isGanjilGenap(option: ShareOption) {
+  return option.mode === "ai_parity" || (option.mode === "ai" && option.param === 7);
+}
+
+function isBesarKecil(option: ShareOption) {
+  return option.mode === "ai_size" || (option.mode === "ai" && option.param === 8);
+}
+
+function displayMode(option: ShareOption) {
+  if (option.mode === "ai_parity" || option.mode === "ai_size") return "ai";
+  return option.mode;
+}
+
+function outputKey(option: ShareOption) {
+  if (isGanjilGenap(option)) return "ganjil_genap";
+  if (isBesarKecil(option)) return "besar_kecil";
+  return `${option.mode}:${option.param}`;
+}
+
 function marketLabel(row: ShareRow) {
   const raw = String(row.marketName || row.marketId || "-").trim();
   return MARKET_ALIAS[raw.toUpperCase()] || raw.toUpperCase();
@@ -125,16 +140,16 @@ function targetLabel(option: ShareOption) {
 }
 
 function outputLabel(option: ShareOption) {
-  if (option.mode === "ai_parity" || option.mode === "ai_size") return "";
+  if (isGanjilGenap(option)) return "Ganjil Genap";
+  if (isBesarKecil(option)) return "Besar Kecil";
   if (option.mode === "shio") return `${option.param} Shio`;
   if (option.mode === "bbfs" && option.param === 10) return "GGBK 8 Digit";
   return `${option.param} Digit`;
 }
 
 function shareTitle(option: ShareOption) {
-  return [MODE_LABEL[option.mode] || option.mode.toUpperCase(), targetLabel(option), outputLabel(option)]
-    .filter(Boolean)
-    .join(" ");
+  const mode = displayMode(option);
+  return [MODE_LABEL[mode] || mode.toUpperCase(), targetLabel(option), outputLabel(option)].filter(Boolean).join(" ");
 }
 
 function simpleResultText(value: unknown, mode: string) {
@@ -195,13 +210,15 @@ function uniqueBy<T>(items: T[], keyFn: (item: T) => string) {
 }
 
 function optionSort(a: ShareOption, b: ShareOption) {
-  const modeDiff = (MODE_ORDER[a.mode] || 99) - (MODE_ORDER[b.mode] || 99);
+  const modeDiff = (MODE_ORDER[displayMode(a)] || 99) - (MODE_ORDER[displayMode(b)] || 99);
   if (modeDiff !== 0) return modeDiff;
 
   const targetDiff = (TARGET_ORDER[targetKey(a)] || 99) - (TARGET_ORDER[targetKey(b)] || 99);
   if (targetDiff !== 0) return targetDiff;
 
-  return a.param - b.param;
+  const ggbkA = isGanjilGenap(a) ? 70 : isBesarKecil(a) ? 80 : a.param;
+  const ggbkB = isGanjilGenap(b) ? 70 : isBesarKecil(b) ? 80 : b.param;
+  return ggbkA - ggbkB;
 }
 
 async function fetchJson<T>(url: string, token: string): Promise<T> {
@@ -301,15 +318,15 @@ export default function SharePrediksiPage() {
 
   const modeOptions = useMemo(
     () =>
-      uniqueBy(sortedOptions, (option) => option.mode).map((option) => ({
-        key: option.mode,
-        label: MODE_LABEL[option.mode] || option.mode.toUpperCase(),
-      })),
+      uniqueBy(sortedOptions, displayMode).map((option) => {
+        const mode = displayMode(option);
+        return { key: mode, label: MODE_LABEL[mode] || mode.toUpperCase() };
+      }),
     [sortedOptions],
   );
 
   const modeScopedOptions = useMemo(
-    () => sortedOptions.filter((option) => option.mode === selectedMode),
+    () => sortedOptions.filter((option) => displayMode(option) === selectedMode),
     [sortedOptions, selectedMode],
   );
 
@@ -329,15 +346,15 @@ export default function SharePrediksiPage() {
 
   const outputOptions = useMemo(
     () =>
-      uniqueBy(targetScopedOptions, (option) => String(option.param)).map((option) => ({
-        key: String(option.param),
-        label: outputLabel(option) || "Output",
+      uniqueBy(targetScopedOptions, outputKey).map((option) => ({
+        key: outputKey(option),
+        label: outputLabel(option),
       })),
     [targetScopedOptions],
   );
 
   const selectedOption = useMemo(
-    () => targetScopedOptions.find((option) => String(option.param) === selectedOutput) || null,
+    () => targetScopedOptions.find((option) => outputKey(option) === selectedOutput) || null,
     [targetScopedOptions, selectedOutput],
   );
 
@@ -355,7 +372,7 @@ export default function SharePrediksiPage() {
         if (!active) return;
         const sorted = [...items].sort(optionSort);
         setOptions(sorted);
-        setSelectedMode((current) => current || sorted[0]?.mode || "");
+        setSelectedMode((current) => current || displayMode(sorted[0]) || "");
       })
       .catch((err: unknown) => {
         if (!active) return;
@@ -447,28 +464,18 @@ export default function SharePrediksiPage() {
 
   return (
     <div className="animate-rise pb-8">
-      <button
-        type="button"
-        onClick={() => router.push("/")}
-        className="pressable depth-3 mb-3 inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
-      >
+      <button type="button" onClick={() => router.push("/")} className="pressable depth-3 mb-3 inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]">
         <ArrowLeft size={15} /> Beranda
       </button>
 
       <section className="depth-1 mb-4 rounded-3xl border p-4 text-center">
         <div className="depth-2 rounded-3xl border px-4 py-6">
           <div className="display text-2xl text-text">Share Prediksi</div>
-          <p className="mt-2 text-xs font-semibold leading-relaxed text-text-muted">
-            Pilih filter prediksi aktif, lalu salin atau bagikan semua pasaran.
-          </p>
+          <p className="mt-2 text-xs font-semibold leading-relaxed text-text-muted">Pilih filter prediksi aktif, lalu salin atau bagikan semua pasaran.</p>
         </div>
       </section>
 
-      {error && (
-        <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
-          {error}
-        </div>
-      )}
+      {error && <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">{error}</div>}
 
       <section className="depth-1 mb-4 rounded-3xl border p-4">
         <div className="mb-3 flex items-center justify-between gap-3 px-1">
@@ -477,17 +484,11 @@ export default function SharePrediksiPage() {
         </div>
 
         {!token ? (
-          <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">
-            Memeriksa akses…
-          </div>
+          <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memeriksa akses…</div>
         ) : loadingOptions ? (
-          <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">
-            Memuat pilihan…
-          </div>
+          <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pilihan…</div>
         ) : options.length === 0 ? (
-          <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">
-            Belum ada snapshot prediksi aktif
-          </div>
+          <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Belum ada snapshot prediksi aktif</div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
             <PickerField id="jenis" label="Jenis" value={selectedMode} options={modeOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedMode} />
@@ -503,25 +504,13 @@ export default function SharePrediksiPage() {
           {loadingRows && <Loader2 size={15} className="animate-spin text-text-soft" />}
         </div>
 
-        <pre className="depth-2 min-h-[220px] whitespace-pre-wrap rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">
-          {loadingRows ? "Memuat data share…" : shareText || "Pilih prediksi dulu."}
-        </pre>
+        <pre className="depth-2 min-h-[220px] whitespace-pre-wrap rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">{loadingRows ? "Memuat data share…" : shareText || "Pilih prediksi dulu."}</pre>
 
         <div className="mt-3 grid grid-cols-2 gap-2.5">
-          <button
-            type="button"
-            onClick={handleCopy}
-            disabled={!shareText || loadingRows}
-            className="pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45"
-          >
+          <button type="button" onClick={handleCopy} disabled={!shareText || loadingRows} className="pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45">
             <ClipboardCopy size={16} /> {copied ? "Tersalin" : "Copy"}
           </button>
-          <button
-            type="button"
-            onClick={handleShare}
-            disabled={!shareText || loadingRows}
-            className="pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45"
-          >
+          <button type="button" onClick={handleShare} disabled={!shareText || loadingRows} className="pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45">
             <Share2 size={16} /> Share
           </button>
         </div>
