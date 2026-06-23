@@ -1,7 +1,7 @@
 export const statAccent = "#34d399";
 export const statAccentSoft = "rgba(52,211,153,0.14)";
 export const statGold = "#f6c96b";
-export const MIN_WINS_15 = 13;
+export const MIN_WINS_15 = 12;
 export const MIN_WINS_LAST_5 = 3;
 export const MAX_LOSS_STREAK_ALLOWED = 2;
 export const MARKET_STAT_SELECT = "id,market_id,market_name,group_key,group_label,mode,param,position,target_pair,analysis_scope,wins_15,wins_last_5,max_loss_streak,sample_size,score,previous_rank,rank_movement,latest_is_hit,latest_status,updated_at";
@@ -234,8 +234,8 @@ export function movementTone(item: MarketStatistic) {
   const movement = Number(item.rank_movement || 0);
   if (movement > 0) return { text: "#03120d", bg: "#4ade80", border: "#bbf7d0", shadow: "0 0 0 1px rgba(255,255,255,0.22) inset, 0 0 20px rgba(74,222,128,0.55)" };
   if (movement < 0) {
-    const latestZonk = item.latest_is_hit === false || item.latest_status === "ZONK" || item.latest_status === "TIDAK MASUK";
-    if (latestZonk) return { text: "#190407", bg: "#fb7185", border: "#fecdd3", shadow: "0 0 0 1px rgba(255,255,255,0.22) inset, 0 0 20px rgba(251,113,133,0.58)" };
+    const latestMiss = item.latest_is_hit === false;
+    if (latestMiss) return { text: "#190407", bg: "#fb7185", border: "#fecdd3", shadow: "0 0 0 1px rgba(255,255,255,0.22) inset, 0 0 20px rgba(251,113,133,0.58)" };
     return { text: "#171002", bg: "#facc15", border: "#fef08a", shadow: "0 0 0 1px rgba(255,255,255,0.22) inset, 0 0 20px rgba(250,204,21,0.55)" };
   }
   return { text: "#d1d5db", bg: "rgba(255,255,255,0.12)", border: "rgba(255,255,255,0.24)", shadow: "0 0 12px rgba(255,255,255,0.08)" };
