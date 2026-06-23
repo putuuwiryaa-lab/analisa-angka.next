@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { CustomFocus, TargetPair } from "@/lib/analysis/customDigit";
-import type { PairAiMap, PairBoolMap, PairCountMap } from "./customDigitGenerate";
+import type { PairAiMap, PairBBFSMap, PairBoolMap, PairCountMap } from "./customDigitGenerate";
 
 export type BBFSDigit = 7 | 8 | 9 | 10;
 
@@ -14,6 +14,7 @@ export type CustomRekapState = {
   customAi3dSize: boolean;
   customAi4dDigit: 1 | 2 | 4 | null;
   customBBFSDigit: BBFSDigit | null;
+  customBBFSDigitByPair: PairBBFSMap;
   customOffAsCount: number | null;
   customOffKopCount: number | null;
   customOffKepalaCount: number | null;
@@ -32,6 +33,7 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
   const [customAi3dSize, setCustomAi3dSize] = useState(false);
   const [customAi4dDigit, setCustomAi4dDigit] = useState<1 | 2 | 4 | null>(null);
   const [customBBFSDigit, setCustomBBFSDigit] = useState<BBFSDigit | null>(null);
+  const [customBBFSDigitByPair, setCustomBBFSDigitByPair] = useState<PairBBFSMap>({});
   const [customOffAsCount, setCustomOffAsCount] = useState<number | null>(null);
   const [customOffKopCount, setCustomOffKopCount] = useState<number | null>(null);
   const [customOffKepalaCount, setCustomOffKepalaCount] = useState<number | null>(null);
@@ -45,6 +47,8 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
     setCustomAiParityByPair((prev) => ({ ...prev, [pair]: value }));
   const setCustomAiSizeForPair = (pair: TargetPair, value: boolean) =>
     setCustomAiSizeByPair((prev) => ({ ...prev, [pair]: value }));
+  const setCustomBBFSDigitForPair = (pair: TargetPair, value: BBFSDigit | null) =>
+    setCustomBBFSDigitByPair((prev) => ({ ...prev, [pair]: value }));
   const setCustomOffJumlahCountForPair = (pair: TargetPair, value: number | null) =>
     setCustomOffJumlahCountByPair((prev) => ({ ...prev, [pair]: value }));
   const setCustomOffShioCountForPair = (pair: TargetPair, value: number | null) =>
@@ -59,6 +63,7 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
     setCustomAi3dSize(false);
     setCustomAi4dDigit(null);
     setCustomBBFSDigit(null);
+    setCustomBBFSDigitByPair({});
     setCustomOffAsCount(null);
     setCustomOffKopCount(null);
     setCustomOffKepalaCount(null);
@@ -77,6 +82,7 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
     setCustomAi3dSize(nextState.customAi3dSize);
     setCustomAi4dDigit(nextState.customAi4dDigit);
     setCustomBBFSDigit(nextState.customBBFSDigit);
+    setCustomBBFSDigitByPair(nextState.customBBFSDigitByPair || {});
     setCustomOffAsCount(nextState.customOffAsCount);
     setCustomOffKopCount(nextState.customOffKopCount);
     setCustomOffKepalaCount(nextState.customOffKepalaCount);
@@ -95,6 +101,7 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
     customAi3dSize,
     customAi4dDigit,
     customBBFSDigit,
+    customBBFSDigitByPair,
     customOffAsCount,
     customOffKopCount,
     customOffKepalaCount,
@@ -115,6 +122,7 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
       setCustomAi3dSize,
       setCustomAi4dDigit,
       setCustomBBFSDigit,
+      setCustomBBFSDigitByPair,
       setCustomOffAsCount,
       setCustomOffKopCount,
       setCustomOffKepalaCount,
@@ -126,6 +134,7 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
       setCustomAiDigitForPair,
       setCustomAiParityForPair,
       setCustomAiSizeForPair,
+      setCustomBBFSDigitForPair,
       setCustomOffJumlahCountForPair,
       setCustomOffShioCountForPair,
       resetCustomRekapSelections,
