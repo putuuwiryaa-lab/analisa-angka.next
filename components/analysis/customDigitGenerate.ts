@@ -30,7 +30,7 @@ export interface CustomDigitState {
   customAi3dParity: boolean;
   customAi3dSize: boolean;
   customAi4dDigit: 1 | 2 | 4 | null;
-  customBBFSDigit: 7 | 8 | 9 | null;
+  customBBFSDigit: 7 | 8 | 9 | 10 | null;
   customOffAsCount: number | null;
   customOffKopCount: number | null;
   customOffKepalaCount: number | null;
@@ -84,6 +84,7 @@ export async function runCustomDigitGenerate(
   let ai3dSize = "";
   let ai4d: number[] = [];
   let bbfsGlobal: number[] = [];
+  let bbfsGgbk: any = null;
 
   for (const pair of pairs) {
     const aiDigit = s.customAiDigitByPair[pair];
@@ -120,7 +121,9 @@ export async function runCustomDigitGenerate(
   if (s.customBBFSDigit) {
     const bbfsScope = customFocusToBBFSScope(customFocus);
     const bbfsTargetPair = bbfsScopeToTargetPair(bbfsScope);
-    bbfsGlobal = toNumberList((await postAnalyze("bbfs", data, s.customBBFSDigit, bbfsTargetPair, bbfsScope))?.result);
+    const bbfsResult = await postAnalyze("bbfs", data, s.customBBFSDigit, bbfsTargetPair, bbfsScope);
+    bbfsGlobal = toNumberList(bbfsResult?.result);
+    bbfsGgbk = bbfsResult?.bbfsGgbk || null;
   }
 
   const getMati = async (count: number | null) => {
@@ -168,6 +171,7 @@ export async function runCustomDigitGenerate(
     ai3dSize,
     ai4d,
     bbfsGlobal,
+    bbfsGgbk,
     offAs,
     offKop,
     offKepala,
