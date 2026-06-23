@@ -28,7 +28,8 @@ function formatCompact(value: any) {
     .join("");
 }
 
-function bbfsLabelFromFocus(focus: any) {
+function bbfsLabelFromFocus(focus: any, result: ResultData) {
+  if (result?.bbfsGgbk) return `BBFS GGBK ${result.bbfsGgbk.label || "8D"}`;
   const scope = customFocusToBBFSScope(focus);
   if (scope === "4d") return "BBFS 4D";
   if (scope === "3d") return "BBFS 3D";
@@ -61,7 +62,7 @@ function customRows(result: ResultData): Row[] {
   });
 
   if (safeArray(result.bbfsGlobal).length) {
-    rows.push([bbfsLabelFromFocus(focus), formatCompact(result.bbfsGlobal), "bbfs", "#ff9f43", "bbfs"]);
+    rows.push([bbfsLabelFromFocus(focus, result), formatCompact(result.bbfsGlobal), "bbfs", "#ff9f43", "bbfs"]);
   }
 
   pairs.forEach((pair) => {
