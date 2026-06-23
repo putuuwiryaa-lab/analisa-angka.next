@@ -11,7 +11,7 @@ import { Logo } from "@/components/ui/Logo";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap";
+  const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap" || pathname === "/share-prediksi";
 
   const hideHeader = pathname === "/kode-login" || pathname.startsWith("/analyze/") || isStandaloneMenu;
   const showBottomNav = isHome;
