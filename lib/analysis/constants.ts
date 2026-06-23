@@ -46,4 +46,4 @@ export const typeMeta: Record<string, { label: string; formula: string }> = {
 };
 
 export const evaluationModes = new Set(["ai", "ai_parity", "ai_size", "bbfs", "mati", "jumlah", "shio"]);
-export const angkaJadiModes = new Set(["mati", "jumlah", "shio"]);
+export const angkaJadiModes = new Set(["ai", "bbfs", "mati", "jumlah", "shio"]);
