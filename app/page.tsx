@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Clock3, Database, Plus, RefreshCw, Search, Share2 } from "lucide-react";
+import { Clock3, Database, Plus, RefreshCw, Search } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-context";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -81,21 +81,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <Link
-        href="/share-prediksi"
-        className="pressable animate-soft-pop depth-accent mb-4 flex min-h-[86px] items-center gap-3 rounded-3xl border p-4 hover:border-border"
-      >
-        <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border">
-          <Share2 size={21} strokeWidth={2.4} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="display accent-text text-[14px]">Share Prediksi</div>
-          <p className="mt-1.5 text-xs font-semibold leading-relaxed text-text-muted">
-            Pilih filter lalu bagikan hasil aktif semua pasaran.
-          </p>
-        </div>
-      </Link>
-
       {errorMessage && (
         <div className="animate-soft-pop mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
           {errorMessage}
@@ -113,7 +98,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid min-h-[calc(100svh-27rem)] grid-cols-2 content-start gap-3 pb-6 sm:grid-cols-3">
+      <div className="grid min-h-[calc(100svh-21rem)] grid-cols-2 content-start gap-3 pb-6 sm:grid-cols-3">
         {showInitialSkeleton ? (
           Array.from({ length: 14 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-3xl" />)
         ) : (
