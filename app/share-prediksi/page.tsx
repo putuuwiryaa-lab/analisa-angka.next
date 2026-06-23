@@ -28,6 +28,11 @@ type ShareResponse = {
   rows: ShareRow[];
 };
 
+type SelectOption = {
+  key: string;
+  label: string;
+};
+
 const SEPARATOR = "⟡";
 
 const MARKET_ALIAS: Record<string, string> = {
@@ -39,8 +44,8 @@ const MARKET_ALIAS: Record<string, string> = {
 
 const MODE_LABEL: Record<string, string> = {
   ai: "Angka Ikut",
-  ai_parity: "Angka Ikut Ganjil Genap",
-  ai_size: "Angka Ikut Besar Kecil",
+  ai_parity: "Ganjil Genap",
+  ai_size: "Besar Kecil",
   bbfs: "BBFS",
   mati: "Angka Mati",
   jumlah: "Jumlah Mati",
@@ -72,23 +77,39 @@ const MODE_ORDER: Record<string, number> = {
   shio: 7,
 };
 
+const TARGET_ORDER: Record<string, number> = {
+  "depan|default": 1,
+  "tengah|default": 2,
+  "belakang|default": 3,
+  "belakang|2d_depan": 4,
+  "belakang|2d_tengah": 5,
+  "belakang|2d_belakang": 6,
+  "belakang|3d": 7,
+  "belakang|4d": 8,
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function digitListText(value: unknown) {
+function listText(value: unknown, joiner: "" | "." = "") {
   if (!Array.isArray(value)) return "-";
   const items = value.map((item) => String(item).trim()).filter(Boolean);
-  return items.length ? items.join("") : "-";
+  return items.length ? items.join(joiner) : "-";
 }
 
-function formatResultValue(value: unknown) {
-  if (Array.isArray(value)) return digitListText(value);
+function formatListByMode(value: unknown, mode: string) {
+  const joiner = mode === "shio" || mode === "jumlah" ? "." : "";
+  return listText(value, joiner);
+}
+
+function formatResultValue(value: unknown, mode: string) {
+  if (Array.isArray(value)) return formatListByMode(value, mode);
   if (typeof value === "string" || typeof value === "number") return String(value).trim() || "-";
 
   if (isRecord(value)) {
-    if (Array.isArray(value.result)) return digitListText(value.result);
-    if (Array.isArray(value.data)) return digitListText(value.data);
+    if (Array.isArray(value.result)) return formatListByMode(value.result, mode);
+    if (Array.isArray(value.data)) return formatListByMode(value.data, mode);
 
     const positions = [
       ["AS", "AS"],
@@ -100,7 +121,7 @@ function formatResultValue(value: unknown) {
     const lines = positions
       .map(([key, label]) => {
         const raw = value[key];
-        const text = isRecord(raw) && Array.isArray(raw.result) ? digitListText(raw.result) : digitListText(raw);
+        const text = isRecord(raw) && Array.isArray(raw.result) ? listText(raw.result, ".") : listText(raw, ".");
         return text !== "-" ? `${label} ${text}` : "";
       })
       .filter(Boolean);
@@ -117,12 +138,16 @@ function marketLabel(row: ShareRow) {
   return MARKET_ALIAS[key] || raw.toUpperCase();
 }
 
+function targetKey(option: ShareOption) {
+  return `${option.targetPair}|${option.analysisScope}`;
+}
+
 function titleTarget(option: ShareOption) {
+  if (option.mode === "mati") return "";
+
   if (option.analysisScope && option.analysisScope !== "default") {
     return TARGET_LABEL[option.analysisScope] || option.analysisScope.toUpperCase();
   }
-
-  if (["mati", "shio", "jumlah"].includes(option.mode)) return "";
 
   return TARGET_PAIR_LABEL[option.targetPair] || "";
 }
@@ -143,17 +168,30 @@ function shareTitle(option: ShareOption) {
 function buildShareText(option: ShareOption | null, rows: ShareRow[]) {
   if (!option) return "";
   const title = shareTitle(option);
-  const lines = rows.map((row) => `${marketLabel(row)} ${SEPARATOR} ${formatResultValue(row.result)}`);
+  const lines = rows.map((row) => `${marketLabel(row)} ${SEPARATOR} ${formatResultValue(row.result, option.mode)}`);
   return [title, "", ...lines].join("\n");
+}
+
+function uniqueBy<T>(items: T[], keyFn: (item: T) => string) {
+  const seen = new Set<string>();
+  const output: T[] = [];
+
+  for (const item of items) {
+    const key = keyFn(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(item);
+  }
+
+  return output;
 }
 
 function optionSort(a: ShareOption, b: ShareOption) {
   const modeDiff = (MODE_ORDER[a.mode] || 99) - (MODE_ORDER[b.mode] || 99);
   if (modeDiff !== 0) return modeDiff;
 
-  const targetA = titleTarget(a);
-  const targetB = titleTarget(b);
-  if (targetA !== targetB) return targetA.localeCompare(targetB, "id");
+  const targetDiff = (TARGET_ORDER[targetKey(a)] || 99) - (TARGET_ORDER[targetKey(b)] || 99);
+  if (targetDiff !== 0) return targetDiff;
 
   return a.param - b.param;
 }
@@ -171,20 +209,90 @@ async function fetchJson<T>(url: string, token: string): Promise<T> {
   return json as T;
 }
 
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: SelectOption[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-[10px] font-black uppercase tracking-wide text-text-soft">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="depth-3 h-13 w-full rounded-2xl border bg-bg-deep px-3 text-sm font-black text-text outline-none focus:border-border-strong"
+      >
+        {options.map((option) => (
+          <option key={option.key} value={option.key}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export default function SharePrediksiPage() {
   const router = useRouter();
   const { token } = useAuth();
   const [options, setOptions] = useState<ShareOption[]>([]);
-  const [selectedKey, setSelectedKey] = useState("");
+  const [selectedMode, setSelectedMode] = useState("");
+  const [selectedTarget, setSelectedTarget] = useState("");
+  const [selectedOutput, setSelectedOutput] = useState("");
   const [rows, setRows] = useState<ShareRow[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const sortedOptions = useMemo(() => [...options].sort(optionSort), [options]);
+
+  const modeOptions = useMemo(
+    () =>
+      uniqueBy(sortedOptions, (option) => option.mode).map((option) => ({
+        key: option.mode,
+        label: MODE_LABEL[option.mode] || option.mode.toUpperCase(),
+      })),
+    [sortedOptions],
+  );
+
+  const modeScopedOptions = useMemo(
+    () => sortedOptions.filter((option) => option.mode === selectedMode),
+    [sortedOptions, selectedMode],
+  );
+
+  const targetOptions = useMemo(
+    () =>
+      uniqueBy(modeScopedOptions, targetKey).map((option) => ({
+        key: targetKey(option),
+        label: titleTarget(option) || "Semua Posisi",
+      })),
+    [modeScopedOptions],
+  );
+
+  const targetScopedOptions = useMemo(
+    () => modeScopedOptions.filter((option) => targetKey(option) === selectedTarget),
+    [modeScopedOptions, selectedTarget],
+  );
+
+  const outputOptions = useMemo(
+    () =>
+      uniqueBy(targetScopedOptions, (option) => String(option.param)).map((option) => ({
+        key: String(option.param),
+        label: outputLabel(option) || "Output",
+      })),
+    [targetScopedOptions],
+  );
+
   const selectedOption = useMemo(
-    () => options.find((option) => option.key === selectedKey) || null,
-    [options, selectedKey],
+    () => targetScopedOptions.find((option) => String(option.param) === selectedOutput) || null,
+    [targetScopedOptions, selectedOutput],
   );
 
   const shareText = useMemo(() => buildShareText(selectedOption, rows), [selectedOption, rows]);
@@ -201,7 +309,7 @@ export default function SharePrediksiPage() {
         if (!active) return;
         const sorted = [...items].sort(optionSort);
         setOptions(sorted);
-        setSelectedKey((current) => current || sorted[0]?.key || "");
+        setSelectedMode((current) => current || sorted[0]?.mode || "");
       })
       .catch((err: unknown) => {
         if (!active) return;
@@ -215,6 +323,33 @@ export default function SharePrediksiPage() {
       active = false;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!modeOptions.length) return;
+    if (!modeOptions.some((option) => option.key === selectedMode)) {
+      setSelectedMode(modeOptions[0].key);
+    }
+  }, [modeOptions, selectedMode]);
+
+  useEffect(() => {
+    if (!targetOptions.length) {
+      setSelectedTarget("");
+      return;
+    }
+    if (!targetOptions.some((option) => option.key === selectedTarget)) {
+      setSelectedTarget(targetOptions[0].key);
+    }
+  }, [targetOptions, selectedTarget]);
+
+  useEffect(() => {
+    if (!outputOptions.length) {
+      setSelectedOutput("");
+      return;
+    }
+    if (!outputOptions.some((option) => option.key === selectedOutput)) {
+      setSelectedOutput(outputOptions[0].key);
+    }
+  }, [outputOptions, selectedOutput]);
 
   useEffect(() => {
     if (!token || !selectedOption) return;
@@ -291,7 +426,7 @@ export default function SharePrediksiPage() {
 
       <section className="depth-1 mb-4 rounded-3xl border p-4">
         <div className="mb-3 flex items-center justify-between gap-3 px-1">
-          <span className="display text-xs text-text">Pilih Prediksi</span>
+          <span className="display text-xs text-text">Filter Prediksi</span>
           {loadingOptions && <Loader2 size={15} className="animate-spin text-text-soft" />}
         </div>
 
@@ -308,28 +443,10 @@ export default function SharePrediksiPage() {
             Belum ada snapshot prediksi aktif
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-2.5">
-            {options.map((option, index) => {
-              const active = option.key === selectedKey;
-              return (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setSelectedKey(option.key)}
-                  className={
-                    active
-                      ? "pressable animate-soft-pop depth-accent accent-text rounded-3xl border px-4 py-4 text-left"
-                      : "pressable animate-soft-pop depth-3 rounded-3xl border px-4 py-4 text-left text-text-muted hover:border-border hover:bg-white/[0.06]"
-                  }
-                  style={{ animationDelay: `${Math.min(index, 12) * 16}ms` }}
-                >
-                  <span className="display block text-[13px] leading-5">{shareTitle(option)}</span>
-                  <span className="mt-1.5 block text-[10px] font-bold uppercase tracking-wide text-text-soft">
-                    {option.mode} · {option.targetPair} · {option.analysisScope}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-1 gap-3">
+            <SelectField label="Jenis" value={selectedMode} options={modeOptions} onChange={setSelectedMode} />
+            <SelectField label="Target" value={selectedTarget} options={targetOptions} onChange={setSelectedTarget} />
+            <SelectField label="Output" value={selectedOutput} options={outputOptions} onChange={setSelectedOutput} />
           </div>
         )}
       </section>
