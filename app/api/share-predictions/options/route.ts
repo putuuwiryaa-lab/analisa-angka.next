@@ -25,6 +25,8 @@ type ShareOption = {
 const VALID_MODES = new Set(["ai", "ai_parity", "ai_size", "bbfs", "mati", "jumlah", "shio"]);
 const VALID_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
+const PAGE_SIZE = 1000;
+const MAX_ROWS = 30000;
 
 function optionKey(mode: string, param: number, targetPair: string, analysisScope: string) {
   return `${mode}|${param}|${targetPair}|${analysisScope}`;
@@ -61,33 +63,41 @@ export async function GET(request: Request) {
 
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("analysis_snapshots")
-      .select("mode,param,target_pair,analysis_scope,updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(5000);
-
-    if (error) throw error;
-
     const options = new Map<string, ShareOption>();
 
-    for (const row of (data || []) as SnapshotOptionRow[]) {
-      const normalized = normalizeOption(row);
-      if (!normalized) continue;
+    for (let from = 0; from < MAX_ROWS; from += PAGE_SIZE) {
+      const to = from + PAGE_SIZE - 1;
+      const { data, error } = await supabase
+        .from("analysis_snapshots")
+        .select("mode,param,target_pair,analysis_scope,updated_at")
+        .order("updated_at", { ascending: false })
+        .range(from, to);
 
-      const { mode, param, targetPair, analysisScope } = normalized;
-      const key = optionKey(mode, param, targetPair, analysisScope);
+      if (error) throw error;
 
-      if (!options.has(key)) {
-        options.set(key, {
-          key,
-          mode,
-          param,
-          targetPair,
-          analysisScope,
-          updatedAt: row.updated_at,
-        });
+      const rows = (data || []) as SnapshotOptionRow[];
+      if (!rows.length) break;
+
+      for (const row of rows) {
+        const normalized = normalizeOption(row);
+        if (!normalized) continue;
+
+        const { mode, param, targetPair, analysisScope } = normalized;
+        const key = optionKey(mode, param, targetPair, analysisScope);
+
+        if (!options.has(key)) {
+          options.set(key, {
+            key,
+            mode,
+            param,
+            targetPair,
+            analysisScope,
+            updatedAt: row.updated_at,
+          });
+        }
       }
+
+      if (rows.length < PAGE_SIZE) break;
     }
 
     return NextResponse.json(Array.from(options.values()), {
