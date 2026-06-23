@@ -26,6 +26,7 @@ function isGanjilGenap(option: ShareOption) { return option.mode === "ai_parity"
 function isBesarKecil(option: ShareOption) { return option.mode === "ai_size" || (option.mode === "ai" && option.param === 8); }
 function displayMode(option: ShareOption) { return option.mode === "ai_parity" || option.mode === "ai_size" ? "ai" : option.mode; }
 function outputKey(option: ShareOption) { if (isGanjilGenap(option)) return "ganjil_genap"; if (isBesarKecil(option)) return "besar_kecil"; return `${option.mode}:${option.param}`; }
+function marketKey(row: ShareRow) { return String(row.marketId || row.marketName || "").trim().toLowerCase(); }
 function marketLabel(row: ShareRow) { return String(row.marketName || row.marketId || "-").trim().toUpperCase(); }
 function targetKey(option: ShareOption) { return `${option.targetPair}|${option.analysisScope}`; }
 function targetLabel(option: ShareOption) { if (option.mode === "mati") return ""; if (option.analysisScope && option.analysisScope !== "default") return TARGET_LABEL[option.analysisScope] || option.analysisScope.toUpperCase(); return TARGET_PAIR_LABEL[option.targetPair] || ""; }
@@ -66,7 +67,7 @@ function dataLineText(rows: ShareRow[]) {
 }
 
 function buildShareText(option: ShareOption | null, rows: ShareRow[]) {
-  if (!option) return "";
+  if (!option || rows.length === 0) return "";
   const title = shareTitle(option);
   const dataLine = dataLineText(rows);
   const lines = rows.map((row) => `${marketLabel(row)} ${SEPARATOR} ${rowResultText(option, row)}`);
@@ -78,7 +79,7 @@ function buildShareText(option: ShareOption | null, rows: ShareRow[]) {
 }
 
 function buildPreviewText(option: ShareOption | null, rows: ShareRow[]) {
-  if (!option) return "";
+  if (!option || rows.length === 0) return "";
   const title = shareTitle(option);
   const dataLine = dataLineText(rows);
   const visibleRows = rows.slice(0, 5).map((row) => `${marketLabel(row)} ${SEPARATOR} ${rowResultText(option, row)}`);
@@ -137,6 +138,7 @@ export default function SharePrediksiPage() {
   const [selectedOutput, setSelectedOutput] = useState("");
   const [openPicker, setOpenPicker] = useState<PickerKey>("");
   const [rows, setRows] = useState<ShareRow[]>([]);
+  const [selectedMarketKeys, setSelectedMarketKeys] = useState<Set<string>>(() => new Set());
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [error, setError] = useState("");
@@ -149,8 +151,9 @@ export default function SharePrediksiPage() {
   const targetScopedOptions = useMemo(() => modeScopedOptions.filter((option) => targetKey(option) === selectedTarget), [modeScopedOptions, selectedTarget]);
   const outputOptions = useMemo(() => uniqueBy(targetScopedOptions, outputKey).map((option) => ({ key: outputKey(option), label: outputLabel(option) })), [targetScopedOptions]);
   const selectedOption = useMemo(() => targetScopedOptions.find((option) => outputKey(option) === selectedOutput) || null, [targetScopedOptions, selectedOutput]);
-  const shareText = useMemo(() => buildShareText(selectedOption, rows), [selectedOption, rows]);
-  const previewText = useMemo(() => buildPreviewText(selectedOption, rows), [selectedOption, rows]);
+  const selectedRows = useMemo(() => rows.filter((row) => selectedMarketKeys.has(marketKey(row))), [rows, selectedMarketKeys]);
+  const shareText = useMemo(() => buildShareText(selectedOption, selectedRows), [selectedOption, selectedRows]);
+  const previewText = useMemo(() => buildPreviewText(selectedOption, selectedRows), [selectedOption, selectedRows]);
 
   useEffect(() => {
     if (!verifying && !token) router.replace("/kode-login");
@@ -178,15 +181,19 @@ export default function SharePrediksiPage() {
     let active = true;
     setLoadingRows(true);
     setRows([]);
+    setSelectedMarketKeys(new Set());
     setCopied(false);
     setError("");
     fetchJson<ShareResponse>(`/api/share-predictions?${params.toString()}`, token)
-      .then((data) => { if (active) setRows(data.rows || []); })
+      .then((data) => { if (!active) return; const nextRows = data.rows || []; setRows(nextRows); setSelectedMarketKeys(new Set(nextRows.map(marketKey).filter(Boolean))); })
       .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat data share prediksi."); })
       .finally(() => { if (active) setLoadingRows(false); });
     return () => { active = false; };
   }, [token, verifying, selectedOption]);
 
+  function toggleMarket(row: ShareRow) { const key = marketKey(row); if (!key) return; setSelectedMarketKeys((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; }); }
+  function selectAllMarkets() { setSelectedMarketKeys(new Set(rows.map(marketKey).filter(Boolean))); }
+  function clearMarkets() { setSelectedMarketKeys(new Set()); }
   async function handleCopy() { if (!shareText) return; await navigator.clipboard.writeText(shareText); setCopied(true); window.setTimeout(() => setCopied(false), 1600); }
   async function handleShare() { if (!shareText) return; if (navigator.share) { await navigator.share({ text: shareText }); return; } await handleCopy(); }
 
@@ -206,11 +213,12 @@ export default function SharePrediksiPage() {
   return (
     <div className="animate-rise pb-8">
       <button type="button" onClick={() => router.push("/")} className="pressable depth-3 mb-3 inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"><ArrowLeft size={15} /> Beranda</button>
-      <section className="depth-1 mb-4 rounded-3xl border p-4 text-center"><div className="depth-2 rounded-3xl border px-4 py-6"><div className="display text-2xl text-text">Share Prediksi</div><p className="mt-2 text-xs font-semibold leading-relaxed text-text-muted">Pilih filter prediksi aktif, lalu salin atau bagikan semua pasaran.</p></div></section>
+      <section className="depth-1 mb-4 rounded-3xl border p-4 text-center"><div className="depth-2 rounded-3xl border px-4 py-6"><div className="display text-2xl text-text">Share Prediksi</div><p className="mt-2 text-xs font-semibold leading-relaxed text-text-muted">Pilih filter, tandai pasaran, lalu salin atau bagikan.</p></div></section>
       <div className="depth-2 mb-4 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-[11px] font-bold leading-relaxed text-text-muted"><span className="accent-text font-black">Catatan update:</span> bagikan prediksi sedekat mungkin dengan jam update pasaran. Cek baris <span className="text-text">Data</span> pada preview sebelum share.</div>
       {error && <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">{error}</div>}
       <section className="depth-1 mb-4 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Filter Prediksi</span>{loadingOptions && <Loader2 size={15} className="animate-spin text-text-soft" />}</div>{loadingOptions ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pilihan…</div> : options.length === 0 ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Belum ada snapshot prediksi aktif</div> : <div className="grid grid-cols-1 gap-3"><PickerField id="jenis" label="Jenis" value={selectedMode} options={modeOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedMode} /><PickerField id="target" label="Target" value={selectedTarget} options={targetOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedTarget} /><PickerField id="output" label="Output" value={selectedOutput} options={outputOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedOutput} /></div>}</section>
-      <section className="depth-1 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Preview Singkat</span>{loadingRows && <Loader2 size={15} className="animate-spin text-text-soft" />}</div><pre className="depth-2 min-h-[150px] whitespace-pre-wrap rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">{loadingRows ? "Memuat preview…" : previewText || "Pilih prediksi dulu."}</pre><p className="mt-2 px-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Copy dan Share tetap mengirim semua pasaran.</p><div className="mt-3 grid grid-cols-2 gap-2.5"><button type="button" onClick={handleCopy} disabled={!shareText || loadingRows} className="pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45"><ClipboardCopy size={16} /> {copied ? "Tersalin" : "Copy"}</button><button type="button" onClick={handleShare} disabled={!shareText || loadingRows} className="pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45"><Share2 size={16} /> Share</button></div></section>
+      <section className="depth-1 mb-4 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Pilih Pasaran</span><span className="text-[10px] font-black uppercase tracking-wide text-text-soft">{selectedRows.length}/{rows.length}</span></div>{loadingRows ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pasaran…</div> : rows.length === 0 ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Belum ada pasaran</div> : <><div className="mb-3 grid grid-cols-2 gap-2"><button type="button" onClick={selectAllMarkets} className="pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]">Pilih Semua</button><button type="button" onClick={clearMarkets} className="pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]">Kosongkan</button></div><div className="grid max-h-[260px] grid-cols-1 gap-2 overflow-y-auto pr-1">{rows.map((row) => { const key = marketKey(row); const active = selectedMarketKeys.has(key); return <button key={key || marketLabel(row)} type="button" onClick={() => toggleMarket(row)} className={active ? "pressable accent-bg-soft accent-text flex min-h-11 items-center justify-between gap-3 rounded-2xl border px-3 text-left text-[12px] font-black" : "pressable flex min-h-11 items-center justify-between gap-3 rounded-2xl border px-3 text-left text-[12px] font-bold text-text-muted hover:border-border hover:bg-white/[0.06] hover:text-text"}><span className="truncate">{marketLabel(row)}</span>{active && <Check size={16} strokeWidth={3} />}</button>; })}</div></>}</section>
+      <section className="depth-1 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Preview Singkat</span>{loadingRows && <Loader2 size={15} className="animate-spin text-text-soft" />}</div><pre className="depth-2 min-h-[150px] whitespace-pre-wrap rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">{loadingRows ? "Memuat preview…" : previewText || (rows.length ? "Belum ada pasaran dipilih." : "Pilih prediksi dulu.")}</pre><p className="mt-2 px-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Copy dan Share hanya mengirim pasaran yang dicentang.</p><div className="mt-3 grid grid-cols-2 gap-2.5"><button type="button" onClick={handleCopy} disabled={!shareText || loadingRows} className="pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45"><ClipboardCopy size={16} /> {copied ? "Tersalin" : "Copy"}</button><button type="button" onClick={handleShare} disabled={!shareText || loadingRows} className="pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45"><Share2 size={16} /> Share</button></div></section>
     </div>
   );
 }
