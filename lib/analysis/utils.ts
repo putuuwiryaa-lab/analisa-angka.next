@@ -12,8 +12,53 @@ export const format2D = (n: number | string) => String(n).padStart(2, "0");
 export const normalDigitList = (value: any) => Array.from(new Set(safeArray(value).map((v: any) => String(v)).filter((v: string) => /^\d$/.test(v))));
 export const toNumberList = (value: any) => Array.from(new Set(safeArray(value).map((v: any) => Number(v)).filter((v: number) => Number.isFinite(v))));
 
+function is2DAnalysisResult(result: any) {
+  const scope = String(result?.analysis_scope || "default");
+  return scope === "default" || scope === "2d_depan" || scope === "2d_tengah" || scope === "2d_belakang";
+}
+
+function buildAiAngkaJadi(result: any): LineSection[] {
+  if (!is2DAnalysisResult(result)) return [];
+
+  const ikut = toNumberList(result.result).filter((digit) => digit >= 0 && digit <= 9);
+  if (!ikut.length) return [];
+
+  const lines: string[] = [];
+  for (let k = 0; k <= 9; k++) {
+    for (let e = 0; e <= 9; e++) {
+      if (ikut.includes(k) || ikut.includes(e)) lines.push(`${k}${e}`);
+    }
+  }
+
+  return [{ label: "ANGKA JADI 2D", lines }];
+}
+
+function buildBbfsAngkaJadi(result: any): LineSection[] {
+  if (!is2DAnalysisResult(result)) return [];
+
+  const bbfs = toNumberList(result.result).filter((digit) => digit >= 0 && digit <= 9);
+  if (!bbfs.length) return [];
+
+  const lines: string[] = [];
+  for (let k = 0; k <= 9; k++) {
+    for (let e = 0; e <= 9; e++) {
+      if (bbfs.includes(k) && bbfs.includes(e)) lines.push(`${k}${e}`);
+    }
+  }
+
+  return [{ label: "ANGKA JADI 2D", lines }];
+}
+
 export const buildAngkaJadi = (type: string, result: any): { sections: LineSection[] } => {
   if (!result) return { sections: [] };
+
+  if (type === "ai") {
+    return { sections: buildAiAngkaJadi(result) };
+  }
+
+  if (type === "bbfs") {
+    return { sections: buildBbfsAngkaJadi(result) };
+  }
 
   if (type === "mati") {
     const jadi = (pos: string) => {
