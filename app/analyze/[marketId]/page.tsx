@@ -124,7 +124,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
       </div>
 
       <div className="mb-3 mt-5 flex items-center gap-3 px-1">
-        <p className="text-[11px] font-black uppercase tracking-wider text-text-soft">Racik Angka</p>
+        <p className="text-[11px] font-black uppercase tracking-wider text-text-soft">Fitur Lainnya</p>
         <span className="h-px flex-1 bg-white/10" />
       </div>
       <div className="grid grid-cols-1 gap-3">
