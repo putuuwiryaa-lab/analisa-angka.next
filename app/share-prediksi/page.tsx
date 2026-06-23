@@ -13,7 +13,6 @@ type PickItem = { key: string; label: string };
 type PickerKey = "jenis" | "target" | "output" | "";
 
 const SEPARATOR = "◆";
-const MARKET_ALIAS: Record<string, string> = { SINGAPORE: "SGP", HONGKONG: "HK", HONGKONGLOTTO: "HK" };
 const MODE_LABEL: Record<string, string> = { ai: "Angka Ikut", bbfs: "BBFS", mati: "Angka Mati", jumlah: "Jumlah Mati", shio: "Shio Mati" };
 const TARGET_LABEL: Record<string, string> = { default: "", "2d_depan": "2D Depan", "2d_tengah": "2D Tengah", "2d_belakang": "2D Belakang", "3d": "3D", "4d": "4D" };
 const TARGET_PAIR_LABEL: Record<string, string> = { depan: "2D Depan", tengah: "2D Tengah", belakang: "2D Belakang" };
@@ -27,7 +26,7 @@ function isGanjilGenap(option: ShareOption) { return option.mode === "ai_parity"
 function isBesarKecil(option: ShareOption) { return option.mode === "ai_size" || (option.mode === "ai" && option.param === 8); }
 function displayMode(option: ShareOption) { return option.mode === "ai_parity" || option.mode === "ai_size" ? "ai" : option.mode; }
 function outputKey(option: ShareOption) { if (isGanjilGenap(option)) return "ganjil_genap"; if (isBesarKecil(option)) return "besar_kecil"; return `${option.mode}:${option.param}`; }
-function marketLabel(row: ShareRow) { const raw = String(row.marketName || row.marketId || "-").trim(); return MARKET_ALIAS[raw.toUpperCase()] || raw.toUpperCase(); }
+function marketLabel(row: ShareRow) { return String(row.marketName || row.marketId || "-").trim().toUpperCase(); }
 function targetKey(option: ShareOption) { return `${option.targetPair}|${option.analysisScope}`; }
 function targetLabel(option: ShareOption) { if (option.mode === "mati") return ""; if (option.analysisScope && option.analysisScope !== "default") return TARGET_LABEL[option.analysisScope] || option.analysisScope.toUpperCase(); return TARGET_PAIR_LABEL[option.targetPair] || ""; }
 function outputLabel(option: ShareOption) { if (isGanjilGenap(option)) return "Ganjil Genap"; if (isBesarKecil(option)) return "Besar Kecil"; if (option.mode === "shio") return `${option.param} Shio`; if (option.mode === "bbfs" && option.param === 10) return "GGBK 8 Digit"; return `${option.param} Digit`; }
