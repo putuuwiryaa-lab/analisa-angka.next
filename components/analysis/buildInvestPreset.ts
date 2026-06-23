@@ -26,6 +26,7 @@ export function buildInvestPreset(searchParams: URLSearchParams, focus: CustomFo
     customAi3dSize: false,
     customAi4dDigit: null,
     customBBFSDigit: readPositiveNumber(searchParams, "iv_bbfs") as BBFSDigit | null,
+    customBBFSDigitByPair: {},
     customOffAsCount: readPositiveNumber(searchParams, "iv_off_as"),
     customOffKopCount: readPositiveNumber(searchParams, "iv_off_kop"),
     customOffKepalaCount: readPositiveNumber(searchParams, "iv_off_kepala"),
