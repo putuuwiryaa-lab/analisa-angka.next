@@ -18,6 +18,7 @@ import { CustomDigitOptionButton, CustomDigitSection, SingleColumnOptions, Three
 type PairAiMap = Partial<Record<TargetPair, 2 | 4 | 6 | null>>;
 type PairBoolMap = Partial<Record<TargetPair, boolean>>;
 type PairCountMap = Partial<Record<TargetPair, number | null>>;
+type PairBBFSMap = Partial<Record<TargetPair, 7 | 8 | 9 | 10 | null>>;
 type BBFSDigit = 7 | 8 | 9 | 10;
 type Ai3DDigit = 1 | 3 | 5;
 type Ai4DDigit = 1 | 2 | 4;
@@ -48,6 +49,8 @@ export function CustomDigitBuilder({
   setCustomAi4dDigit,
   customBBFSDigit,
   setCustomBBFSDigit,
+  customBBFSDigitByPair,
+  setCustomBBFSDigitForPair,
   customOffAsCount,
   setCustomOffAsCount,
   customOffKopCount,
@@ -82,6 +85,8 @@ export function CustomDigitBuilder({
   setCustomAi4dDigit: (value: Ai4DDigit | null) => void;
   customBBFSDigit: BBFSDigit | null;
   setCustomBBFSDigit: (value: BBFSDigit | null) => void;
+  customBBFSDigitByPair: PairBBFSMap;
+  setCustomBBFSDigitForPair: (pair: TargetPair, value: BBFSDigit | null) => void;
   customOffAsCount: number | null;
   setCustomOffAsCount: (value: number | null) => void;
   customOffKopCount: number | null;
@@ -111,7 +116,8 @@ export function CustomDigitBuilder({
   const bbfsScope = customFocusToBBFSScope(customFocus);
   const showAi3d = customFocus === "3d" || customFocus === "4d";
   const showAi4d = customFocus === "4d";
-  const showBbfsGgbk = customFocus !== "4d";
+  const showPairBBFS = customFocus === "3d" || customFocus === "4d";
+  const showGlobalGgbk = customFocus !== "4d";
   const positionValues: Record<PositionKey, number | null> = { as: customOffAsCount, kop: customOffKopCount, kepala: customOffKepalaCount, ekor: customOffEkorCount };
   const positionSetters: Record<PositionKey, (value: number | null) => void> = { as: setCustomOffAsCount, kop: setCustomOffKopCount, kepala: setCustomOffKepalaCount, ekor: setCustomOffEkorCount };
 
@@ -119,6 +125,19 @@ export function CustomDigitBuilder({
 
   const optionButton = (active: boolean, label: string, onClick: () => void, extraClass = "", recommendKey?: string) => (
     <CustomDigitOptionButton active={active} label={label} onClick={onClick} extraClass={extraClass} badge={recommendKey ? badges[recommendKey] : undefined} />
+  );
+
+  const bbfsOptions = (value: BBFSDigit | null | undefined, setValue: (next: BBFSDigit | null) => void, keyPrefix: string, showGgbk = true) => (
+    <>
+      <ThreeColumnOptions>
+        {[7, 8, 9].map((n) => optionButton(value === n, String(n), () => setValue(value === n ? null : (n as BBFSDigit)), "", `${keyPrefix}-${n}`))}
+      </ThreeColumnOptions>
+      {showGgbk && (
+        <SingleColumnOptions>
+          {optionButton(value === 10, "GGBK", () => setValue(value === 10 ? null : 10), "", `${keyPrefix}-10`)}
+        </SingleColumnOptions>
+      )}
+    </>
   );
 
   return (
@@ -160,15 +179,20 @@ export function CustomDigitBuilder({
         </CustomDigitSection>
       ))}
 
+      {showPairBBFS &&
+        visiblePairs.map((pair) => (
+          <CustomDigitSection key={`bbfs-pair-${pair}`} label={`BBFS ${pairLabel[pair]} · ${pairSubtitle[pair]}`}>
+            {bbfsOptions(
+              customBBFSDigitByPair[pair],
+              (next) => setCustomBBFSDigitForPair(pair, next),
+              `bbfs-${pair}`,
+              true,
+            )}
+          </CustomDigitSection>
+        ))}
+
       <CustomDigitSection label={`BBFS ${bbfsScope.toUpperCase().replaceAll("_", " ")}`}>
-        <ThreeColumnOptions>
-          {[7, 8, 9].map((n) => optionButton(customBBFSDigit === n, String(n), () => setCustomBBFSDigit(customBBFSDigit === n ? null : (n as BBFSDigit)), "", `bbfs-${n}`))}
-        </ThreeColumnOptions>
-        {showBbfsGgbk && (
-          <SingleColumnOptions>
-            {optionButton(customBBFSDigit === 10, "GGBK", () => setCustomBBFSDigit(customBBFSDigit === 10 ? null : 10), "", "bbfs-10")}
-          </SingleColumnOptions>
-        )}
+        {bbfsOptions(customBBFSDigit, setCustomBBFSDigit, "bbfs", showGlobalGgbk)}
       </CustomDigitSection>
 
       {visiblePositions.map((position) => (
