@@ -15,6 +15,8 @@ export function AngkaJadiPanel({
 }) {
   if (!result || !angkaJadiModes.has(type)) return null;
   const data = buildAngkaJadi(type, result);
+  if (!data.sections.length) return null;
+
   const totalLines = data.sections.reduce((acc, section) => acc + section.lines.length, 0);
 
   return (
