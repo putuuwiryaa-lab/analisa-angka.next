@@ -28,7 +28,7 @@ type ShareResponse = {
   rows: ShareRow[];
 };
 
-type SelectOption = {
+type PickItem = {
   key: string;
   label: string;
 };
@@ -90,6 +90,13 @@ const TARGET_ORDER: Record<string, number> = {
   "belakang|4d": 8,
 };
 
+const MATI_POSITIONS = [
+  ["AS", "AS"],
+  ["KOP", "COP"],
+  ["KEPALA", "KPL"],
+  ["EKOR", "EKR"],
+] as const;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -100,57 +107,20 @@ function listText(value: unknown, joiner: "" | "." = "") {
   return items.length ? items.join(joiner) : "-";
 }
 
-function formatListByMode(value: unknown, mode: string) {
-  const joiner = mode === "shio" || mode === "jumlah" ? "." : "";
-  return listText(value, joiner);
-}
-
-function formatResultValue(value: unknown, mode: string) {
-  if (Array.isArray(value)) return formatListByMode(value, mode);
-  if (typeof value === "string" || typeof value === "number") return String(value).trim() || "-";
-
-  if (isRecord(value)) {
-    if (Array.isArray(value.result)) return formatListByMode(value.result, mode);
-    if (Array.isArray(value.data)) return formatListByMode(value.data, mode);
-
-    const positions = [
-      ["AS", "AS"],
-      ["KOP", "COP"],
-      ["KEPALA", "KPL"],
-      ["EKOR", "EKR"],
-    ] as const;
-
-    const lines = positions
-      .map(([key, label]) => {
-        const raw = value[key];
-        const text = isRecord(raw) && Array.isArray(raw.result) ? listText(raw.result, ".") : listText(raw, ".");
-        return text !== "-" ? `${label} ${text}` : "";
-      })
-      .filter(Boolean);
-
-    if (lines.length) return lines.join(" | ");
-  }
-
-  return "-";
-}
-
 function marketLabel(row: ShareRow) {
   const raw = String(row.marketName || row.marketId || "-").trim();
-  const key = raw.toUpperCase();
-  return MARKET_ALIAS[key] || raw.toUpperCase();
+  return MARKET_ALIAS[raw.toUpperCase()] || raw.toUpperCase();
 }
 
 function targetKey(option: ShareOption) {
   return `${option.targetPair}|${option.analysisScope}`;
 }
 
-function titleTarget(option: ShareOption) {
+function targetLabel(option: ShareOption) {
   if (option.mode === "mati") return "";
-
   if (option.analysisScope && option.analysisScope !== "default") {
     return TARGET_LABEL[option.analysisScope] || option.analysisScope.toUpperCase();
   }
-
   return TARGET_PAIR_LABEL[option.targetPair] || "";
 }
 
@@ -162,15 +132,51 @@ function outputLabel(option: ShareOption) {
 }
 
 function shareTitle(option: ShareOption) {
-  return [MODE_LABEL[option.mode] || option.mode.toUpperCase(), titleTarget(option), outputLabel(option)]
+  return [MODE_LABEL[option.mode] || option.mode.toUpperCase(), targetLabel(option), outputLabel(option)]
     .filter(Boolean)
     .join(" ");
 }
 
+function simpleResultText(value: unknown, mode: string) {
+  const joiner = mode === "shio" || mode === "jumlah" ? "." : "";
+
+  if (Array.isArray(value)) return listText(value, joiner);
+  if (typeof value === "string" || typeof value === "number") return String(value).trim() || "-";
+  if (!isRecord(value)) return "-";
+
+  if (Array.isArray(value.result)) return listText(value.result, joiner);
+  if (Array.isArray(value.data)) return listText(value.data, joiner);
+
+  return "-";
+}
+
+function matiColumnText(value: unknown, key: string) {
+  if (!isRecord(value)) return "-";
+  const raw = value[key];
+  if (isRecord(raw) && Array.isArray(raw.result)) return listText(raw.result, ".");
+  return listText(raw, ".");
+}
+
+function matiResultText(value: unknown) {
+  return MATI_POSITIONS.map(([key]) => matiColumnText(value, key)).join(" | ");
+}
+
+function rowResultText(option: ShareOption, row: ShareRow) {
+  if (option.mode === "mati") return matiResultText(row.result);
+  return simpleResultText(row.result, option.mode);
+}
+
 function buildShareText(option: ShareOption | null, rows: ShareRow[]) {
   if (!option) return "";
+
   const title = shareTitle(option);
-  const lines = rows.map((row) => `${marketLabel(row)} ${SEPARATOR} ${formatResultValue(row.result, option.mode)}`);
+  const lines = rows.map((row) => `${marketLabel(row)} ${SEPARATOR} ${rowResultText(option, row)}`);
+
+  if (option.mode === "mati") {
+    const header = MATI_POSITIONS.map(([, label]) => label).join(" | ");
+    return [title, header, "", ...lines].join("\n");
+  }
+
   return [title, "", ...lines].join("\n");
 }
 
@@ -223,7 +229,7 @@ function PickerField({
   id: PickerKey;
   label: string;
   value: string;
-  options: SelectOption[];
+  options: PickItem[];
   openPicker: PickerKey;
   onOpen: (value: PickerKey) => void;
   onChange: (value: string) => void;
@@ -311,7 +317,7 @@ export default function SharePrediksiPage() {
     () =>
       uniqueBy(modeScopedOptions, targetKey).map((option) => ({
         key: targetKey(option),
-        label: titleTarget(option) || "Semua Posisi",
+        label: targetLabel(option) || "Semua Posisi",
       })),
     [modeScopedOptions],
   );
@@ -484,33 +490,9 @@ export default function SharePrediksiPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
-            <PickerField
-              id="jenis"
-              label="Jenis"
-              value={selectedMode}
-              options={modeOptions}
-              openPicker={openPicker}
-              onOpen={setOpenPicker}
-              onChange={setSelectedMode}
-            />
-            <PickerField
-              id="target"
-              label="Target"
-              value={selectedTarget}
-              options={targetOptions}
-              openPicker={openPicker}
-              onOpen={setOpenPicker}
-              onChange={setSelectedTarget}
-            />
-            <PickerField
-              id="output"
-              label="Output"
-              value={selectedOutput}
-              options={outputOptions}
-              openPicker={openPicker}
-              onOpen={setOpenPicker}
-              onChange={setSelectedOutput}
-            />
+            <PickerField id="jenis" label="Jenis" value={selectedMode} options={modeOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedMode} />
+            <PickerField id="target" label="Target" value={selectedTarget} options={targetOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedTarget} />
+            <PickerField id="output" label="Output" value={selectedOutput} options={outputOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedOutput} />
           </div>
         )}
       </section>
