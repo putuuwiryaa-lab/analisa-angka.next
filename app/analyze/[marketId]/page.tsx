@@ -4,7 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, Share2 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-context";
 import { ANALYSIS_MENU, CUSTOM_MENU, MODES, type ModeKey } from "@/components/analysis/modes";
 import { Button } from "@/components/ui/Button";
@@ -65,6 +65,24 @@ function SubMenuCard({
   );
 }
 
+function ShareMenuCard({ index = 0 }: { index?: number }) {
+  return (
+    <Link
+      href="/share-prediksi"
+      data-mode="share-prediksi"
+      className="pressable animate-soft-pop depth-1 group relative flex min-h-[72px] w-full items-center gap-3 overflow-hidden rounded-3xl border px-4 py-3 text-left hover:border-border"
+      style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
+    >
+      <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-[var(--accent)] opacity-70" />
+      <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-150 group-hover:scale-[1.035]">
+        <Share2 size={20} strokeWidth={1.9} />
+      </div>
+      <span className="accent-text display flex-1 text-[13px]">SHARE PREDIKSI</span>
+      <ChevronRight size={18} className="text-text-soft transition-transform duration-150 group-hover:translate-x-0.5" />
+    </Link>
+  );
+}
+
 export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId: string }> }) {
   const { marketId } = use(params);
   const router = useRouter();
@@ -119,6 +137,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
             index={ANALYSIS_MENU.length + index}
           />
         ))}
+        <ShareMenuCard index={ANALYSIS_MENU.length + CUSTOM_MENU.length} />
       </div>
     </div>
   );
