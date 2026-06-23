@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ClipboardCopy, Loader2, Share2 } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ClipboardCopy, Loader2, Share2 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-context";
 import { deviceAuthHeader } from "@/lib/auth/device";
 
@@ -33,7 +33,9 @@ type SelectOption = {
   label: string;
 };
 
-const SEPARATOR = "⟡";
+type PickerKey = "jenis" | "target" | "output" | "";
+
+const SEPARATOR = "◆";
 
 const MARKET_ALIAS: Record<string, string> = {
   SINGAPORE6D: "SGP",
@@ -209,32 +211,69 @@ async function fetchJson<T>(url: string, token: string): Promise<T> {
   return json as T;
 }
 
-function SelectField({
+function PickerField({
+  id,
   label,
   value,
   options,
+  openPicker,
+  onOpen,
   onChange,
 }: {
+  id: PickerKey;
   label: string;
   value: string;
   options: SelectOption[];
+  openPicker: PickerKey;
+  onOpen: (value: PickerKey) => void;
   onChange: (value: string) => void;
 }) {
+  const isOpen = openPicker === id;
+  const selected = options.find((option) => option.key === value);
+
   return (
-    <label className="block">
+    <div className="relative">
       <span className="mb-2 block text-[10px] font-black uppercase tracking-wide text-text-soft">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="depth-3 h-13 w-full rounded-2xl border bg-bg-deep px-3 text-sm font-black text-text outline-none focus:border-border-strong"
+      <button
+        type="button"
+        disabled={options.length === 0}
+        onClick={() => onOpen(isOpen ? "" : id)}
+        className="pressable depth-3 flex min-h-14 w-full items-center justify-between gap-3 rounded-3xl border px-4 text-left text-sm font-black text-text hover:border-border hover:bg-white/[0.06] disabled:opacity-50"
       >
-        {options.map((option) => (
-          <option key={option.key} value={option.key}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+        <span className="truncate">{selected?.label || "Tidak tersedia"}</span>
+        <ChevronDown
+          size={18}
+          className={`shrink-0 text-text-soft transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}
+          strokeWidth={2.6}
+        />
+      </button>
+
+      {isOpen && options.length > 0 && (
+        <div className="animate-soft-pop depth-2 mt-2 overflow-hidden rounded-3xl border p-2">
+          {options.map((option) => {
+            const active = option.key === value;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => {
+                  onChange(option.key);
+                  onOpen("");
+                }}
+                className={
+                  active
+                    ? "pressable accent-bg-soft accent-text flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl px-3 text-left text-sm font-black"
+                    : "pressable flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl px-3 text-left text-sm font-bold text-text-muted hover:bg-white/[0.06] hover:text-text"
+                }
+              >
+                <span>{option.label}</span>
+                {active && <Check size={17} strokeWidth={3} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -245,6 +284,7 @@ export default function SharePrediksiPage() {
   const [selectedMode, setSelectedMode] = useState("");
   const [selectedTarget, setSelectedTarget] = useState("");
   const [selectedOutput, setSelectedOutput] = useState("");
+  const [openPicker, setOpenPicker] = useState<PickerKey>("");
   const [rows, setRows] = useState<ShareRow[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
@@ -444,9 +484,33 @@ export default function SharePrediksiPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
-            <SelectField label="Jenis" value={selectedMode} options={modeOptions} onChange={setSelectedMode} />
-            <SelectField label="Target" value={selectedTarget} options={targetOptions} onChange={setSelectedTarget} />
-            <SelectField label="Output" value={selectedOutput} options={outputOptions} onChange={setSelectedOutput} />
+            <PickerField
+              id="jenis"
+              label="Jenis"
+              value={selectedMode}
+              options={modeOptions}
+              openPicker={openPicker}
+              onOpen={setOpenPicker}
+              onChange={setSelectedMode}
+            />
+            <PickerField
+              id="target"
+              label="Target"
+              value={selectedTarget}
+              options={targetOptions}
+              openPicker={openPicker}
+              onOpen={setOpenPicker}
+              onChange={setSelectedTarget}
+            />
+            <PickerField
+              id="output"
+              label="Output"
+              value={selectedOutput}
+              options={outputOptions}
+              openPicker={openPicker}
+              onOpen={setOpenPicker}
+              onChange={setSelectedOutput}
+            />
           </div>
         )}
       </section>
