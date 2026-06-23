@@ -77,6 +77,20 @@ function buildShareText(option: ShareOption | null, rows: ShareRow[]) {
   return [title, dataLine, "", ...lines].filter((line, index) => line || index === 2).join("\n");
 }
 
+function buildPreviewText(option: ShareOption | null, rows: ShareRow[]) {
+  if (!option) return "";
+  const title = shareTitle(option);
+  const dataLine = dataLineText(rows);
+  const visibleRows = rows.slice(0, 5).map((row) => `${marketLabel(row)} ${SEPARATOR} ${rowResultText(option, row)}`);
+  const hiddenCount = Math.max(rows.length - visibleRows.length, 0);
+  const moreLine = hiddenCount > 0 ? `...dan ${hiddenCount} pasaran lainnya` : "";
+  if (option.mode === "mati") {
+    const header = MATI_POSITIONS.map(([, label]) => label).join(" | ");
+    return [title, dataLine, header, "", ...visibleRows, moreLine].filter((line, index) => line || index === 3).join("\n");
+  }
+  return [title, dataLine, "", ...visibleRows, moreLine].filter((line, index) => line || index === 2).join("\n");
+}
+
 function uniqueBy<T>(items: T[], keyFn: (item: T) => string) { const seen = new Set<string>(); const output: T[] = []; for (const item of items) { const key = keyFn(item); if (seen.has(key)) continue; seen.add(key); output.push(item); } return output; }
 function optionSort(a: ShareOption, b: ShareOption) { const modeDiff = (MODE_ORDER[displayMode(a)] || 99) - (MODE_ORDER[displayMode(b)] || 99); if (modeDiff !== 0) return modeDiff; const targetDiff = (TARGET_ORDER[targetKey(a)] || 99) - (TARGET_ORDER[targetKey(b)] || 99); if (targetDiff !== 0) return targetDiff; const ggbkA = isGanjilGenap(a) ? 70 : isBesarKecil(a) ? 80 : a.param; const ggbkB = isGanjilGenap(b) ? 70 : isBesarKecil(b) ? 80 : b.param; return ggbkA - ggbkB; }
 
@@ -136,6 +150,7 @@ export default function SharePrediksiPage() {
   const outputOptions = useMemo(() => uniqueBy(targetScopedOptions, outputKey).map((option) => ({ key: outputKey(option), label: outputLabel(option) })), [targetScopedOptions]);
   const selectedOption = useMemo(() => targetScopedOptions.find((option) => outputKey(option) === selectedOutput) || null, [targetScopedOptions, selectedOutput]);
   const shareText = useMemo(() => buildShareText(selectedOption, rows), [selectedOption, rows]);
+  const previewText = useMemo(() => buildPreviewText(selectedOption, rows), [selectedOption, rows]);
 
   useEffect(() => {
     if (!token) return;
@@ -178,7 +193,7 @@ export default function SharePrediksiPage() {
       <div className="depth-2 mb-4 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-[11px] font-bold leading-relaxed text-text-muted"><span className="accent-text font-black">Catatan update:</span> bagikan prediksi sedekat mungkin dengan jam update pasaran. Cek baris <span className="text-text">Data</span> pada preview sebelum share.</div>
       {error && <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">{error}</div>}
       <section className="depth-1 mb-4 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Filter Prediksi</span>{loadingOptions && <Loader2 size={15} className="animate-spin text-text-soft" />}</div>{!token ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memeriksa akses…</div> : loadingOptions ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pilihan…</div> : options.length === 0 ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Belum ada snapshot prediksi aktif</div> : <div className="grid grid-cols-1 gap-3"><PickerField id="jenis" label="Jenis" value={selectedMode} options={modeOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedMode} /><PickerField id="target" label="Target" value={selectedTarget} options={targetOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedTarget} /><PickerField id="output" label="Output" value={selectedOutput} options={outputOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedOutput} /></div>}</section>
-      <section className="depth-1 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Preview Share</span>{loadingRows && <Loader2 size={15} className="animate-spin text-text-soft" />}</div><pre className="depth-2 min-h-[220px] whitespace-pre-wrap rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">{loadingRows ? "Memuat data share…" : shareText || "Pilih prediksi dulu."}</pre><div className="mt-3 grid grid-cols-2 gap-2.5"><button type="button" onClick={handleCopy} disabled={!shareText || loadingRows} className="pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45"><ClipboardCopy size={16} /> {copied ? "Tersalin" : "Copy"}</button><button type="button" onClick={handleShare} disabled={!shareText || loadingRows} className="pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45"><Share2 size={16} /> Share</button></div></section>
+      <section className="depth-1 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Preview Singkat</span>{loadingRows && <Loader2 size={15} className="animate-spin text-text-soft" />}</div><pre className="depth-2 min-h-[150px] whitespace-pre-wrap rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">{loadingRows ? "Memuat preview…" : previewText || "Pilih prediksi dulu."}</pre><p className="mt-2 px-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Copy dan Share tetap mengirim semua pasaran.</p><div className="mt-3 grid grid-cols-2 gap-2.5"><button type="button" onClick={handleCopy} disabled={!shareText || loadingRows} className="pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45"><ClipboardCopy size={16} /> {copied ? "Tersalin" : "Copy"}</button><button type="button" onClick={handleShare} disabled={!shareText || loadingRows} className="pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45"><Share2 size={16} /> Share</button></div></section>
     </div>
   );
 }
