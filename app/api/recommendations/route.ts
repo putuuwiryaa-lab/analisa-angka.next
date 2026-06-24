@@ -12,14 +12,14 @@ const RECOMMENDATION_MIN_SAMPLE = 10;
 
 const AI_WIN_THRESHOLDS: Record<number, number> = { 1: 9, 2: 9, 3: 11, 4: 11, 5: 12, 6: 13 };
 const AI_DERIVED_WIN_THRESHOLDS: Record<number, number> = { 1: 12 };
-const BBFS_WIN_THRESHOLDS: Record<number, number> = { 7: 10, 8: 11, 9: 13 };
+const BBFS_WIN_THRESHOLDS: Record<number, number> = { 7: 10, 8: 11, 9: 13, 10: 11 };
 const MATI_WIN_THRESHOLDS: Record<number, number> = { 1: 14, 2: 13, 3: 12 };
 const JUMLAH_WIN_THRESHOLDS: Record<number, number> = { 1: 14, 2: 13, 3: 12 };
 const SHIO_WIN_THRESHOLDS: Record<number, number> = { 1: 14, 2: 13, 3: 12 };
 
 const AI_PARTIAL_WIN_RATES: Record<number, number> = { 1: 9 / 15, 2: 9 / 15, 3: 11 / 15, 4: 11 / 15, 5: 12 / 15, 6: 13 / 15 };
 const AI_DERIVED_PARTIAL_WIN_RATES: Record<number, number> = { 1: 12 / 15 };
-const BBFS_PARTIAL_WIN_RATES: Record<number, number> = { 7: 10 / 15, 8: 11 / 15, 9: 13 / 15 };
+const BBFS_PARTIAL_WIN_RATES: Record<number, number> = { 7: 10 / 15, 8: 11 / 15, 9: 13 / 15, 10: 11 / 15 };
 const MATI_PARTIAL_WIN_RATES: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 12 / 15 };
 const JUMLAH_PARTIAL_WIN_RATES: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 12 / 15 };
 const SHIO_PARTIAL_WIN_RATES: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 12 / 15 };
@@ -151,6 +151,14 @@ async function loadRows(
   return data || [];
 }
 
+function pairScope(pair: TargetPair) {
+  return `2d_${pair}`;
+}
+
+function globalBbfsParams(scope: string) {
+  return scope === "4d" ? [7, 8, 9] : [7, 8, 9, 10];
+}
+
 async function buildRecommendations(supabase: SupabaseClient, marketIds: string[], customFocus: CustomFocus): Promise<RecommendedMap> {
   const pairs = customFocusPairs(customFocus);
   const bbfsScope = customFocusToBBFSScope(customFocus);
@@ -158,10 +166,11 @@ async function buildRecommendations(supabase: SupabaseClient, marketIds: string[
 
   await Promise.all(
     pairs.map(async (pair) => {
-      const [aiRows, aiParityRows, aiSizeRows, jumlahRows, shioRows] = await Promise.all([
+      const [aiRows, aiParityRows, aiSizeRows, bbfsPairRows, jumlahRows, shioRows] = await Promise.all([
         loadRows(supabase, marketIds, "ai", "all", [2, 4, 6], pair),
         loadRows(supabase, marketIds, "ai_parity", "all", [1], pair),
         loadRows(supabase, marketIds, "ai_size", "all", [1], pair),
+        loadRows(supabase, marketIds, "bbfs", "all", [7, 8, 9, 10], pair, pairScope(pair)),
         loadRows(supabase, marketIds, "jumlah", "all", [1, 2, 3], pair),
         loadRows(supabase, marketIds, "shio", "all", [1, 2, 3], pair),
       ]);
@@ -169,6 +178,7 @@ async function buildRecommendations(supabase: SupabaseClient, marketIds: string[
       applyRecommendationBadges(next, (param) => `ai-${pair}-${param}`, aiRows, [2, 4, 6], "low", "ai");
       applyRecommendationBadges(next, () => `ai-${pair}-7`, aiParityRows, [1], "low", "ai_parity");
       applyRecommendationBadges(next, () => `ai-${pair}-8`, aiSizeRows, [1], "low", "ai_size");
+      applyRecommendationBadges(next, (param) => `bbfs-${pair}-${param}`, bbfsPairRows, [7, 8, 9, 10], "low", "bbfs");
       applyRecommendationBadges(next, (param) => `jumlah-${pair}-${param}`, jumlahRows, [1, 2, 3], "high", "jumlah");
       applyRecommendationBadges(next, (param) => `shio-${pair}-${param}`, shioRows, [1, 2, 3], "high", "shio");
     }),
@@ -199,8 +209,9 @@ async function buildRecommendations(supabase: SupabaseClient, marketIds: string[
         : "belakang"
     : "belakang";
 
-  const bbfsRows = await loadRows(supabase, marketIds, "bbfs", "all", [7, 8, 9], bbfsTargetPair, bbfsScope);
-  applyRecommendationBadges(next, (param) => `bbfs-${param}`, bbfsRows, [7, 8, 9], "low", "bbfs");
+  const bbfsParams = globalBbfsParams(bbfsScope);
+  const bbfsRows = await loadRows(supabase, marketIds, "bbfs", "all", bbfsParams, bbfsTargetPair, bbfsScope);
+  applyRecommendationBadges(next, (param) => `bbfs-${param}`, bbfsRows, bbfsParams, "low", "bbfs");
 
   const [asRows, kopRows, kepalaRows, ekorRows] = await Promise.all([
     loadRows(supabase, marketIds, "mati", "as", [1, 2, 3]),
