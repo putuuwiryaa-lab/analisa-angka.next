@@ -10,11 +10,13 @@ type ShareOption = { key: string; mode: string; param: number; targetPair: strin
 type RekapSection = { label: string; lines: string[] };
 type ShareRow = { marketId: string | null; marketName: string | null; baseResult?: string | null; result?: unknown; updatedAt: string | null; order: number | null; sections?: RekapSection[] };
 type ShareResponse = { rows: ShareRow[]; nextCursor?: number | null };
+type MarketOption = { id?: string | null; name?: string | null; order?: number | null; updated_at?: string | null };
 type PickItem = { key: string; label: string };
 type PickerKey = "jenis" | "target" | "output" | "";
 
 const SEPARATOR = "⟢";
 const REKAP_BADGE_MODE = "rekap_badge";
+const REKAP_MAX_MARKETS = 5;
 const REKAP_BADGE_OPTION: ShareOption = { key: "rekap_badge|0|belakang|all2d", mode: REKAP_BADGE_MODE, param: 0, targetPair: "belakang", analysisScope: "all2d", updatedAt: null };
 const MODE_LABEL: Record<string, string> = { rekap_badge: "Rekap Badge 2D", ai: "Angka Ikut", bbfs: "BBFS", mati: "Angka Mati", jumlah: "Jumlah Mati", shio: "Shio Mati" };
 const TARGET_LABEL: Record<string, string> = { default: "", all2d: "Semua 2D", "2d_depan": "2D Depan", "2d_tengah": "2D Tengah", "2d_belakang": "2D Belakang", "3d": "3D", "4d": "4D" };
@@ -37,6 +39,7 @@ function targetKey(option: ShareOption) { return `${option.targetPair}|${option.
 function targetLabel(option: ShareOption) { if (option.mode === REKAP_BADGE_MODE) return "Semua 2D"; if (option.mode === "mati") return ""; if (option.analysisScope && option.analysisScope !== "default") return TARGET_LABEL[option.analysisScope] || option.analysisScope.toUpperCase(); return TARGET_PAIR_LABEL[option.targetPair] || ""; }
 function outputLabel(option: ShareOption) { if (option.mode === REKAP_BADGE_MODE) return "Semua Metode Badge"; if (isGanjilGenap(option)) return "Ganjil Genap"; if (isBesarKecil(option)) return "Besar Kecil"; if (option.mode === "shio") return `${option.param} Shio`; if (option.mode === "bbfs" && option.param === 10) return "GGBK 8 Digit"; return `${option.param} Digit`; }
 function shareTitle(option: ShareOption) { if (option.mode === REKAP_BADGE_MODE) return "Rekap Badge 2D"; const mode = displayMode(option); return [MODE_LABEL[mode] || mode.toUpperCase(), targetLabel(option), outputLabel(option)].filter(Boolean).join(" "); }
+function marketOptionRow(market: MarketOption): ShareRow { return { marketId: market.id || null, marketName: market.name || market.id || null, updatedAt: market.updated_at || null, order: market.order ?? null }; }
 
 function simpleResultText(value: unknown, mode: string) {
   const joiner = mode === "shio" || mode === "jumlah" ? "." : "";
@@ -78,10 +81,7 @@ function buildRekapBadgeBlock(row: ShareRow) {
   const body = sections.flatMap((section) => [`${section.label} (${section.lines.length} line)`, linesText(section.lines), ""]);
   return [`- ${marketLabel(row)}`, "", ...body].join("\n").trimEnd();
 }
-
-function buildRekapBadgeShareText(rows: ShareRow[]) {
-  return rows.map(buildRekapBadgeBlock).filter(Boolean).join("\n\n");
-}
+function buildRekapBadgeShareText(rows: ShareRow[]) { return rows.map(buildRekapBadgeBlock).filter(Boolean).join("\n\n"); }
 
 function buildShareText(option: ShareOption | null, rows: ShareRow[]) {
   if (!option || rows.length === 0) return "";
@@ -157,16 +157,15 @@ export default function SharePrediksiPage() {
   const router = useRouter();
   const { token, verifying } = useAuth();
   const [options, setOptions] = useState<ShareOption[]>([]);
+  const [marketOptions, setMarketOptions] = useState<ShareRow[]>([]);
   const [selectedMode, setSelectedMode] = useState(REKAP_BADGE_MODE);
   const [selectedTarget, setSelectedTarget] = useState("");
   const [selectedOutput, setSelectedOutput] = useState("");
   const [openPicker, setOpenPicker] = useState<PickerKey>("");
   const [rows, setRows] = useState<ShareRow[]>([]);
-  const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [selectedMarketKeys, setSelectedMarketKeys] = useState<Set<string>>(() => new Set());
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -177,21 +176,26 @@ export default function SharePrediksiPage() {
   const targetScopedOptions = useMemo(() => modeScopedOptions.filter((option) => targetKey(option) === selectedTarget), [modeScopedOptions, selectedTarget]);
   const outputOptions = useMemo(() => uniqueBy(targetScopedOptions, outputKey).map((option) => ({ key: outputKey(option), label: outputLabel(option) })), [targetScopedOptions]);
   const selectedOption = useMemo(() => targetScopedOptions.find((option) => outputKey(option) === selectedOutput) || null, [targetScopedOptions, selectedOutput]);
+  const rekapMode = isRekapBadge(selectedOption);
+  const pickerRows = rekapMode ? marketOptions : rows;
   const selectedRows = useMemo(() => rows.filter((row) => selectedMarketKeys.has(marketKey(row))), [rows, selectedMarketKeys]);
   const shareText = useMemo(() => buildShareText(selectedOption, selectedRows), [selectedOption, selectedRows]);
   const previewText = useMemo(() => buildPreviewText(selectedOption, selectedRows), [selectedOption, selectedRows]);
+  const selectedCount = selectedMarketKeys.size;
 
-  useEffect(() => {
-    if (!verifying && !token) router.replace("/kode-login");
-  }, [router, token, verifying]);
+  useEffect(() => { if (!verifying && !token) router.replace("/kode-login"); }, [router, token, verifying]);
 
   useEffect(() => {
     if (verifying || !token) return;
     let active = true;
     setLoadingOptions(true);
     setError("");
-    fetchJson<ShareOption[]>("/api/share-predictions/options", token)
-      .then((items) => { if (!active) return; setOptions([...items].sort(optionSort)); })
+    Promise.all([fetchJson<ShareOption[]>("/api/share-predictions/options", token), fetchJson<MarketOption[]>("/api/markets", token)])
+      .then(([items, markets]) => {
+        if (!active) return;
+        setOptions([...items].sort(optionSort));
+        setMarketOptions(markets.map(marketOptionRow).filter((row) => row.marketId));
+      })
       .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat pilihan share prediksi."); })
       .finally(() => { if (active) setLoadingOptions(false); });
     return () => { active = false; };
@@ -201,71 +205,91 @@ export default function SharePrediksiPage() {
   useEffect(() => { if (!targetOptions.length) { setSelectedTarget(""); return; } if (!targetOptions.some((option) => option.key === selectedTarget)) setSelectedTarget(targetOptions[0].key); }, [targetOptions, selectedTarget]);
   useEffect(() => { if (!outputOptions.length) { setSelectedOutput(""); return; } if (!outputOptions.some((option) => option.key === selectedOutput)) setSelectedOutput(outputOptions[0].key); }, [outputOptions, selectedOutput]);
 
-  async function loadRekapBadge(cursor = 0, append = false) {
-    if (!token) return;
-    const data = await fetchJson<ShareResponse>(`/api/share-predictions/rekap-badge?limit=5&cursor=${cursor}`, token);
-    const nextRows = data.rows || [];
-    setRows((current) => append ? [...current, ...nextRows] : nextRows);
-    setSelectedMarketKeys((current) => {
-      const next = append ? new Set(current) : new Set<string>();
-      nextRows.map(marketKey).filter(Boolean).forEach((item) => next.add(item));
-      return next;
-    });
-    setNextCursor(data.nextCursor ?? null);
-  }
-
   useEffect(() => {
     if (verifying || !token || !selectedOption) return;
     let active = true;
-    setLoadingRows(true);
+    setLoadingRows(false);
     setRows([]);
-    setNextCursor(null);
     setSelectedMarketKeys(new Set());
     setCopied(false);
     setError("");
 
-    const request = isRekapBadge(selectedOption)
-      ? loadRekapBadge(0, false)
-      : fetchJson<ShareResponse>(`/api/share-predictions?${new URLSearchParams({ mode: selectedOption.mode, param: String(selectedOption.param), targetPair: selectedOption.targetPair, analysisScope: selectedOption.analysisScope }).toString()}`, token)
-          .then((data) => { if (!active) return; const nextRows = data.rows || []; setRows(nextRows); setSelectedMarketKeys(new Set(nextRows.map(marketKey).filter(Boolean))); });
+    if (isRekapBadge(selectedOption)) return () => { active = false; };
 
-    request.catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat data share prediksi."); })
+    setLoadingRows(true);
+    fetchJson<ShareResponse>(`/api/share-predictions?${new URLSearchParams({ mode: selectedOption.mode, param: String(selectedOption.param), targetPair: selectedOption.targetPair, analysisScope: selectedOption.analysisScope }).toString()}`, token)
+      .then((data) => { if (!active) return; const nextRows = data.rows || []; setRows(nextRows); setSelectedMarketKeys(new Set(nextRows.map(marketKey).filter(Boolean))); })
+      .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat data share prediksi."); })
       .finally(() => { if (active) setLoadingRows(false); });
     return () => { active = false; };
   }, [token, verifying, selectedOption]);
 
-  async function handleLoadMore() {
-    if (!selectedOption || !isRekapBadge(selectedOption) || nextCursor === null) return;
-    setLoadingMore(true);
-    setError("");
-    try { await loadRekapBadge(nextCursor, true); }
-    catch (err) { setError(err instanceof Error ? err.message : "Gagal memuat batch berikutnya."); }
-    finally { setLoadingMore(false); }
+  function selectedRekapMarketIds() {
+    return marketOptions.filter((row) => selectedMarketKeys.has(marketKey(row))).map((row) => String(row.marketId)).filter(Boolean);
   }
 
-  function toggleMarket(row: ShareRow) { const key = marketKey(row); if (!key) return; setSelectedMarketKeys((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; }); }
-  function selectAllMarkets() { setSelectedMarketKeys(new Set(rows.map(marketKey).filter(Boolean))); }
-  function clearMarkets() { setSelectedMarketKeys(new Set()); }
+  async function handleGenerateRekap() {
+    if (!token || !selectedOption || !isRekapBadge(selectedOption)) return;
+    const marketIds = selectedRekapMarketIds();
+    if (!marketIds.length) return setError("Pilih minimal satu pasaran.");
+    if (marketIds.length > REKAP_MAX_MARKETS) return setError(`Maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
+    setLoadingRows(true);
+    setRows([]);
+    setCopied(false);
+    setError("");
+    try {
+      const params = new URLSearchParams({ limit: String(REKAP_MAX_MARKETS), marketIds: marketIds.join(",") });
+      const data = await fetchJson<ShareResponse>(`/api/share-predictions/rekap-badge?${params.toString()}`, token);
+      setRows(data.rows || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal generate rekap badge.");
+    } finally {
+      setLoadingRows(false);
+    }
+  }
+
+  function toggleMarket(row: ShareRow) {
+    const key = marketKey(row);
+    if (!key) return;
+    setRows((current) => (rekapMode ? [] : current));
+    setCopied(false);
+    setSelectedMarketKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else {
+        if (rekapMode && next.size >= REKAP_MAX_MARKETS) {
+          setError(`Maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
+          return next;
+        }
+        next.add(key);
+      }
+      return next;
+    });
+  }
+  function selectAllMarkets() {
+    const source = rekapMode ? pickerRows.slice(0, REKAP_MAX_MARKETS) : rows;
+    setRows((current) => (rekapMode ? [] : current));
+    setSelectedMarketKeys(new Set(source.map(marketKey).filter(Boolean)));
+  }
+  function clearMarkets() { setRows((current) => (rekapMode ? [] : current)); setSelectedMarketKeys(new Set()); }
   async function handleCopy() { if (!shareText) return; await navigator.clipboard.writeText(shareText); setCopied(true); window.setTimeout(() => setCopied(false), 1600); }
   async function handleShare() { if (!shareText) return; if (navigator.share) { await navigator.share({ text: shareText }); return; } await handleCopy(); }
 
   if (verifying || !token) {
-    return (
-      <div className="animate-rise pb-8">
-        <div className="depth-1 rounded-3xl border p-4 text-center"><div className="depth-2 rounded-3xl border px-4 py-10"><Loader2 className="mx-auto mb-3 animate-spin text-text-soft" size={22} /><p className="text-xs font-black uppercase tracking-wide text-text-muted">Memeriksa akses…</p></div></div>
-      </div>
-    );
+    return <div className="animate-rise pb-8"><div className="depth-1 rounded-3xl border p-4 text-center"><div className="depth-2 rounded-3xl border px-4 py-10"><Loader2 className="mx-auto mb-3 animate-spin text-text-soft" size={22} /><p className="text-xs font-black uppercase tracking-wide text-text-muted">Memeriksa akses…</p></div></div></div>;
   }
+
+  const previewFallback = rekapMode && selectedCount ? "Klik Generate untuk membuat angka jadi dari pasaran yang dicentang." : rows.length ? "Belum ada pasaran dipilih." : "Pilih prediksi dulu.";
 
   return (
     <div className="animate-rise pb-8">
       <button type="button" onClick={() => router.push("/")} className="pressable depth-3 mb-3 inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"><ArrowLeft size={15} /> Beranda</button>
       <section className="depth-1 mb-4 rounded-3xl border p-4 text-center"><div className="depth-2 rounded-3xl border px-4 py-6"><div className="display text-2xl text-text">Share Prediksi</div><p className="mt-2 text-xs font-semibold leading-relaxed text-text-muted">Pilih filter, tandai pasaran, lalu salin atau bagikan.</p></div></section>
-      <div className="depth-2 mb-4 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-[11px] font-bold leading-relaxed text-text-muted"><span className="accent-text font-black">Catatan update:</span> Rekap Badge 2D memakai semua metode yang punya badge. Metode tanpa badge otomatis dilewati.</div>
+      <div className="depth-2 mb-4 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-[11px] font-bold leading-relaxed text-text-muted"><span className="accent-text font-black">Catatan update:</span> Rekap Badge 2D tampil semua pasaran, maksimal {REKAP_MAX_MARKETS} centang, lalu tekan Generate.</div>
       {error && <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">{error}</div>}
       <section className="depth-1 mb-4 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Filter Prediksi</span>{loadingOptions && <Loader2 size={15} className="animate-spin text-text-soft" />}</div>{loadingOptions ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pilihan…</div> : <div className="grid grid-cols-1 gap-3"><PickerField id="jenis" label="Jenis" value={selectedMode} options={modeOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedMode} /><PickerField id="target" label="Target" value={selectedTarget} options={targetOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedTarget} /><PickerField id="output" label="Output" value={selectedOutput} options={outputOptions} openPicker={openPicker} onOpen={setOpenPicker} onChange={setSelectedOutput} /></div>}</section>
-      <section className="depth-1 mb-4 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Pilih Pasaran</span><span className="text-[10px] font-black uppercase tracking-wide text-text-soft">{selectedRows.length}/{rows.length}</span></div>{loadingRows ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pasaran…</div> : rows.length === 0 ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Belum ada pasaran</div> : <><div className="mb-3 grid grid-cols-2 gap-2"><button type="button" onClick={selectAllMarkets} className="pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]">Pilih Semua</button><button type="button" onClick={clearMarkets} className="pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]">Kosongkan</button></div><div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{rows.map((row) => { const key = marketKey(row); const active = selectedMarketKeys.has(key); return <button key={key || marketLabel(row)} type="button" onClick={() => toggleMarket(row)} className={active ? "pressable animate-soft-pop accent-bg-soft accent-border relative flex min-h-[58px] items-center justify-center rounded-2xl border px-2 py-2 text-center" : "pressable animate-soft-pop depth-1 relative flex min-h-[58px] items-center justify-center rounded-2xl border px-2 py-2 text-center hover:border-border hover:bg-surface-2"}>{active && <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white"><Check size={11} strokeWidth={3.2} /></span>}<span className="line-clamp-2 text-[9px] font-black leading-3 tracking-wide text-text">{marketLabel(row)}</span></button>; })}</div>{isRekapBadge(selectedOption) && nextCursor !== null && <button type="button" onClick={handleLoadMore} disabled={loadingMore} className="pressable depth-3 mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border px-3 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45">{loadingMore && <Loader2 size={14} className="animate-spin" />} Load 5 Berikutnya</button>}</>}</section>
-      <section className="depth-1 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Preview Singkat</span>{loadingRows && <Loader2 size={15} className="animate-spin text-text-soft" />}</div><pre className="depth-2 min-h-[150px] whitespace-pre-wrap rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">{loadingRows ? "Memuat preview…" : previewText || (rows.length ? "Belum ada pasaran dipilih." : "Pilih prediksi dulu.")}</pre><p className="mt-2 px-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Copy dan Share hanya mengirim pasaran yang dicentang.</p><div className="mt-3 grid grid-cols-2 gap-2.5"><button type="button" onClick={handleCopy} disabled={!shareText || loadingRows} className="pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45"><ClipboardCopy size={16} /> {copied ? "Tersalin" : "Copy"}</button><button type="button" onClick={handleShare} disabled={!shareText || loadingRows} className="pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45"><Share2 size={16} /> Share</button></div></section>
+      <section className="depth-1 mb-4 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Pilih Pasaran</span><span className="text-[10px] font-black uppercase tracking-wide text-text-soft">{selectedCount}/{rekapMode ? REKAP_MAX_MARKETS : pickerRows.length}</span></div>{loadingOptions || (loadingRows && !rekapMode) ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pasaran…</div> : pickerRows.length === 0 ? <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Belum ada pasaran</div> : <><div className="mb-3 grid grid-cols-2 gap-2"><button type="button" onClick={selectAllMarkets} className="pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]">{rekapMode ? "Pilih 5 Pertama" : "Pilih Semua"}</button><button type="button" onClick={clearMarkets} className="pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]">Kosongkan</button></div><div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{pickerRows.map((row) => { const key = marketKey(row); const active = selectedMarketKeys.has(key); return <button key={key || marketLabel(row)} type="button" onClick={() => toggleMarket(row)} className={active ? "pressable animate-soft-pop accent-bg-soft accent-border relative flex min-h-[58px] items-center justify-center rounded-2xl border px-2 py-2 text-center" : "pressable animate-soft-pop depth-1 relative flex min-h-[58px] items-center justify-center rounded-2xl border px-2 py-2 text-center hover:border-border hover:bg-surface-2"}>{active && <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white"><Check size={11} strokeWidth={3.2} /></span>}<span className="line-clamp-2 text-[9px] font-black leading-3 tracking-wide text-text">{marketLabel(row)}</span></button>; })}</div>{rekapMode && <button type="button" onClick={handleGenerateRekap} disabled={loadingRows || selectedCount === 0} className="pressable depth-accent accent-text mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45">{loadingRows && <Loader2 size={15} className="animate-spin" />} Generate</button>}</>}</section>
+      <section className="depth-1 rounded-3xl border p-4"><div className="mb-3 flex items-center justify-between gap-3 px-1"><span className="display text-xs text-text">Preview Singkat</span>{loadingRows && <Loader2 size={15} className="animate-spin text-text-soft" />}</div><pre className="depth-2 min-h-[150px] overflow-hidden whitespace-pre-wrap break-all rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">{loadingRows ? "Memuat preview…" : previewText || previewFallback}</pre><p className="mt-2 px-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Copy dan Share hanya mengirim pasaran yang dicentang dan sudah digenerate.</p><div className="mt-3 grid grid-cols-2 gap-2.5"><button type="button" onClick={handleCopy} disabled={!shareText || loadingRows} className="pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45"><ClipboardCopy size={16} /> {copied ? "Tersalin" : "Copy"}</button><button type="button" onClick={handleShare} disabled={!shareText || loadingRows} className="pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45"><Share2 size={16} /> Share</button></div></section>
     </div>
   );
 }
