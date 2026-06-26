@@ -51,6 +51,7 @@ export function Bbfs7TrialPage({ marketId }: { marketId: string }) {
     placeholderData: keepPreviousData,
   });
 
+  const formulaCount = BBFS7_FORMULAS.length;
   const market = useMemo(() => findMarketByIdOrName(markets, decodedMarketId), [markets, decodedMarketId]);
   const history = useMemo(() => (market ? parseHistoryTokens(extractHistoryData(market)) : []), [market]);
   const result = useMemo(() => {
@@ -73,7 +74,7 @@ export function Bbfs7TrialPage({ marketId }: { marketId: string }) {
         <div className="depth-2 rounded-3xl border px-4 py-6 text-center">
           <p className="text-[10px] font-black uppercase tracking-widest text-accent">Uji Coba BBFS 7D</p>
           <h3 className="display mt-2 break-words text-2xl text-text sm:text-3xl">{market?.name || decodedMarketId}</h3>
-          <p className="mt-2 text-xs font-semibold text-text-muted">60 rumus tradisional · walk-forward 14, 21, 28, ...</p>
+          <p className="mt-2 text-xs font-semibold text-text-muted">{formulaCount} rumus tradisional · walk-forward 14, 21, 28, ...</p>
         </div>
       </div>
 
@@ -119,7 +120,7 @@ export function Bbfs7TrialPage({ marketId }: { marketId: string }) {
           </div>
           <div className="rounded-2xl border border-border-soft p-3">
             <p className="text-[10px] font-black uppercase text-text-soft">Rumus</p>
-            <p className="num mt-1 text-xl font-black text-text">{BBFS7_FORMULAS.length}</p>
+            <p className="num mt-1 text-xl font-black text-text">{formulaCount}</p>
           </div>
         </div>
 
@@ -132,7 +133,7 @@ export function Bbfs7TrialPage({ marketId }: { marketId: string }) {
 
       {!hasRun && (
         <div className="animate-soft-pop rounded-3xl border border-dashed p-6 text-center text-xs font-semibold text-text-muted">
-          Pilih posisi, lalu tekan Uji Rumus. Sistem akan menguji 60 rumus di pasaran ini saja.
+          Pilih posisi, lalu tekan Uji Rumus. Sistem akan menguji {formulaCount} rumus di pasaran ini saja.
         </div>
       )}
 
