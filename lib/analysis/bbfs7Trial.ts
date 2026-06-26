@@ -91,7 +91,7 @@ const DEFAULT_FILL_KEYS = [
   "SUM4-1",
 ];
 
-export const BBFS7_FORMULAS: Bbfs7Formula[] = [
+const BASE_BBFS7_FORMULAS: Bbfs7Formula[] = [
   { code: "F01", name: "Ring Belakang C-D ±2", keys: ["C", "D", "C+1", "C-1", "C+2", "D+1", "D-1"] },
   { code: "F02", name: "Ring Ekor D ±2", keys: ["D", "D+1", "D-1", "D+2", "D-2", "C", "C+D"] },
   { code: "F03", name: "Ring Kepala Belakang C ±2", keys: ["C", "C+1", "C-1", "C+2", "C-2", "D", "C+D"] },
@@ -152,6 +152,22 @@ export const BBFS7_FORMULAS: Bbfs7Formula[] = [
   { code: "F58", name: "Lompat +2 Semua Posisi", keys: ["A+2", "B+2", "C+2", "D+2", "A+B", "B+C", "C+D"] },
   { code: "F59", name: "Lompat -2 Semua Posisi", keys: ["A-2", "B-2", "C-2", "D-2", "A+B", "B+C", "C+D"] },
   { code: "F60", name: "Campuran Final Tradisional", keys: ["C", "D", "B+C", "A+D", "TC", "TD", "SUM4"] },
+];
+
+function makeDoubleVariant(formula: Bbfs7Formula, index: number): Bbfs7Formula {
+  const orderedKeys = [...formula.keys].reverse();
+  const bridgeKeys = ["C", "D", "TC", "TD", "MC", "MD", "C+D", "SUM4"];
+  const keys = [...orderedKeys, ...bridgeKeys].filter((key, keyIndex, source) => source.indexOf(key) === keyIndex).slice(0, 12);
+  return {
+    code: `D${String(index + 1).padStart(2, "0")}`,
+    name: `${formula.name} · Double`,
+    keys,
+  };
+}
+
+export const BBFS7_FORMULAS: Bbfs7Formula[] = [
+  ...BASE_BBFS7_FORMULAS,
+  ...BASE_BBFS7_FORMULAS.map(makeDoubleVariant),
 ];
 
 function mod10(value: number) {
