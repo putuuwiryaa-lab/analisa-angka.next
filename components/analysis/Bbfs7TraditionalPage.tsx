@@ -71,8 +71,8 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
 
   return (
     <div data-mode="bbfs7_tradisional" className="animate-rise pb-8">
-      <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push("/invest/bbfs7-tradisional")}> 
-        <ArrowLeft size={16} /> Uji Coba BBFS 7D
+      <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push(`/analyze/${encodeURIComponent(decodedMarketId)}`)}> 
+        <ArrowLeft size={16} /> Menu Analisa
       </Button>
 
       <div className="animate-soft-pop depth-1 mb-5 rounded-3xl border p-4">
