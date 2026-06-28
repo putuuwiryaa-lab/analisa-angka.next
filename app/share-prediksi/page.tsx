@@ -484,6 +484,7 @@ export default function SharePrediksiPage() {
   const shareText = useMemo(() => buildShareText(selectedOption, selectedRows), [selectedOption, selectedRows]);
   const previewText = useMemo(() => buildPreviewText(selectedOption, selectedRows), [selectedOption, selectedRows]);
   const selectedCount = selectedMarketKeys.size;
+  const selectionLimit = rekapMode ? REKAP_MAX_MARKETS : pickerRows.length;
 
   useEffect(() => {
     if (!verifying && !token) router.replace("/kode-login");
@@ -607,7 +608,6 @@ export default function SharePrediksiPage() {
     const marketIds = selectedMarketIds();
 
     if (!marketIds.length) return setError("Pilih minimal satu pasaran.");
-    if (marketIds.length > REKAP_MAX_MARKETS) return setError(`Maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
 
     setLoadingRows(true);
     setRows([]);
@@ -617,7 +617,6 @@ export default function SharePrediksiPage() {
     try {
       const params = new URLSearchParams({
         targetPair: selectedOption.targetPair,
-        limit: String(REKAP_MAX_MARKETS),
         marketIds: marketIds.join(","),
       });
       const data = await fetchJson<ShareResponse>(`/api/share-predictions/bbfs7-trial?${params.toString()}`, token);
@@ -639,7 +638,7 @@ export default function SharePrediksiPage() {
       if (next.has(key)) {
         next.delete(key);
       } else {
-        if (generateMode && next.size >= REKAP_MAX_MARKETS) {
+        if (rekapMode && next.size >= REKAP_MAX_MARKETS) {
           setError(`Maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
           return next;
         }
@@ -650,7 +649,7 @@ export default function SharePrediksiPage() {
   }
 
   function selectAllMarkets() {
-    const source = generateMode ? pickerRows.slice(0, REKAP_MAX_MARKETS) : rows;
+    const source = rekapMode ? pickerRows.slice(0, REKAP_MAX_MARKETS) : pickerRows;
     setRows((current) => (generateMode ? [] : current));
     setSelectedMarketKeys(new Set(source.map(marketKey).filter(Boolean)));
   }
@@ -713,7 +712,7 @@ export default function SharePrediksiPage() {
       </section>
 
       <div className="depth-2 mb-4 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-[11px] font-bold leading-relaxed text-text-muted">
-        <span className="accent-text font-black">Catatan update:</span> Rekap Badge 2D dan Uji Coba BBFS 7D maksimal {REKAP_MAX_MARKETS} centang, lalu tekan Generate.
+        <span className="accent-text font-black">Catatan update:</span> Rekap Badge 2D maksimal {REKAP_MAX_MARKETS} centang. Uji Coba BBFS 7D bisa pilih semua pasaran.
       </div>
 
       {error && <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">{error}</div>}
@@ -737,7 +736,7 @@ export default function SharePrediksiPage() {
       <section className="depth-1 mb-4 rounded-3xl border p-4">
         <div className="mb-3 flex items-center justify-between gap-3 px-1">
           <span className="display text-xs text-text">Pilih Pasaran</span>
-          <span className="text-[10px] font-black uppercase tracking-wide text-text-soft">{selectedCount}/{generateMode ? REKAP_MAX_MARKETS : pickerRows.length}</span>
+          <span className="text-[10px] font-black uppercase tracking-wide text-text-soft">{selectedCount}/{selectionLimit}</span>
         </div>
         {loadingOptions || (loadingRows && !generateMode) ? (
           <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted">Memuat pasaran…</div>
@@ -751,7 +750,7 @@ export default function SharePrediksiPage() {
                 onClick={selectAllMarkets}
                 className="pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
               >
-                {generateMode ? "Pilih 5 Pertama" : "Pilih Semua"}
+                {rekapMode ? "Pilih 5 Pertama" : "Pilih Semua"}
               </button>
               <button
                 type="button"
