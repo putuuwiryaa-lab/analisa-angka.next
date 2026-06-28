@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Play, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth/auth-context";
-import { Button } from "@/components/ui/Button";
+import { AnalysisPageChrome } from "@/components/analysis/AnalysisPageChrome";
+import { TargetPairSelector } from "@/components/analysis/ScopeSelectors";
 import {
   MARKETS_GC_TIME,
   MARKETS_QUERY_KEY,
@@ -23,12 +23,6 @@ import {
   type TargetPair,
 } from "@/lib/analysis/bbfs7Traditional";
 
-const TARGET_OPTIONS: Array<{ key: TargetPair; label: string }> = [
-  { key: "depan", label: "2D Depan" },
-  { key: "tengah", label: "2D Tengah" },
-  { key: "belakang", label: "2D Belakang" },
-];
-
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value);
@@ -37,21 +31,15 @@ function safeDecode(value: string) {
   }
 }
 
-function percent(value: number) {
-  return `${value.toFixed(2)}%`;
-}
-
 export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
   const router = useRouter();
-  const { token } = useAuth();
   const decodedMarketId = safeDecode(marketId);
-  const [targetPair, setTargetPair] = useState<TargetPair>("belakang");
+  const [targetPair, setTargetPair] = useState<TargetPair | null>(null);
   const [hasRun, setHasRun] = useState(false);
 
   const { data: markets = [], isPending, error } = useQuery({
     queryKey: [...MARKETS_QUERY_KEY, "bbfs7-tradisional"],
-    queryFn: () => fetchMarkets(token || ""),
-    enabled: Boolean(token),
+    queryFn: () => fetchMarkets(""),
     staleTime: MARKETS_STALE_TIME,
     gcTime: MARKETS_GC_TIME,
     placeholderData: keepPreviousData,
@@ -60,8 +48,10 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
   const formulaCount = BBFS7_TRADITIONAL_FORMULAS.length;
   const market = useMemo(() => findMarketByIdOrName(markets, decodedMarketId), [markets, decodedMarketId]);
   const history = useMemo(() => (market ? parseHistoryTokens(extractHistoryData(market)) : []), [market]);
+  const hasEnoughHistory = history.length >= BBFS7_TRADITIONAL_WINDOW + 3;
+  const canStart = Boolean(targetPair && market && hasEnoughHistory && !hasRun);
   const result = useMemo(() => {
-    if (!hasRun) return null;
+    if (!hasRun || !targetPair) return null;
     return runBbfs7TraditionalWalkForward(history, targetPair);
   }, [hasRun, history, targetPair]);
 
@@ -71,19 +61,29 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
 
   return (
     <div data-mode="bbfs7_tradisional" className="animate-rise pb-8">
-      <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push(`/analyze/${encodeURIComponent(decodedMarketId)}`)}> 
-        <ArrowLeft size={16} /> Menu Analisa
-      </Button>
-
-      <div className="animate-soft-pop depth-1 mb-5 rounded-3xl border p-4">
-        <div className="depth-2 rounded-3xl border px-4 py-6 text-center">
-          <p className="text-[10px] font-black uppercase tracking-widest text-accent">Uji Coba BBFS 7D</p>
-          <h3 className="display mt-2 break-words text-2xl text-text sm:text-3xl">{market?.name || decodedMarketId}</h3>
-          <p className="mt-2 text-xs font-semibold text-text-muted">
-            Rumus Tradisional · {formulaCount} rumus · threshold {BBFS7_TRADITIONAL_THRESHOLD}/{BBFS7_TRADITIONAL_WINDOW}
-          </p>
-        </div>
-      </div>
+      <AnalysisPageChrome
+        title="UJI COBA BBFS 7D RUMUS TRADISIONAL"
+        icon="▧"
+        marketId={market?.name || decodedMarketId}
+        isAI={false}
+        isBBFS={false}
+        isRekapCustom={false}
+        needsTargetPair
+        analysisScope={null}
+        targetPair={targetPair}
+        customFocus={null}
+        loading={isPending}
+        canStartAnalyze={canStart}
+        onBack={() => router.push(`/analyze/${encodeURIComponent(decodedMarketId)}`)}
+        onStartAnalyze={() => setHasRun(true)}
+        onAIScopeReset={() => {}}
+        onTargetPairReset={() => {
+          setTargetPair(null);
+          setHasRun(false);
+        }}
+        onBBFSScopeReset={() => {}}
+        onCustomFocusReset={() => {}}
+      />
 
       {errorMessage && (
         <div className="animate-rise my-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
@@ -91,96 +91,54 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
         </div>
       )}
 
-      <div className="animate-soft-pop depth-1 mb-4 rounded-3xl border p-4">
-        <span className="mb-2 block text-[10px] font-black uppercase tracking-wide text-text-soft">Posisi Target</span>
-        <div className="grid grid-cols-3 gap-2">
-          {TARGET_OPTIONS.map((option) => {
-            const active = option.key === targetPair;
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => {
-                  setTargetPair(option.key);
-                  setHasRun(false);
-                }}
-                className={
-                  active
-                    ? "pressable accent-bg-soft accent-text min-h-12 rounded-2xl border px-2 text-xs font-black"
-                    : "pressable min-h-12 rounded-2xl border px-2 text-xs font-bold text-text-muted hover:bg-white/[0.06] hover:text-text"
-                }
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
+      {!targetPair && <TargetPairSelector onSelect={(pair) => setTargetPair(pair)} />}
 
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-2xl border border-border-soft p-3">
-            <p className="text-[10px] font-black uppercase text-text-soft">Result</p>
-            <p className="num mt-1 text-xl font-black text-text">{history.length}</p>
+      {targetPair && !hasRun && (
+        <div className="animate-soft-pop depth-1 rounded-3xl border p-4 text-center text-xs font-semibold text-text-muted">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-2xl border border-border-soft p-3">
+              <p className="text-[10px] font-black uppercase text-text-soft">Result</p>
+              <p className="num mt-1 text-xl font-black text-text">{history.length}</p>
+            </div>
+            <div className="rounded-2xl border border-border-soft p-3">
+              <p className="text-[10px] font-black uppercase text-text-soft">Transisi</p>
+              <p className="num mt-1 text-xl font-black text-text">{Math.max(history.length - 3, 0)}</p>
+            </div>
+            <div className="rounded-2xl border border-border-soft p-3">
+              <p className="text-[10px] font-black uppercase text-text-soft">Rumus</p>
+              <p className="num mt-1 text-xl font-black text-text">{formulaCount}</p>
+            </div>
           </div>
-          <div className="rounded-2xl border border-border-soft p-3">
-            <p className="text-[10px] font-black uppercase text-text-soft">Transisi</p>
-            <p className="num mt-1 text-xl font-black text-text">{Math.max(history.length - 3, 0)}</p>
-          </div>
-          <div className="rounded-2xl border border-border-soft p-3">
-            <p className="text-[10px] font-black uppercase text-text-soft">Rumus</p>
-            <p className="num mt-1 text-xl font-black text-text">{formulaCount}</p>
-          </div>
-        </div>
-
-        <Button className="mt-4 h-13 w-full rounded-2xl font-black" disabled={isPending || !market || history.length < BBFS7_TRADITIONAL_WINDOW + 3} onClick={() => setHasRun(true)}>
-          {isPending ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />} Hitung Rumus Tradisional
-        </Button>
-        {!market && !isPending && <p className="mt-3 text-center text-xs font-bold text-danger">Pasaran tidak ditemukan.</p>}
-        {market && history.length < BBFS7_TRADITIONAL_WINDOW + 3 && (
-          <p className="mt-3 text-center text-xs font-bold text-danger">
-            Minimal butuh {BBFS7_TRADITIONAL_WINDOW + 3} result untuk walk-forward {BBFS7_TRADITIONAL_WINDOW} data.
+          <p className="mt-4 leading-relaxed">
+            Tekan Mulai Analisa. Sistem menguji {formulaCount} rumus tradisional, minimal {BBFS7_TRADITIONAL_THRESHOLD}/{BBFS7_TRADITIONAL_WINDOW} baru masuk voting.
           </p>
-        )}
-      </div>
-
-      {!hasRun && (
-        <div className="animate-soft-pop rounded-3xl border border-dashed p-6 text-center text-xs font-semibold text-text-muted">
-          Pilih posisi, lalu tekan Hitung Rumus Tradisional. Sistem akan menguji {formulaCount} rumus, hanya 12/14 ke atas yang masuk voting.
+          {!market && <p className="mt-3 font-bold text-danger">Pasaran tidak ditemukan.</p>}
+          {market && !hasEnoughHistory && (
+            <p className="mt-3 font-bold text-danger">
+              Minimal butuh {BBFS7_TRADITIONAL_WINDOW + 3} result untuk walk-forward {BBFS7_TRADITIONAL_WINDOW} data.
+            </p>
+          )}
         </div>
       )}
 
       {result && result.nextBbfsDigits && (
         <div className="space-y-4">
-          <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
-            <div className="flex items-start gap-3">
-              <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border">
-                <Trophy size={20} />
+          <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-4">
+            <div className="accent-bg-soft absolute -right-16 -top-16 h-44 w-44 rounded-full blur-3xl" />
+            <div className="relative mb-3 flex items-center justify-between gap-3">
+              <div className="depth-3 accent-text inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide">
+                <Trophy size={12} /> Hasil Utama
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-soft">Hasil Voting Rumus Lolos</p>
-                <h3 className="mt-1 text-base font-black text-text">{result.lolosCount}/{result.formulaCount} rumus lolos threshold</h3>
-                <p className="mt-1 text-xs font-semibold text-text-muted">Walk-forward {result.window} data · minimal {result.threshold}/{result.window}</p>
-              </div>
+              <span className="depth-3 accent-text rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide">
+                {result.lolosCount}/{result.formulaCount} Lolos
+              </span>
             </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-2xl border border-border-soft p-3">
-                <p className="text-[10px] font-black uppercase text-text-soft">Lolos</p>
-                <p className="num mt-1 text-2xl font-black text-accent">{result.lolosCount}</p>
-              </div>
-              <div className="rounded-2xl border border-border-soft p-3">
-                <p className="text-[10px] font-black uppercase text-text-soft">Threshold</p>
-                <p className="num mt-1 text-2xl font-black text-text">{result.threshold}/{result.window}</p>
-              </div>
-              <div className="rounded-2xl border border-border-soft p-3">
-                <p className="text-[10px] font-black uppercase text-text-soft">Latest</p>
-                <p className="num mt-1 text-2xl font-black text-accent">{result.latestResult || "----"}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-3xl border border-border-soft p-4 text-center">
+            <div className="depth-2 relative rounded-3xl border p-4 text-center">
               <p className="text-[10px] font-black uppercase tracking-widest text-text-soft">BBFS 7D Voting</p>
               <p className="num mt-2 text-4xl font-black tracking-[0.14em] text-accent">{result.nextBbfsDigits}</p>
-              <p className="mt-2 text-xs font-semibold text-text-muted">Semua rumus lolos memberi bobot voting yang sama.</p>
+              <p className="mt-2 text-xs font-semibold text-text-muted">
+                Walk-forward {result.window} data · threshold {result.threshold}/{result.window} · result terbaru {result.latestResult || "----"}
+              </p>
             </div>
           </div>
 
