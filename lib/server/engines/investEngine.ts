@@ -135,16 +135,6 @@ const max = (xs: number[]) => (xs.length ? Math.max(...xs) : 0);
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-function stableHashScore(seed: string, maxScore: number) {
-  if (!seed || maxScore <= 0) return 0;
-  let hash = 2166136261;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash ^= seed.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0) % (maxScore + 1);
-}
-
 function lineCountOf(combo: InvestComboResult) {
   return Number(combo.cachedLineCount || combo.expectedLines || 0);
 }
@@ -168,22 +158,6 @@ function lineScore(lineCount: number) {
   return Math.max(0, 15 - Math.abs(lineCount - 60));
 }
 
-function overheatPenalty(combo: InvestComboResult) {
-  let penalty = 0;
-  if (combo.avgWins15 >= 15) penalty += 8;
-  if (combo.avgWins15 >= 15 && combo.avgWinsLast5 >= 5) penalty += 8;
-  if (combo.avgWins15 >= 15 && combo.maxLossStreak <= 0) penalty += 4;
-  return penalty;
-}
-
-function rotationBonus(combo: InvestComboResult, seed: string) {
-  if (!seed) return 0;
-  if (combo.avgWins15 >= 15) return stableHashScore(seed, 3);
-  if (combo.avgWins15 >= 14) return stableHashScore(seed, 8);
-  if (combo.avgWins15 >= 13) return stableHashScore(seed, 10);
-  return 0;
-}
-
 function statusOf(combo: InvestComboResult, score: number): InvestRecommendationStatus {
   if (combo.avgWins15 >= 15 && combo.avgWinsLast5 >= 5) return "PANAS";
   if (score >= 80) return "UTAMA";
@@ -196,28 +170,26 @@ function riskNoteOf(status: InvestRecommendationStatus) {
   return "Kandidat rotasi";
 }
 
-function scoreInvestCombo(combo: InvestComboResult, seed: string) {
+function scoreInvestCombo(combo: InvestComboResult) {
   const quality =
     historyScore(combo.avgWins15) +
     Math.min(20, combo.avgWinsLast5 * 4) +
     lossStreakScore(combo.maxLossStreak) +
     lineScore(lineCountOf(combo));
 
-  if (quality <= 0) return 0;
-  return round2(quality - overheatPenalty(combo) + rotationBonus(combo, `${seed}:${combo.id}`));
+  return round2(Math.max(0, quality));
 }
 
 export function rankInvestMarkets(
   markets: InvestMarketResult[],
-  latestResultByMarket: Record<string, string> = {},
+  _latestResultByMarket: Record<string, string> = {},
 ): InvestMarketResult[] {
   return markets.map((market) => ({
     ...market,
     pairs: market.pairs.map((pair) => {
-      const seed = [market.marketId, pair.pair, latestResultByMarket[market.marketId] || ""].join("::");
       const combos = pair.combos
         .map((combo) => {
-          const recommendationScore = scoreInvestCombo(combo, seed);
+          const recommendationScore = scoreInvestCombo(combo);
           const recommendationStatus = statusOf(combo, recommendationScore);
           return {
             ...combo,
