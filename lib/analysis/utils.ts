@@ -1,28 +1,55 @@
 import { DIGITS, jumlah2D, shioOf2D } from "./constants";
+export { buildCustomDigitLines } from "./customDigit";
 
-type LineSection = { label: string; lines: string[] };
+// Re-export helper bersama agar impor lama dari "utils" tetap jalan.
+export { jumlah2D, shioOf2D };
 
-const toNumberList = (value: any): number[] => {
-  if (Array.isArray(value)) return value.map(Number).filter((n) => Number.isFinite(n));
-  if (typeof value === "string") return value.split("").map(Number).filter((n) => Number.isFinite(n));
-  return [];
-};
+export type LineSection = { label: string; lines: string[] };
 
-const normalDigitList = (value: any) => toNumberList(value).filter((digit) => digit >= 0 && digit <= 9);
-
-const safeArray = (value: any): any[] => (Array.isArray(value) ? value : value ? [value] : []);
+export const safeArray = (value: any) => Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
+export const statsFrom = (value: any) => Array.isArray(value?.stats) ? value.stats : [];
+export const format2D = (n: number | string) => String(n).padStart(2, "0");
+export const normalDigitList = (value: any) => Array.from(new Set(safeArray(value).map((v: any) => String(v)).filter((v: string) => /^\d$/.test(v))));
+export const toNumberList = (value: any) => Array.from(new Set(safeArray(value).map((v: any) => Number(v)).filter((v: number) => Number.isFinite(v))));
 
 function is2DAnalysisResult(result: any) {
-  const scope = result?.analysisScope || result?.analysis_scope || "default";
-  return scope === "2d_depan" || scope === "2d_tengah" || scope === "2d_belakang" || result?.targetPair;
+  const scope = String(result?.analysis_scope || result?.analysisScope || "default");
+  return scope === "default" || scope === "2d_depan" || scope === "2d_tengah" || scope === "2d_belakang" || Boolean(result?.targetPair);
+}
+
+function digitParity(digit: number) {
+  return digit % 2 === 0 ? "GENAP" : "GANJIL";
+}
+
+function digitSize(digit: number) {
+  return digit >= 5 ? "BESAR" : "KECIL";
+}
+
+function resultText(result: any) {
+  return String(safeArray(result?.result)[0] || "").trim().toUpperCase();
 }
 
 function buildAiGgbkAngkaJadi(result: any): LineSection[] {
-  const ggbk = result?.bbfsGgbk;
-  if (!ggbk || !Array.isArray(ggbk.sections)) return [];
-  return ggbk.sections
-    .map((section: any) => ({ label: section.label || "BBFS GGBK", lines: safeArray(section.lines).map(String) }))
-    .filter((section: LineSection) => section.lines.length);
+  if (!is2DAnalysisResult(result)) return [];
+
+  const mode = String(result?.evaluationMode || "").trim();
+  const selected = resultText(result);
+  const isParity = mode === "ai_parity" || selected === "GANJIL" || selected === "GENAP";
+  const isSize = mode === "ai_size" || selected === "BESAR" || selected === "KECIL";
+
+  if (!isParity && !isSize) return [];
+
+  const lines: string[] = [];
+  for (let k = 0; k <= 9; k++) {
+    for (let e = 0; e <= 9; e++) {
+      const hit = isParity
+        ? digitParity(k) === selected || digitParity(e) === selected
+        : digitSize(k) === selected || digitSize(e) === selected;
+      if (hit) lines.push(`${k}${e}`);
+    }
+  }
+
+  return [{ label: "ANGKA JADI 2D", lines }];
 }
 
 function buildAiAngkaJadi(result: any): LineSection[] {
@@ -73,7 +100,7 @@ export const buildAngkaJadi = (type: string, result: any): { sections: LineSecti
   if (type === "mati") {
     const jadi = (pos: string) => {
       const off = normalDigitList(result[pos]?.result);
-      const allowed = DIGITS.filter((d) => !off.includes(Number(d)));
+      const allowed = DIGITS.filter((d) => !off.includes(d));
       return allowed.length ? allowed : DIGITS;
     };
     const kop = jadi("KOP");
@@ -81,31 +108,30 @@ export const buildAngkaJadi = (type: string, result: any): { sections: LineSecti
     const ekor = jadi("EKOR");
     const lines3D: string[] = [];
     const lines2D: string[] = [];
-    for (const k of kop) for (const h of kepala) for (const e of ekor) lines3D.push(`${k}${h}${e}`);
-    for (const h of kepala) for (const e of ekor) lines2D.push(`${h}${e}`);
-    return { sections: [{ label: "3D", lines: lines3D }, { label: "2D BELAKANG", lines: lines2D }] };
+    kop.forEach((k) => kepala.forEach((h) => ekor.forEach((e) => lines3D.push(`${k}${h}${e}`))));
+    kepala.forEach((h) => ekor.forEach((e) => lines2D.push(`${h}${e}`)));
+    return { sections: [{ label: "ANGKA JADI 3D", lines: lines3D }, { label: "ANGKA JADI 2D", lines: lines2D }] };
   }
 
   if (type === "jumlah") {
     const off = normalDigitList(result.result);
-    const allowed = DIGITS.map(Number).filter((digit) => !off.includes(digit));
     const lines: string[] = [];
     for (let k = 0; k <= 9; k++) {
       for (let e = 0; e <= 9; e++) {
-        if (allowed.includes(jumlah2D(k, e))) lines.push(`${k}${e}`);
+        if (!off.includes(String(jumlah2D(k, e)))) lines.push(`${k}${e}`);
       }
     }
-    return { sections: [{ label: "2D JUMLAH AKTIF", lines }] };
+    return { sections: [{ label: "ANGKA JADI 2D", lines }] };
   }
 
   if (type === "shio") {
-    const off = normalDigitList(result.result);
-    const allowed = Array.from({ length: 12 }, (_, index) => index + 1).filter((shio) => !off.includes(shio));
-    const lines = Array.from({ length: 100 }, (_, n) => n.toString().padStart(2, "0")).filter((line) => allowed.includes(shioOf2D(Number(line))));
-    return { sections: [{ label: "2D SHIO AKTIF", lines }] };
+    const offShio = Array.from(new Set(safeArray(result.result).map((v: any) => Number(String(v).match(/\d+/)?.[0] ?? v)).filter((v: number) => Number.isFinite(v) && v >= 1 && v <= 12)));
+    const lines: string[] = [];
+    for (let n = 0; n <= 99; n++) {
+      if (!offShio.includes(shioOf2D(n))) lines.push(format2D(n));
+    }
+    return { sections: [{ label: "ANGKA JADI 2D", lines }] };
   }
 
   return { sections: [] };
 };
-
-export { safeArray, statsFrom } from "./utilsCore";
