@@ -86,8 +86,9 @@ function ShareMenuCard({ index = 0 }: { index?: number }) {
 export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId: string }> }) {
   const { marketId } = use(params);
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, role } = useAuth();
   const decodedMarketId = safeDecode(marketId);
+  const canSeeSharePrediksi = role === "SUPER";
 
   const { data: marketName = decodedMarketId } = useQuery({
     queryKey: ["marketName", decodedMarketId],
@@ -137,7 +138,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
             index={ANALYSIS_MENU.length + index}
           />
         ))}
-        <ShareMenuCard index={ANALYSIS_MENU.length + CUSTOM_MENU.length} />
+        {canSeeSharePrediksi && <ShareMenuCard index={ANALYSIS_MENU.length + CUSTOM_MENU.length} />}
       </div>
     </div>
   );
