@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
+import { requireSuperShareAccess } from "@/lib/server/share-predictions-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,13 +53,8 @@ function readParams(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const access = await verifyActiveTelegramSession(request.headers);
-
-  if (!access.ok) {
-    return NextResponse.json(
-      { error: access.error },
-      { status: access.status, headers: { "Cache-Control": "no-store" } },
-    );
-  }
+  const denied = requireSuperShareAccess(access);
+  if (denied) return denied;
 
   try {
     const { mode, param, targetPair, analysisScope } = readParams(request);
