@@ -7,6 +7,7 @@ import { RekapResult } from "@/components/analysis/RekapResult";
 import { AnalysisResult } from "@/components/analysis/AnalysisResult";
 import { AnalysisPageChrome } from "@/components/analysis/AnalysisPageChrome";
 import { Bbfs7TrialPage } from "@/components/analysis/Bbfs7TrialPage";
+import { Bbfs7TraditionalPage } from "@/components/analysis/Bbfs7TraditionalPage";
 import { MODES, isModeKey, type ModeKey } from "@/components/analysis/modes";
 import { useAnalysisController } from "@/components/analysis/useAnalysisController";
 import { typeMeta } from "@/lib/analysis/constants";
@@ -25,7 +26,7 @@ function safeDecode(value: string) {
   }
 }
 
-function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: Exclude<ModeKey, "bbfs7_trial"> }) {
+function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: Exclude<ModeKey, "bbfs7_trial" | "bbfs7_tradisional"> }) {
   const { title, emoji } = MODES[type];
   const { state, flags, handlers, custom } = useAnalysisController({ type, marketId });
   const { param, targetPair, analysisScope, loading, result, error, customFocus } = state;
@@ -115,6 +116,10 @@ export default function AnalyzeModePage({
 
   if (type === "bbfs7_trial") {
     return <Bbfs7TrialPage marketId={decodedMarketId} />;
+  }
+
+  if (type === "bbfs7_tradisional") {
+    return <Bbfs7TraditionalPage marketId={decodedMarketId} />;
   }
 
   return <StandardAnalyzeModePage marketId={decodedMarketId} type={type} />;
