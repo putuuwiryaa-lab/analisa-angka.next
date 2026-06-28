@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-context";
 import { AnalysisPageChrome } from "@/components/analysis/AnalysisPageChrome";
+import { AnalysisResult } from "@/components/analysis/AnalysisResult";
 import { TargetPairSelector } from "@/components/analysis/ScopeSelectors";
 import {
   MARKETS_GC_TIME,
@@ -32,12 +32,20 @@ function safeDecode(value: string) {
   }
 }
 
+function scopeFromPair(pair: TargetPair) {
+  if (pair === "depan") return "2d_depan" as const;
+  if (pair === "tengah") return "2d_tengah" as const;
+  return "2d_belakang" as const;
+}
+
 export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
   const router = useRouter();
   const { token } = useAuth();
   const decodedMarketId = safeDecode(marketId);
   const [targetPair, setTargetPair] = useState<TargetPair | null>(null);
   const [hasRun, setHasRun] = useState(false);
+  const [detailValidationOpen, setDetailValidationOpen] = useState(false);
+  const [angkaJadiOpen, setAngkaJadiOpen] = useState(false);
 
   const { data: markets = [], isPending, error } = useQuery({
     queryKey: [...MARKETS_QUERY_KEY, "bbfs7-tradisional"],
@@ -58,8 +66,22 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
     return runBbfs7TraditionalWalkForward(history, targetPair);
   }, [hasRun, history, targetPair]);
 
-  const topRanking = result?.ranking.slice(0, 10) || [];
-  const topLolos = result?.lolosFormulas.slice(0, 10) || [];
+  const analysisResult = useMemo(() => {
+    if (!result?.nextBbfsDigits || !targetPair) return null;
+    return {
+      result: result.nextBbfsDigits.split("").map(Number),
+      stats: result.ranking.map((item) => ({
+        name: `${item.formulaCode} — ${item.formulaName}${item.lolos ? "" : " (TIDAK LOLOS)"}`,
+        hits: item.masuk,
+      })),
+      elitCount: result.lolosCount,
+      analysis_scope: scopeFromPair(targetPair),
+      targetPair,
+      evaluationMode: "bbfs7_tradisional",
+      evaluationParam: 7,
+    };
+  }, [result, targetPair]);
+
   const errorMessage = error instanceof Error ? error.message : "";
 
   return (
@@ -83,6 +105,8 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
         onTargetPairReset={() => {
           setTargetPair(null);
           setHasRun(false);
+          setDetailValidationOpen(false);
+          setAngkaJadiOpen(false);
         }}
         onBBFSScopeReset={() => {}}
         onCustomFocusReset={() => {}}
@@ -124,71 +148,20 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
         </div>
       )}
 
-      {result && result.nextBbfsDigits && (
-        <div className="space-y-4">
-          <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-4">
-            <div className="accent-bg-soft absolute -right-16 -top-16 h-44 w-44 rounded-full blur-3xl" />
-            <div className="relative mb-3 flex items-center justify-between gap-3">
-              <div className="depth-3 accent-text inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide">
-                <Trophy size={12} /> Hasil Utama
-              </div>
-              <span className="depth-3 accent-text rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide">
-                {result.lolosCount}/{result.formulaCount} Lolos
-              </span>
-            </div>
-            <div className="depth-2 relative rounded-3xl border p-4 text-center">
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-soft">BBFS 7D Voting</p>
-              <p className="num mt-2 text-4xl font-black tracking-[0.14em] text-accent">{result.nextBbfsDigits}</p>
-              <p className="mt-2 text-xs font-semibold text-text-muted">
-                Walk-forward {result.window} data · threshold {result.threshold}/{result.window} · result terbaru {result.latestResult || "----"}
-              </p>
-            </div>
-          </div>
-
-          <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
-            <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-text-soft">Vote Digit</p>
-            <div className="grid grid-cols-5 gap-2">
-              {result.voteRanking.map((item) => (
-                <div key={item.digit} className="rounded-2xl border border-border-soft p-3 text-center">
-                  <p className="num text-xl font-black text-text">{item.digit}</p>
-                  <p className="mt-1 text-[10px] font-black uppercase text-text-soft">{item.vote} vote</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
-            <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-text-soft">Rumus Lolos</p>
-            <div className="space-y-2">
-              {topLolos.map((item, index) => (
-                <div key={item.formulaCode} className="grid grid-cols-[34px_1fr_auto] items-center gap-2 rounded-2xl border border-border-soft p-3 text-xs">
-                  <span className="num font-black text-text-soft">#{index + 1}</span>
-                  <div className="min-w-0">
-                    <p className="truncate font-black text-text">{item.formulaCode} — {item.formulaName}</p>
-                    <p className="text-text-muted">BBFS {item.bbfsDigits} · zonk max {item.maxZonkStreak} · 7 terbaru {item.latest7Masuk}/7</p>
-                  </div>
-                  <span className="num font-black text-accent">{item.masuk}/{item.total}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
-            <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-text-soft">Ranking Top 10</p>
-            <div className="space-y-2">
-              {topRanking.map((item, index) => (
-                <div key={item.formulaCode} className="grid grid-cols-[34px_1fr_auto] items-center gap-2 rounded-2xl border border-border-soft p-3 text-xs">
-                  <span className="num font-black text-text-soft">#{index + 1}</span>
-                  <div className="min-w-0">
-                    <p className="truncate font-black text-text">{item.formulaCode} — {item.formulaName}</p>
-                    <p className="text-text-muted">{item.lolos ? "LOLOS" : "TIDAK LOLOS"} · BBFS {item.bbfsDigits}</p>
-                  </div>
-                  <span className={item.lolos ? "num font-black text-accent" : "num font-black text-text-soft"}>{item.masuk}/{item.total}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      {analysisResult && targetPair && (
+        <AnalysisResult
+          type="bbfs7_tradisional"
+          result={analysisResult}
+          param={7}
+          marketId={decodedMarketId}
+          label="UJI COBA BBFS 7D RUMUS TRADISIONAL"
+          targetPair={targetPair}
+          analysisScope={scopeFromPair(targetPair)}
+          detailValidationOpen={detailValidationOpen}
+          setDetailValidationOpen={setDetailValidationOpen}
+          angkaJadiOpen={angkaJadiOpen}
+          setAngkaJadiOpen={setAngkaJadiOpen}
+        />
       )}
 
       {result && !result.nextBbfsDigits && (
