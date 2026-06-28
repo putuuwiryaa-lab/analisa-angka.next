@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth/auth-context";
 import { AnalysisPageChrome } from "@/components/analysis/AnalysisPageChrome";
 import { TargetPairSelector } from "@/components/analysis/ScopeSelectors";
 import {
@@ -33,13 +34,15 @@ function safeDecode(value: string) {
 
 export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
   const router = useRouter();
+  const { token } = useAuth();
   const decodedMarketId = safeDecode(marketId);
   const [targetPair, setTargetPair] = useState<TargetPair | null>(null);
   const [hasRun, setHasRun] = useState(false);
 
   const { data: markets = [], isPending, error } = useQuery({
     queryKey: [...MARKETS_QUERY_KEY, "bbfs7-tradisional"],
-    queryFn: () => fetchMarkets(""),
+    queryFn: () => fetchMarkets(token || ""),
+    enabled: Boolean(token),
     staleTime: MARKETS_STALE_TIME,
     gcTime: MARKETS_GC_TIME,
     placeholderData: keepPreviousData,
