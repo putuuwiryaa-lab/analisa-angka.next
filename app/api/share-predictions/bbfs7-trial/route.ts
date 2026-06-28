@@ -6,8 +6,6 @@ import { runBbfs7WalkForward, type TargetPair } from "@/lib/analysis/bbfs7Trial"
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_LIMIT = 5;
-const MAX_LIMIT = 10;
 const MIN_HISTORY = 15;
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 
@@ -64,9 +62,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rawLimit = Math.max(1, Number(search.get("limit") || DEFAULT_LIMIT) || DEFAULT_LIMIT);
-    const limit = Math.min(rawLimit, MAX_LIMIT);
-    const requestedIds = parseMarketIds(search.get("marketIds")).slice(0, limit);
+    const requestedIds = parseMarketIds(search.get("marketIds"));
 
     if (!requestedIds.length) {
       return NextResponse.json(
@@ -108,7 +104,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { rows, limit, targetPair },
+      { rows, targetPair },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
