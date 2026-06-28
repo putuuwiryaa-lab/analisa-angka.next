@@ -18,6 +18,12 @@ const MENU = [
     subtitle: "Pilih pasaran, targetkan 2D depan, tengah, atau belakang, lalu hitung BBFS 7 digit.",
     Icon: Grid3X3,
   },
+  {
+    href: "/invest/bbfs7-tradisional",
+    title: "Uji Coba BBFS 7D Rumus Tradisional",
+    subtitle: "Rumus mandiri. Walk-forward 14 data, minimal 12/14 baru lolos, lalu hasil akhir dibentuk dari voting.",
+    Icon: Grid3X3,
+  },
 ];
 
 export default function InvestPage() {
