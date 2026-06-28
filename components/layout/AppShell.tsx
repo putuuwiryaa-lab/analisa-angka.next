@@ -11,7 +11,8 @@ import { Logo } from "@/components/ui/Logo";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap" || pathname === "/share-prediksi";
+  const isInvestMenu = pathname === "/invest" || pathname.startsWith("/invest/");
+  const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap" || pathname === "/share-prediksi" || isInvestMenu;
 
   const hideHeader = pathname === "/kode-login" || pathname.startsWith("/analyze/") || isStandaloneMenu;
   const showBottomNav = isHome;
@@ -80,10 +81,10 @@ function BottomNav() {
 
           <Link
             data-mode="invest"
-            href="/rekomendasi"
+            href="/invest"
             className={pill}
             style={{ boxShadow: softGlow }}
-            aria-label="Rekomendasi Invest"
+            aria-label="Menu Invest"
           >
             <Coins size={20} />
             <span className="text-sm font-black uppercase tracking-wide">Invest</span>
