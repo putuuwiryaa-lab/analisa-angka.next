@@ -26,6 +26,7 @@ export const ANALYSIS_MENU: Array<{ label: string; mode: ModeKey }> = [
   { label: "ANGKA IKUT", mode: "ai" },
   { label: "ANGKA MATI", mode: "mati" },
   { label: "BBFS", mode: "bbfs" },
+  { label: "BBFS 7D TRADISIONAL", mode: "bbfs7_tradisional" },
   { label: "JUMLAH MATI", mode: "jumlah" },
   { label: "SHIO MATI", mode: "shio" },
 ];
