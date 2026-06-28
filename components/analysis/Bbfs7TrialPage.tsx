@@ -43,7 +43,7 @@ export function Bbfs7TrialPage({ marketId }: { marketId: string }) {
   const [hasRun, setHasRun] = useState(false);
 
   const { data: markets = [], isPending, error } = useQuery({
-    queryKey: [...MARKETS_QUERY_KEY, "bbfs7-trial"],
+    queryKey: [...MARKETS_QUERY_KEY, "bbfs7"],
     queryFn: () => fetchMarkets(token || ""),
     enabled: Boolean(token),
     staleTime: MARKETS_STALE_TIME,
@@ -66,15 +66,15 @@ export function Bbfs7TrialPage({ marketId }: { marketId: string }) {
 
   return (
     <div data-mode="bbfs7_trial" className="animate-rise pb-8">
-      <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push(`/analyze/${encodeURIComponent(decodedMarketId)}`)}>
-        <ArrowLeft size={16} /> Kembali
+      <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push("/rekomendasi")}>
+        <ArrowLeft size={16} /> Invest
       </Button>
 
       <div className="animate-soft-pop depth-1 mb-5 rounded-3xl border p-4">
         <div className="depth-2 rounded-3xl border px-4 py-6 text-center">
-          <p className="text-[10px] font-black uppercase tracking-widest text-accent">Uji Coba BBFS 7D</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-accent">BBFS 7D</p>
           <h3 className="display mt-2 break-words text-2xl text-text sm:text-3xl">{market?.name || decodedMarketId}</h3>
-          <p className="mt-2 text-xs font-semibold text-text-muted">{formulaCount} rumus tradisional · walk-forward 14, 21, 28, ...</p>
+          <p className="mt-2 text-xs font-semibold text-text-muted">{formulaCount} rumus · walk-forward 14, 21, 28, ...</p>
         </div>
       </div>
 
@@ -125,15 +125,15 @@ export function Bbfs7TrialPage({ marketId }: { marketId: string }) {
         </div>
 
         <Button className="mt-4 h-13 w-full rounded-2xl font-black" disabled={isPending || !market || history.length < 15} onClick={() => setHasRun(true)}>
-          {isPending ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />} Uji Rumus
+          {isPending ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />} Hitung BBFS 7D
         </Button>
         {!market && !isPending && <p className="mt-3 text-center text-xs font-bold text-danger">Pasaran tidak ditemukan.</p>}
-        {market && history.length < 15 && <p className="mt-3 text-center text-xs font-bold text-danger">Minimal butuh 15 result untuk uji 14 transisi.</p>}
+        {market && history.length < 15 && <p className="mt-3 text-center text-xs font-bold text-danger">Minimal butuh 15 result untuk hitung 14 transisi.</p>}
       </div>
 
       {!hasRun && (
         <div className="animate-soft-pop rounded-3xl border border-dashed p-6 text-center text-xs font-semibold text-text-muted">
-          Pilih posisi, lalu tekan Uji Rumus. Sistem akan menguji {formulaCount} rumus di pasaran ini saja.
+          Pilih posisi, lalu tekan Hitung BBFS 7D. Sistem akan mengevaluasi {formulaCount} rumus di pasaran ini.
         </div>
       )}
 
