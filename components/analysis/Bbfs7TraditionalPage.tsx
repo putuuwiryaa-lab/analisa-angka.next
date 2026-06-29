@@ -138,7 +138,6 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
           detailValidationOpen={detailValidationOpen}
           setDetailValidationOpen={setDetailValidationOpen}
           angkaJadiOpen={angkaJadiOpen}
-          setOpen={setAngkaJadiOpen as never}
           setAngkaJadiOpen={setAngkaJadiOpen}
         />
       )}
