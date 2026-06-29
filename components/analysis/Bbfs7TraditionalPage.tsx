@@ -18,7 +18,6 @@ import {
 } from "@/lib/markets/client";
 import {
   BBFS7_TRADITIONAL_FORMULAS,
-  BBFS7_TRADITIONAL_THRESHOLD,
   BBFS7_TRADITIONAL_WINDOW,
   runBbfs7TraditionalWalkForward,
   type TargetPair,
@@ -56,7 +55,6 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
     placeholderData: keepPreviousData,
   });
 
-  const formulaCount = BBFS7_TRADITIONAL_FORMULAS.length;
   const market = useMemo(() => findMarketByIdOrName(markets, decodedMarketId), [markets, decodedMarketId]);
   const history = useMemo(() => (market ? parseHistoryTokens(extractHistoryData(market)) : []), [market]);
   const hasEnoughHistory = history.length >= BBFS7_TRADITIONAL_WINDOW + 3;
@@ -87,7 +85,7 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
   return (
     <div data-mode="bbfs7_tradisional" className="animate-rise pb-8">
       <AnalysisPageChrome
-        title="UJI COBA BBFS 7D RUMUS TRADISIONAL"
+        title="BBFS 7D TRADISIONAL"
         icon="▧"
         marketId={market?.name || decodedMarketId}
         isAI={false}
@@ -120,31 +118,15 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
 
       {!targetPair && <TargetPairSelector onSelect={(pair) => setTargetPair(pair)} />}
 
-      {targetPair && !hasRun && (
-        <div className="animate-soft-pop depth-1 rounded-3xl border p-4 text-center text-xs font-semibold text-text-muted">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-2xl border border-border-soft p-3">
-              <p className="text-[10px] font-black uppercase text-text-soft">Result</p>
-              <p className="num mt-1 text-xl font-black text-text">{history.length}</p>
-            </div>
-            <div className="rounded-2xl border border-border-soft p-3">
-              <p className="text-[10px] font-black uppercase text-text-soft">Transisi</p>
-              <p className="num mt-1 text-xl font-black text-text">{Math.max(history.length - 3, 0)}</p>
-            </div>
-            <div className="rounded-2xl border border-border-soft p-3">
-              <p className="text-[10px] font-black uppercase text-text-soft">Rumus</p>
-              <p className="num mt-1 text-xl font-black text-text">{formulaCount}</p>
-            </div>
-          </div>
-          <p className="mt-4 leading-relaxed">
-            Tekan Mulai Analisa. Sistem menguji {formulaCount} rumus tradisional, minimal {BBFS7_TRADITIONAL_THRESHOLD}/{BBFS7_TRADITIONAL_WINDOW} baru masuk voting.
-          </p>
-          {!market && <p className="mt-3 font-bold text-danger">Pasaran tidak ditemukan.</p>}
-          {market && !hasEnoughHistory && (
-            <p className="mt-3 font-bold text-danger">
-              Minimal butuh {BBFS7_TRADITIONAL_WINDOW + 3} result untuk walk-forward {BBFS7_TRADITIONAL_WINDOW} data.
-            </p>
-          )}
+      {targetPair && !hasRun && market && !hasEnoughHistory && (
+        <div className="animate-soft-pop rounded-3xl border border-dashed p-6 text-center text-xs font-semibold text-text-muted">
+          Minimal butuh {BBFS7_TRADITIONAL_WINDOW + 3} result untuk walk-forward {BBFS7_TRADITIONAL_WINDOW} data.
+        </div>
+      )}
+
+      {targetPair && !hasRun && !market && !isPending && (
+        <div className="animate-soft-pop rounded-3xl border border-dashed p-6 text-center text-xs font-semibold text-text-muted">
+          Pasaran tidak ditemukan.
         </div>
       )}
 
