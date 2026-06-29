@@ -51,7 +51,7 @@ export type Bbfs7TraditionalResult = {
 };
 
 export const BBFS7_TRADITIONAL_WINDOW = 14;
-export const BBFS7_TRADITIONAL_THRESHOLD = 10;
+export const BBFS7_TRADITIONAL_THRESHOLD = 9;
 
 const INDEX_MAP: Record<number, number> = { 0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4 };
 const LEMAH_MAP: Record<number, number> = { 0: 1, 1: 0, 2: 5, 5: 2, 3: 8, 8: 3, 4: 7, 7: 4, 6: 9, 9: 6 };
