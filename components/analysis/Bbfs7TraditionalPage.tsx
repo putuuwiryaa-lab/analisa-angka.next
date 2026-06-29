@@ -17,7 +17,6 @@ import {
   parseHistoryTokens,
 } from "@/lib/markets/client";
 import {
-  BBFS7_TRADITIONAL_FORMULAS,
   BBFS7_TRADITIONAL_WINDOW,
   runBbfs7TraditionalWalkForward,
   type TargetPair,
@@ -42,7 +41,6 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
   const { token } = useAuth();
   const decodedMarketId = safeDecode(marketId);
   const [targetPair, setTargetPair] = useState<TargetPair | null>(null);
-  const [hasRun, setHasRun] = useState(false);
   const [detailValidationOpen, setDetailValidationOpen] = useState(false);
   const [angkaJadiOpen, setAngkaJadiOpen] = useState(false);
 
@@ -58,11 +56,10 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
   const market = useMemo(() => findMarketByIdOrName(markets, decodedMarketId), [markets, decodedMarketId]);
   const history = useMemo(() => (market ? parseHistoryTokens(extractHistoryData(market)) : []), [market]);
   const hasEnoughHistory = history.length >= BBFS7_TRADITIONAL_WINDOW + 3;
-  const canStart = Boolean(targetPair && market && hasEnoughHistory && !hasRun);
   const result = useMemo(() => {
-    if (!hasRun || !targetPair) return null;
+    if (!targetPair || !market || !hasEnoughHistory) return null;
     return runBbfs7TraditionalWalkForward(history, targetPair);
-  }, [hasRun, history, targetPair]);
+  }, [targetPair, market, hasEnoughHistory, history]);
 
   const analysisResult = useMemo(() => {
     if (!result?.nextBbfsDigits || !targetPair) return null;
@@ -96,13 +93,12 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
         targetPair={targetPair}
         customFocus={null}
         loading={isPending}
-        canStartAnalyze={canStart}
+        canStartAnalyze={false}
         onBack={() => router.push(`/analyze/${encodeURIComponent(decodedMarketId)}`)}
-        onStartAnalyze={() => setHasRun(true)}
+        onStartAnalyze={() => {}}
         onAIScopeReset={() => {}}
         onTargetPairReset={() => {
           setTargetPair(null);
-          setHasRun(false);
           setDetailValidationOpen(false);
           setAngkaJadiOpen(false);
         }}
@@ -118,13 +114,13 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
 
       {!targetPair && <TargetPairSelector onSelect={(pair) => setTargetPair(pair)} />}
 
-      {targetPair && !hasRun && market && !hasEnoughHistory && (
+      {targetPair && market && !hasEnoughHistory && (
         <div className="animate-soft-pop rounded-3xl border border-dashed p-6 text-center text-xs font-semibold text-text-muted">
           Minimal butuh {BBFS7_TRADITIONAL_WINDOW + 3} result untuk walk-forward {BBFS7_TRADITIONAL_WINDOW} data.
         </div>
       )}
 
-      {targetPair && !hasRun && !market && !isPending && (
+      {targetPair && !market && !isPending && (
         <div className="animate-soft-pop rounded-3xl border border-dashed p-6 text-center text-xs font-semibold text-text-muted">
           Pasaran tidak ditemukan.
         </div>
@@ -142,6 +138,7 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
           detailValidationOpen={detailValidationOpen}
           setDetailValidationOpen={setDetailValidationOpen}
           angkaJadiOpen={angkaJadiOpen}
+          setOpen={setAngkaJadiOpen as never}
           setAngkaJadiOpen={setAngkaJadiOpen}
         />
       )}
