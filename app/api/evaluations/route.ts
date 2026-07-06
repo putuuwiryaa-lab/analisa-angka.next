@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 type EvaluationMode = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
 type TargetPair = "depan" | "tengah" | "belakang";
+type MarketRow = { id?: string | null; name?: string | null };
 
 const LIMIT = 15;
 const VALID_MODES = new Set(["ai", "ai_parity", "ai_size", "bbfs", "mati", "jumlah", "shio"]);
@@ -42,6 +43,27 @@ function shouldUseAi2DScopeFallback(mode: EvaluationMode, analysisScope: Analysi
   return mode === "ai" && analysisScope !== "3d" && analysisScope !== "4d";
 }
 
+async function resolveMarketIds(supabase: ReturnType<typeof createAdminClient>, marketId: string) {
+  const ids = new Set(marketCandidates(marketId));
+  const normalizedIds = new Set(Array.from(ids).map(normalizeKey));
+
+  const { data, error } = await supabase.from("markets").select("id,name");
+  if (error) throw error;
+
+  for (const market of ((data || []) as MarketRow[])) {
+    const id = String(market.id || "").trim();
+    const name = String(market.name || "").trim();
+    if (!id && !name) continue;
+
+    if (normalizedIds.has(normalizeKey(id)) || normalizedIds.has(normalizeKey(name))) {
+      if (id) ids.add(id);
+      if (name) ids.add(name);
+    }
+  }
+
+  return Array.from(ids).filter(Boolean);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const search = request.nextUrl.searchParams;
@@ -59,27 +81,12 @@ export async function GET(request: NextRequest) {
     if (!VALID_SCOPES.has(analysisScope)) throw new Error("Analysis scope tidak valid.");
 
     const supabase = createAdminClient();
-    const ids = new Set(marketCandidates(marketId));
-    const normalizedRequest = normalizeKey(marketId);
-
-    const { data: markets, error: marketError } = await supabase
-      .from("markets")
-      .select("id,name")
-      .or(
-        `id.in.(${Array.from(ids).map((id) => `"${String(id).replace(/"/g, "\\\"")}"`).join(",")}),name.ilike.${normalizedRequest}`,
-      );
-
-    if (!marketError) {
-      for (const market of markets || []) {
-        if (market?.id) ids.add(String(market.id));
-        if (market?.name) ids.add(String(market.name));
-      }
-    }
+    const marketIds = await resolveMarketIds(supabase, marketId);
 
     let query = supabase
       .from("analysis_evaluations")
       .select("id,from_result,new_result,is_hit,status,detail,evaluated_at,position,target_pair,analysis_scope,market_id")
-      .in("market_id", Array.from(ids))
+      .in("market_id", marketIds)
       .eq("mode", mode)
       .eq("param", param)
       .order("evaluated_at", { ascending: false })
