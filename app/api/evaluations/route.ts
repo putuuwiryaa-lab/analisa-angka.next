@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/server/supabase-admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,15 +13,16 @@ const VALID_MODES = new Set(["ai", "ai_parity", "ai_size", "bbfs", "mati", "juml
 const VALID_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value);
   } catch {
     return value;
   }
+}
+
+function normalizeKey(value: string) {
+  return safeDecode(value).trim().toLowerCase();
 }
 
 function marketCandidates(value: string) {
@@ -43,10 +44,6 @@ function shouldUseAi2DScopeFallback(mode: EvaluationMode, analysisScope: Analysi
 
 export async function GET(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Konfigurasi Supabase belum lengkap.");
-    }
-
     const search = request.nextUrl.searchParams;
     const marketId = safeDecode(search.get("marketId") || "").trim();
     const mode = (search.get("mode") || "") as EvaluationMode;
@@ -55,40 +52,28 @@ export async function GET(request: NextRequest) {
     const targetPair = (search.get("targetPair") || "belakang") as TargetPair;
     const analysisScope = (search.get("analysisScope") || "default") as AnalysisScope;
 
-    if (!marketId) {
-      throw new Error("marketId kosong.");
-    }
+    if (!marketId) throw new Error("marketId kosong.");
+    if (!VALID_MODES.has(mode)) throw new Error("Mode evaluasi tidak valid.");
+    if (!Number.isFinite(param) || param <= 0) throw new Error("Param evaluasi tidak valid.");
+    if (!VALID_TARGET_PAIRS.has(targetPair)) throw new Error("Target pair tidak valid.");
+    if (!VALID_SCOPES.has(analysisScope)) throw new Error("Analysis scope tidak valid.");
 
-    if (!VALID_MODES.has(mode)) {
-      throw new Error("Mode evaluasi tidak valid.");
-    }
-
-    if (!Number.isFinite(param) || param <= 0) {
-      throw new Error("Param evaluasi tidak valid.");
-    }
-
-    if (!VALID_TARGET_PAIRS.has(targetPair)) {
-      throw new Error("Target pair tidak valid.");
-    }
-
-    if (!VALID_SCOPES.has(analysisScope)) {
-      throw new Error("Analysis scope tidak valid.");
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
+    const supabase = createAdminClient();
     const ids = new Set(marketCandidates(marketId));
+    const normalizedRequest = normalizeKey(marketId);
 
-    const { data: markets } = await supabase
+    const { data: markets, error: marketError } = await supabase
       .from("markets")
       .select("id,name")
-      .in("id", Array.from(ids));
+      .or(
+        `id.in.(${Array.from(ids).map((id) => `"${String(id).replace(/"/g, "\\\"")}"`).join(",")}),name.ilike.${normalizedRequest}`,
+      );
 
-    for (const market of markets || []) {
-      if (market?.id) ids.add(String(market.id));
-      if (market?.name) ids.add(String(market.name));
+    if (!marketError) {
+      for (const market of markets || []) {
+        if (market?.id) ids.add(String(market.id));
+        if (market?.name) ids.add(String(market.name));
+      }
     }
 
     let query = supabase
@@ -100,13 +85,8 @@ export async function GET(request: NextRequest) {
       .order("evaluated_at", { ascending: false })
       .limit(LIMIT);
 
-    if (position && position !== "all") {
-      query = query.eq("position", position);
-    }
-
-    if (mode !== "mati") {
-      query = query.eq("target_pair", targetPair);
-    }
+    if (position && position !== "all") query = query.eq("position", position);
+    if (mode !== "mati") query = query.eq("target_pair", targetPair);
 
     if (shouldUseAi2DScopeFallback(mode, analysisScope)) {
       query = query.in("analysis_scope", ["default", legacyAi2DScope(targetPair)]);
@@ -115,10 +95,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { data, error } = await query;
-
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     return NextResponse.json(data || [], {
       headers: { "Cache-Control": "no-store" },
@@ -128,7 +105,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { error: message },
-      { status: 500 },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
     );
   }
 }
