@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,7 +7,7 @@ export const dynamic = "force-dynamic";
 type RawMarket = Record<string, unknown>;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 function normalizeHistoryData(market: RawMarket) {
   return String(
@@ -32,13 +31,8 @@ function normalizeMarket(market: RawMarket) {
   };
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const session = await verifyActiveTelegramSession(request.headers);
-    if (!session.ok) {
-      return NextResponse.json({ success: false, error: session.error }, { status: session.status });
-    }
-
     if (!supabaseUrl || !supabaseKey) {
       throw new Error("Konfigurasi Supabase belum lengkap.");
     }
