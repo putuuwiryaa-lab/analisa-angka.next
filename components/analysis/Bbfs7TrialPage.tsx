@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronDown, Loader2, Play, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth/auth-context";
 import { Button } from "@/components/ui/Button";
 import {
   MARKETS_GC_TIME,
@@ -37,15 +36,13 @@ function percent(value: number) {
 
 export function Bbfs7TrialPage({ marketId }: { marketId: string }) {
   const router = useRouter();
-  const { token } = useAuth();
   const decodedMarketId = safeDecode(marketId);
   const [targetPair, setTargetPair] = useState<TargetPair>("belakang");
   const [hasRun, setHasRun] = useState(false);
 
   const { data: markets = [], isPending, error } = useQuery({
     queryKey: [...MARKETS_QUERY_KEY, "bbfs7"],
-    queryFn: () => fetchMarkets(token || ""),
-    enabled: Boolean(token),
+    queryFn: () => fetchMarkets(),
     staleTime: MARKETS_STALE_TIME,
     gcTime: MARKETS_GC_TIME,
     placeholderData: keepPreviousData,
