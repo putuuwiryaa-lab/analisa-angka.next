@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/components/auth/auth-context";
 import {
   MARKETS_QUERY_KEY,
   MARKETS_STALE_TIME,
@@ -12,17 +11,14 @@ import {
 
 export function useMarketHistoryData(marketId: string) {
   const queryClient = useQueryClient();
-  const { token } = useAuth();
 
   const getMarkets = async () => {
     const cached = queryClient.getQueryData<Market[]>(MARKETS_QUERY_KEY);
     if (cached?.length) return cached;
 
-    if (!token) throw new Error("Session login belum siap. Silakan refresh halaman.");
-
     return queryClient.fetchQuery({
       queryKey: MARKETS_QUERY_KEY,
-      queryFn: () => fetchMarkets(token),
+      queryFn: () => fetchMarkets(),
       staleTime: MARKETS_STALE_TIME,
     });
   };
