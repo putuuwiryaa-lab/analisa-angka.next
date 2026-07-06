@@ -16,7 +16,6 @@ import {
   type TargetPair,
   type VisibleCategoryKey,
 } from "@/lib/analysis/statistics";
-import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +28,7 @@ const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_te
 const STATISTICS_MIN_WINS_15 = 12;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 function parseCategory(value: string | null): VisibleCategoryKey {
   return VALID_CATEGORIES.has(value || "") ? (value as VisibleCategoryKey) : "ai";
@@ -55,15 +54,6 @@ function normalizeAiParam(category: VisibleCategoryKey, param: number) {
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await verifyActiveTelegramSession(request.headers);
-
-    if (!access.ok) {
-      return NextResponse.json(
-        { error: access.error },
-        { status: access.status, headers: { "Cache-Control": "no-store" } },
-      );
-    }
-
     if (!supabaseUrl || !supabaseKey) throw new Error("Konfigurasi Supabase belum lengkap.");
 
     const search = request.nextUrl.searchParams;
