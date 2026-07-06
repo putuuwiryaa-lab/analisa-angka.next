@@ -5,6 +5,6 @@ export type SessionAccess = {
   role?: "TRIAL" | "PRO" | "SUPER";
 };
 
-export async function verifyActiveTelegramSession(): Promise<SessionAccess> {
+export async function verifyActiveTelegramSession(_headers?: Headers): Promise<SessionAccess> {
   return { ok: true, status: 200, role: "SUPER" };
 }
