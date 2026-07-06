@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth/auth-context";
 import { AnalysisPageChrome } from "@/components/analysis/AnalysisPageChrome";
 import { AnalysisResult } from "@/components/analysis/AnalysisResult";
 import { TargetPairSelector } from "@/components/analysis/ScopeSelectors";
@@ -38,7 +37,6 @@ function scopeFromPair(pair: TargetPair) {
 
 export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
   const router = useRouter();
-  const { token } = useAuth();
   const decodedMarketId = safeDecode(marketId);
   const [targetPair, setTargetPair] = useState<TargetPair | null>(null);
   const [detailValidationOpen, setDetailValidationOpen] = useState(false);
@@ -46,8 +44,7 @@ export function Bbfs7TraditionalPage({ marketId }: { marketId: string }) {
 
   const { data: markets = [], isPending, error } = useQuery({
     queryKey: [...MARKETS_QUERY_KEY, "bbfs7-tradisional"],
-    queryFn: () => fetchMarkets(token || ""),
-    enabled: Boolean(token),
+    queryFn: () => fetchMarkets(),
     staleTime: MARKETS_STALE_TIME,
     gcTime: MARKETS_GC_TIME,
     placeholderData: keepPreviousData,
