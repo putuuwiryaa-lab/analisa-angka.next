@@ -72,7 +72,7 @@ export function findMarketByIdOrName(markets: Market[], marketId: string) {
   });
 }
 
-export async function fetchMarkets(): Promise<Market[]> {
+export async function fetchMarkets(..._args: unknown[]): Promise<Market[]> {
   const response = await fetch("/api/markets", {
     cache: "no-store",
   });
