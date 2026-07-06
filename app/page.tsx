@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Clock3, Database, Plus, RefreshCw, Search } from "lucide-react";
-import { useAuth } from "@/components/auth/auth-context";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -19,7 +18,6 @@ const WA_NUMBER = "6285119341538";
 
 export default function DashboardPage() {
   const [search, setSearch] = useState("");
-  const { token } = useAuth();
   const {
     data: markets = [],
     isPending,
@@ -28,8 +26,7 @@ export default function DashboardPage() {
     isFetching,
   } = useQuery({
     queryKey: MARKETS_QUERY_KEY,
-    queryFn: () => fetchMarkets(token || ""),
-    enabled: Boolean(token),
+    queryFn: () => fetchMarkets(),
     staleTime: MARKETS_STALE_TIME,
     gcTime: MARKETS_GC_TIME,
     placeholderData: keepPreviousData,
@@ -72,7 +69,7 @@ export default function DashboardPage() {
           </div>
           <button
             onClick={() => refetch()}
-            disabled={!token || isFetching}
+            disabled={isFetching}
             className="pressable depth-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.07] disabled:opacity-50"
             aria-label="Refresh data pasaran"
           >
