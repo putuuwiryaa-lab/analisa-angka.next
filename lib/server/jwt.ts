@@ -11,11 +11,13 @@ export interface TokenPayload {
   exp?: number;
 }
 
-export function signToken(): string {
+export function signToken(...args: any[]): string {
+  void args;
   return "";
 }
 
-export function verifyToken(): TokenPayload {
+export function verifyToken(...args: any[]): TokenPayload {
+  void args;
   return { role: "SUPER", tokenVersion: TOKEN_VERSION };
 }
 
