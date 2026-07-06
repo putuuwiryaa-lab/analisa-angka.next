@@ -1,8 +1,6 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/components/auth/auth-context";
-import { deviceAuthHeader } from "@/lib/auth/device";
 
 type EvaluationMode = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio";
 type EvaluationPosition = "all" | "as" | "kop" | "kepala" | "ekor";
@@ -47,7 +45,6 @@ function displayLabel(row: any, mode: EvaluationMode) {
 }
 
 async function fetchEvaluations(
-  token: string,
   marketId: string,
   mode: EvaluationMode,
   param: number,
@@ -66,7 +63,6 @@ async function fetchEvaluations(
 
   const response = await fetch(`/api/evaluations?${params.toString()}`, {
     cache: "no-store",
-    headers: { Authorization: `Bearer ${token}`, ...deviceAuthHeader() },
   });
   const json = await response.json();
 
@@ -105,7 +101,6 @@ export function EvaluationHistory({
   analysisScope?: AnalysisScope;
   title?: string;
 }) {
-  const { token } = useAuth();
   const normalizedMarketId = normalizeMarketId(marketId);
   const showAi2DigitNote = mode === "ai" && param === 2;
 
@@ -116,8 +111,8 @@ export function EvaluationHistory({
     error,
   } = useQuery({
     queryKey: ["evaluations", normalizedMarketId, mode, param, position, targetPair, analysisScope],
-    queryFn: () => fetchEvaluations(token || "", normalizedMarketId, mode, param, position, targetPair, analysisScope),
-    enabled: Boolean(token && normalizedMarketId && mode && param),
+    queryFn: () => fetchEvaluations(normalizedMarketId, mode, param, position, targetPair, analysisScope),
+    enabled: Boolean(normalizedMarketId && mode && param),
     staleTime: EVALUATIONS_STALE_TIME,
     gcTime: EVALUATIONS_GC_TIME,
     placeholderData: keepPreviousData,
@@ -125,7 +120,6 @@ export function EvaluationHistory({
 
   const hasRows = rows.length > 0;
 
-  if (!token) return <StateBox text="Memeriksa akses…" tone="loading" />;
   if (isPending && !hasRows) return <StateBox text="Memuat riwayat…" tone="loading" />;
   if (error && !hasRows) return <StateBox text={error instanceof Error ? error.message : "Gagal memuat riwayat evaluasi"} tone="error" />;
   if (!hasRows) return <StateBox text="Riwayat evaluasi belum ada" />;
