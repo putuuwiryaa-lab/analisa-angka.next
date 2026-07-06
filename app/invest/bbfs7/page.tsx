@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, Grid3X3, Loader2, RefreshCw, Search } from "lucide-react";
-import { useAuth } from "@/components/auth/auth-context";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -26,7 +25,6 @@ type MarketLike = {
 
 export default function InvestBbfs7Page() {
   const router = useRouter();
-  const { token } = useAuth();
   const [search, setSearch] = useState("");
 
   const {
@@ -37,8 +35,7 @@ export default function InvestBbfs7Page() {
     isFetching,
   } = useQuery({
     queryKey: [...MARKETS_QUERY_KEY, "invest-bbfs7"],
-    queryFn: () => fetchMarkets(token || ""),
-    enabled: Boolean(token),
+    queryFn: () => fetchMarkets(),
     staleTime: MARKETS_STALE_TIME,
     gcTime: MARKETS_GC_TIME,
     placeholderData: keepPreviousData,
@@ -86,7 +83,7 @@ export default function InvestBbfs7Page() {
           </div>
           <button
             onClick={() => refetch()}
-            disabled={!token || isFetching}
+            disabled={isFetching}
             className="pressable depth-3 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075] disabled:opacity-50"
             aria-label="Perbarui data pasaran"
           >
