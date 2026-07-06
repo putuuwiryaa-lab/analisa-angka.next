@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/components/auth/auth-context";
 import type { CustomFocus, TargetPair } from "@/lib/analysis/customDigit";
 import { analysisCacheKey, readAnalysisCache, writeAnalysisCache } from "@/lib/analysis/sessionCache";
 import type { AnalysisScope } from "./ScopeSelectors";
@@ -31,7 +30,6 @@ type ResultData = Record<string, any>;
 export function useAnalysisController({ type, marketId }: { type: string; marketId: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { token } = useAuth();
   const { getMarketData } = useMarketHistoryData(marketId);
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
@@ -134,7 +132,6 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     scope = "default",
   ) =>
     postAnalyzeRequest({
-      token,
       type: analysisType,
       data,
       param: analysisParam,
@@ -259,6 +256,8 @@ export function useAnalysisController({ type, marketId }: { type: string; market
 
     if (type === "rekap") {
       rekap.setters.setCustomFocus(nextCustomFocus);
+      setAnalysisScope("default");
+      setTargetPair("belakang");
     } else if (isAI || isBBFS) {
       setAnalysisScope(nextScope);
       setTargetPair(nextScope ? targetPairFromScope(nextScope) : "belakang");
