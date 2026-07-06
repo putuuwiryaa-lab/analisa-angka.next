@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "./providers";
-import { AuthGate } from "@/components/auth/AuthGate";
 import { AppShell } from "@/components/layout/AppShell";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
@@ -38,9 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <Providers>
-          <AuthGate>
-            <AppShell>{children}</AppShell>
-          </AuthGate>
+          <AppShell>{children}</AppShell>
         </Providers>
         <ServiceWorkerRegister />
         <Analytics />
