@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
-import { requireSuperShareAccess } from "@/lib/server/share-predictions-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,11 +67,7 @@ function normalizeOption(row: SnapshotOptionRow) {
   return { mode, param, targetPair, analysisScope };
 }
 
-export async function GET(request: Request) {
-  const access = await verifyActiveTelegramSession(request.headers);
-  const denied = requireSuperShareAccess(access);
-  if (denied) return denied;
-
+export async function GET() {
   try {
     const supabase = createAdminClient();
     const options = new Map<string, ShareOption>();
