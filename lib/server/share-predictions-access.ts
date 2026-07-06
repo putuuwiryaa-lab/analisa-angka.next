@@ -1,10 +1,10 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import type { TelegramSessionResult } from "@/lib/server/telegram-session";
+import type { SessionAccess } from "@/lib/server/telegram-session";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
-export function requireSuperShareAccess(access: TelegramSessionResult) {
+export function requireSuperShareAccess(access: SessionAccess) {
   if (!access.ok) {
     return NextResponse.json(
       { error: access.error },
