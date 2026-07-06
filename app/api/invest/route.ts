@@ -6,7 +6,6 @@ import {
   type InvestMarketResult,
 } from "@/lib/server/engines/investEngine";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,11 +90,6 @@ async function rankFreshInvestMarkets(markets: InvestMarketResult[]) {
 
 export async function GET(request: Request) {
   try {
-    const access = await verifyActiveTelegramSession(request.headers);
-    if (!access.ok) {
-      return NextResponse.json({ error: access.error }, { status: access.status });
-    }
-
     const marketId = new URL(request.url).searchParams.get("marketId");
 
     const data = marketId
