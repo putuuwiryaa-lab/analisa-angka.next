@@ -6,6 +6,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export function useAuth() {
+export function useAuth(): any {
   return { token: "", verifying: false, loading: false };
 }
