@@ -125,10 +125,10 @@ export function EvaluationHistory({
   if (!hasRows) return <StateBox text="Riwayat evaluasi belum ada" />;
 
   return (
-    <div className="animate-rise space-y-3">
-      <div className="flex items-center justify-between px-1">
-        <span className="display text-xs text-text">{title}</span>
-        <span className="text-[11px] font-bold uppercase tracking-wide text-text-soft">
+    <div className="animate-rise space-y-3 overflow-hidden">
+      <div className="flex min-w-0 items-center justify-between gap-3 px-1">
+        <span className="display min-w-0 truncate text-xs text-text">{title}</span>
+        <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-text-soft sm:text-[11px]">
           {isFetching ? "Memperbarui…" : "15 Terbaru"}
         </span>
       </div>
@@ -145,18 +145,20 @@ export function EvaluationHistory({
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {rows.map((row: any, index: number) => {
           const label = displayLabel(row, mode);
           const isSuccess = label !== "ZONK";
           return (
             <div
               key={row.id}
-              className="animate-soft-pop depth-2 rounded-2xl border p-2 text-center"
+              className="animate-soft-pop depth-2 min-w-0 rounded-2xl border p-2 text-center"
               style={{ animationDelay: `${Math.min(index, 12) * 20}ms` }}
             >
-              <div className="num text-[11px] font-black text-text">
-                {row.from_result} → {row.new_result}
+              <div className="num text-[10px] font-black leading-5 text-text sm:text-[11px]">
+                <div className="truncate">{row.from_result}</div>
+                <div className="text-text-soft">→</div>
+                <div className="truncate">{row.new_result}</div>
               </div>
               <div
                 className={`mt-2 rounded-full px-1.5 py-1 text-[9px] font-black uppercase tracking-wide ${
