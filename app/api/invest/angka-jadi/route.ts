@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 import { runAnalysis } from "@/lib/server/engines/predictionEngine";
 import {
   buildCustomDigitLines,
@@ -257,11 +256,6 @@ async function generateAngkaJadi(data: string[], pair: TargetPair, filters: Inve
 }
 
 export async function POST(request: Request) {
-  const access = await verifyActiveTelegramSession(request.headers);
-  if (!access.ok) {
-    return NextResponse.json({ success: false, error: access.error }, { status: access.status });
-  }
-
   try {
     const body = await request.json().catch(() => ({}));
     const marketId = String(body.marketId || body.market_id || "").trim();
