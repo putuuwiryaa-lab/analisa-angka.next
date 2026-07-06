@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       .eq("param", param)
       .eq("target_pair", targetPair)
       .eq("analysis_scope", analysisScope)
+      .order("updated_at", { ascending: false })
       .limit(500);
 
     if (error) throw error;
@@ -82,9 +83,7 @@ export async function GET(request: NextRequest) {
     const marketMap = new Map<string, MarketRow>();
     markets.forEach((market) => marketMap.set(key(market.id), market));
 
-    const activeSnapshots = snapshots.filter((row) => marketMap.has(key(row.market_id)));
-
-    const rows = activeSnapshots
+    const rows = snapshots
       .sort((a, b) => {
         const aMarket = marketMap.get(key(a.market_id));
         const bMarket = marketMap.get(key(b.market_id));
