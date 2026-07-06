@@ -160,7 +160,7 @@ export default function SharePrediksiPage() {
   };
 
   return (
-    <div data-mode="share-prediksi" className="animate-rise space-y-4 pb-4">
+    <div data-mode="share-prediksi" className="animate-rise space-y-4 pb-6">
       <button type="button" onClick={() => router.back()} className="pressable inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-wide text-text-soft">
         <ArrowLeft size={16} /> Kembali
       </button>
@@ -199,14 +199,18 @@ export default function SharePrediksiPage() {
       <section className="animate-soft-pop depth-1 rounded-3xl border p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <span className="display text-xs text-text">Preview</span>
-          <span className="text-[11px] font-bold uppercase tracking-wide text-text-soft">{rows.length} Pasaran</span>
+          <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-text-soft">{rows.length} Pasaran</span>
         </div>
         {loadingRows ? (
           <div className="flex items-center justify-center gap-2 rounded-2xl border border-border-soft p-4 text-xs font-black uppercase tracking-wide text-text-muted">
             <Loader2 size={16} className="animate-spin" /> Memuat data
           </div>
         ) : shareText ? (
-          <pre className="max-h-[55svh] whitespace-pre-wrap rounded-2xl border border-border-soft bg-black/25 p-4 text-xs font-bold leading-6 text-text">{shareText}</pre>
+          <div className="overflow-hidden rounded-2xl border border-border-soft bg-black/25">
+            <pre className="max-h-[48svh] overflow-y-auto whitespace-pre-wrap break-words p-4 pb-6 font-mono text-[11px] font-bold leading-6 text-text sm:text-xs">
+              {shareText}
+            </pre>
+          </div>
         ) : (
           <StateBox text="Data belum tersedia" />
         )}
@@ -214,7 +218,7 @@ export default function SharePrediksiPage() {
           type="button"
           onClick={handleCopy}
           disabled={!shareText}
-          className="accent-bg-soft accent-text mt-3 flex w-full items-center justify-center gap-2 rounded-2xl p-3 text-xs font-black uppercase tracking-wider disabled:opacity-50"
+          className="accent-bg-soft accent-text mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-wider disabled:opacity-50"
         >
           {copied ? <Check size={16} /> : <ClipboardCopy size={16} />} {copied ? "Tersalin" : "Copy"}
         </button>
