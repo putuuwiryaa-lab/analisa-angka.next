@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/server/supabase-admin";
 import {
   MARKET_STAT_SELECT,
   MAX_LOSS_STREAK_ALLOWED,
@@ -27,9 +27,6 @@ const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_te
 
 const STATISTICS_MIN_WINS_15 = 12;
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
 function parseCategory(value: string | null): VisibleCategoryKey {
   return VALID_CATEGORIES.has(value || "") ? (value as VisibleCategoryKey) : "ai";
 }
@@ -54,8 +51,6 @@ function normalizeAiParam(category: VisibleCategoryKey, param: number) {
 
 export async function GET(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseKey) throw new Error("Konfigurasi Supabase belum lengkap.");
-
     const search = request.nextUrl.searchParams;
     const category = parseCategory(search.get("category"));
     const targetPair = parseTargetPair(search.get("targetPair"));
@@ -66,9 +61,7 @@ export async function GET(request: NextRequest) {
 
     if (!Number.isFinite(param) || param <= 0) throw new Error("Parameter statistik tidak valid.");
 
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const supabase = createAdminClient();
 
     const isPositionCategory = category === "off_digit";
     const isBBFSCategory = category === "bbfs";
