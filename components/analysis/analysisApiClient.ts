@@ -1,16 +1,14 @@
-import { deviceAuthHeader } from "@/lib/auth/device";
 import type { TargetPair } from "@/lib/analysis/customDigit";
 import type { AnalysisScope } from "./ScopeSelectors";
 
 export async function postAnalyzeRequest({
-  token,
   type,
   data,
   param,
   targetPair = "belakang",
   scope = "default",
 }: {
-  token: string | null | undefined;
+  token?: string | null | undefined;
   type: string;
   data: string[];
   param: number;
@@ -21,8 +19,6 @@ export async function postAnalyzeRequest({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token || ""}`,
-      ...deviceAuthHeader(),
     },
     body: JSON.stringify({
       type,
