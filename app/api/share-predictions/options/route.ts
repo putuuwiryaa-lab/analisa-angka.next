@@ -13,10 +13,6 @@ type SnapshotOptionRow = {
   updated_at: string | null;
 };
 
-type MarketRow = {
-  id: string | null;
-};
-
 type ShareOption = {
   key: string;
   mode: string;
@@ -34,10 +30,6 @@ const MAX_ROWS = 30000;
 
 function optionKey(mode: string, param: number, targetPair: string, analysisScope: string) {
   return `${mode}|${param}|${targetPair}|${analysisScope}`;
-}
-
-function key(value: string | null | undefined) {
-  return String(value || "").trim().toLowerCase();
 }
 
 function isAllowedOption(mode: string, param: number, targetPair: string, analysisScope: string) {
@@ -85,21 +77,8 @@ export async function GET() {
       const rows = (data || []) as SnapshotOptionRow[];
       if (!rows.length) break;
 
-      const ids = Array.from(new Set(rows.map((row) => row.market_id).filter(Boolean).map(String)));
-      let activeMarketIds = new Set<string>();
-
-      if (ids.length) {
-        const { data: markets, error: marketError } = await supabase
-          .from("markets")
-          .select("id")
-          .in("id", ids);
-
-        if (marketError) throw marketError;
-        activeMarketIds = new Set(((markets || []) as MarketRow[]).map((market) => key(market.id)).filter(Boolean));
-      }
-
       for (const row of rows) {
-        if (!activeMarketIds.has(key(row.market_id))) continue;
+        if (!row.market_id) continue;
 
         const normalized = normalizeOption(row);
         if (!normalized) continue;
