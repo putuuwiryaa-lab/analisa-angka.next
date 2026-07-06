@@ -35,16 +35,20 @@ export function StatisticCard({
 
   return (
     <div
-      className={topRank ? "animate-soft-pop depth-accent rounded-3xl border p-3 text-left" : "animate-soft-pop depth-1 rounded-3xl border p-3 text-left"}
+      className={
+        topRank
+          ? "animate-soft-pop depth-accent overflow-hidden rounded-3xl border p-3 text-left sm:p-4"
+          : "animate-soft-pop depth-1 overflow-hidden rounded-3xl border p-3 text-left sm:p-4"
+      }
       style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}
     >
-      <div className="flex items-start gap-3">
-        <div className="flex w-14 shrink-0 flex-col items-center gap-1.5">
+      <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+        <div className="flex w-10 shrink-0 flex-col items-center gap-1.5 sm:w-14">
           <div
             className={
               topRank
-                ? "display flex h-12 w-12 items-center justify-center rounded-2xl text-[13px] shadow-sm"
-                : "display accent-text depth-3 flex h-12 w-12 items-center justify-center rounded-2xl border text-[13px]"
+                ? "display flex h-10 w-10 items-center justify-center rounded-2xl text-[11px] shadow-sm sm:h-12 sm:w-12 sm:text-[13px]"
+                : "display accent-text depth-3 flex h-10 w-10 items-center justify-center rounded-2xl border text-[11px] sm:h-12 sm:w-12 sm:text-[13px]"
             }
             style={topRank ? solidAccentStyle : undefined}
           >
@@ -52,7 +56,7 @@ export function StatisticCard({
           </div>
           {movement && (
             <span
-              className="display mt-1 flex min-h-7 min-w-14 items-center justify-center rounded-xl border px-3 py-1.5 text-xs leading-none"
+              className="display mt-1 flex min-h-6 min-w-10 items-center justify-center rounded-xl border px-2 py-1 text-[10px] leading-none sm:min-h-7 sm:min-w-14 sm:px-3 sm:py-1.5 sm:text-xs"
               style={{ color: tone.text, backgroundColor: tone.bg, borderColor: tone.border, boxShadow: tone.shadow }}
             >
               {movement}
@@ -61,38 +65,38 @@ export function StatisticCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="display truncate text-base text-text">{marketName}</p>
-              <p className="accent-text mt-1 text-[11px] font-black uppercase tracking-wide">
+              <p className="display break-words text-[1.05rem] leading-tight text-text sm:text-base">{marketName}</p>
+              <p className="accent-text mt-1 break-words text-[10px] font-black uppercase leading-4 tracking-wide sm:text-[11px]">
                 {statTitle(item)}
               </p>
               {item.group_key === "off_digit" && (
-                <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-text-muted">
+                <p className="mt-1 text-[10px] font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
                   {positionPairSubtitle(item.target_pair)}
                 </p>
               )}
               {item.group_key === "bbfs" && (
-                <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-text-muted">
+                <p className="mt-1 text-[10px] font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
                   {bbfsScopeSubtitle(item.analysis_scope)}
                 </p>
               )}
             </div>
-            <span className="accent-bg-soft accent-text shrink-0 rounded-full border border-border-soft px-2.5 py-1 text-[11px] font-black uppercase tracking-wide">
+            <span className="accent-bg-soft accent-text w-fit shrink-0 rounded-full border border-border-soft px-2.5 py-1 text-[10px] font-black uppercase tracking-wide sm:text-[11px]">
               {badgeLabel(item)}
             </span>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-            <div className="depth-2 rounded-2xl border p-2">
-              <p className="text-[10px] font-black uppercase tracking-wide text-text-muted">Riwayat</p>
-              <p className="display accent-text text-[13px]">
+            <div className="depth-2 min-w-0 rounded-2xl border p-2">
+              <p className="text-[9px] font-black uppercase tracking-wide text-text-muted sm:text-[10px]">Riwayat</p>
+              <p className="display accent-text text-[13px] sm:text-sm">
                 {item.wins_15}/15
               </p>
             </div>
-            <div className="depth-2 rounded-2xl border p-2">
-              <p className="text-[10px] font-black uppercase tracking-wide text-text-muted">Terbaru</p>
-              <p className="display accent-text text-[13px]">
+            <div className="depth-2 min-w-0 rounded-2xl border p-2">
+              <p className="text-[9px] font-black uppercase tracking-wide text-text-muted sm:text-[10px]">Terbaru</p>
+              <p className="display accent-text text-[13px] sm:text-sm">
                 {item.wins_last_5}/5
               </p>
             </div>
@@ -100,8 +104,8 @@ export function StatisticCard({
 
           {alsoLabels.length > 0 && (
             <div className="depth-2 mt-3 rounded-2xl border px-3 py-2">
-              <p className="text-[10px] font-black uppercase tracking-wide text-text-muted">Juga unggul</p>
-              <p className="accent-text mt-1 text-[11px] font-black uppercase leading-4 tracking-wide">
+              <p className="text-[9px] font-black uppercase tracking-wide text-text-muted sm:text-[10px]">Juga unggul</p>
+              <p className="accent-text mt-1 line-clamp-3 break-words text-[10px] font-black uppercase leading-4 tracking-wide sm:text-[11px]">
                 {alsoLabels.join(" · ")}
               </p>
             </div>
@@ -110,7 +114,7 @@ export function StatisticCard({
           <button
             type="button"
             onClick={() => onOpen(marketUrl(item))}
-            className="pressable accent-bg-soft accent-text accent-border mt-3 w-full rounded-2xl border px-4 py-2.5 text-[11px] font-black uppercase tracking-wide hover:bg-white/[0.06]"
+            className="pressable accent-bg-soft accent-text accent-border mt-3 min-h-11 w-full rounded-2xl border px-4 py-2.5 text-[11px] font-black uppercase tracking-wide hover:bg-white/[0.06]"
             style={topRank ? solidAccentStyle : undefined}
           >
             Buka Pasaran
