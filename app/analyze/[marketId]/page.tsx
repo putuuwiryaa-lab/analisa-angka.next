@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, Share2 } from "lucide-react";
-import { useAuth } from "@/components/auth/auth-context";
 import { ANALYSIS_MENU, CUSTOM_MENU, MODES, type ModeKey } from "@/components/analysis/modes";
 import { Button } from "@/components/ui/Button";
 import { fetchMarkets } from "@/lib/markets/client";
@@ -22,8 +21,8 @@ function normalizeId(value: string) {
   return safeDecode(value).trim().toLowerCase();
 }
 
-async function fetchMarketName(marketId: string, token: string) {
-  const markets = await fetchMarkets(token);
+async function fetchMarketName(marketId: string) {
+  const markets = await fetchMarkets();
   const decodedMarketId = safeDecode(marketId);
   const requestedId = normalizeId(marketId);
   const market = markets.find((item) => {
@@ -86,14 +85,12 @@ function ShareMenuCard({ index = 0 }: { index?: number }) {
 export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId: string }> }) {
   const { marketId } = use(params);
   const router = useRouter();
-  const { token, role } = useAuth();
   const decodedMarketId = safeDecode(marketId);
-  const canSeeSharePrediksi = role === "SUPER";
 
   const { data: marketName = decodedMarketId } = useQuery({
     queryKey: ["marketName", decodedMarketId],
-    queryFn: () => fetchMarketName(decodedMarketId, token || ""),
-    enabled: Boolean(decodedMarketId && token),
+    queryFn: () => fetchMarketName(decodedMarketId),
+    enabled: Boolean(decodedMarketId),
   });
 
   return (
@@ -138,7 +135,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
             index={ANALYSIS_MENU.length + index}
           />
         ))}
-        {canSeeSharePrediksi && <ShareMenuCard index={ANALYSIS_MENU.length + CUSTOM_MENU.length} />}
+        <ShareMenuCard index={ANALYSIS_MENU.length + CUSTOM_MENU.length} />
       </div>
     </div>
   );
