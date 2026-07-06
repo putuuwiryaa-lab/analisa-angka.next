@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireEnv } from "@/lib/server/env";
-import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
 import { runAnalysis } from "@/lib/server/engines/predictionEngine";
 
 export const runtime = "nodejs";
@@ -70,40 +68,6 @@ function bbfsParamIsValid(param: number, scope: AnalysisScope) {
 }
 
 export async function POST(request: Request) {
-  try {
-    requireEnv("JWT_SECRET");
-  } catch (e) {
-    console.error(e instanceof Error ? e.message : e);
-
-    return NextResponse.json(
-      { error: "Kesalahan konfigurasi server" },
-      { status: 500 },
-    );
-  }
-
-  const expectedInternalSecret = process.env.INTERNAL_API_SECRET;
-  const submittedInternalSecret =
-    request.headers.get("x-internal-secret") ||
-    request.headers.get("x-internal-api-secret") ||
-    "";
-
-  const isInternalRequest = Boolean(
-    expectedInternalSecret &&
-      submittedInternalSecret &&
-      submittedInternalSecret === expectedInternalSecret,
-  );
-
-  if (!isInternalRequest) {
-    const access = await verifyActiveTelegramSession(request.headers);
-
-    if (!access.ok) {
-      return NextResponse.json(
-        { error: access.error },
-        { status: access.status },
-      );
-    }
-  }
-
   try {
     const body = await request.json().catch(() => ({}));
     const { type, data, param, target_pair, analysis_scope } = body;
