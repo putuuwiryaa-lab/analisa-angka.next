@@ -145,23 +145,23 @@ export function EvaluationHistory({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
         {rows.map((row: any, index: number) => {
           const label = displayLabel(row, mode);
           const isSuccess = label !== "ZONK";
           return (
             <div
               key={row.id}
-              className="animate-soft-pop depth-2 min-w-0 rounded-2xl border p-2 text-center"
+              className="animate-soft-pop depth-2 min-w-0 rounded-2xl border px-1.5 py-2 text-center sm:p-2"
               style={{ animationDelay: `${Math.min(index, 12) * 20}ms` }}
             >
-              <div className="num text-[10px] font-black leading-5 text-text sm:text-[11px]">
-                <div className="truncate">{row.from_result}</div>
-                <div className="text-text-soft">→</div>
-                <div className="truncate">{row.new_result}</div>
+              <div className="num flex min-w-0 items-center justify-center gap-1 text-[9px] font-black leading-none text-text sm:text-[11px]">
+                <span className="truncate">{row.from_result}</span>
+                <span className="shrink-0 text-text-soft">→</span>
+                <span className="truncate">{row.new_result}</span>
               </div>
               <div
-                className={`mt-2 rounded-full px-1.5 py-1 text-[9px] font-black uppercase tracking-wide ${
+                className={`mt-1.5 rounded-full px-1 py-1 text-[8px] font-black uppercase tracking-wide sm:text-[9px] ${
                   isSuccess ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
                 }`}
               >
