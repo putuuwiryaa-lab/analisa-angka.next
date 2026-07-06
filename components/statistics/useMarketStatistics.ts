@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { deviceAuthHeader } from "@/lib/auth/device";
 import {
   type AiStatScope,
   type AnalysisScope,
@@ -48,10 +47,8 @@ async function fetchStatistics(args: {
     param: String(args.param),
   });
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("aa_token") || "" : "";
   const response = await fetch(`/api/statistics?${params.toString()}`, {
     cache: "no-store",
-    headers: token ? { Authorization: `Bearer ${token}`, ...deviceAuthHeader() } : deviceAuthHeader(),
   });
   const json = await response.json();
 
