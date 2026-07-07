@@ -64,6 +64,23 @@ Keamanan:
 - Cookie diset `httpOnly`, `sameSite=lax`, dan `secure` saat production.
 - API utama tetap memanggil `requireActiveAccess()` sehingga revoke admin langsung berlaku.
 
+### 2.1 Superuser PIN Preview
+
+Untuk memudahkan test preview, sistem mendukung env opsional:
+
+```env
+SUPERUSER_PIN=
+```
+
+Jika `SUPERUSER_PIN` diisi dengan 8 digit, PIN tersebut bisa dipakai berulang lewat halaman `/pin` dan akan langsung membuat session akses tanpa memakai data dari tabel `access_pins`.
+
+Catatan:
+
+- Simpan `SUPERUSER_PIN` hanya di environment **Preview** Vercel.
+- Jangan isi `SUPERUSER_PIN` di environment Production.
+- Session dari superuser tetap tersimpan di `access_sessions`, dengan `pin_id = null` dan prefix device `[SUPERUSER]`.
+- Session superuser tetap bisa direvoke dari `/admin`.
+
 ---
 
 ## 3. Fitur Utama
@@ -166,6 +183,12 @@ ACCESS_SECRET=
 ADMIN_PASSWORD=
 ```
 
+Opsional untuk preview:
+
+```env
+SUPERUSER_PIN=
+```
+
 Keterangan:
 
 | Variable | Fungsi |
@@ -176,6 +199,7 @@ Keterangan:
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role untuk route server. Jangan expose ke client. |
 | `ACCESS_SECRET` | Secret HMAC untuk hash PIN, session, IP, dan admin session. |
 | `ADMIN_PASSWORD` | Password login `/admin/login`. |
+| `SUPERUSER_PIN` | PIN 8 digit reusable khusus preview. Jangan isi di production. |
 
 Jangan commit `.env` berisi credential asli.
 
@@ -283,12 +307,11 @@ Checklist deployment:
 
 1. Jalankan SQL setup akses secara manual di Supabase.
 2. Isi semua environment variables di Vercel.
-3. Deploy branch.
-4. Buka `/admin/login`.
-5. Login memakai `ADMIN_PASSWORD`.
-6. Generate PIN dari `/admin`.
-7. Test user login melalui `/pin`.
-8. Test revoke device dari `/admin`.
+3. Untuk Preview, isi `SUPERUSER_PIN` jika butuh akses test cepat.
+4. Deploy branch.
+5. Buka `/pin` dan masukkan `SUPERUSER_PIN`, atau buka `/admin/login` untuk generate PIN biasa.
+6. Test user login melalui `/pin`.
+7. Test revoke device dari `/admin`.
 
 ---
 
@@ -300,6 +323,7 @@ Checklist deployment:
 - Jangan membuka policy anon untuk tabel `access_pins` dan `access_sessions`.
 - Ganti `ACCESS_SECRET` dengan string panjang dan acak.
 - Ganti `ADMIN_PASSWORD` jika ada dugaan bocor.
+- Pakai `SUPERUSER_PIN` hanya untuk Preview; kosongkan di Production.
 
 ---
 
@@ -323,6 +347,7 @@ Fitur aktif:
 - Invest Angka Jadi langsung di halaman Invest.
 - Copy Angka Jadi dari card Invest.
 - Sistem akses PIN 8 digit.
+- Superuser PIN opsional untuk preview.
 - Admin panel generate/revoke akses.
 - Device binding berbasis cookie + localStorage device id.
 
