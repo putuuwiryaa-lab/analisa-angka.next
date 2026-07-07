@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Coins, Grid3X3, ChevronRight } from "lucide-react";
+import { ArrowLeft, Coins, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 const MENU = [
@@ -11,12 +11,6 @@ const MENU = [
     title: "Rekomendasi 2D",
     subtitle: "Kombinasi teruji dari riwayat evaluasi. Lanjutkan ke Angka Jadi untuk hasil siap salin.",
     Icon: Coins,
-  },
-  {
-    href: "/invest/bbfs7",
-    title: "BBFS 7D",
-    subtitle: "Pilih pasaran, targetkan 2D depan, tengah, atau belakang, lalu hitung BBFS 7 digit.",
-    Icon: Grid3X3,
   },
 ];
 
@@ -41,7 +35,7 @@ export default function InvestPage() {
           </div>
           <h2 className="display mt-2 text-3xl text-text">Invest Terarah</h2>
           <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
-            Pusat rekomendasi dan BBFS 7D. Pilih menu sesuai kebutuhan analisa.
+            Pusat rekomendasi 2D berbasis riwayat evaluasi. Pilih menu sesuai kebutuhan analisa.
           </p>
         </div>
       </section>
