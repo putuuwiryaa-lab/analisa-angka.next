@@ -56,6 +56,7 @@ export function SharePrediksiClient() {
   const selectedMode = optionModeKey(selectedOption);
   const selectedTarget = selectedOption ? targetKey(selectedOption) : "";
   const selectedOutput = selectedOption ? outputKey(selectedOption) : "";
+  const rekapBadgeSelected = isRekapBadge(selectedOption);
 
   const jenisItems = useMemo<PickItem[]>(() => {
     return uniqueBy(allOptions, displayMode).map((option) => ({ key: displayMode(option), label: optionLabelMode(option) }));
@@ -123,18 +124,33 @@ export function SharePrediksiClient() {
     setCopied(false);
   }
 
+  function chooseOption(next: ShareOption) {
+    setSelectedOption(next);
+    resetResult();
+
+    if (isRekapBadge(next) && selected.size > REKAP_MAX_MARKETS) {
+      setSelected((current) => {
+        const trimmed = markets
+          .filter((row) => current.has(marketKey(row)))
+          .slice(0, REKAP_MAX_MARKETS)
+          .map(marketKey)
+          .filter(Boolean);
+        return new Set(trimmed);
+      });
+      setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
+    }
+  }
+
   function chooseJenis(key: string) {
     const next = firstSorted(allOptions.filter((option) => optionMatchesMode(option, key)));
     if (!next) return;
-    setSelectedOption(next);
-    resetResult();
+    chooseOption(next);
   }
 
   function chooseTarget(key: string) {
     const next = firstSorted(allOptions.filter((option) => optionMatchesMode(option, selectedMode) && targetKey(option) === key));
     if (!next) return;
-    setSelectedOption(next);
-    resetResult();
+    chooseOption(next);
   }
 
   function chooseOutput(key: string) {
@@ -142,8 +158,7 @@ export function SharePrediksiClient() {
       allOptions.filter((option) => optionMatchesMode(option, selectedMode) && targetKey(option) === selectedTarget && outputKey(option) === key),
     );
     if (!next) return;
-    setSelectedOption(next);
-    resetResult();
+    chooseOption(next);
   }
 
   function toggle(row: ShareRow) {
@@ -154,8 +169,8 @@ export function SharePrediksiClient() {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
       else {
-        if (next.size >= REKAP_MAX_MARKETS) {
-          setError(`Maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
+        if (rekapBadgeSelected && next.size >= REKAP_MAX_MARKETS) {
+          setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
           return next;
         }
         next.add(key);
@@ -164,9 +179,10 @@ export function SharePrediksiClient() {
     });
   }
 
-  function selectFirst() {
+  function selectQuick() {
     resetResult();
-    setSelected(new Set(markets.slice(0, REKAP_MAX_MARKETS).map(marketKey).filter(Boolean)));
+    const limit = rekapBadgeSelected ? REKAP_MAX_MARKETS : markets.length;
+    setSelected(new Set(markets.slice(0, limit).map(marketKey).filter(Boolean)));
   }
 
   function clearAll() {
@@ -178,7 +194,9 @@ export function SharePrediksiClient() {
     if (!selectedOption) return setError("Pilih jenis prediksi dulu.");
     const ids = markets.filter((row) => selected.has(marketKey(row))).map((row) => String(row.marketId)).filter(Boolean);
     if (!ids.length) return setError("Pilih minimal satu pasaran.");
-    if (ids.length > REKAP_MAX_MARKETS) return setError(`Maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
+    if (isRekapBadge(selectedOption) && ids.length > REKAP_MAX_MARKETS) {
+      return setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
+    }
 
     setLoadingRows(true);
     setRows([]);
@@ -226,10 +244,15 @@ export function SharePrediksiClient() {
     ? [optionLabelMode(selectedOption), targetLabel(selectedOption), outputLabel(selectedOption)].filter(Boolean).join(" · ")
     : "Pilih prediksi";
   const fallback = selected.size ? "Klik Generate untuk membuat Share Prediksi." : "Pilih jenis prediksi dan pasaran dulu.";
+  const countLabel = rekapBadgeSelected ? `${selected.size}/${REKAP_MAX_MARKETS}` : `${selected.size}`;
+  const quickLabel = rekapBadgeSelected ? `Pilih ${REKAP_MAX_MARKETS} Pertama` : "Pilih Semua";
+  const description = rekapBadgeSelected
+    ? `Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`
+    : "Share Prediksi selain Rekap Badge bebas jumlah pasaran.";
 
   return h("div", { className: "animate-rise pb-8" }, [
     h("button", { key: "back", type: "button", onClick: () => router.push("/"), className: "pressable depth-3 mb-3 inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, [h(ArrowLeft, { key: "i", size: 15 }), " Beranda"]),
-    h("section", { key: "hero", className: "depth-1 mb-4 rounded-3xl border p-4 text-center" }, h("div", { className: "depth-2 rounded-3xl border px-4 py-6" }, [h("div", { key: "title", className: "display text-2xl text-text" }, "Share Prediksi"), h("p", { key: "desc", className: "mt-2 text-xs font-semibold leading-relaxed text-text-muted" }, `Pilih jenis prediksi, target, output, lalu generate maksimal ${REKAP_MAX_MARKETS} pasaran.`), h("p", { key: "active", className: "mt-3 text-[11px] font-black uppercase tracking-wide text-accent" }, selectedTitle)])),
+    h("section", { key: "hero", className: "depth-1 mb-4 rounded-3xl border p-4 text-center" }, h("div", { className: "depth-2 rounded-3xl border px-4 py-6" }, [h("div", { key: "title", className: "display text-2xl text-text" }, "Share Prediksi"), h("p", { key: "desc", className: "mt-2 text-xs font-semibold leading-relaxed text-text-muted" }, description), h("p", { key: "active", className: "mt-3 text-[11px] font-black uppercase tracking-wide text-accent" }, selectedTitle)])),
     error ? h("div", { key: "err", className: "mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger" }, error) : null,
     h("section", { key: "pickers", className: "depth-1 mb-4 rounded-3xl border p-4" }, [
       h("div", { key: "head", className: "mb-3 flex items-center justify-between gap-3 px-1" }, [h("span", { key: "t", className: "display text-xs text-text" }, "Pilihan Prediksi"), loadingOptions ? h(Loader2, { key: "l", size: 15, className: "animate-spin text-text-soft" }) : null]),
@@ -237,7 +260,7 @@ export function SharePrediksiClient() {
       renderPicker("Target", targetItems, selectedTarget, chooseTarget),
       renderPicker("Output", outputItems, selectedOutput, chooseOutput),
     ]),
-    h("section", { key: "markets", className: "depth-1 mb-4 rounded-3xl border p-4" }, [h("div", { key: "head", className: "mb-3 flex items-center justify-between gap-3 px-1" }, [h("span", { key: "t", className: "display text-xs text-text" }, "Pilih Pasaran"), h("span", { key: "c", className: "text-[10px] font-black uppercase tracking-wide text-text-soft" }, `${selected.size}/${REKAP_MAX_MARKETS}`)]), renderMarkets()]),
+    h("section", { key: "markets", className: "depth-1 mb-4 rounded-3xl border p-4" }, [h("div", { key: "head", className: "mb-3 flex items-center justify-between gap-3 px-1" }, [h("span", { key: "t", className: "display text-xs text-text" }, "Pilih Pasaran"), h("span", { key: "c", className: "text-[10px] font-black uppercase tracking-wide text-text-soft" }, countLabel)]), renderMarkets()]),
     h("section", { key: "preview", className: "depth-1 rounded-3xl border p-4" }, [h("div", { key: "ph", className: "mb-3 flex items-center justify-between gap-3 px-1" }, [h("span", { key: "t", className: "display text-xs text-text" }, "Preview Singkat"), loadingRows ? h(Loader2, { key: "l", size: 15, className: "animate-spin text-text-soft" }) : null]), h("pre", { key: "pre", className: "depth-2 max-h-[48svh] min-h-[150px] overflow-y-auto whitespace-pre-wrap break-words rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text" }, loadingRows ? "Memuat preview…" : previewText || fallback), h("div", { key: "actions", className: "mt-3 grid grid-cols-2 gap-2.5" }, [h("button", { key: "copy", type: "button", onClick: copyText, disabled: !shareText || loadingRows, className: "pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45" }, [h(ClipboardCopy, { key: "i", size: 16 }), copied ? "Tersalin" : "Copy"]), h("button", { key: "share", type: "button", onClick: shareNow, disabled: !shareText || loadingRows, className: "pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45" }, [h(Share2, { key: "i", size: 16 }), "Share"])])]),
   ]);
 
@@ -256,7 +279,7 @@ export function SharePrediksiClient() {
     if (loadingMarkets) return h("div", { className: "depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted" }, "Memuat pasaran…");
     if (markets.length === 0) return h("div", { className: "depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted" }, "Belum ada pasaran");
     return h("div", {}, [
-      h("div", { key: "tools", className: "mb-3 grid grid-cols-2 gap-2" }, [h("button", { key: "first", type: "button", onClick: selectFirst, className: "pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, "Pilih 5 Pertama"), h("button", { key: "clear", type: "button", onClick: clearAll, className: "pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, "Kosongkan")]),
+      h("div", { key: "tools", className: "mb-3 grid grid-cols-2 gap-2" }, [h("button", { key: "first", type: "button", onClick: selectQuick, className: "pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, quickLabel), h("button", { key: "clear", type: "button", onClick: clearAll, className: "pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, "Kosongkan")]),
       h("div", { key: "grid", className: "grid grid-cols-3 gap-2 sm:grid-cols-4" }, markets.map((row) => {
         const key = marketKey(row);
         const active = selected.has(key);
