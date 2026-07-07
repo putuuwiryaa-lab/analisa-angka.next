@@ -7,6 +7,7 @@ import {
   type InvestMarketResult,
 } from "@/lib/server/engines/investEngine";
 import { MEDIUM_PUBLIC_CACHE_HEADERS, NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
+import { requireActiveAccess } from "@/lib/server/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,6 +69,9 @@ function toInvestOverviewMarket(market: InvestMarketResult) {
 }
 
 export async function GET(request: Request) {
+  const access = await requireActiveAccess(request.headers);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status, headers: NO_STORE_HEADERS });
+
   try {
     const marketId = new URL(request.url).searchParams.get("marketId");
 

@@ -3,6 +3,7 @@ import type { CustomFocus } from "@/lib/analysis/customDigit";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { buildCustomRekapRecommendations, resolveCustomRekapMarketIds } from "@/lib/server/customRekapRecommendations";
 import { MEDIUM_PUBLIC_CACHE_HEADERS, NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
+import { requireActiveAccess } from "@/lib/server/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,9 @@ function safeDecode(value: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const access = await requireActiveAccess(request.headers);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status, headers: NO_STORE_HEADERS });
+
   try {
     const marketId = safeDecode(request.nextUrl.searchParams.get("marketId") || "").trim();
     const customFocus = request.nextUrl.searchParams.get("customFocus") as CustomFocus;

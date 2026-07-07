@@ -11,12 +11,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
   const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap" || pathname === "/share-prediksi" || pathname === "/invest";
+  const isAccessRoute = pathname === "/pin" || pathname.startsWith("/admin");
 
-  const hideHeader = pathname.startsWith("/analyze/") || isStandaloneMenu;
-  const showBottomNav = isHome;
+  const hideHeader = isAccessRoute || pathname.startsWith("/analyze/") || isStandaloneMenu;
+  const showBottomNav = isHome && !isAccessRoute;
 
   return (
-    <div className={cnPad(hideHeader, showBottomNav)}>
+    <div className={cnPad(hideHeader, showBottomNav, isAccessRoute)}>
       {!hideHeader && <HeroHeader />}
       <main className="min-w-0 flex-1">{children}</main>
       {showBottomNav && <BottomNav />}
@@ -25,7 +26,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-function cnPad(hideHeader: boolean, showBottomNav: boolean) {
+function cnPad(hideHeader: boolean, showBottomNav: boolean, isAccessRoute: boolean) {
+  if (isAccessRoute) return "relative min-h-screen w-full";
+
   return [
     "relative mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 sm:px-6",
     hideHeader ? "pb-6 pt-4" : showBottomNav ? "pb-32 pt-4" : "pb-6 pt-4",

@@ -2,7 +2,7 @@
 
 Analisa Angka adalah aplikasi web/PWA berbasis Next.js untuk membantu proses analisa angka per pasaran. Aplikasi ini berisi dashboard pasaran, menu analisa, rekap angka, statistik, riwayat evaluasi, dan rekomendasi Invest 2D.
 
-Status akses saat ini: **mode public sementara**. Sistem login, Telegram code login, JWT session, dan device binding tidak dipakai dulu sampai tahap aktivasi berikutnya.
+Status akses saat ini: **mode PIN tertutup**. User wajib memasukkan PIN akses 8 digit sebelum membuka aplikasi. Admin mengelola PIN dan revoke device melalui `/admin`.
 
 ---
 
@@ -21,105 +21,92 @@ Stack utama:
 | Deploy | Vercel |
 | Runtime | Node.js >= 20.9 |
 
-Flow aplikasi saat ini:
+Flow aplikasi:
 
 ```txt
 User buka web
-→ aplikasi mengambil daftar pasaran dari Supabase
-→ user memilih pasaran
-→ user menjalankan analisa / statistik / invest
-→ server menjalankan engine dan mengembalikan hasil
+→ middleware mengecek cookie akses
+→ jika belum ada akses, user diarahkan ke /pin
+→ user input PIN 8 digit
+→ server validasi pin_hash di Supabase
+→ session dibuat dan cookie httpOnly dipasang
+→ user membuka dashboard, analisa, statistik, dan Invest
 ```
 
 ---
 
-## 2. Fitur Utama
+## 2. Sistem Akses PIN
 
-### 2.1 Dashboard / Beranda
-
-Fungsi utama:
-
-- menampilkan daftar pasaran,
-- menampilkan result terakhir,
-- mencari pasaran,
-- membuka halaman analisa per pasaran,
-- membuka menu Statistik,
-- membuka menu Invest,
-- request penambahan pasaran melalui WhatsApp admin.
-
-Bottom navigation hanya tampil di Beranda agar halaman analisa lebih fokus.
-
-### 2.2 Analisa Pasaran
-
-Setiap pasaran memiliki beberapa metode analisa:
-
-- Angka Ikut / AI,
-- BBFS,
-- Angka Mati / OFF digit,
-- Jumlah Mati,
-- Shio Mati,
-- Rekap / Racik Angka,
-- Custom focus 2D / 3D / 4D.
-
-Output analisa dipakai sebagai dasar penyaringan angka dan penyusunan kombinasi akhir.
-
-### 2.3 Rekap / Angka Jadi
-
-Rekap menggabungkan hasil beberapa metode menjadi angka siap pakai.
-
-Prinsip utama:
+Sistem akses memakai 2 tabel utama:
 
 ```txt
-Satu engine hitung dipakai bersama oleh Rekap dan Invest Angka Jadi.
+access_pins
+access_sessions
 ```
 
-Tujuannya agar hasil yang muncul di Invest konsisten dengan hasil yang muncul di Rekap.
+Alur:
 
-### 2.4 Statistik Pasaran
+```txt
+Admin login di /admin/login
+Admin generate PIN di /admin
+User input PIN di /pin
+PIN berubah dari unused menjadi used
+Session device dibuat di access_sessions
+Admin bisa revoke akses device
+```
 
-Halaman Statistik membaca data dari tabel `market_statistics`.
+Keamanan:
 
-Fungsi utama:
+- PIN asli tidak disimpan di database; hanya `pin_hash`.
+- Session token asli tidak disimpan di database; hanya `session_token_hash`.
+- Cookie user memakai `analisa_access_token` dan `analisa_device_id`.
+- Cookie admin memakai `analisa_admin_session`.
+- Cookie diset `httpOnly`, `sameSite=lax`, dan `secure` saat production.
+- API utama tetap memanggil `requireActiveAccess()` sehingga revoke admin langsung berlaku.
 
-- menampilkan performa metode,
-- membandingkan parameter,
-- membaca stabilitas pasaran,
-- melihat ranking berdasarkan riwayat evaluasi.
+---
 
-Statistik memakai data evaluasi yang sudah diproses sebelumnya oleh evaluator/importer.
+## 3. Fitur Utama
 
-### 2.5 Riwayat Evaluasi
+### 3.1 Dashboard / Beranda
 
-Riwayat Evaluasi membaca data dari tabel `analysis_evaluations`.
+- Menampilkan daftar pasaran.
+- Menampilkan result terakhir.
+- Mencari pasaran.
+- Membuka halaman analisa per pasaran.
+- Membuka menu Statistik.
+- Membuka menu Invest.
+- Request penambahan pasaran melalui WhatsApp admin.
 
-Fungsi utama:
+### 3.2 Analisa Pasaran
 
-- melihat hasil evaluasi sebelumnya,
-- memeriksa hit/patah metode,
-- membandingkan parameter,
-- membantu user tidak hanya bergantung pada hasil analisa terakhir.
+Metode analisa:
 
-### 2.6 Invest 2D
+- Angka Ikut / AI.
+- BBFS.
+- Angka Mati / OFF digit.
+- Jumlah Mati.
+- Shio Mati.
+- Rekap / Racik Angka.
+- Custom focus 2D / 3D / 4D.
+
+### 3.3 Statistik dan Riwayat Evaluasi
+
+- Statistik membaca tabel `market_statistics`.
+- Riwayat Evaluasi membaca tabel `analysis_evaluations`.
+- Data dipakai untuk membaca performa metode, ranking, hit/patah, dan stabilitas pasaran.
+
+### 3.4 Invest 2D
 
 Halaman Invest menampilkan rekomendasi kombinasi filter terbaik untuk:
 
-- 2D Depan,
-- 2D Tengah,
+- 2D Depan.
+- 2D Tengah.
 - 2D Belakang.
 
-Rekomendasi diambil dari performa hasil evaluasi terbaru, terutama riwayat 15 hasil terakhir.
+Rekomendasi diambil dari performa evaluasi terbaru, terutama riwayat 15 hasil terakhir.
 
-Halaman Invest terdiri dari:
-
-- Rekomendasi Sempurna,
-- Semua Pasaran,
-- grup 2D Depan / Tengah / Belakang,
-- card rekomendasi per pasaran,
-- tombol Angka Jadi yang bisa dibuka-tutup.
-
-### 2.7 Invest Angka Jadi
-
-Alur:
+### 3.5 Invest Angka Jadi
 
 ```txt
 User klik Angka Jadi di card Invest
@@ -127,156 +114,92 @@ User klik Angka Jadi di card Invest
 → server menjalankan engine Rekap yang sama
 → server mengembalikan angka jadi
 → UI menampilkan angka langsung di card
-→ user bisa copy angka jadi
 ```
-
-Catatan:
-
-- Invest tidak membuka halaman Rekap di background.
-- Invest memakai engine Rekap yang sama di server.
-- Panel Angka Jadi bisa dibuka dan ditutup.
-- Jika cache ingin diaktifkan lagi, implementasi cache perlu disinkronkan ulang dengan route `app/api/invest/angka-jadi/route.ts`.
-
----
-
-## 3. Status Akses Sementara
-
-Aplikasi berjalan dalam **mode public sementara**.
-
-Yang sedang tidak aktif:
-
-- login Telegram,
-- kode login 6 digit,
-- JWT session,
-- device binding,
-- role TRIAL / PRO,
-- halaman akun,
-- proteksi akses berbasis device.
-
-Route login lama diarahkan kembali ke halaman utama melalui konfigurasi Next.js. Saat sistem akses ingin diaktifkan kembali, auth guard perlu dipasang ulang pada API yang dianggap premium.
 
 ---
 
 ## 4. API Routes
 
-### 4.1 Data dan Analisa
+### 4.1 Akses
+
+| Endpoint | Method | Fungsi |
+|---|---:|---|
+| `/pin` | GET | Halaman input PIN user. |
+| `/api/pin/activate` | POST | Aktivasi PIN dan pembuatan session. |
+| `/api/logout` | POST | Menghapus cookie akses user. |
+| `/admin/login` | GET | Halaman login admin. |
+| `/admin` | GET | Dashboard admin akses. |
+| `/api/admin/login` | POST | Login admin. |
+| `/api/admin/logout` | POST | Logout admin. |
+| `/api/admin/pins` | GET/POST | List dan generate PIN. |
+| `/api/admin/pins/[id]/revoke` | POST | Batalkan PIN unused. |
+| `/api/admin/sessions` | GET | List session device. |
+| `/api/admin/sessions/[id]/revoke` | POST | Revoke akses device. |
+
+### 4.2 Data dan Analisa
+
+Endpoint berikut diproteksi session aktif:
 
 | Endpoint | Method | Fungsi |
 |---|---:|---|
 | `/api/markets` | GET | Mengambil daftar pasaran. |
+| `/api/market-history` | GET | Mengambil histori pasaran. |
 | `/api/analyze` | POST | Menjalankan engine analisa. |
 | `/api/statistics` | GET | Mengambil statistik pasaran/metode. |
 | `/api/evaluations` | GET | Mengambil riwayat evaluasi. |
 | `/api/recommendations` | GET | Mengambil badge rekomendasi pada menu analisa. |
-
-### 4.2 Invest
-
-| Endpoint | Method | Fungsi |
-|---|---:|---|
-| `/api/invest` | GET | Mengambil overview rekomendasi Invest. |
-| `/api/invest?marketId=...` | GET | Mengambil rekomendasi Invest untuk satu pasaran. |
+| `/api/invest` | GET | Mengambil rekomendasi Invest. |
 | `/api/invest/angka-jadi` | POST | Menghasilkan Angka Jadi dari rekomendasi Invest. |
 
 ---
 
 ## 5. Environment Variables
 
-### 5.1 Wajib
+Wajib:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
+ACCESS_SECRET=
+ADMIN_PASSWORD=
 ```
 
-### 5.2 Keterangan
+Keterangan:
 
 | Variable | Fungsi |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | URL Supabase untuk kebutuhan public/client-safe config. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key untuk endpoint public seperti daftar pasaran. |
-| `SUPABASE_URL` | URL Supabase untuk server helper `createAdminClient()`. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key Supabase. |
+| `SUPABASE_URL` | URL Supabase untuk helper server `createAdminClient()`. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role untuk route server. Jangan expose ke client. |
+| `ACCESS_SECRET` | Secret HMAC untuk hash PIN, session, IP, dan admin session. |
+| `ADMIN_PASSWORD` | Password login `/admin/login`. |
 
-Jangan commit `.env` yang berisi credential asli.
+Jangan commit `.env` berisi credential asli.
 
 ---
 
 ## 6. Struktur Database Supabase
 
-Bagian ini berisi tabel inti yang dipakai aplikasi. Struktur detail bisa disesuaikan dengan migrasi yang sudah ada.
+### 6.1 Tabel aplikasi
 
-### 6.1 `markets`
+- `markets`
+- `market_statistics`
+- `analysis_evaluations`
 
-Menyimpan daftar pasaran dan data histori.
+### 6.2 Tabel akses
 
-Kolom yang umum dipakai:
+- `access_pins`
+- `access_sessions`
 
-```txt
-id
-name
-history_data / historyData / history / data / results / result
-updated_at
-```
+### 6.3 View admin
 
-Data histori dibaca sebagai token 4 digit, contoh:
+- `admin_access_pins_view`
+- `admin_access_sessions_view`
 
-```txt
-1234 5678 9012 3456
-```
-
-### 6.2 `market_statistics`
-
-Dipakai untuk Statistik dan Invest.
-
-Kolom penting:
-
-```txt
-market_id
-market_name
-group_key
-mode
-position
-param
-target_pair
-analysis_scope
-is_active
-wins_15
-wins_last_5
-max_loss_streak
-score
-updated_at
-```
-
-Invest hanya mengambil kombinasi yang memenuhi standar statistik aktif, antara lain:
-
-- `is_active = true`,
-- `wins_15` memenuhi batas minimum,
-- `wins_last_5` memenuhi batas minimum,
-- `max_loss_streak` tidak melewati batas.
-
-### 6.3 `analysis_evaluations`
-
-Dipakai untuk Riwayat Evaluasi.
-
-Kolom umum:
-
-```txt
-id
-market_id
-mode
-param
-position
-target_pair
-analysis_scope
-from_result
-new_result
-is_hit
-status
-detail
-evaluated_at
-```
+SQL setup disimpan di luar repository dan dijalankan manual di Supabase.
 
 ---
 
@@ -285,12 +208,17 @@ evaluated_at
 ```txt
 app/
   api/
+    admin/
     analyze/
     evaluations/
     invest/
+    market-history/
     markets/
+    pin/
     recommendations/
     statistics/
+  admin/
+  pin/
   rekomendasi/
   pantauan-rekap/
   analyze/[market]/
@@ -306,30 +234,24 @@ lib/
   analysis/
   markets/
   server/
+    access.ts
+    http.ts
+    supabase-admin.ts
+
+middleware.ts
 ```
-
-Folder inti:
-
-| Folder | Fungsi |
-|---|---|
-| `app/api` | Route handler server. |
-| `components/analysis` | UI dan client controller fitur analisa. |
-| `components/history` | UI riwayat evaluasi. |
-| `lib/analysis` | Helper analisa yang bisa dipakai ulang. |
-| `lib/server` | Helper server-only: Supabase admin dan engine. |
-| `components/layout` | Shell aplikasi dan navigasi. |
 
 ---
 
 ## 8. Development Lokal
 
-### 8.1 Install dependency
+Install dependency:
 
 ```bash
 pnpm install
 ```
 
-### 8.2 Jalankan development server
+Jalankan development server:
 
 ```bash
 pnpm dev
@@ -341,22 +263,16 @@ Aplikasi berjalan di:
 http://localhost:3000
 ```
 
-### 8.3 Build production
+Build production:
 
 ```bash
 pnpm build
 ```
 
-### 8.4 Typecheck
+Typecheck:
 
 ```bash
 pnpm typecheck
-```
-
-### 8.5 Format
-
-```bash
-pnpm format
 ```
 
 ---
@@ -365,24 +281,14 @@ pnpm format
 
 Checklist deployment:
 
-1. Pastikan environment variables Supabase sudah diisi di Vercel.
-2. Pastikan tabel Supabase sudah tersedia.
-3. Jalankan build.
-4. Test halaman utama, analisa, statistik, Invest, dan Angka Jadi Invest.
-
-Command build:
-
-```bash
-pnpm build
-```
-
-Jika deploy di Vercel gagal, cek log pada bagian:
-
-- TypeScript error,
-- missing environment variable,
-- import path salah,
-- route server memakai package client-only,
-- tabel Supabase belum ada.
+1. Jalankan SQL setup akses secara manual di Supabase.
+2. Isi semua environment variables di Vercel.
+3. Deploy branch.
+4. Buka `/admin/login`.
+5. Login memakai `ADMIN_PASSWORD`.
+6. Generate PIN dari `/admin`.
+7. Test user login melalui `/pin`.
+8. Test revoke device dari `/admin`.
 
 ---
 
@@ -391,8 +297,9 @@ Jika deploy di Vercel gagal, cek log pada bagian:
 - Jangan expose `SUPABASE_SERVICE_ROLE_KEY` ke client.
 - Jangan commit `.env`.
 - Route yang memakai service role hanya boleh berada di server.
-- Jika mode login/PRO diaktifkan kembali, pasang auth guard pada API premium.
-- Endpoint public hanya boleh mengembalikan data yang memang aman untuk dibuka.
+- Jangan membuka policy anon untuk tabel `access_pins` dan `access_sessions`.
+- Ganti `ACCESS_SECRET` dengan string panjang dan acak.
+- Ganti `ADMIN_PASSWORD` jika ada dugaan bocor.
 
 ---
 
@@ -415,12 +322,12 @@ Fitur aktif:
 - Invest 2D dengan grouping Depan / Tengah / Belakang.
 - Invest Angka Jadi langsung di halaman Invest.
 - Copy Angka Jadi dari card Invest.
-- Mode public sementara tanpa login.
+- Sistem akses PIN 8 digit.
+- Admin panel generate/revoke akses.
+- Device binding berbasis cookie + localStorage device id.
 
-Fitur ditunda:
+Fitur tidak dipakai:
 
-- Login Telegram.
-- Trial / PRO.
-- Device binding.
-- Panel akun.
-- Cache Invest Angka Jadi berbasis tabel Supabase.
+- Login Telegram lama.
+- JWT session lama.
+- Role TRIAL / PRO lama.
