@@ -6,7 +6,6 @@ import { CustomDigitBuilder } from "@/components/analysis/CustomDigitBuilder";
 import { RekapResult } from "@/components/analysis/RekapResult";
 import { AnalysisResult } from "@/components/analysis/AnalysisResult";
 import { AnalysisPageChrome } from "@/components/analysis/AnalysisPageChrome";
-import { Bbfs7TrialPage } from "@/components/analysis/Bbfs7TrialPage";
 import { MODES, isModeKey, type ModeKey } from "@/components/analysis/modes";
 import { useAnalysisController } from "@/components/analysis/useAnalysisController";
 import { typeMeta } from "@/lib/analysis/constants";
@@ -25,7 +24,7 @@ function safeDecode(value: string) {
   }
 }
 
-function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: Exclude<ModeKey, "bbfs7_trial"> }) {
+function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: ModeKey }) {
   const { title, emoji } = MODES[type];
   const { state, flags, handlers, custom } = useAnalysisController({ type, marketId });
   const { param, targetPair, analysisScope, loading, result, error, customFocus } = state;
@@ -112,10 +111,6 @@ export default function AnalyzeModePage({
   const { marketId, mode } = use(params);
   const decodedMarketId = safeDecode(marketId);
   const type = isModeKey(mode) ? mode : "ai";
-
-  if (type === "bbfs7_trial") {
-    return <Bbfs7TrialPage marketId={decodedMarketId} />;
-  }
 
   return <StandardAnalyzeModePage marketId={decodedMarketId} type={type} />;
 }
