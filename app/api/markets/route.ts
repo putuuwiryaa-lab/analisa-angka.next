@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { NO_STORE_HEADERS, SHORT_PUBLIC_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,12 +75,10 @@ export async function GET() {
       .sort((a, b) => Number(a.order ?? 99) - Number(b.order ?? 99));
 
     return NextResponse.json(markets, {
-      headers: {
-        "Cache-Control": "no-store",
-      },
+      headers: SHORT_PUBLIC_CACHE_HEADERS,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat markets";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json({ success: false, error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
