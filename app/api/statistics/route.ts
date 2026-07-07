@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
+import { requireActiveAccess } from "@/lib/server/access";
 import {
   MARKET_STAT_SELECT,
   MAX_LOSS_STREAK_ALLOWED,
@@ -50,6 +51,9 @@ function normalizeAiParam(category: VisibleCategoryKey, param: number) {
 }
 
 export async function GET(request: NextRequest) {
+  const access = await requireActiveAccess(request.headers);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+
   try {
     const search = request.nextUrl.searchParams;
     const category = parseCategory(search.get("category"));
