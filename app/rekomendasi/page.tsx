@@ -12,7 +12,7 @@ type InvestFilter = { kind: string; param: number };
 type InvestCombo = {
   id: string;
   label: string;
-  access: "FREE" | "VIP";
+  access?: "FREE" | "VIP";
   expectedLines: number;
   hitRate: number;
   avgWins15: number;
@@ -20,15 +20,33 @@ type InvestCombo = {
   filters: InvestFilter[];
 };
 type InvestPair = { pair: "depan" | "tengah" | "belakang"; pairLabel: string; combos: InvestCombo[] };
-type InvestMarket = { marketId: string; marketName: string; hasAny: boolean; pairs: InvestPair[] };
+type InvestMarketDetail = { marketId: string; marketName: string; hasAny: boolean; pairs: InvestPair[] };
+type InvestTopCombo = { pair: InvestPair["pair"]; pairLabel: string; combo: InvestCombo };
+type InvestMarketOverview = {
+  marketId: string;
+  marketName: string;
+  hasAny: boolean;
+  totalCombos: number;
+  bestWins15: number;
+  bestScore: number;
+  topCombos: InvestTopCombo[];
+};
+type DetailState = { loading?: boolean; error?: string; market?: InvestMarketDetail };
 type AngkaJadiResult = { lines?: string[]; latest_result?: string; formula_version?: string };
 type AngkaJadiState = { loading?: boolean; error?: string; result?: AngkaJadiResult; copied?: boolean };
 
-async function fetchInvest(): Promise<InvestMarket[]> {
-  const res = await fetch("/api/invest", { cache: "no-store" });
+async function fetchInvestOverview(): Promise<InvestMarketOverview[]> {
+  const res = await fetch("/api/invest");
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Gagal memuat rekomendasi");
-  return (data.markets || []) as InvestMarket[];
+  return (data.markets || []) as InvestMarketOverview[];
+}
+
+async function fetchInvestDetail(marketId: string): Promise<InvestMarketDetail> {
+  const res = await fetch(`/api/invest?marketId=${encodeURIComponent(marketId)}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.market) throw new Error(data.error || "Gagal memuat detail rekomendasi");
+  return data.market as InvestMarketDetail;
 }
 
 function formatAgo(ts: number) {
@@ -73,31 +91,27 @@ export default function RekomendasiPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [details, setDetails] = useState<Record<string, DetailState>>({});
   const [angkaJadi, setAngkaJadi] = useState<Record<string, AngkaJadiState>>({});
 
   const { data: markets = [], isPending, error, refetch, isFetching, dataUpdatedAt } = useQuery({
-    queryKey: ["invest"],
-    queryFn: fetchInvest,
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["invest-overview"],
+    queryFn: fetchInvestOverview,
+    staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     placeholderData: keepPreviousData,
   });
 
   const withRecs = useMemo(() => markets.filter((m) => m.hasAny), [markets]);
-  const allComboCount = useMemo(
-    () => withRecs.reduce((sum, market) => sum + market.pairs.reduce((pairSum, pair) => pairSum + pair.combos.length, 0), 0),
-    [withRecs],
-  );
+  const allComboCount = useMemo(() => withRecs.reduce((sum, market) => sum + Number(market.totalCombos || 0), 0), [withRecs]);
   const topItems = useMemo(
     () =>
       withRecs
         .flatMap((market) =>
-          market.pairs.flatMap((pair) =>
-            pair.combos
-              .filter((combo) => combo.avgWins15 >= 15)
-              .slice(0, 1)
-              .map((combo) => ({ market, pair, combo })),
-          ),
+          market.topCombos
+            .filter((item) => item.combo.avgWins15 >= 15)
+            .slice(0, 1)
+            .map((item) => ({ market, pair: item, combo: item.combo })),
         )
         .slice(0, 12),
     [withRecs],
@@ -110,6 +124,30 @@ export default function RekomendasiPage() {
 
   const errorMessage = error instanceof Error ? error.message : "";
   const showInitialSkeleton = isPending && markets.length === 0;
+
+  const handleRefresh = () => {
+    setOpenId(null);
+    setDetails({});
+    void refetch();
+  };
+
+  const handleToggleMarket = async (marketId: string) => {
+    setOpenId((prev) => (prev === marketId ? null : marketId));
+
+    const current = details[marketId];
+    if (current?.loading || current?.market) return;
+
+    setDetails((prev) => ({ ...prev, [marketId]: { loading: true } }));
+    try {
+      const market = await fetchInvestDetail(marketId);
+      setDetails((prev) => ({ ...prev, [marketId]: { market } }));
+    } catch (e) {
+      setDetails((prev) => ({
+        ...prev,
+        [marketId]: { error: e instanceof Error ? e.message : "Gagal memuat detail rekomendasi" },
+      }));
+    }
+  };
 
   const handleOpenAngkaJadi = async (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
     const existing = angkaJadi[key];
@@ -157,11 +195,11 @@ export default function RekomendasiPage() {
             </div>
             <h2 className="display mt-2 text-3xl text-text">Invest Terarah</h2>
             <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
-              Pilihan kombinasi terbaik dari hasil terbaru. Klik Angka Jadi untuk menghitung fresh hasil yang siap disalin.
+              Pilihan kombinasi terbaik dari hasil terbaru. Detail pasaran dimuat saat dibuka agar halaman tetap ringan.
             </p>
           </div>
           <button
-            onClick={() => refetch()}
+            onClick={handleRefresh}
             className="pressable depth-3 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075]"
             aria-label="Perbarui rekomendasi"
           >
@@ -223,9 +261,10 @@ export default function RekomendasiPage() {
               <MarketBlock
                 key={market.marketId}
                 market={market}
+                detail={details[market.marketId]}
                 index={index}
                 open={openId === market.marketId}
-                onToggle={() => setOpenId((prev) => (prev === market.marketId ? null : market.marketId))}
+                onToggle={() => handleToggleMarket(market.marketId)}
                 angkaJadi={angkaJadi}
                 onOpenAngkaJadi={handleOpenAngkaJadi}
                 onCopyAngkaJadi={handleCopyAngkaJadi}
@@ -325,51 +364,70 @@ function ComboCard({ title, subtitle, combo, state, index, onOpen, onCopy }: { t
   );
 }
 
-function MarketBlock({ market, index, open, onToggle, angkaJadi, onOpenAngkaJadi, onCopyAngkaJadi }: { market: InvestMarket; index: number; open: boolean; onToggle: () => void; angkaJadi: Record<string, AngkaJadiState>; onOpenAngkaJadi: (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => void; onCopyAngkaJadi: (key: string) => void }) {
-  const total = market.pairs.reduce((sum, p) => sum + p.combos.length, 0);
-  const best = market.pairs.flatMap((p) => p.combos).sort((a, b) => b.avgWins15 - a.avgWins15)[0];
+function MarketBlock({ market, detail, index, open, onToggle, angkaJadi, onOpenAngkaJadi, onCopyAngkaJadi }: { market: InvestMarketOverview; detail?: DetailState; index: number; open: boolean; onToggle: () => void; angkaJadi: Record<string, AngkaJadiState>; onOpenAngkaJadi: (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => void; onCopyAngkaJadi: (key: string) => void }) {
   return (
     <div className="animate-soft-pop depth-1 overflow-hidden rounded-2xl border" style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}>
       <button type="button" onClick={onToggle} aria-expanded={open} className="pressable flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-white/[0.04]">
         <div className="min-w-0">
           <h3 className="display truncate text-base text-text">{market.marketName}</h3>
-          {best && <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Terbaik {formatWins15(best.avgWins15)}/15</p>}
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Terbaik {formatWins15(market.bestWins15)}/15</p>
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
-          <span className="num accent-bg-soft accent-text rounded-full px-2.5 py-1 text-[11px] font-black">{total}</span>
+          <span className="num accent-bg-soft accent-text rounded-full px-2.5 py-1 text-[11px] font-black">{market.totalCombos}</span>
           <ChevronDown size={18} className={`text-text-soft transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
         </div>
       </button>
       {open && (
         <div className="animate-fade-in space-y-4 border-t border-border-soft px-4 pb-4 pt-3.5">
-          {market.pairs.map((pair) => (
-            <div key={pair.pair}>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="accent-text text-[11px] font-black uppercase tracking-wide">{pair.pairLabel}</span>
-                <span className="h-px flex-1 bg-white/10" />
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-soft">{pair.combos.length ? `${pair.combos.length} pilihan` : ""}</span>
-              </div>
-              <div className="space-y-2">
-                {pair.combos.map((combo) => {
-                  const key = comboKey(market.marketId, pair.pair, combo.id);
-                  return (
-                    <ComboCard
-                      key={key}
-                      title={combo.label}
-                      subtitle={pair.pairLabel}
-                      combo={combo}
-                      state={angkaJadi[key]}
-                      index={0}
-                      onOpen={() => onOpenAngkaJadi(key, market.marketId, pair.pair, combo.filters)}
-                      onCopy={() => onCopyAngkaJadi(key)}
-                    />
-                  );
-                })}
-              </div>
+          {detail?.loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
             </div>
-          ))}
+          ) : detail?.error ? (
+            <StateBox text={detail.error} tone="error" />
+          ) : detail?.market ? (
+            <MarketDetailContent
+              market={detail.market}
+              angkaJadi={angkaJadi}
+              onOpenAngkaJadi={onOpenAngkaJadi}
+              onCopyAngkaJadi={onCopyAngkaJadi}
+            />
+          ) : null}
         </div>
       )}
     </div>
+  );
+}
+
+function MarketDetailContent({ market, angkaJadi, onOpenAngkaJadi, onCopyAngkaJadi }: { market: InvestMarketDetail; angkaJadi: Record<string, AngkaJadiState>; onOpenAngkaJadi: (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => void; onCopyAngkaJadi: (key: string) => void }) {
+  return (
+    <>
+      {market.pairs.map((pair) => (
+        <div key={pair.pair}>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="accent-text text-[11px] font-black uppercase tracking-wide">{pair.pairLabel}</span>
+            <span className="h-px flex-1 bg-white/10" />
+            <span className="text-[10px] font-bold uppercase tracking-wide text-text-soft">{pair.combos.length ? `${pair.combos.length} pilihan` : ""}</span>
+          </div>
+          <div className="space-y-2">
+            {pair.combos.map((combo) => {
+              const key = comboKey(market.marketId, pair.pair, combo.id);
+              return (
+                <ComboCard
+                  key={key}
+                  title={combo.label}
+                  subtitle={pair.pairLabel}
+                  combo={combo}
+                  state={angkaJadi[key]}
+                  index={0}
+                  onOpen={() => onOpenAngkaJadi(key, market.marketId, pair.pair, combo.filters)}
+                  onCopy={() => onCopyAngkaJadi(key)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </>
   );
 }
