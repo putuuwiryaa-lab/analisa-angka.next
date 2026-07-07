@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
+import { MEDIUM_PUBLIC_CACHE_HEADERS, NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -105,14 +106,14 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json(data || [], {
-      headers: { "Cache-Control": "no-store" },
+      headers: MEDIUM_PUBLIC_CACHE_HEADERS,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat riwayat evaluasi";
 
     return NextResponse.json(
       { error: message },
-      { status: 500, headers: { "Cache-Control": "no-store" } },
+      { status: 500, headers: NO_STORE_HEADERS },
     );
   }
 }
