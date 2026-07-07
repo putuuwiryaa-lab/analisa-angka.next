@@ -9,6 +9,11 @@ export const ACCESS_COOKIE = "analisa_access_token";
 export const DEVICE_COOKIE = "analisa_device_id";
 export const ADMIN_COOKIE = "analisa_admin_session";
 
+export const ACCESS_PINS_TABLE = "analisa_access_pins";
+export const ACCESS_SESSIONS_TABLE = "analisa_access_sessions";
+export const ADMIN_ACCESS_PINS_VIEW = "admin_analisa_access_pins_view";
+export const ADMIN_ACCESS_SESSIONS_VIEW = "admin_analisa_access_sessions_view";
+
 const USER_MAX_AGE = 60 * 60 * 24 * 365 * 10;
 const ADMIN_MAX_AGE = 60 * 60 * 24 * 7;
 
@@ -165,7 +170,7 @@ export async function requireActiveAccess(headers: Headers): Promise<AccessResul
   const tokenHash = hashSessionToken(token);
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("access_sessions")
+    .from(ACCESS_SESSIONS_TABLE)
     .select("id, device_id, revoked_at")
     .eq("session_token_hash", tokenHash)
     .maybeSingle<AccessSessionRow>();
@@ -188,7 +193,7 @@ export async function requireActiveAccess(headers: Headers): Promise<AccessResul
   }
 
   await supabase
-    .from("access_sessions")
+    .from(ACCESS_SESSIONS_TABLE)
     .update({ last_seen_at: new Date().toISOString() })
     .eq("id", data.id);
 
