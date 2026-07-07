@@ -64,12 +64,6 @@ Keamanan:
 - Cookie diset `httpOnly`, `sameSite=lax`, dan `secure` saat production.
 - API utama tetap memanggil `requireActiveAccess()` sehingga revoke admin langsung berlaku.
 
-Setup database tersedia di:
-
-```txt
-docs/access-system.sql
-```
-
 ---
 
 ## 3. Fitur Utama
@@ -205,7 +199,7 @@ Jangan commit `.env` berisi credential asli.
 - `admin_access_pins_view`
 - `admin_access_sessions_view`
 
-SQL setup tersedia di `docs/access-system.sql`.
+SQL setup disimpan di luar repository dan dijalankan manual di Supabase.
 
 ---
 
@@ -287,7 +281,7 @@ pnpm typecheck
 
 Checklist deployment:
 
-1. Jalankan SQL di `docs/access-system.sql` pada Supabase.
+1. Jalankan SQL setup akses secara manual di Supabase.
 2. Isi semua environment variables di Vercel.
 3. Deploy branch.
 4. Buka `/admin/login`.
