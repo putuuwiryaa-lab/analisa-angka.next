@@ -10,8 +10,7 @@ import { Logo } from "@/components/ui/Logo";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const isInvestMenu = pathname === "/invest" || pathname.startsWith("/invest/");
-  const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap" || pathname === "/share-prediksi" || isInvestMenu;
+  const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap" || pathname === "/share-prediksi" || pathname === "/invest";
 
   const hideHeader = pathname.startsWith("/analyze/") || isStandaloneMenu;
   const showBottomNav = isHome;
@@ -68,10 +67,10 @@ function BottomNav() {
 
         <Link
           data-mode="invest"
-          href="/invest"
+          href="/rekomendasi"
           className={pill}
           style={{ boxShadow: softGlow }}
-          aria-label="Menu Invest"
+          aria-label="Rekomendasi 2D"
         >
           <Coins size={20} />
           <span className="text-sm font-black uppercase tracking-wide">Invest</span>
