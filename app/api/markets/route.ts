@@ -8,6 +8,7 @@ type RawMarket = Record<string, unknown>;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const LIGHT_MARKET_COLUMNS = "id,slug,code,name,title,order,sort_order,sort,updated_at,last_result";
 
 function normalizeHistoryData(market: RawMarket) {
   return String(
@@ -33,15 +34,19 @@ function getLastResult(historyData: string) {
   return "----";
 }
 
-function normalizeMarket(market: RawMarket) {
-  const historyData = normalizeHistoryData(market);
+function normalizeLastResult(market: RawMarket) {
+  const direct = market.last_result ?? market.lastResult;
+  if (typeof direct === "string" && /^\d{4}$/.test(direct.trim())) return direct.trim();
+  return getLastResult(normalizeHistoryData(market));
+}
 
+function normalizeMarket(market: RawMarket) {
   return {
     id: String(market.id ?? market.slug ?? market.code ?? market.name ?? ""),
     name: market.name ?? market.title ?? market.id ?? "Pasaran",
     order: Number(market.order ?? market.sort_order ?? market.sort ?? 99),
     updated_at: market.updated_at ?? market.updatedAt ?? null,
-    lastResult: getLastResult(historyData),
+    lastResult: normalizeLastResult(market),
   };
 }
 
@@ -55,10 +60,15 @@ export async function GET() {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data, error } = await supabase.from("markets").select("*");
-    if (error) throw error;
+    let response = await supabase.from("markets").select(LIGHT_MARKET_COLUMNS);
 
-    const markets = (data || [])
+    if (response.error) {
+      response = await supabase.from("markets").select("*");
+    }
+
+    if (response.error) throw response.error;
+
+    const markets = (response.data || [])
       .map(normalizeMarket)
       .filter((market) => market.id)
       .sort((a, b) => Number(a.order ?? 99) - Number(b.order ?? 99));
