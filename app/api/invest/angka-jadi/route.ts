@@ -15,6 +15,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const FORMULA_VERSION = "invest-angka-jadi-v1";
+const HISTORY_WINDOW = 20;
 
 type InvestFilter = { kind: string; param: number };
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
@@ -150,7 +151,7 @@ async function loadMarketData(marketId: string) {
 
   return {
     market,
-    history: history.slice(-200),
+    history: history.slice(-HISTORY_WINDOW),
     latestResult: history[history.length - 1] || "----",
   };
 }
