@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { NO_STORE_HEADERS, SHORT_PUBLIC_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
   try {
     const marketId = safeDecode(request.nextUrl.searchParams.get("marketId") || "").trim();
     if (!marketId) {
-      return NextResponse.json({ success: false, error: "marketId kosong." }, { status: 400 });
+      return NextResponse.json({ success: false, error: "marketId kosong." }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
     const supabase = createSupabaseClient();
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
     if (!market) {
       return NextResponse.json(
         { success: false, error: `Data histori ${marketId} belum disetup oleh Admin!` },
-        { status: 404 },
+        { status: 404, headers: NO_STORE_HEADERS },
       );
     }
 
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
     if (!matched) {
       return NextResponse.json(
         { success: false, error: `Data histori ${marketId} belum disetup oleh Admin!` },
-        { status: 404 },
+        { status: 404, headers: NO_STORE_HEADERS },
       );
     }
 
@@ -142,13 +143,11 @@ export async function GET(request: NextRequest) {
         data,
       },
       {
-        headers: {
-          "Cache-Control": "no-store",
-        },
+        headers: SHORT_PUBLIC_CACHE_HEADERS,
       },
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat histori pasaran";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json({ success: false, error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
