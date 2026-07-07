@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { formatPin, generatePin, hashPin, requireAdminSession } from "@/lib/server/access";
+import {
+  ACCESS_PINS_TABLE,
+  ADMIN_ACCESS_PINS_VIEW,
+  formatPin,
+  generatePin,
+  hashPin,
+  requireAdminSession,
+} from "@/lib/server/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +32,7 @@ export async function GET(request: Request) {
   if (!admin.ok) return NextResponse.json({ error: admin.error }, { status: admin.status });
 
   const { data, error } = await createAdminClient()
-    .from("admin_access_pins_view")
+    .from(ADMIN_ACCESS_PINS_VIEW)
     .select("id, status, note, created_at, used_at, revoked_at, used_session_id, device_name, device_id, session_created_at, last_seen_at, session_revoked_at")
     .order("created_at", { ascending: false })
     .limit(100);
@@ -49,7 +56,7 @@ export async function POST(request: Request) {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const pin = generatePin();
     const { error } = await supabase
-      .from("access_pins")
+      .from(ACCESS_PINS_TABLE)
       .insert({ pin_hash: hashPin(pin), status: "unused", note });
 
     if (!error) {

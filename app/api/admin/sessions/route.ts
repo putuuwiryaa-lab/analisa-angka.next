@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { requireAdminSession } from "@/lib/server/access";
+import { ADMIN_ACCESS_SESSIONS_VIEW, requireAdminSession } from "@/lib/server/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   if (!admin.ok) return NextResponse.json({ error: admin.error }, { status: admin.status });
 
   const { data, error } = await createAdminClient()
-    .from("admin_access_sessions_view")
+    .from(ADMIN_ACCESS_SESSIONS_VIEW)
     .select("id, pin_id, device_id, device_name, user_agent, created_at, last_seen_at, revoked_at, revoked_reason, status, pin_note")
     .order("created_at", { ascending: false })
     .limit(100);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { requireAdminSession } from "@/lib/server/access";
+import { ACCESS_SESSIONS_TABLE, requireAdminSession } from "@/lib/server/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export async function POST(request: Request, context: Params) {
   if (!id) return NextResponse.json({ error: "Session tidak valid." }, { status: 400 });
 
   const { error } = await createAdminClient()
-    .from("access_sessions")
+    .from(ACCESS_SESSIONS_TABLE)
     .update({ revoked_at: new Date().toISOString(), revoked_reason: reason })
     .eq("id", id)
     .is("revoked_at", null);

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import {
+  ACCESS_PINS_TABLE,
+  ACCESS_SESSIONS_TABLE,
   generateToken,
   hashPin,
   hashSessionToken,
@@ -45,7 +47,7 @@ export async function POST(request: Request) {
     const { userAgent, ipHash } = requestMeta(request);
 
     const { data: pinRow, error: pinError } = await supabase
-      .from("access_pins")
+      .from(ACCESS_PINS_TABLE)
       .select("id, status")
       .eq("pin_hash", pinHash)
       .maybeSingle<PinRow>();
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
 
     const { data: sessionRow, error: sessionError } = await supabase
-      .from("access_sessions")
+      .from(ACCESS_SESSIONS_TABLE)
       .insert({
         pin_id: pinRow.id,
         session_token_hash: tokenHash,
@@ -86,7 +88,7 @@ export async function POST(request: Request) {
     if (sessionError) throw sessionError;
 
     const { data: usedPin, error: useError } = await supabase
-      .from("access_pins")
+      .from(ACCESS_PINS_TABLE)
       .update({ status: "used", used_at: now, used_session_id: sessionRow.id })
       .eq("id", pinRow.id)
       .eq("status", "unused")
@@ -96,7 +98,7 @@ export async function POST(request: Request) {
     if (useError) throw useError;
 
     if (!usedPin) {
-      await supabase.from("access_sessions").delete().eq("id", sessionRow.id);
+      await supabase.from(ACCESS_SESSIONS_TABLE).delete().eq("id", sessionRow.id);
       return NextResponse.json({ success: false, error: "PIN sudah digunakan. Minta PIN baru." }, { status: 409 });
     }
 
