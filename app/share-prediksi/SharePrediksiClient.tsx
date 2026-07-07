@@ -39,6 +39,15 @@ function firstSorted(options: ShareOption[]) {
   return [...options].sort(optionSort)[0] || null;
 }
 
+function rowId(row: ShareRow) {
+  return String(row.marketId || "").toLowerCase();
+}
+
+function orderRowsByIds(rows: ShareRow[], ids: string[]) {
+  const byId = new Map(rows.map((row) => [rowId(row), row]));
+  return ids.map((id) => byId.get(id.toLowerCase())).filter(Boolean) as ShareRow[];
+}
+
 export function SharePrediksiClient() {
   const router = useRouter();
   const [markets, setMarkets] = useState<ShareRow[]>([]);
@@ -57,6 +66,13 @@ export function SharePrediksiClient() {
   const selectedTarget = selectedOption ? targetKey(selectedOption) : "";
   const selectedOutput = selectedOption ? outputKey(selectedOption) : "";
   const rekapBadgeSelected = isRekapBadge(selectedOption);
+
+  const selectedMarketRows = useMemo(() => {
+    const byKey = new Map(markets.map((row) => [marketKey(row), row]));
+    return Array.from(selected).map((key) => byKey.get(key)).filter(Boolean) as ShareRow[];
+  }, [markets, selected]);
+
+  const selectedIds = useMemo(() => selectedMarketRows.map((row) => String(row.marketId)).filter(Boolean), [selectedMarketRows]);
 
   const jenisItems = useMemo<PickItem[]>(() => {
     return uniqueBy(allOptions, displayMode).map((option) => ({ key: displayMode(option), label: optionLabelMode(option) }));
@@ -129,14 +145,7 @@ export function SharePrediksiClient() {
     resetResult();
 
     if (isRekapBadge(next) && selected.size > REKAP_MAX_MARKETS) {
-      setSelected((current) => {
-        const trimmed = markets
-          .filter((row) => current.has(marketKey(row)))
-          .slice(0, REKAP_MAX_MARKETS)
-          .map(marketKey)
-          .filter(Boolean);
-        return new Set(trimmed);
-      });
+      setSelected((current) => new Set(Array.from(current).slice(0, REKAP_MAX_MARKETS)));
       setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
     }
   }
@@ -192,9 +201,8 @@ export function SharePrediksiClient() {
 
   async function generate() {
     if (!selectedOption) return setError("Pilih jenis prediksi dulu.");
-    const ids = markets.filter((row) => selected.has(marketKey(row))).map((row) => String(row.marketId)).filter(Boolean);
-    if (!ids.length) return setError("Pilih minimal satu pasaran.");
-    if (isRekapBadge(selectedOption) && ids.length > REKAP_MAX_MARKETS) {
+    if (!selectedIds.length) return setError("Pilih minimal satu pasaran.");
+    if (isRekapBadge(selectedOption) && selectedIds.length > REKAP_MAX_MARKETS) {
       return setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
     }
 
@@ -205,9 +213,9 @@ export function SharePrediksiClient() {
 
     try {
       if (isRekapBadge(selectedOption)) {
-        const params = new URLSearchParams({ limit: String(REKAP_MAX_MARKETS), marketIds: ids.join(",") });
+        const params = new URLSearchParams({ limit: String(REKAP_MAX_MARKETS), marketIds: selectedIds.join(",") });
         const data = await fetchJson<ShareResponse>(`/api/share-predictions/rekap-badge?${params.toString()}`);
-        setRows(data.rows || []);
+        setRows(orderRowsByIds(data.rows || [], selectedIds));
         return;
       }
 
@@ -218,8 +226,7 @@ export function SharePrediksiClient() {
         analysisScope: selectedOption.analysisScope,
       });
       const data = await fetchJson<ShareResponse>(`/api/share-predictions?${params.toString()}`);
-      const selectedSet = new Set(ids.map((item) => item.toLowerCase()));
-      setRows((data.rows || []).filter((row) => selectedSet.has(String(row.marketId || "").toLowerCase())));
+      setRows(orderRowsByIds(data.rows || [], selectedIds));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal generate share prediksi.");
     } finally {
