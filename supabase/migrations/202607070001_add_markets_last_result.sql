@@ -3,10 +3,21 @@
 alter table public.markets
   add column if not exists last_result text;
 
-alter table public.markets
-  add constraint markets_last_result_format
-  check (last_result is null or last_result ~ '^\d{4}$')
-  not valid;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'markets_last_result_format'
+      and conrelid = 'public.markets'::regclass
+  ) then
+    alter table public.markets
+      add constraint markets_last_result_format
+      check (last_result is null or last_result ~ '^\d{4}$')
+      not valid;
+  end if;
+end;
+$$;
 
 create or replace function public.extract_latest_4d_result(history_text text)
 returns text
