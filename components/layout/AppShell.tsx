@@ -12,12 +12,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isHome = pathname === "/";
   const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap" || pathname === "/share-prediksi" || pathname === "/invest";
   const isAccessRoute = pathname === "/pin" || pathname.startsWith("/admin");
+  const isAdminRoute = pathname.startsWith("/admin");
 
   const hideHeader = isAccessRoute || pathname.startsWith("/analyze/") || isStandaloneMenu;
   const showBottomNav = isHome && !isAccessRoute;
 
   return (
-    <div className={cnPad(hideHeader, showBottomNav, isAccessRoute)}>
+    <div className={cnPad(hideHeader, showBottomNav, isAccessRoute, isAdminRoute)}>
       {!hideHeader && <HeroHeader />}
       <main className="min-w-0 flex-1">{children}</main>
       {showBottomNav && <BottomNav />}
@@ -26,7 +27,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-function cnPad(hideHeader: boolean, showBottomNav: boolean, isAccessRoute: boolean) {
+function cnPad(hideHeader: boolean, showBottomNav: boolean, isAccessRoute: boolean, isAdminRoute: boolean) {
+  if (isAdminRoute) return "admin-route relative min-h-screen w-full";
   if (isAccessRoute) return "relative min-h-screen w-full";
 
   return [
