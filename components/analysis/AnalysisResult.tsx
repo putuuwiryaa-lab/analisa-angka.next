@@ -297,13 +297,11 @@ export function AnalysisResult({
   const effectiveMode = result.evaluationMode || type;
   const effectiveParam = result.evaluationParam || param || 1;
   const effectiveAnalysisScope = (result.analysis_scope || analysisScope || "default") as AnalysisScope;
-  const isTraditionalBbfs = type === "bbfs7_tradisional";
-  const formulaTotal =
-    isTraditionalBbfs ? 60 : type === "ai" || type === "bbfs" ? 35 : type === "jumlah" ? 56 : type === "shio" ? 60 : 50;
-  const isBBFSResult = type === "bbfs" || isTraditionalBbfs;
+  const formulaTotal = type === "ai" || type === "bbfs" ? 35 : type === "jumlah" ? 56 : type === "shio" ? 60 : 50;
+  const isBBFSResult = type === "bbfs";
   const isAIResult = type === "ai";
-  const isBbfsGgbkResult = type === "bbfs" && effectiveParam === 10 && Boolean(result.bbfsGgbk);
-  const resultBadge = isBbfsGgbkResult ? result.bbfsGgbk?.label : isTraditionalBbfs ? `${active}/${formulaTotal} Lolos` : undefined;
+  const isBbfsGgbkResult = isBBFSResult && effectiveParam === 10 && Boolean(result.bbfsGgbk);
+  const resultBadge = isBbfsGgbkResult ? result.bbfsGgbk?.label : undefined;
 
   return (
     <div className="animate-rise space-y-4">
@@ -311,7 +309,7 @@ export function AnalysisResult({
         values={displayResult}
         shio={type === "shio"}
         singleLine={isBBFSResult || isAIResult}
-        stacked={type === "ai" || isBBFSResult}
+        stacked={type === "ai" || type === "bbfs"}
         badge={resultBadge}
       />
       <div className="animate-soft-pop depth-1 rounded-3xl border p-4">
