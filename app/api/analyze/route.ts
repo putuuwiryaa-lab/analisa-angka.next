@@ -3,6 +3,8 @@ import { runAnalysis } from "@/lib/server/engines/predictionEngine";
 
 export const runtime = "nodejs";
 
+const ANALYZE_WINDOW = 20;
+
 type TargetPair = "depan" | "tengah" | "belakang";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
 
@@ -17,7 +19,7 @@ function sanitizeData(data: unknown): string[] | null {
 
   if (cleaned.length < 17) return null;
 
-  return cleaned.slice(-200);
+  return cleaned.slice(-ANALYZE_WINDOW);
 }
 
 function sanitizeTargetPair(value: unknown): TargetPair {
