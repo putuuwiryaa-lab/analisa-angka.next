@@ -16,6 +16,19 @@ export type Market = {
   lastResult?: string;
 };
 
+export type MarketHistoryResponse = {
+  success: true;
+  market_id: string;
+  market_name: string;
+  latest_result: string;
+  history_count: number;
+  data: string[];
+};
+
+export function marketHistoryQueryKey(marketId: string) {
+  return ["market-history", normalizeMarketId(marketId)] as const;
+}
+
 export function safeDecode(value: string) {
   try {
     return decodeURIComponent(value);
@@ -31,7 +44,7 @@ export function normalizeMarketId(value: string) {
 export function getLastResult(historyData: string | null | undefined) {
   const tokens = String(historyData || "")
     .trim()
-    .split(/[\s\n\r\t,]+/);
+    .split(/[\s\n\r\t,;|]+/);
   for (let i = tokens.length - 1; i >= 0; i--) {
     if (/^\d{4}$/.test(tokens[i])) return tokens[i];
   }
@@ -87,5 +100,25 @@ export async function fetchMarkets(..._args: unknown[]): Promise<Market[]> {
 
   return json
     .sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
-    .map((market) => ({ ...market, lastResult: getLastResult(market.history_data) }));
+    .map((market) => ({
+      ...market,
+      lastResult: market.lastResult || getLastResult(market.history_data),
+    }));
+}
+
+export async function fetchMarketHistory(marketId: string): Promise<MarketHistoryResponse> {
+  const response = await fetch(`/api/market-history?marketId=${encodeURIComponent(safeDecode(marketId))}`, {
+    cache: "no-store",
+  });
+  const json = await response.json();
+
+  if (!response.ok || !json?.success) {
+    throw new Error(json?.error || "Gagal memuat histori pasaran.");
+  }
+
+  if (!Array.isArray(json.data)) {
+    throw new Error("Format histori pasaran dari server tidak valid.");
+  }
+
+  return json;
 }
