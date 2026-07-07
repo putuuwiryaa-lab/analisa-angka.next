@@ -7,14 +7,14 @@ const MIN_SAMPLE = 10;
 
 const AI_WIN: Record<number, number> = { 1: 9, 2: 9, 3: 11, 4: 11, 5: 12, 6: 13 };
 const AI_DERIVED_WIN: Record<number, number> = { 1: 12 };
-const BBFS_WIN: Record<number, number> = { 7: 10, 8: 11, 9: 13, 10: 11 };
+const BBFS_WIN: Record<number, number> = { 7: 10, 8: 11, 9: 13 };
 const MATI_WIN: Record<number, number> = { 1: 14, 2: 13, 3: 12 };
 const JUMLAH_WIN: Record<number, number> = { 1: 14, 2: 13, 3: 12 };
 const SHIO_WIN: Record<number, number> = { 1: 14, 2: 13, 3: 12 };
 
 const AI_RATE: Record<number, number> = { 1: 9 / 15, 2: 9 / 15, 3: 11 / 15, 4: 11 / 15, 5: 12 / 15, 6: 13 / 15 };
 const AI_DERIVED_RATE: Record<number, number> = { 1: 12 / 15 };
-const BBFS_RATE: Record<number, number> = { 7: 10 / 15, 8: 11 / 15, 9: 13 / 15, 10: 11 / 15 };
+const BBFS_RATE: Record<number, number> = { 7: 10 / 15, 8: 11 / 15, 9: 13 / 15 };
 const MATI_RATE: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 12 / 15 };
 const JUMLAH_RATE: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 12 / 15 };
 const SHIO_RATE: Record<number, number> = { 1: 14 / 15, 2: 13 / 15, 3: 12 / 15 };
@@ -128,8 +128,8 @@ function pairScope(pair: TargetPair) {
   return `2d_${pair}`;
 }
 
-function globalBbfsParams(scope: string) {
-  return scope === "4d" ? [7, 8, 9] : [7, 8, 9, 10];
+function globalBbfsParams() {
+  return [7, 8, 9];
 }
 
 export async function buildCustomRekapRecommendations(supabase: SupabaseClient, marketIds: string[], customFocus: CustomFocus): Promise<RecommendedMap> {
@@ -142,7 +142,7 @@ export async function buildCustomRekapRecommendations(supabase: SupabaseClient, 
       loadRows(supabase, marketIds, "ai", "all", [2, 4, 6], pair),
       loadRows(supabase, marketIds, "ai_parity", "all", [1], pair),
       loadRows(supabase, marketIds, "ai_size", "all", [1], pair),
-      loadRows(supabase, marketIds, "bbfs", "all", [7, 8, 9, 10], pair, pairScope(pair)),
+      loadRows(supabase, marketIds, "bbfs", "all", [7, 8, 9], pair, pairScope(pair)),
       loadRows(supabase, marketIds, "jumlah", "all", [1, 2, 3], pair),
       loadRows(supabase, marketIds, "shio", "all", [1, 2, 3], pair),
     ]);
@@ -150,7 +150,7 @@ export async function buildCustomRekapRecommendations(supabase: SupabaseClient, 
     apply(next, (param) => `ai-${pair}-${param}`, aiRows, [2, 4, 6], "low", "ai");
     apply(next, () => `ai-${pair}-7`, parityRows, [1], "low", "ai_parity");
     apply(next, () => `ai-${pair}-8`, sizeRows, [1], "low", "ai_size");
-    apply(next, (param) => `bbfs-${pair}-${param}`, bbfsRows, [7, 8, 9, 10], "low", "bbfs");
+    apply(next, (param) => `bbfs-${pair}-${param}`, bbfsRows, [7, 8, 9], "low", "bbfs");
     apply(next, (param) => `jumlah-${pair}-${param}`, jumlahRows, [1, 2, 3], "high", "jumlah");
     apply(next, (param) => `shio-${pair}-${param}`, shioRows, [1, 2, 3], "high", "shio");
   }));
@@ -172,7 +172,7 @@ export async function buildCustomRekapRecommendations(supabase: SupabaseClient, 
   }
 
   const bbfsTargetPair = bbfsScope === "2d_depan" ? "depan" : bbfsScope === "2d_tengah" ? "tengah" : "belakang";
-  const bbfsParams = globalBbfsParams(bbfsScope);
+  const bbfsParams = globalBbfsParams();
   const bbfsRows = await loadRows(supabase, marketIds, "bbfs", "all", bbfsParams, bbfsTargetPair, bbfsScope);
   apply(next, (param) => `bbfs-${param}`, bbfsRows, bbfsParams, "low", "bbfs");
 
