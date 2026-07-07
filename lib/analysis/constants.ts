@@ -43,7 +43,6 @@ export const typeMeta: Record<string, { label: string; formula: string }> = {
   jumlah: { label: "JUMLAH MATI", formula: "56 RUMUS" },
   shio: { label: "SHIO MATI", formula: "60 RUMUS" },
   rekap: { label: "MENU REKAP", formula: "LINE GENERATOR" },
-  bbfs7_trial: { label: "UJI COBA BBFS 7D", formula: "120 RUMUS" },
 };
 
 export const evaluationModes = new Set(["ai", "ai_parity", "ai_size", "bbfs", "mati", "jumlah", "shio"]);
