@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { requireAdminSession } from "@/lib/server/access";
+import { ACCESS_PINS_TABLE, requireAdminSession } from "@/lib/server/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function POST(request: Request, context: Params) {
   if (!id) return NextResponse.json({ error: "PIN tidak valid." }, { status: 400 });
 
   const { error } = await createAdminClient()
-    .from("access_pins")
+    .from(ACCESS_PINS_TABLE)
     .update({ status: "revoked", revoked_at: new Date().toISOString() })
     .eq("id", id)
     .eq("status", "unused");
