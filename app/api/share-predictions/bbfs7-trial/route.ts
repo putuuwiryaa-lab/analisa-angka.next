@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { verifyActiveTelegramSession } from "@/lib/server/telegram-session";
-import { requireSuperShareAccess } from "@/lib/server/share-predictions-access";
 import { runBbfs7WalkForward, type TargetPair } from "@/lib/analysis/bbfs7Trial";
 
 export const runtime = "nodejs";
@@ -43,10 +41,6 @@ function parseMarketIds(value: string | null) {
 }
 
 export async function GET(request: NextRequest) {
-  const access = await verifyActiveTelegramSession(request.headers);
-  const denied = requireSuperShareAccess(access);
-  if (denied) return denied;
-
   try {
     const search = request.nextUrl.searchParams;
     const targetPair = String(search.get("targetPair") || "belakang") as TargetPair;
