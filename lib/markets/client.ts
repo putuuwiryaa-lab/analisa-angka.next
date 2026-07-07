@@ -1,6 +1,6 @@
 export const MARKETS_QUERY_KEY = ["markets"] as const;
-export const MARKETS_STALE_TIME = 10 * 60 * 1000;
-export const MARKETS_GC_TIME = 60 * 60 * 1000;
+export const MARKETS_STALE_TIME = 60 * 1000;
+export const MARKETS_GC_TIME = 30 * 60 * 1000;
 
 export type Market = {
   id: string;
@@ -86,9 +86,7 @@ export function findMarketByIdOrName(markets: Market[], marketId: string) {
 }
 
 export async function fetchMarkets(..._args: unknown[]): Promise<Market[]> {
-  const response = await fetch("/api/markets", {
-    cache: "no-store",
-  });
+  const response = await fetch("/api/markets");
   const json = await response.json();
 
   if (!response.ok) {
@@ -107,9 +105,7 @@ export async function fetchMarkets(..._args: unknown[]): Promise<Market[]> {
 }
 
 export async function fetchMarketHistory(marketId: string): Promise<MarketHistoryResponse> {
-  const response = await fetch(`/api/market-history?marketId=${encodeURIComponent(safeDecode(marketId))}`, {
-    cache: "no-store",
-  });
+  const response = await fetch(`/api/market-history?marketId=${encodeURIComponent(safeDecode(marketId))}`);
   const json = await response.json();
 
   if (!response.ok || !json?.success) {
