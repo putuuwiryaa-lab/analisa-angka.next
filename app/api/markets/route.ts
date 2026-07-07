@@ -21,13 +21,27 @@ function normalizeHistoryData(market: RawMarket) {
   );
 }
 
+function getLastResult(historyData: string) {
+  const tokens = historyData
+    .trim()
+    .split(/[\s\n\r\t,;|]+/);
+
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if (/^\d{4}$/.test(tokens[i])) return tokens[i];
+  }
+
+  return "----";
+}
+
 function normalizeMarket(market: RawMarket) {
+  const historyData = normalizeHistoryData(market);
+
   return {
-    ...market,
     id: String(market.id ?? market.slug ?? market.code ?? market.name ?? ""),
     name: market.name ?? market.title ?? market.id ?? "Pasaran",
     order: Number(market.order ?? market.sort_order ?? market.sort ?? 99),
-    history_data: normalizeHistoryData(market),
+    updated_at: market.updated_at ?? market.updatedAt ?? null,
+    lastResult: getLastResult(historyData),
   };
 }
 
