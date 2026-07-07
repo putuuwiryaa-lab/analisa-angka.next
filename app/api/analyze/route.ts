@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runAnalysis } from "@/lib/server/engines/predictionEngine";
+import { requireActiveAccess } from "@/lib/server/access";
 
 export const runtime = "nodejs";
 
@@ -70,6 +71,9 @@ function bbfsParamIsValid(param: number, scope: AnalysisScope) {
 }
 
 export async function POST(request: Request) {
+  const access = await requireActiveAccess(request.headers);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+
   try {
     const body = await request.json().catch(() => ({}));
     const { type, data, param, target_pair, analysis_scope } = body;
