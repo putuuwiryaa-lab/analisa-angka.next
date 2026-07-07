@@ -71,6 +71,13 @@ export function hashIp(ip: string) {
   return hmac(ip || "unknown", "ip");
 }
 
+export function isSuperuserPinValid(input: string) {
+  const configured = normalizePin(process.env.SUPERUSER_PIN);
+  const clean = normalizePin(input);
+
+  return configured.length === 8 && clean.length === 8 && safeCompareText(clean, configured);
+}
+
 export function isAdminPasswordValid(input: string) {
   const expected = requireEnv("ADMIN_PASSWORD");
   return Boolean(input) && safeCompareText(input, expected);
