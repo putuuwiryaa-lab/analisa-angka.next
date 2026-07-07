@@ -11,6 +11,18 @@ type RawMarket = Record<string, unknown>;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+function createSupabaseClient() {
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Konfigurasi Supabase belum lengkap.");
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+type MarketSupabaseClient = ReturnType<typeof createSupabaseClient>;
+
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value);
@@ -61,7 +73,7 @@ function parseHistoryTokens(historyData: string) {
 }
 
 async function findMarketByColumn(
-  supabase: ReturnType<typeof createClient>,
+  supabase: MarketSupabaseClient,
   column: "id" | "name",
   values: string[],
 ) {
@@ -70,7 +82,7 @@ async function findMarketByColumn(
   return ((data || [])[0] as RawMarket | undefined) || null;
 }
 
-async function findMarketByNameIlike(supabase: ReturnType<typeof createClient>, value: string) {
+async function findMarketByNameIlike(supabase: MarketSupabaseClient, value: string) {
   const name = safeDecode(value).trim();
   if (!name) return null;
 
@@ -81,19 +93,12 @@ async function findMarketByNameIlike(supabase: ReturnType<typeof createClient>, 
 
 export async function GET(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Konfigurasi Supabase belum lengkap.");
-    }
-
     const marketId = safeDecode(request.nextUrl.searchParams.get("marketId") || "").trim();
     if (!marketId) {
       return NextResponse.json({ success: false, error: "marketId kosong." }, { status: 400 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
+    const supabase = createSupabaseClient();
     const lookupValues = marketLookupValues(marketId);
     const requested = normalizeMarketId(marketId);
 
