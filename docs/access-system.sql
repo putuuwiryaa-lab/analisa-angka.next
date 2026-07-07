@@ -87,4 +87,10 @@ order by s.created_at desc;
 alter table public.access_pins enable row level security;
 alter table public.access_sessions enable row level security;
 
+revoke all on table public.access_pins from anon, authenticated;
+revoke all on table public.access_sessions from anon, authenticated;
+revoke all on table public.admin_access_pins_view from anon, authenticated;
+revoke all on table public.admin_access_sessions_view from anon, authenticated;
+
 -- Tidak perlu policy anon. Aplikasi membaca/menulis tabel akses memakai service role di route server.
+-- Admin dashboard juga melewati route server dan tidak membaca view langsung dari client.
