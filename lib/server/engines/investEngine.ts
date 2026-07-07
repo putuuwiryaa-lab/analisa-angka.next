@@ -180,10 +180,7 @@ function scoreInvestCombo(combo: InvestComboResult) {
   return round2(Math.max(0, quality));
 }
 
-export function rankInvestMarkets(
-  markets: InvestMarketResult[],
-  _latestResultByMarket: Record<string, string> = {},
-): InvestMarketResult[] {
+export function rankInvestMarkets(markets: InvestMarketResult[]): InvestMarketResult[] {
   return markets.map((market) => ({
     ...market,
     pairs: market.pairs.map((pair) => {
