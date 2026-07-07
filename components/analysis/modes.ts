@@ -1,6 +1,6 @@
 import { Activity, Grid3X3, ShieldAlert, Hash, Gauge, Trophy, type LucideIcon } from "lucide-react";
 
-export type ModeKey = "ai" | "bbfs" | "mati" | "jumlah" | "shio" | "rekap" | "bbfs7_trial";
+export type ModeKey = "ai" | "bbfs" | "mati" | "jumlah" | "shio" | "rekap";
 
 /**
  * Hanya icon + lucide + judul chrome yang disimpan di sini (data unik).
@@ -15,10 +15,9 @@ export const MODES: Record<ModeKey, { title: string; emoji: string; Icon: Lucide
   jumlah: { title: "JUMLAH MATI", emoji: "#", Icon: Hash },
   shio: { title: "SHIO MATI", emoji: "◎", Icon: Gauge },
   rekap: { title: "CUSTOM REKAP", emoji: "◆", Icon: Trophy },
-  bbfs7_trial: { title: "BBFS 7D", emoji: "▧", Icon: Grid3X3 },
 };
 
-export const MODE_KEYS: ModeKey[] = ["ai", "bbfs", "mati", "jumlah", "shio", "rekap", "bbfs7_trial"];
+export const MODE_KEYS: ModeKey[] = ["ai", "bbfs", "mati", "jumlah", "shio", "rekap"];
 
 // Pengelompokan menu (label menu dipertahankan apa adanya).
 export const ANALYSIS_MENU: Array<{ label: string; mode: ModeKey }> = [
