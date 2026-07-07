@@ -4,6 +4,7 @@ import {
   loadInvestForMarket,
   rankInvestMarkets,
 } from "@/lib/server/engines/investEngine";
+import { MEDIUM_PUBLIC_CACHE_HEADERS, NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,12 +18,13 @@ export async function GET(request: Request) {
       : { markets: rankInvestMarkets(await loadInvestOverview()) };
 
     return NextResponse.json(data, {
-      headers: {
-        "Cache-Control": "no-store",
-      },
+      headers: MEDIUM_PUBLIC_CACHE_HEADERS,
     });
   } catch (e) {
     console.error("INVEST_API_ERROR", e);
-    return NextResponse.json({ error: "Gagal memuat rekomendasi invest" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Gagal memuat rekomendasi invest" },
+      { status: 500, headers: NO_STORE_HEADERS },
+    );
   }
 }
