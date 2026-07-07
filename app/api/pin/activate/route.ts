@@ -4,7 +4,6 @@ import {
   generateToken,
   hashPin,
   hashSessionToken,
-  isSuperuserPinValid,
   normalizePin,
   requestMeta,
   setAccessCookies,
@@ -26,43 +25,6 @@ function normalizeDeviceName(value: unknown) {
   return String(value || "").trim().slice(0, 160) || "Unknown Device";
 }
 
-async function createAccessSession({
-  pinId,
-  deviceId,
-  deviceName,
-  request,
-}: {
-  pinId: string | null;
-  deviceId: string;
-  deviceName: string;
-  request: Request;
-}) {
-  const supabase = createAdminClient();
-  const token = generateToken();
-  const tokenHash = hashSessionToken(token);
-  const now = new Date().toISOString();
-  const { userAgent, ipHash } = requestMeta(request);
-
-  const { data: sessionRow, error: sessionError } = await supabase
-    .from("access_sessions")
-    .insert({
-      pin_id: pinId,
-      session_token_hash: tokenHash,
-      device_id: deviceId,
-      device_name: deviceName,
-      user_agent: userAgent,
-      ip_hash: ipHash,
-      created_at: now,
-      last_seen_at: now,
-    })
-    .select("id")
-    .single<{ id: string }>();
-
-  if (sessionError) throw sessionError;
-
-  return { supabase, token, sessionId: sessionRow.id, now };
-}
-
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const pin = normalizePin(body.pin);
@@ -78,21 +40,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (isSuperuserPinValid(pin)) {
-      const { token } = await createAccessSession({
-        pinId: null,
-        deviceId,
-        deviceName: `[SUPERUSER] ${deviceName}`.slice(0, 160),
-        request,
-      });
-
-      const response = NextResponse.json({ success: true, superuser: true });
-      setAccessCookies(response, token, deviceId);
-      return response;
-    }
-
     const supabase = createAdminClient();
     const pinHash = hashPin(pin);
+    const { userAgent, ipHash } = requestMeta(request);
 
     const { data: pinRow, error: pinError } = await supabase
       .from("access_pins")
@@ -114,16 +64,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "PIN sudah dibatalkan admin." }, { status: 403 });
     }
 
-    const session = await createAccessSession({
-      pinId: pinRow.id,
-      deviceId,
-      deviceName,
-      request,
-    });
+    const token = generateToken();
+    const tokenHash = hashSessionToken(token);
+    const now = new Date().toISOString();
 
-    const { data: usedPin, error: useError } = await session.supabase
+    const { data: sessionRow, error: sessionError } = await supabase
+      .from("access_sessions")
+      .insert({
+        pin_id: pinRow.id,
+        session_token_hash: tokenHash,
+        device_id: deviceId,
+        device_name: deviceName,
+        user_agent: userAgent,
+        ip_hash: ipHash,
+        created_at: now,
+        last_seen_at: now,
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (sessionError) throw sessionError;
+
+    const { data: usedPin, error: useError } = await supabase
       .from("access_pins")
-      .update({ status: "used", used_at: session.now, used_session_id: session.sessionId })
+      .update({ status: "used", used_at: now, used_session_id: sessionRow.id })
       .eq("id", pinRow.id)
       .eq("status", "unused")
       .select("id")
@@ -132,12 +96,12 @@ export async function POST(request: Request) {
     if (useError) throw useError;
 
     if (!usedPin) {
-      await session.supabase.from("access_sessions").delete().eq("id", session.sessionId);
+      await supabase.from("access_sessions").delete().eq("id", sessionRow.id);
       return NextResponse.json({ success: false, error: "PIN sudah digunakan. Minta PIN baru." }, { status: 409 });
     }
 
     const response = NextResponse.json({ success: true });
-    setAccessCookies(response, session.token, deviceId);
+    setAccessCookies(response, token, deviceId);
     return response;
   } catch (error) {
     console.error("PIN_ACTIVATE_ERROR", error);
