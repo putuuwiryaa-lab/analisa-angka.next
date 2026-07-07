@@ -267,6 +267,42 @@
   --accent: var(--color-mode-statistics);
 }
 
+.admin-route main > section:nth-of-type(2) {
+  padding: 1rem !important;
+  border-radius: 1.5rem !important;
+}
+.admin-route main > section:nth-of-type(2) h2 {
+  font-size: 1rem !important;
+  line-height: 1.35rem !important;
+}
+.admin-route main > section:nth-of-type(2) > div {
+  margin-top: 0.75rem !important;
+  gap: 0.625rem !important;
+}
+.admin-route main > section:nth-of-type(2) > div > div {
+  padding: 0.75rem !important;
+  border-radius: 1rem !important;
+}
+.admin-route main > section:nth-of-type(2) strong {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem !important;
+  line-height: 1.15rem !important;
+}
+.admin-route main > section:nth-of-type(2) div {
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+.admin-route main > section:nth-of-type(2) button {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.85rem !important;
+  border-radius: 0.85rem !important;
+  font-size: 0.65rem !important;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
