@@ -33,12 +33,42 @@ type MarketRow = {
   result?: string | null;
 };
 
-function normalizeMarketId(value: string) {
+function safeDecode(value: string) {
   try {
-    return decodeURIComponent(value).trim().toLowerCase();
+    return decodeURIComponent(value);
   } catch {
-    return value.trim().toLowerCase();
+    return value;
   }
+}
+
+function normalizeMarketId(value: string) {
+  return safeDecode(value).trim().toLowerCase();
+}
+
+function marketLookupValues(value: string) {
+  const raw = value.trim();
+  const decoded = safeDecode(raw).trim();
+  const encoded = encodeURIComponent(decoded);
+  return Array.from(new Set([raw, decoded, encoded, decoded.toUpperCase(), decoded.toLowerCase()].filter(Boolean)));
+}
+
+async function findMarketByColumn(
+  supabase: ReturnType<typeof createAdminClient>,
+  column: "id" | "name",
+  values: string[],
+) {
+  const { data, error } = await supabase.from("markets").select("*").in(column, values).limit(1);
+  if (error) throw error;
+  return ((data || [])[0] as MarketRow | undefined) || null;
+}
+
+async function findMarketByNameIlike(supabase: ReturnType<typeof createAdminClient>, value: string) {
+  const name = safeDecode(value).trim();
+  if (!name) return null;
+
+  const { data, error } = await supabase.from("markets").select("*").ilike("name", name).limit(1);
+  if (error) throw error;
+  return ((data || [])[0] as MarketRow | undefined) || null;
 }
 
 function marketIdOf(market: MarketRow) {
@@ -97,17 +127,21 @@ function runEngine(type: string, data: string[], param: number, targetPair: Targ
 
 async function loadMarketData(marketId: string) {
   const supabase = createAdminClient();
-  const { data, error } = await supabase.from("markets").select("*");
-  if (error) throw error;
-
+  const lookupValues = marketLookupValues(marketId);
   const requested = normalizeMarketId(marketId);
-  const market = ((data || []) as MarketRow[]).find((item) => {
-    const id = normalizeMarketId(marketIdOf(item));
-    const name = normalizeMarketId(marketNameOf(item));
-    return id === requested || name === requested;
-  });
+
+  const market =
+    (await findMarketByColumn(supabase, "id", lookupValues)) ??
+    (await findMarketByColumn(supabase, "name", lookupValues)) ??
+    (await findMarketByNameIlike(supabase, marketId));
 
   if (!market) throw new Error(`Data histori ${marketId} belum disetup oleh Admin!`);
+
+  const id = normalizeMarketId(marketIdOf(market));
+  const name = normalizeMarketId(marketNameOf(market));
+  if (id !== requested && name !== requested && !lookupValues.includes(marketIdOf(market)) && !lookupValues.includes(marketNameOf(market))) {
+    throw new Error(`Data histori ${marketId} belum disetup oleh Admin!`);
+  }
 
   const history = parseHistoryTokens(extractHistoryData(market));
   if (history.length < 17) {
