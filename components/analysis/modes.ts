@@ -1,6 +1,6 @@
 import { Activity, Grid3X3, ShieldAlert, Hash, Gauge, Trophy, type LucideIcon } from "lucide-react";
 
-export type ModeKey = "ai" | "bbfs" | "mati" | "jumlah" | "shio" | "rekap" | "bbfs7_trial" | "bbfs7_tradisional";
+export type ModeKey = "ai" | "bbfs" | "mati" | "jumlah" | "shio" | "rekap" | "bbfs7_trial";
 
 /**
  * Hanya icon + lucide + judul chrome yang disimpan di sini (data unik).
@@ -16,17 +16,15 @@ export const MODES: Record<ModeKey, { title: string; emoji: string; Icon: Lucide
   shio: { title: "SHIO MATI", emoji: "◎", Icon: Gauge },
   rekap: { title: "CUSTOM REKAP", emoji: "◆", Icon: Trophy },
   bbfs7_trial: { title: "BBFS 7D", emoji: "▧", Icon: Grid3X3 },
-  bbfs7_tradisional: { title: "UJI COBA BBFS 7D RUMUS TRADISIONAL", emoji: "▧", Icon: Grid3X3 },
 };
 
-export const MODE_KEYS: ModeKey[] = ["ai", "bbfs", "mati", "jumlah", "shio", "rekap", "bbfs7_trial", "bbfs7_tradisional"];
+export const MODE_KEYS: ModeKey[] = ["ai", "bbfs", "mati", "jumlah", "shio", "rekap", "bbfs7_trial"];
 
 // Pengelompokan menu (label menu dipertahankan apa adanya).
 export const ANALYSIS_MENU: Array<{ label: string; mode: ModeKey }> = [
   { label: "ANGKA IKUT", mode: "ai" },
   { label: "ANGKA MATI", mode: "mati" },
   { label: "BBFS", mode: "bbfs" },
-  { label: "BBFS 7D TRADISIONAL", mode: "bbfs7_tradisional" },
   { label: "JUMLAH MATI", mode: "jumlah" },
   { label: "SHIO MATI", mode: "shio" },
 ];
