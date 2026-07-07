@@ -93,7 +93,7 @@ export const buildAngkaJadi = (type: string, result: any): { sections: LineSecti
     return { sections: buildAiAngkaJadi(result) };
   }
 
-  if (type === "bbfs" || type === "bbfs7_tradisional") {
+  if (type === "bbfs") {
     return { sections: buildBbfsAngkaJadi(result) };
   }
 
