@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { MEDIUM_PUBLIC_CACHE_HEADERS, NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
+import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 
 export const runtime = "nodejs";
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json(data || [], {
-      headers: MEDIUM_PUBLIC_CACHE_HEADERS,
+      headers: NO_STORE_HEADERS,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat riwayat evaluasi";
