@@ -40,8 +40,8 @@ User buka web
 Sistem akses memakai 2 tabel utama:
 
 ```txt
-access_pins
-access_sessions
+analisa_access_pins
+analisa_access_sessions
 ```
 
 Alur:
@@ -51,7 +51,7 @@ Admin login di /admin/login
 Admin generate PIN di /admin
 User input PIN di /pin
 PIN berubah dari unused menjadi used
-Session device dibuat di access_sessions
+Session device dibuat di analisa_access_sessions
 Admin bisa revoke akses device
 ```
 
@@ -191,13 +191,13 @@ Jangan commit `.env` berisi credential asli.
 
 ### 6.2 Tabel akses
 
-- `access_pins`
-- `access_sessions`
+- `analisa_access_pins`
+- `analisa_access_sessions`
 
 ### 6.3 View admin
 
-- `admin_access_pins_view`
-- `admin_access_sessions_view`
+- `admin_analisa_access_pins_view`
+- `admin_analisa_access_sessions_view`
 
 SQL setup disimpan di luar repository dan dijalankan manual di Supabase.
 
@@ -297,7 +297,7 @@ Checklist deployment:
 - Jangan expose `SUPABASE_SERVICE_ROLE_KEY` ke client.
 - Jangan commit `.env`.
 - Route yang memakai service role hanya boleh berada di server.
-- Jangan membuka policy anon untuk tabel `access_pins` dan `access_sessions`.
+- Jangan membuka policy anon untuk tabel `analisa_access_pins` dan `analisa_access_sessions`.
 - Ganti `ACCESS_SECRET` dengan string panjang dan acak.
 - Ganti `ADMIN_PASSWORD` jika ada dugaan bocor.
 
