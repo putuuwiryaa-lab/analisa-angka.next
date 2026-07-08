@@ -6,10 +6,24 @@ export const runtime = "nodejs";
 
 const ANALYZE_WINDOW = 20;
 
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
+
 type TargetPair = "depan" | "tengah" | "belakang";
 type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
 
 const BBFS_GGBK_PARAM = 10;
+
+function isInternalRequest(headers: Headers) {
+  const input = headers.get("x-internal-api-secret") || "";
+  return Boolean(INTERNAL_API_SECRET && input && input === INTERNAL_API_SECRET);
+}
+
+async function requestIsAllowed(request: Request) {
+  if (isInternalRequest(request.headers)) return true;
+
+  const access = await requireActiveAccess(request.headers);
+  return access.ok ? true : access;
+}
 
 function sanitizeData(data: unknown): string[] | null {
   if (!Array.isArray(data)) return null;
@@ -71,8 +85,8 @@ function bbfsParamIsValid(param: number, scope: AnalysisScope) {
 }
 
 export async function POST(request: Request) {
-  const access = await requireActiveAccess(request.headers);
-  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+  const allowed = await requestIsAllowed(request);
+  if (allowed !== true) return NextResponse.json({ error: allowed.error }, { status: allowed.status });
 
   try {
     const body = await request.json().catch(() => ({}));
