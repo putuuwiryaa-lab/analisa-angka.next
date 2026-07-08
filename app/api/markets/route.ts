@@ -10,18 +10,7 @@ type RawMarket = Record<string, unknown>;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const MARKET_COLUMNS = [
-  "id",
-  "slug",
-  "code",
-  "name",
-  "title",
-  "order",
-  "sort_order",
-  "sort",
-  "updated_at",
-  "last_result",
-].join(",");
+const MARKET_COLUMNS = "id,slug,code,name,title,sort_order,sort,updated_at,last_result";
 
 function normalizeHistoryData(market: RawMarket) {
   return String(
@@ -57,7 +46,7 @@ function normalizeMarket(market: RawMarket) {
   return {
     id: String(market.id ?? market.slug ?? market.code ?? market.name ?? ""),
     name: market.name ?? market.title ?? market.id ?? "Pasaran",
-    order: Number(market.order ?? market.sort_order ?? market.sort ?? 99),
+    order: Number(market.sort_order ?? market.sort ?? 99),
     updated_at: market.updated_at ?? market.updatedAt ?? null,
     lastResult: normalizeLastResult(market),
   };
@@ -82,8 +71,7 @@ export async function GET(request: Request) {
 
     if (response.error) throw response.error;
 
-    const rows = (response.data ?? []) as RawMarket[];
-    const markets = rows
+    const markets = (response.data || [])
       .map(normalizeMarket)
       .filter((market) => market.id)
       .sort((a, b) => Number(a.order ?? 99) - Number(b.order ?? 99));
