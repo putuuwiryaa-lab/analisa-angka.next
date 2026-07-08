@@ -6,25 +6,9 @@ import { requireActiveAccess } from "@/lib/server/access";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type RawMarket = Record<string, unknown>;
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const MARKET_COLUMN_CANDIDATES = [
-  "id,name,updated_at,last_result,history_data,sort_order,sort",
-  "id,title,updated_at,last_result,history_data,sort_order,sort",
-  "id,slug,updated_at,last_result,history_data,sort_order,sort",
-  "id,code,updated_at,last_result,history_data,sort_order,sort",
-  "id,name,updated_at,history_data",
-  "id,title,updated_at,history_data",
-  "id,slug,updated_at,history_data",
-  "id,code,updated_at,history_data",
-  "id,name",
-  "id,title",
-  "id,slug",
-  "id,code",
-  "id",
-];
+const MARKET_COLUMNS = "id,name,history_data,market_order:order,updated_at,last_result";
 
 function createSupabaseClient() {
   if (!supabaseUrl || !supabaseKey) {
@@ -36,14 +20,19 @@ function createSupabaseClient() {
   });
 }
 
-function normalizeHistoryData(market: RawMarket) {
+function readMarketField(market: unknown, field: string) {
+  if (!market || typeof market !== "object") return undefined;
+  return Reflect.get(market, field);
+}
+
+function normalizeHistoryData(market: unknown) {
   return String(
-    market.history_data ??
-      market.historyData ??
-      market.history ??
-      market.data ??
-      market.results ??
-      market.result ??
+    readMarketField(market, "history_data") ??
+      readMarketField(market, "historyData") ??
+      readMarketField(market, "history") ??
+      readMarketField(market, "data") ??
+      readMarketField(market, "results") ??
+      readMarketField(market, "result") ??
       "",
   );
 }
@@ -60,36 +49,24 @@ function getLastResult(historyData: string) {
   return "----";
 }
 
-function normalizeLastResult(market: RawMarket) {
-  const direct = market.last_result ?? market.lastResult;
+function normalizeLastResult(market: unknown) {
+  const direct = readMarketField(market, "last_result") ?? readMarketField(market, "lastResult");
   if (typeof direct === "string" && /^\d{4}$/.test(direct.trim())) return direct.trim();
   return getLastResult(normalizeHistoryData(market));
 }
 
-function normalizeMarket(market: RawMarket) {
-  const id = String(market.id ?? market.slug ?? market.code ?? market.name ?? market.title ?? "");
-  const name = String(market.name ?? market.title ?? market.slug ?? market.code ?? market.id ?? "Pasaran");
+function normalizeMarket(market: unknown) {
+  const id = readMarketField(market, "id");
+  const name = readMarketField(market, "name");
+  const order = readMarketField(market, "market_order") ?? readMarketField(market, "order");
 
   return {
-    id,
-    name,
-    order: Number(market.sort_order ?? market.sort ?? 99),
-    updated_at: market.updated_at ?? market.updatedAt ?? null,
+    id: String(id ?? ""),
+    name: String(name ?? id ?? "Pasaran"),
+    order: Number(order ?? 99),
+    updated_at: readMarketField(market, "updated_at") ?? readMarketField(market, "updatedAt") ?? null,
     lastResult: normalizeLastResult(market),
   };
-}
-
-async function fetchMarketRows() {
-  const supabase = createSupabaseClient();
-  const errors: string[] = [];
-
-  for (const columns of MARKET_COLUMN_CANDIDATES) {
-    const { data, error } = await supabase.from("markets").select(columns);
-    if (!error) return (data || []) as RawMarket[];
-    errors.push(`${columns}: ${error.message}`);
-  }
-
-  throw new Error(errors[0] || "Gagal memuat markets");
 }
 
 export async function GET(request: Request) {
@@ -99,7 +76,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    const markets = (await fetchMarketRows())
+    const supabase = createSupabaseClient();
+    const response = await supabase.from("markets").select(MARKET_COLUMNS).order("order", { ascending: true });
+
+    if (response.error) throw response.error;
+
+    const rows: unknown[] = response.data || [];
+    const markets = rows
       .map(normalizeMarket)
       .filter((market) => market.id)
       .sort((a, b) => Number(a.order ?? 99) - Number(b.order ?? 99));
