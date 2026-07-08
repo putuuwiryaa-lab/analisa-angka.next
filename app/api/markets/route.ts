@@ -10,7 +10,18 @@ type RawMarket = Record<string, unknown>;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const LIGHT_MARKET_COLUMNS = "id,slug,code,name,title,order,sort_order,sort,updated_at,last_result";
+const MARKET_COLUMNS = [
+  "id",
+  "slug",
+  "code",
+  "name",
+  "title",
+  "order",
+  "sort_order",
+  "sort",
+  "updated_at",
+  "last_result",
+].join(",");
 
 function normalizeHistoryData(market: RawMarket) {
   return String(
@@ -67,11 +78,7 @@ export async function GET(request: Request) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    let response = await supabase.from("markets").select(LIGHT_MARKET_COLUMNS);
-
-    if (response.error) {
-      response = await supabase.from("markets").select("*");
-    }
+    const response = await supabase.from("markets").select(MARKET_COLUMNS);
 
     if (response.error) throw response.error;
 
