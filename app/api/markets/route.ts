@@ -12,11 +12,18 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const MARKET_COLUMN_CANDIDATES = [
   "id,name,updated_at,last_result,history_data,sort_order,sort",
-  "id,name,updated_at,last_result,history_data",
+  "id,title,updated_at,last_result,history_data,sort_order,sort",
+  "id,slug,updated_at,last_result,history_data,sort_order,sort",
+  "id,code,updated_at,last_result,history_data,sort_order,sort",
   "id,name,updated_at,history_data",
-  "id,name,history_data",
-  "id,name,updated_at",
+  "id,title,updated_at,history_data",
+  "id,slug,updated_at,history_data",
+  "id,code,updated_at,history_data",
   "id,name",
+  "id,title",
+  "id,slug",
+  "id,code",
+  "id",
 ];
 
 function createSupabaseClient() {
@@ -60,9 +67,12 @@ function normalizeLastResult(market: RawMarket) {
 }
 
 function normalizeMarket(market: RawMarket) {
+  const id = String(market.id ?? market.slug ?? market.code ?? market.name ?? market.title ?? "");
+  const name = String(market.name ?? market.title ?? market.slug ?? market.code ?? market.id ?? "Pasaran");
+
   return {
-    id: String(market.id ?? market.slug ?? market.code ?? market.name ?? ""),
-    name: market.name ?? market.title ?? market.id ?? "Pasaran",
+    id,
+    name,
     order: Number(market.sort_order ?? market.sort ?? 99),
     updated_at: market.updated_at ?? market.updatedAt ?? null,
     lastResult: normalizeLastResult(market),
