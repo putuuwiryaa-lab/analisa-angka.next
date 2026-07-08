@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
+import { NO_STORE_HEADERS, PRIVATE_SHORT_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 
 export const runtime = "nodejs";
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       .sort((a, b) => Number(a.order ?? 99) - Number(b.order ?? 99));
 
     return NextResponse.json(markets, {
-      headers: NO_STORE_HEADERS,
+      headers: PRIVATE_SHORT_CACHE_HEADERS,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat markets";
