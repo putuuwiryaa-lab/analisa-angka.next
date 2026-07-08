@@ -1,21 +1,6 @@
-import type { PickItem, ShareOption } from "./types";
+import type { ShareOption } from "./types";
 
 export const SEPARATOR = "⟢";
-export const SEPARATOR_OPTIONS: PickItem[] = [
-  { key: "⟢", label: "⟢" },
-  { key: "-", label: "-" },
-  { key: "→", label: "→" },
-  { key: ":", label: ":" },
-  { key: ",", label: "," },
-  { key: ".", label: "." },
-  { key: "|", label: "|" },
-  { key: "/", label: "/" },
-  { key: "•", label: "•" },
-  { key: "🔥", label: "🔥" },
-  { key: "🎯", label: "🎯" },
-  { key: "⚡", label: "⚡" },
-  { key: "💎", label: "💎" },
-];
 export const REKAP_BADGE_MODE = "rekap_badge";
 export const REKAP_MAX_MARKETS = 5;
 
