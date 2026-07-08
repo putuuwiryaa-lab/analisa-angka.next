@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Analisa Angka">
+  <rect width="512" height="512" fill="#0d0a1a"/>
+  <circle cx="388" cy="116" r="128" fill="#7c4dff" opacity="0.16"/>
+  <circle cx="124" cy="396" r="142" fill="#28d7ff" opacity="0.11"/>
+  <defs>
+    <linearGradient id="aaLogoMaskable" x1="116" y1="396" x2="396" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#a98cff"/>
+      <stop offset="0.55" stop-color="#7c4dff"/>
+      <stop offset="1" stop-color="#28d7ff"/>
+    </linearGradient>
+  </defs>
+  <path d="M256 104 396 185v142L256 408 116 327V185L256 104Z" stroke="url(#aaLogoMaskable)" stroke-width="24" stroke-linejoin="round" fill="none"/>
+  <path d="M176 318 254 156 336 318" stroke="url(#aaLogoMaskable)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M220 264h72" stroke="url(#aaLogoMaskable)" stroke-width="24" stroke-linecap="round"/>
+</svg>
