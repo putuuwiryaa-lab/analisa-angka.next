@@ -3,7 +3,7 @@
 import { createElement as h, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ClipboardCopy, Loader2, Share2 } from "lucide-react";
-import { MODE_LABEL, REKAP_BADGE_OPTION, REKAP_MAX_MARKETS } from "./constants";
+import { MODE_LABEL, REKAP_BADGE_OPTION, REKAP_MAX_MARKETS, SEPARATOR, SEPARATOR_OPTIONS } from "./constants";
 import type { MarketOption, PickItem, ShareOption, ShareResponse, ShareRow } from "./types";
 import {
   buildPreviewText,
@@ -53,6 +53,7 @@ export function SharePrediksiClient() {
   const [markets, setMarkets] = useState<ShareRow[]>([]);
   const [options, setOptions] = useState<ShareOption[]>([]);
   const [selectedOption, setSelectedOption] = useState<ShareOption | null>(REKAP_BADGE_OPTION);
+  const [selectedSeparator, setSelectedSeparator] = useState(SEPARATOR);
   const [rows, setRows] = useState<ShareRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [loadingMarkets, setLoadingMarkets] = useState(true);
@@ -93,8 +94,8 @@ export function SharePrediksiClient() {
   }, [allOptions, selectedMode, selectedTarget]);
 
   const selectedRows = useMemo(() => rows.filter((row) => selected.has(marketKey(row))), [rows, selected]);
-  const shareText = useMemo(() => buildShareText(selectedOption, selectedRows), [selectedOption, selectedRows]);
-  const previewText = useMemo(() => buildPreviewText(selectedOption, selectedRows), [selectedOption, selectedRows]);
+  const shareText = useMemo(() => buildShareText(selectedOption, selectedRows, selectedSeparator), [selectedOption, selectedRows, selectedSeparator]);
+  const previewText = useMemo(() => buildPreviewText(selectedOption, selectedRows, selectedSeparator), [selectedOption, selectedRows, selectedSeparator]);
 
   useEffect(() => {
     let active = true;
@@ -168,6 +169,11 @@ export function SharePrediksiClient() {
     );
     if (!next) return;
     chooseOption(next);
+  }
+
+  function chooseSeparator(key: string) {
+    setSelectedSeparator(key || SEPARATOR);
+    setCopied(false);
   }
 
   function toggle(row: ShareRow) {
@@ -255,7 +261,7 @@ export function SharePrediksiClient() {
   const quickLabel = rekapBadgeSelected ? `Pilih ${REKAP_MAX_MARKETS} Pertama` : "Pilih Semua";
   const description = rekapBadgeSelected
     ? `Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`
-    : "Share Prediksi selain Rekap Badge bebas jumlah pasaran.";
+    : "Pilih separator dulu, lalu generate. Hasil copy mengikuti separator pilihan.";
 
   return h("div", { className: "animate-rise pb-8" }, [
     h("button", { key: "back", type: "button", onClick: () => router.push("/"), className: "pressable depth-3 mb-3 inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, [h(ArrowLeft, { key: "i", size: 15 }), " Beranda"]),
@@ -266,6 +272,7 @@ export function SharePrediksiClient() {
       renderPicker("Jenis", jenisItems, selectedMode, chooseJenis),
       renderPicker("Target", targetItems, selectedTarget, chooseTarget),
       renderPicker("Output", outputItems, selectedOutput, chooseOutput),
+      rekapBadgeSelected ? null : renderPicker("Separator", SEPARATOR_OPTIONS, selectedSeparator, chooseSeparator),
     ]),
     h("section", { key: "markets", className: "depth-1 mb-4 rounded-3xl border p-4" }, [h("div", { key: "head", className: "mb-3 flex items-center justify-between gap-3 px-1" }, [h("span", { key: "t", className: "display text-xs text-text" }, "Pilih Pasaran"), h("span", { key: "c", className: "text-[10px] font-black uppercase tracking-wide text-text-soft" }, countLabel)]), renderMarkets()]),
     h("section", { key: "preview", className: "depth-1 rounded-3xl border p-4" }, [h("div", { key: "ph", className: "mb-3 flex items-center justify-between gap-3 px-1" }, [h("span", { key: "t", className: "display text-xs text-text" }, "Preview Singkat"), loadingRows ? h(Loader2, { key: "l", size: 15, className: "animate-spin text-text-soft" }) : null]), h("pre", { key: "pre", className: "depth-2 max-h-[48svh] min-h-[150px] overflow-y-auto whitespace-pre-wrap break-words rounded-3xl border p-4 font-mono text-[12px] font-bold leading-6 text-text" }, loadingRows ? "Memuat preview…" : previewText || fallback), h("div", { key: "actions", className: "mt-3 grid grid-cols-2 gap-2.5" }, [h("button", { key: "copy", type: "button", onClick: copyText, disabled: !shareText || loadingRows, className: "pressable depth-3 flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06] disabled:opacity-45" }, [h(ClipboardCopy, { key: "i", size: 16 }), copied ? "Tersalin" : "Copy"]), h("button", { key: "share", type: "button", onClick: shareNow, disabled: !shareText || loadingRows, className: "pressable depth-accent accent-text flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45" }, [h(Share2, { key: "i", size: 16 }), "Share"])])]),
