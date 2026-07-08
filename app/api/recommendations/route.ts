@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { CustomFocus } from "@/lib/analysis/customDigit";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { buildCustomRekapRecommendations, resolveCustomRekapMarketIds } from "@/lib/server/customRekapRecommendations";
-import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
+import { NO_STORE_HEADERS, PRIVATE_MEDIUM_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 
 export const runtime = "nodejs";
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const marketIds = await resolveCustomRekapMarketIds(supabase, marketId);
     const badges = await buildCustomRekapRecommendations(supabase, marketIds, customFocus);
 
-    return NextResponse.json(badges, { headers: NO_STORE_HEADERS });
+    return NextResponse.json(badges, { headers: PRIVATE_MEDIUM_CACHE_HEADERS });
   } catch (e) {
     console.error("RECOMMENDATIONS_API_ERROR", e);
     return NextResponse.json({ error: "Gagal memuat rekomendasi" }, { status: 500, headers: NO_STORE_HEADERS });
