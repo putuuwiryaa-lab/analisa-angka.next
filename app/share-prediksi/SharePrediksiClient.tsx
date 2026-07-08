@@ -172,7 +172,7 @@ export function SharePrediksiClient() {
   }
 
   function chooseSeparator(value: string) {
-    setSelectedSeparator(value || SEPARATOR);
+    setSelectedSeparator(value);
     setCopied(false);
   }
 
