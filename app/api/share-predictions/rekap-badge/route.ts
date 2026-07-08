@@ -4,6 +4,8 @@ import { runAnalysis } from "@/lib/server/engines/predictionEngine";
 import { buildCustomDigitLines, type TargetPair } from "@/lib/analysis/customDigit";
 import type { RecommendedMap } from "@/lib/analysis/recommendations";
 import { buildCustomRekapRecommendations, resolveCustomRekapMarketIds } from "@/lib/server/customRekapRecommendations";
+import { requireActiveAccess } from "@/lib/server/access";
+import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -165,6 +167,11 @@ function buildPairSection(pair: TargetPair, data: string[], badges: RecommendedM
 }
 
 export async function GET(request: NextRequest) {
+  const access = await requireActiveAccess(request.headers);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status, headers: NO_STORE_HEADERS });
+  }
+
   try {
     const search = request.nextUrl.searchParams;
     const cursor = Math.max(0, Number(search.get("cursor") || 0) || 0);
@@ -197,9 +204,9 @@ export async function GET(request: NextRequest) {
     }
 
     const nextCursor = requestedIds.length || markets.length < limit ? null : cursor + limit;
-    return NextResponse.json({ rows, nextCursor, limit }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ rows, nextCursor, limit }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal membuat rekap badge.";
-    return NextResponse.json({ error: message }, { status: 500, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
