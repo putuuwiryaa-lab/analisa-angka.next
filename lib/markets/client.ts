@@ -2,6 +2,8 @@ export const MARKETS_QUERY_KEY = ["markets"] as const;
 export const MARKETS_STALE_TIME = 60 * 1000;
 export const MARKETS_GC_TIME = 30 * 60 * 1000;
 
+let redirectingToPin = false;
+
 export type Market = {
   id: string;
   name?: string | null;
@@ -85,11 +87,30 @@ export function findMarketByIdOrName(markets: Market[], marketId: string) {
   });
 }
 
+function redirectInvalidAccessToPin(response: Response) {
+  if (response.status !== 401 && response.status !== 403) return;
+  if (typeof window === "undefined") return;
+  if (redirectingToPin) return;
+  if (window.location.pathname === "/pin") return;
+  if (window.location.pathname.startsWith("/admin")) return;
+
+  redirectingToPin = true;
+  const next = `${window.location.pathname}${window.location.search}`;
+  const target = `/pin?next=${encodeURIComponent(next)}`;
+
+  fetch("/api/logout", { method: "POST" })
+    .catch(() => null)
+    .finally(() => {
+      window.location.replace(target);
+    });
+}
+
 export async function fetchMarkets(..._args: unknown[]): Promise<Market[]> {
   const response = await fetch("/api/markets");
   const json = await response.json();
 
   if (!response.ok) {
+    redirectInvalidAccessToPin(response);
     throw new Error(json?.error || "Gagal memuat data pasaran.");
   }
   if (!Array.isArray(json)) {
@@ -109,6 +130,7 @@ export async function fetchMarketHistory(marketId: string): Promise<MarketHistor
   const json = await response.json();
 
   if (!response.ok || !json?.success) {
+    redirectInvalidAccessToPin(response);
     throw new Error(json?.error || "Gagal memuat histori pasaran.");
   }
 
