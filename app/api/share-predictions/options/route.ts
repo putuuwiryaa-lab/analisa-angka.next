@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
+import { requireActiveAccess } from "@/lib/server/access";
+import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,7 +61,12 @@ function normalizeOption(row: SnapshotOptionRow) {
   return { mode, param, targetPair, analysisScope };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const access = await requireActiveAccess(request.headers);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status, headers: NO_STORE_HEADERS });
+  }
+
   try {
     const supabase = createAdminClient();
     const options = new Map<string, ShareOption>();
@@ -102,10 +109,10 @@ export async function GET() {
     }
 
     return NextResponse.json(Array.from(options.values()), {
-      headers: { "Cache-Control": "no-store" },
+      headers: NO_STORE_HEADERS,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memuat pilihan share prediksi";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
