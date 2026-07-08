@@ -82,7 +82,8 @@ export async function GET(request: Request) {
 
     if (response.error) throw response.error;
 
-    const markets = (response.data || [])
+    const rows = (response.data ?? []) as RawMarket[];
+    const markets = rows
       .map(normalizeMarket)
       .filter((market) => market.id)
       .sort((a, b) => Number(a.order ?? 99) - Number(b.order ?? 99));
