@@ -10,14 +10,36 @@ import {
   requestMeta,
   setAccessCookies,
 } from "@/lib/server/access";
+import {
+  checkRateLimit,
+  clearRateLimit,
+  rateLimitKey,
+  rateLimitResponse,
+  recordRateLimitFailure,
+  type RateLimitConfig,
+} from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const PIN_WINDOW_MS = 10 * 60 * 1000;
+const PIN_LOCK_MS = 10 * 60 * 1000;
+const MAX_PIN_ATTEMPTS = 5;
 
 type PinRow = {
   id: string;
   status: "unused" | "used" | "revoked";
 };
+
+function pinRateLimit(headers: Headers): RateLimitConfig {
+  return {
+    key: rateLimitKey("pin_activate", headers),
+    maxAttempts: MAX_PIN_ATTEMPTS,
+    windowMs: PIN_WINDOW_MS,
+    lockMs: PIN_LOCK_MS,
+    error: "Terlalu banyak percobaan PIN. Coba lagi beberapa menit.",
+  };
+}
 
 function normalizeDeviceId(value: unknown) {
   return String(value || "").trim().slice(0, 120);
@@ -28,16 +50,24 @@ function normalizeDeviceName(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const limit = pinRateLimit(request.headers);
+  const currentLimit = await checkRateLimit(limit);
+  if (!currentLimit.ok) return rateLimitResponse(currentLimit);
+
   const body = await request.json().catch(() => ({}));
   const pin = normalizePin(body.pin);
   const deviceId = normalizeDeviceId(body.device_id);
   const deviceName = normalizeDeviceName(body.device_name);
 
   if (pin.length !== 8) {
+    const failedLimit = await recordRateLimitFailure(limit);
+    if (!failedLimit.ok) return rateLimitResponse(failedLimit);
     return NextResponse.json({ success: false, error: "PIN harus 8 digit." }, { status: 400 });
   }
 
   if (!deviceId) {
+    const failedLimit = await recordRateLimitFailure(limit);
+    if (!failedLimit.ok) return rateLimitResponse(failedLimit);
     return NextResponse.json({ success: false, error: "Device tidak valid." }, { status: 400 });
   }
 
@@ -55,14 +85,20 @@ export async function POST(request: Request) {
     if (pinError) throw pinError;
 
     if (!pinRow) {
+      const failedLimit = await recordRateLimitFailure(limit);
+      if (!failedLimit.ok) return rateLimitResponse(failedLimit);
       return NextResponse.json({ success: false, error: "PIN tidak valid." }, { status: 401 });
     }
 
     if (pinRow.status === "used") {
+      const failedLimit = await recordRateLimitFailure(limit);
+      if (!failedLimit.ok) return rateLimitResponse(failedLimit);
       return NextResponse.json({ success: false, error: "PIN sudah digunakan." }, { status: 409 });
     }
 
     if (pinRow.status === "revoked") {
+      const failedLimit = await recordRateLimitFailure(limit);
+      if (!failedLimit.ok) return rateLimitResponse(failedLimit);
       return NextResponse.json({ success: false, error: "PIN sudah dibatalkan admin." }, { status: 403 });
     }
 
@@ -99,8 +135,12 @@ export async function POST(request: Request) {
 
     if (!usedPin) {
       await supabase.from(ACCESS_SESSIONS_TABLE).delete().eq("id", sessionRow.id);
+      const failedLimit = await recordRateLimitFailure(limit);
+      if (!failedLimit.ok) return rateLimitResponse(failedLimit);
       return NextResponse.json({ success: false, error: "PIN sudah digunakan. Minta PIN baru." }, { status: 409 });
     }
+
+    await clearRateLimit(limit.key);
 
     const response = NextResponse.json({ success: true });
     setAccessCookies(response, token, deviceId);
