@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
+import { requireActiveAccess } from "@/lib/server/access";
+import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +52,11 @@ function readParams(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const access = await requireActiveAccess(request.headers);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status, headers: NO_STORE_HEADERS });
+  }
+
   try {
     const { mode, param, targetPair, analysisScope } = readParams(request);
     const supabase = createAdminClient();
@@ -109,10 +116,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { mode, param, targetPair, analysisScope, rows },
-      { headers: { "Cache-Control": "no-store" } },
+      { headers: NO_STORE_HEADERS },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memuat data.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
