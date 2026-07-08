@@ -7,7 +7,6 @@ import {
 } from "@/lib/analysis/statistics";
 import {
   INVEST_CATALOG,
-  catalogForRole,
   type InvestCombo,
   type InvestFilter,
 } from "./investCatalog";
@@ -311,4 +310,4 @@ export async function loadInvestForMarket(marketId: string, catalog: InvestCombo
   return evaluateMarketInvest(marketId, name, rows, catalog);
 }
 
-export { INVEST_CATALOG, catalogForRole };
+export { INVEST_CATALOG };
