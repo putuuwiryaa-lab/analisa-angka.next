@@ -10,7 +10,24 @@ type RawMarket = Record<string, unknown>;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const MARKET_COLUMNS = "id,slug,code,name,title,sort_order,sort,updated_at,last_result";
+const MARKET_COLUMN_CANDIDATES = [
+  "id,name,updated_at,last_result,history_data,sort_order,sort",
+  "id,name,updated_at,last_result,history_data",
+  "id,name,updated_at,history_data",
+  "id,name,history_data",
+  "id,name,updated_at",
+  "id,name",
+];
+
+function createSupabaseClient() {
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Konfigurasi Supabase belum lengkap.");
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
 function normalizeHistoryData(market: RawMarket) {
   return String(
@@ -52,6 +69,19 @@ function normalizeMarket(market: RawMarket) {
   };
 }
 
+async function fetchMarketRows() {
+  const supabase = createSupabaseClient();
+  const errors: string[] = [];
+
+  for (const columns of MARKET_COLUMN_CANDIDATES) {
+    const { data, error } = await supabase.from("markets").select(columns);
+    if (!error) return (data || []) as RawMarket[];
+    errors.push(`${columns}: ${error.message}`);
+  }
+
+  throw new Error(errors[0] || "Gagal memuat markets");
+}
+
 export async function GET(request: Request) {
   const access = await requireActiveAccess(request.headers);
   if (!access.ok) {
@@ -59,19 +89,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Konfigurasi Supabase belum lengkap.");
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    const response = await supabase.from("markets").select(MARKET_COLUMNS);
-
-    if (response.error) throw response.error;
-
-    const markets = (response.data || [])
+    const markets = (await fetchMarketRows())
       .map(normalizeMarket)
       .filter((market) => market.id)
       .sort((a, b) => Number(a.order ?? 99) - Number(b.order ?? 99));
