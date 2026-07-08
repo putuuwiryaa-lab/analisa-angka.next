@@ -6,7 +6,7 @@ import {
   type InvestComboResult,
   type InvestMarketResult,
 } from "@/lib/server/engines/investEngine";
-import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
+import { NO_STORE_HEADERS, PRIVATE_MEDIUM_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 
 export const runtime = "nodejs";
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
 
     if (marketId) {
       const market = rankInvestMarkets([await loadInvestForMarket(marketId)])[0];
-      return NextResponse.json({ market }, { headers: NO_STORE_HEADERS });
+      return NextResponse.json({ market }, { headers: PRIVATE_MEDIUM_CACHE_HEADERS });
     }
 
     const markets = rankInvestMarkets(await loadInvestOverview())
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
       .map(toInvestOverviewMarket);
 
     return NextResponse.json({ markets }, {
-      headers: NO_STORE_HEADERS,
+      headers: PRIVATE_MEDIUM_CACHE_HEADERS,
     });
   } catch (e) {
     console.error("INVEST_API_ERROR", e);
