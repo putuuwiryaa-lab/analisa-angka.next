@@ -99,13 +99,13 @@ function buildRekapBadgeBlock(row: ShareRow) {
   return [`- ${marketLabel(row)}`, "", ...body].join("\n").trimEnd();
 }
 
-export function buildShareText(option: ShareOption | null, rows: ShareRow[]) {
+export function buildShareText(option: ShareOption | null, rows: ShareRow[], separator = SEPARATOR) {
   if (!option || rows.length === 0) return "";
   if (isRekapBadge(option)) return rows.map(buildRekapBadgeBlock).filter(Boolean).join("\n\n");
-  return rows.map((row) => `${marketLabel(row)} ${SEPARATOR} ${rowResultText(option, row)}`).join("\n");
+  return rows.map((row) => `${marketLabel(row)} ${separator} ${rowResultText(option, row)}`).join("\n");
 }
 
-export function buildPreviewText(option: ShareOption | null, rows: ShareRow[]) {
+export function buildPreviewText(option: ShareOption | null, rows: ShareRow[], separator = SEPARATOR) {
   if (!option || rows.length === 0) return "";
   if (isRekapBadge(option)) {
     const visibleRows = rows.slice(0, 2);
@@ -114,7 +114,7 @@ export function buildPreviewText(option: ShareOption | null, rows: ShareRow[]) {
   }
   const visibleRows = rows.slice(0, 5);
   const hiddenCount = Math.max(rows.length - visibleRows.length, 0);
-  return `${buildShareText(option, visibleRows)}${hiddenCount > 0 ? `\n...dan ${hiddenCount} pasaran lainnya` : ""}`;
+  return `${buildShareText(option, visibleRows, separator)}${hiddenCount > 0 ? `\n...dan ${hiddenCount} pasaran lainnya` : ""}`;
 }
 
 export function uniqueBy<T>(items: T[], keyFn: (item: T) => string) {
