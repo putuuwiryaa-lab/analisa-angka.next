@@ -64,12 +64,6 @@ export function outputLabel(option: ShareOption) {
   return `${option.param} Digit`;
 }
 
-function shareTitle(option: ShareOption) {
-  if (isRekapBadge(option)) return "Rekap Badge 2D";
-  const mode = displayMode(option);
-  return [MODE_LABEL[mode] || mode.toUpperCase(), targetLabel(option), outputLabel(option)].filter(Boolean).join(" ");
-}
-
 export function marketOptionRow(market: MarketOption): ShareRow {
   return {
     marketId: market.id || null,
@@ -98,24 +92,6 @@ function rowResultText(option: ShareOption, row: ShareRow) {
   return "-";
 }
 
-function formatTimePart(date: Date, timeZone: string, suffix: string) {
-  const parts = new Intl.DateTimeFormat("id-ID", { timeZone, weekday: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(date);
-  const weekday = parts.find((part) => part.type === "weekday")?.value || "";
-  const hour = parts.find((part) => part.type === "hour")?.value || "00";
-  const minute = parts.find((part) => part.type === "minute")?.value || "00";
-  const day = weekday ? weekday.charAt(0).toUpperCase() + weekday.slice(1).toLowerCase() : "";
-  return `${day} ${hour}.${minute} ${suffix}`.trim();
-}
-
-function dataLineText(rows: ShareRow[]) {
-  const timestamps = rows.map((row) => Date.parse(row.updatedAt || "")).filter((time) => Number.isFinite(time));
-  if (!timestamps.length) return "";
-  const latest = new Date(Math.max(...timestamps));
-  const wib = formatTimePart(latest, "Asia/Jakarta", "WIB");
-  const wita = formatTimePart(latest, "Asia/Makassar", "WITA");
-  return `*Data ${wib} / ${wita.replace(/^\S+\s+/, "")}*`;
-}
-
 function buildRekapBadgeBlock(row: ShareRow) {
   const sections = (row.sections || []).filter((section) => section.lines?.length);
   if (!sections.length) return "";
@@ -126,14 +102,7 @@ function buildRekapBadgeBlock(row: ShareRow) {
 export function buildShareText(option: ShareOption | null, rows: ShareRow[]) {
   if (!option || rows.length === 0) return "";
   if (isRekapBadge(option)) return rows.map(buildRekapBadgeBlock).filter(Boolean).join("\n\n");
-  const title = shareTitle(option);
-  const dataLine = dataLineText(rows);
-  const lines = rows.map((row) => `${marketLabel(row)} ${SEPARATOR} ${rowResultText(option, row)}`);
-  if (option.mode === "mati") {
-    const header = MATI_POSITIONS.map(([, label]) => label).join(" | ");
-    return [title, dataLine, header, "", ...lines].filter((line, index) => line || index === 3).join("\n");
-  }
-  return [title, dataLine, "", ...lines].filter((line, index) => line || index === 2).join("\n");
+  return rows.map((row) => `${marketLabel(row)} ${SEPARATOR} ${rowResultText(option, row)}`).join("\n");
 }
 
 export function buildPreviewText(option: ShareOption | null, rows: ShareRow[]) {
