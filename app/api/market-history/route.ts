@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { NO_STORE_HEADERS, PRIVATE_SHORT_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
+import { createAdminClient } from "@/lib/server/supabase-admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,21 +9,7 @@ export const dynamic = "force-dynamic";
 const HISTORY_WINDOW = 20;
 
 type RawMarket = Record<string, unknown>;
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-function createSupabaseClient() {
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Konfigurasi Supabase belum lengkap.");
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
-type MarketSupabaseClient = ReturnType<typeof createSupabaseClient>;
+type MarketSupabaseClient = ReturnType<typeof createAdminClient>;
 
 function safeDecode(value: string) {
   try {
@@ -105,7 +91,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "marketId kosong." }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
-    const supabase = createSupabaseClient();
+    const supabase = createAdminClient();
     const lookupValues = marketLookupValues(marketId);
     const requested = normalizeMarketId(marketId);
 
