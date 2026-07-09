@@ -14,7 +14,11 @@ type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_be
 const BBFS_GGBK_PARAM = 10;
 
 function isInternalRequest(headers: Headers) {
-  const input = headers.get("x-internal-api-secret") || "";
+  const input =
+    headers.get("x-internal-secret") ||
+    headers.get("x-internal-api-secret") ||
+    "";
+
   return Boolean(INTERNAL_API_SECRET && input && input === INTERNAL_API_SECRET);
 }
 
