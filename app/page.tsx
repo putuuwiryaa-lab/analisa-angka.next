@@ -16,18 +16,8 @@ import {
 
 const WA_NUMBER = "6285119341538";
 const APP_LINKS = [
-  {
-    name: "Scan Angka",
-    badge: "BATCH SCAN",
-    description: "Scan rumus dan Batch Scan banyak pasaran sekaligus.",
-    href: "https://scan-angka.vercel.app",
-  },
-  {
-    name: "Angka Pro",
-    badge: "RANKING",
-    description: "Pantauan prediksi ringan dengan ranking AI4, CT6, BBFS, dan TOP8 2D.",
-    href: "https://angkapro.online",
-  },
+  { name: "Scan Angka", href: "https://scan-angka.vercel.app" },
+  { name: "Angka Pro", href: "https://angkapro.online" },
 ];
 
 export default function DashboardPage() {
@@ -163,34 +153,18 @@ export default function DashboardPage() {
 
 function CrossAppBanner() {
   return (
-    <section className="animate-soft-pop depth-1 mb-4 rounded-3xl border p-3" aria-label="Tools tambahan">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-primary-soft">Tools Tambahan</div>
-          <h2 className="mt-1 text-lg font-black leading-none text-text">Aplikasi Lainnya</h2>
-        </div>
-        <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-primary-soft">
-          2 Tools
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 max-[360px]:grid-cols-1">
+    <section className="animate-soft-pop mb-4 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-border-soft bg-white/[0.035] px-3 py-2" aria-label="Tools tambahan">
+      <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.14em] text-text-soft">Tools tambahan</span>
+      <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
         {APP_LINKS.map((app) => (
           <a
             key={app.name}
             href={app.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="pressable depth-2 rounded-2xl border p-3 text-left hover:border-border hover:bg-white/[0.055]"
+            className="pressable rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[11px] font-black leading-none text-primary-soft hover:border-primary/35"
           >
-            <div className="flex items-start justify-between gap-2">
-              <strong className="text-sm font-black leading-tight text-text">{app.name}</strong>
-              <span className="rounded-full bg-primary/15 px-2 py-1 text-[8px] font-black uppercase tracking-wide text-primary-soft">
-                {app.badge}
-              </span>
-            </div>
-            <p className="mt-2 min-h-[2.8rem] text-[11px] font-semibold leading-snug text-text-muted">{app.description}</p>
-            <span className="mt-2 inline-flex text-[10px] font-black uppercase tracking-wide text-accent">Buka →</span>
+            {app.name}
           </a>
         ))}
       </div>
