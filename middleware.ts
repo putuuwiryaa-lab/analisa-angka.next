@@ -25,6 +25,18 @@ function isPublicPath(pathname: string) {
   return /\.(?:png|jpg|jpeg|webp|gif|svg|ico|css|js|txt|xml|json)$/i.test(pathname);
 }
 
+function isInternalAnalyzeRequest(req: NextRequest) {
+  if (req.nextUrl.pathname !== "/api/analyze") return false;
+
+  const expected = process.env.INTERNAL_API_SECRET || "";
+  const input =
+    req.headers.get("x-internal-secret") ||
+    req.headers.get("x-internal-api-secret") ||
+    "";
+
+  return Boolean(expected && input && input === expected);
+}
+
 function redirectWithNext(req: NextRequest, target: string) {
   const { pathname, search } = req.nextUrl;
   const url = new URL(target, req.url);
@@ -37,7 +49,7 @@ export function middleware(req: NextRequest) {
   const hasAccess = Boolean(req.cookies.get(ACCESS_COOKIE)?.value);
   const hasAdmin = Boolean(req.cookies.get(ADMIN_COOKIE)?.value);
 
-  if (isPublicPath(pathname)) {
+  if (isPublicPath(pathname) || isInternalAnalyzeRequest(req)) {
     return NextResponse.next();
   }
 
