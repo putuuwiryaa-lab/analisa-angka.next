@@ -1,277 +1,237 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, Coins, Copy, Loader2, RefreshCw, Search, Trophy } from "lucide-react";
+import { ArrowLeft, Check, ClipboardCopy, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-type InvestFilter = { kind: string; param: number };
-type InvestCombo = {
-  id: string;
-  label: string;
-  access?: "FREE" | "VIP";
-  expectedLines: number;
-  hitRate: number;
-  avgWins15: number;
-  avgScore: number;
-  filters: InvestFilter[];
-};
-type InvestPair = { pair: "depan" | "tengah" | "belakang"; pairLabel: string; combos: InvestCombo[] };
-type InvestMarketDetail = { marketId: string; marketName: string; hasAny: boolean; pairs: InvestPair[] };
-type InvestTopCombo = { pair: InvestPair["pair"]; pairLabel: string; combo: InvestCombo };
-type InvestMarketOverview = {
+type Pair = "depan" | "tengah" | "belakang";
+
+type InvestLineRow = {
   marketId: string;
   marketName: string;
-  hasAny: boolean;
-  totalCombos: number;
-  bestWins15: number;
-  bestScore: number;
-  topCombos: InvestTopCombo[];
+  pair: Pair;
+  pairLabel: string;
+  comboId: string;
+  comboLabel: string;
+  avgWins15: number;
+  avgWinsLast5: number;
+  expectedLines: number;
+  actualLines: number;
+  avgScore: number;
+  recommendationScore: number;
+  recommendationStatus: string;
+  riskNote: string;
+  latestResult: string;
+  lines: string[];
+  error?: string;
 };
-type DetailState = { loading?: boolean; error?: string; market?: InvestMarketDetail };
-type AngkaJadiResult = { lines?: string[]; latest_result?: string; formula_version?: string };
-type AngkaJadiState = { loading?: boolean; error?: string; result?: AngkaJadiResult; copied?: boolean };
 
-async function fetchInvestOverview(): Promise<InvestMarketOverview[]> {
-  const res = await fetch("/api/invest");
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Gagal memuat rekomendasi");
-  return (data.markets || []) as InvestMarketOverview[];
-}
+type InvestLineResponse = {
+  success: boolean;
+  pair: Pair;
+  pairLabel: string;
+  rows: InvestLineRow[];
+  count: number;
+  generatedAt: string;
+  error?: string;
+};
 
-async function fetchInvestDetail(marketId: string): Promise<InvestMarketDetail> {
-  const res = await fetch(`/api/invest?marketId=${encodeURIComponent(marketId)}`);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.market) throw new Error(data.error || "Gagal memuat detail rekomendasi");
-  return data.market as InvestMarketDetail;
-}
-
-function formatAgo(ts: number) {
-  const diff = Date.now() - ts;
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "baru saja";
-  if (min < 60) return `${min} menit lalu`;
-  return `${Math.floor(min / 60)} jam lalu`;
-}
-
-function formatScore(value: number) {
-  if (!Number.isFinite(value)) return "0";
-  return value % 1 === 0 ? String(value) : value.toFixed(1);
-}
+const PAIR_OPTIONS: Array<{ key: Pair; label: string; short: string }> = [
+  { key: "depan", label: "2D Depan", short: "Depan" },
+  { key: "tengah", label: "2D Tengah", short: "Tengah" },
+  { key: "belakang", label: "2D Belakang", short: "Belakang" },
+];
 
 function formatWins15(value: number) {
   if (!Number.isFinite(value)) return "0";
   return value % 1 === 0 ? String(value) : value.toFixed(1);
 }
 
-function comboStrengthLabel(avgWins15: number) {
-  if (avgWins15 >= 15) return "Sempurna";
-  if (avgWins15 >= 14) return "Kuat";
-  if (avgWins15 >= 13) return "Stabil";
-  if (avgWins15 >= 12) return "Potensial";
-  return "Pantauan";
+function formatAgo(value: string) {
+  const time = Date.parse(value);
+  if (!Number.isFinite(time)) return "-";
+
+  const diff = Date.now() - time;
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "baru saja";
+  if (min < 60) return `${min} menit lalu`;
+  return `${Math.floor(min / 60)} jam lalu`;
 }
 
-function lineCopyText(lines: string[] = []) {
+function lineText(lines: string[] = []) {
   return lines.join("*");
 }
 
-function lineDisplayText(lines: string[] = []) {
-  return lines.join(" * ");
+function shortComboLabel(value: string) {
+  return value
+    .replace(/Mati Kepala/g, "OFF KPL")
+    .replace(/Mati Ekor/g, "OFF EKR")
+    .replace(/Shio Mati/g, "OFF Shio")
+    .replace(/Jumlah Mati/g, "OFF Jumlah")
+    .replace(/Ganjil\/Genap/g, "Ganjil Genap")
+    .replace(/Besar\/Kecil/g, "Besar Kecil")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function comboKey(marketId: string, pair: InvestPair["pair"], comboId: string) {
-  return `${marketId}::${pair}::${comboId}`;
+async function fetchInvestLines(pair: Pair): Promise<InvestLineResponse> {
+  const params = new URLSearchParams({ pair, limit: "120" });
+  const response = await fetch(`/api/invest/angka-jadi-list?${params.toString()}`, { cache: "no-store" });
+  const json = await response.json().catch(() => ({}));
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error || "Gagal memuat Angka Jadi Invest.");
+  }
+
+  return json as InvestLineResponse;
 }
 
 export default function RekomendasiPage() {
   const router = useRouter();
+  const [pair, setPair] = useState<Pair>("belakang");
   const [search, setSearch] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [details, setDetails] = useState<Record<string, DetailState>>({});
-  const [angkaJadi, setAngkaJadi] = useState<Record<string, AngkaJadiState>>({});
+  const [copiedKey, setCopiedKey] = useState("");
+  const [copiedAll, setCopiedAll] = useState(false);
 
-  const { data: markets = [], isPending, error, refetch, isFetching, dataUpdatedAt } = useQuery({
-    queryKey: ["invest-overview"],
-    queryFn: fetchInvestOverview,
+  const { data, isPending, isFetching, error, refetch } = useQuery({
+    queryKey: ["invest-angka-jadi-list", pair],
+    queryFn: () => fetchInvestLines(pair),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     placeholderData: keepPreviousData,
   });
 
-  const withRecs = useMemo(() => markets.filter((m) => m.hasAny), [markets]);
-  const allComboCount = useMemo(() => withRecs.reduce((sum, market) => sum + Number(market.totalCombos || 0), 0), [withRecs]);
-  const topItems = useMemo(
-    () =>
-      withRecs
-        .flatMap((market) =>
-          market.topCombos
-            .filter((item) => item.combo.avgWins15 >= 15)
-            .slice(0, 1)
-            .map((item) => ({ market, pair: item, combo: item.combo })),
-        )
-        .slice(0, 12),
-    [withRecs],
-  );
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return withRecs;
-    return withRecs.filter((m) => m.marketId.toLowerCase().includes(q) || m.marketName.toLowerCase().includes(q));
-  }, [withRecs, search]);
+  const rows = data?.rows || [];
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((row) => row.marketId.toLowerCase().includes(q) || row.marketName.toLowerCase().includes(q));
+  }, [rows, search]);
 
+  const activePairLabel = PAIR_OPTIONS.find((item) => item.key === pair)?.label || "2D Belakang";
   const errorMessage = error instanceof Error ? error.message : "";
-  const showInitialSkeleton = isPending && markets.length === 0;
+  const showSkeleton = isPending && rows.length === 0;
 
-  const handleRefresh = () => {
-    setOpenId(null);
-    setDetails({});
-    void refetch();
-  };
+  async function copyRow(row: InvestLineRow) {
+    if (!row.lines.length) return;
+    await navigator.clipboard?.writeText(lineText(row.lines));
+    setCopiedKey(row.marketId);
+    window.setTimeout(() => setCopiedKey(""), 1200);
+  }
 
-  const handleToggleMarket = async (marketId: string) => {
-    setOpenId((prev) => (prev === marketId ? null : marketId));
+  async function copyAll() {
+    const text = filteredRows
+      .filter((row) => row.lines.length)
+      .map((row) => `${row.marketName}\n${lineText(row.lines)}`)
+      .join("\n\n");
 
-    const current = details[marketId];
-    if (current?.loading || current?.market) return;
+    if (!text) return;
 
-    setDetails((prev) => ({ ...prev, [marketId]: { loading: true } }));
-    try {
-      const market = await fetchInvestDetail(marketId);
-      setDetails((prev) => ({ ...prev, [marketId]: { market } }));
-    } catch (e) {
-      setDetails((prev) => ({
-        ...prev,
-        [marketId]: { error: e instanceof Error ? e.message : "Gagal memuat detail rekomendasi" },
-      }));
-    }
-  };
-
-  const handleOpenAngkaJadi = async (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => {
-    const existing = angkaJadi[key];
-    if (existing?.loading) return;
-    if (existing?.result) {
-      setAngkaJadi((prev) => ({ ...prev, [key]: { ...prev[key], result: undefined } }));
-      return;
-    }
-
-    setAngkaJadi((prev) => ({ ...prev, [key]: { loading: true } }));
-    try {
-      const response = await fetch("/api/invest/angka-jadi", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ marketId, pair, filters }),
-      });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok || !json.success) throw new Error(json.error || "Gagal membuat Angka Jadi.");
-      setAngkaJadi((prev) => ({ ...prev, [key]: { loading: false, result: json } }));
-    } catch (e) {
-      setAngkaJadi((prev) => ({ ...prev, [key]: { loading: false, error: e instanceof Error ? e.message : "Gagal membuat Angka Jadi." } }));
-    }
-  };
-
-  const handleCopyAngkaJadi = async (key: string) => {
-    const lines = angkaJadi[key]?.result?.lines || [];
-    if (!lines.length) return;
-    await navigator.clipboard?.writeText(lineCopyText(lines));
-    setAngkaJadi((prev) => ({ ...prev, [key]: { ...prev[key], copied: true } }));
-    window.setTimeout(() => setAngkaJadi((prev) => ({ ...prev, [key]: { ...prev[key], copied: false } })), 1200);
-  };
+    await navigator.clipboard?.writeText(text);
+    setCopiedAll(true);
+    window.setTimeout(() => setCopiedAll(false), 1200);
+  }
 
   return (
-    <div data-mode="invest" className="animate-rise space-y-4 pb-4">
-      <Button variant="ghost" size="sm" onClick={() => router.push("/")}> 
-        <ArrowLeft size={16} /> Beranda
-      </Button>
-
-      <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-5">
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="accent-text flex items-center gap-2 text-[11px] font-black uppercase tracking-wide">
-              <Coins size={14} />
-              <span>Rekomendasi 2D</span>
-            </div>
-            <h2 className="display mt-2 text-3xl text-text">Invest Terarah</h2>
-            <p className="mt-2 max-w-[42ch] text-xs font-medium leading-snug text-text-muted">
-              Pilihan kombinasi terbaik dari hasil terbaru. Detail pasaran dimuat saat dibuka agar halaman tetap ringan.
-            </p>
-          </div>
-          <button
-            onClick={handleRefresh}
-            className="pressable depth-3 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075]"
-            aria-label="Perbarui rekomendasi"
-          >
-            <RefreshCw size={19} className={isFetching ? "animate-spin" : ""} />
-          </button>
-        </div>
-        <div className="relative mt-4 grid grid-cols-3 gap-2">
-          <SummaryChip label="Pasaran" value={String(withRecs.length)} />
-          <SummaryChip label="Pilihan" value={String(allComboCount)} />
-          <SummaryChip label="Diperbarui" value={dataUpdatedAt ? formatAgo(dataUpdatedAt) : "-"} compact />
-        </div>
+    <div data-mode="invest" className="animate-rise space-y-4 pb-5">
+      <div className="flex items-center justify-between gap-3">
+        <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
+          <ArrowLeft size={16} /> Beranda
+        </Button>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="pressable depth-3 flex h-11 w-11 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075]"
+          aria-label="Perbarui Invest"
+        >
+          <RefreshCw size={17} className={isFetching ? "animate-spin" : ""} />
+        </button>
       </div>
 
-      {errorMessage && <StateBox text={errorMessage} tone="error" />}
+      <section className="depth-accent animate-soft-pop rounded-3xl border p-4">
+        <div className="text-center">
+          <p className="accent-text text-[10px] font-black uppercase tracking-[0.22em]">Invest 2D</p>
+          <h1 className="display mt-2 text-3xl text-text">Angka Jadi</h1>
+          <p className="mx-auto mt-2 max-w-[34ch] text-xs font-semibold leading-relaxed text-text-muted">
+            Pilih posisi, lihat pasaran, lalu copy angka jadi terbaik.
+          </p>
+        </div>
 
-      {!showInitialSkeleton && topItems.length > 0 && !search && (
-        <section className="animate-soft-pop space-y-3">
-          <SectionHeader icon={<Trophy size={15} />} title="Rekomendasi Sempurna" subtitle="Riwayat 15/15" />
-          <div className="grid gap-2.5">
-            {topItems.map(({ market, pair, combo }, index) => {
-              const key = comboKey(market.marketId, pair.pair, combo.id);
-              return (
-                <ComboCard
-                  key={key}
-                  title={market.marketName}
-                  subtitle={`${pair.pairLabel} · ${combo.label}`}
-                  combo={combo}
-                  state={angkaJadi[key]}
-                  index={index}
-                  onOpen={() => handleOpenAngkaJadi(key, market.marketId, pair.pair, combo.filters)}
-                  onCopy={() => handleCopyAngkaJadi(key)}
-                />
-              );
-            })}
-          </div>
-        </section>
-      )}
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {PAIR_OPTIONS.map((item) => {
+            const active = item.key === pair;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => {
+                  setPair(item.key);
+                  setSearch("");
+                  setCopiedKey("");
+                  setCopiedAll(false);
+                }}
+                className={
+                  active
+                    ? "pressable accent-bg-soft accent-border min-h-12 rounded-2xl border px-2 text-center text-[11px] font-black uppercase tracking-wide text-text"
+                    : "pressable depth-3 min-h-12 rounded-2xl border px-2 text-center text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
+                }
+              >
+                {item.short}
+              </button>
+            );
+          })}
+        </div>
 
-      <div className="animate-fade-in relative">
-        <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
-        <Input
-          type="text"
-          placeholder="Cari nama pasaran…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-14 rounded-3xl pl-12 font-bold transition-colors focus:border-border-strong"
-        />
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <SummaryChip label="Posisi" value={activePairLabel.replace("2D ", "")} />
+          <SummaryChip label="Pasaran" value={String(filteredRows.length)} />
+          <SummaryChip label="Update" value={data?.generatedAt ? formatAgo(data.generatedAt) : "-"} compact />
+        </div>
+      </section>
+
+      {errorMessage ? <StateBox text={errorMessage} tone="error" /> : null}
+
+      <div className="grid grid-cols-[1fr_auto] gap-2">
+        <div className="relative">
+          <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
+          <Input
+            type="text"
+            placeholder="Cari pasaran…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="h-14 rounded-3xl pl-11 text-sm font-bold"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={copyAll}
+          disabled={!filteredRows.some((row) => row.lines.length)}
+          className="pressable depth-3 min-h-12 rounded-2xl border px-3 text-[10px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
+        >
+          {copiedAll ? "Tersalin" : "Copy Semua"}
+        </button>
       </div>
 
-      <section className="space-y-3">
-        <SectionHeader icon={<Coins size={15} />} title="Semua Pasaran" subtitle={`${filtered.length} pasaran tampil`} />
-        <div className="min-h-[40svh] space-y-2.5">
-          {showInitialSkeleton ? (
-            Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
-          ) : filtered.length === 0 ? (
-            <StateBox text={search ? "Pasaran tidak ditemukan" : "Belum ada rekomendasi yang memenuhi kriteria"} />
-          ) : (
-            filtered.map((market, index) => (
-              <MarketBlock
-                key={market.marketId}
-                market={market}
-                detail={details[market.marketId]}
-                index={index}
-                open={openId === market.marketId}
-                onToggle={() => handleToggleMarket(market.marketId)}
-                angkaJadi={angkaJadi}
-                onOpenAngkaJadi={handleOpenAngkaJadi}
-                onCopyAngkaJadi={handleCopyAngkaJadi}
-              />
-            ))
-          )}
-        </div>
+      <section className="min-h-[50svh] space-y-2.5">
+        {showSkeleton ? (
+          Array.from({ length: 8 }).map((_, index) => <Skeleton key={index} className="h-[172px] rounded-3xl" />)
+        ) : filteredRows.length === 0 ? (
+          <StateBox text={search ? "Pasaran tidak ditemukan." : "Belum ada Angka Jadi untuk posisi ini."} />
+        ) : (
+          filteredRows.map((row, index) => (
+            <InvestLineCard
+              key={`${row.marketId}-${row.pair}-${row.comboId}`}
+              row={row}
+              index={index}
+              copied={copiedKey === row.marketId}
+              onCopy={() => copyRow(row)}
+            />
+          ))
+        )}
       </section>
     </div>
   );
@@ -279,23 +239,9 @@ export default function RekomendasiPage() {
 
 function SummaryChip({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/15 px-3 py-2 text-center">
+    <div className="rounded-2xl border border-white/10 bg-black/15 px-2 py-2 text-center">
       <p className="num accent-text truncate text-sm font-black">{value}</p>
       <p className={`mt-0.5 truncate font-bold uppercase tracking-wide text-text-soft ${compact ? "text-[8px]" : "text-[9px]"}`}>{label}</p>
-    </div>
-  );
-}
-
-function SectionHeader({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 px-1">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="accent-bg-soft accent-text flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10">{icon}</span>
-        <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-wide text-text">{title}</p>
-          <p className="truncate text-[10px] font-semibold text-text-soft">{subtitle}</p>
-        </div>
-      </div>
     </div>
   );
 }
@@ -308,126 +254,54 @@ function StateBox({ text, tone = "neutral" }: { text: string; tone?: "neutral" |
   );
 }
 
+function InvestLineCard({ row, index, copied, onCopy }: { row: InvestLineRow; index: number; copied: boolean; onCopy: () => void }) {
+  const hasLines = row.lines.length > 0;
+
+  return (
+    <article className="animate-soft-pop depth-1 rounded-3xl border p-3.5" style={{ animationDelay: `${Math.min(index, 10) * 22}ms` }}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="display truncate text-base text-text">{row.marketName}</h2>
+          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">{shortComboLabel(row.comboLabel)}</p>
+        </div>
+        <span className="accent-bg-soft accent-text shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
+          {formatWins15(row.avgWins15)}/15
+        </span>
+      </div>
+
+      {row.error ? (
+        <div className="mt-3 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-center text-xs font-bold text-danger">{row.error}</div>
+      ) : (
+        <>
+          <div className="num accent-text mt-3 max-h-[150px] overflow-y-auto rounded-2xl border border-border-soft bg-black/25 p-3 text-[13px] font-black leading-7">
+            {hasLines ? lineText(row.lines) : "-"}
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <MetricChip label="Line" value={String(row.actualLines || row.expectedLines || "-")} />
+            <MetricChip label="Estimasi" value={String(row.expectedLines || "-")} />
+            <MetricChip label="Last" value={row.latestResult || "----"} />
+          </div>
+
+          <button
+            type="button"
+            onClick={onCopy}
+            disabled={!hasLines}
+            className="pressable accent-bg-soft accent-text mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 text-xs font-black uppercase tracking-wide disabled:opacity-45"
+          >
+            {copied ? <Check size={16} /> : <ClipboardCopy size={16} />}
+            {copied ? "Tersalin" : "Copy Angka"}
+          </button>
+        </>
+      )}
+    </article>
+  );
+}
+
 function MetricChip({ label, value }: { label: string; value: string }) {
   return (
     <span className="rounded-full border border-border-soft bg-white/[0.035] px-2 py-1 text-[9px] font-black uppercase tracking-wide text-text-soft">
       {label} <span className="text-text-muted">{value}</span>
     </span>
-  );
-}
-
-function AngkaJadiPanel({ state, onCopy }: { state?: AngkaJadiState; onCopy: () => void }) {
-  if (state?.loading) {
-    return <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl border border-border-soft bg-black/20 p-4 text-xs font-black uppercase tracking-wide text-text-muted"><Loader2 size={16} className="animate-spin" /> Menghitung Angka Jadi</div>;
-  }
-  if (state?.error) return <div className="mt-3 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-center text-xs font-bold text-danger">{state.error}</div>;
-  const lines = state?.result?.lines || [];
-  if (!lines.length) return null;
-  return (
-    <div className="mt-3 space-y-3 rounded-2xl border border-border-soft bg-surface p-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="display text-xs text-text">Angka Jadi</span>
-        <span className="accent-bg-soft accent-text rounded-full px-3 py-1 text-[11px] font-black">{lines.length} LINE</span>
-      </div>
-      <div className="num accent-text max-h-[220px] overflow-y-auto rounded-2xl border border-border-soft bg-black/30 p-3 text-sm font-bold leading-8">{lineDisplayText(lines)}</div>
-      <button type="button" onClick={onCopy} className="accent-bg-soft accent-text flex w-full items-center justify-center gap-2 rounded-2xl p-3 text-xs font-black uppercase tracking-wider">
-        <Copy size={16} /> {state?.copied ? "Tersalin" : "Copy Angka Jadi"}
-      </button>
-    </div>
-  );
-}
-
-function ComboCard({ title, subtitle, combo, state, index, onOpen, onCopy }: { title: string; subtitle: string; combo: InvestCombo; state?: AngkaJadiState; index: number; onOpen: () => void; onCopy: () => void }) {
-  return (
-    <div className="animate-soft-pop depth-1 rounded-3xl border p-3.5" style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}>
-      <button type="button" onClick={onOpen} className="pressable w-full text-left">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="accent-bg-soft accent-text rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide">{comboStrengthLabel(combo.avgWins15)}</span>
-            </div>
-            <p className="display mt-2 truncate text-sm text-text">{title}</p>
-            <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">{subtitle}</p>
-          </div>
-          <div className="accent-bg-soft accent-text flex shrink-0 items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black uppercase tracking-wide">
-            Angka Jadi <ChevronDown size={13} />
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <MetricChip label="Riwayat" value={`${formatWins15(combo.avgWins15)}/15`} />
-          <MetricChip label="Line" value={String(state?.result?.lines?.length || "-")} />
-          <MetricChip label="Skor" value={formatScore(combo.avgScore)} />
-        </div>
-      </button>
-      <AngkaJadiPanel state={state} onCopy={onCopy} />
-    </div>
-  );
-}
-
-function MarketBlock({ market, detail, index, open, onToggle, angkaJadi, onOpenAngkaJadi, onCopyAngkaJadi }: { market: InvestMarketOverview; detail?: DetailState; index: number; open: boolean; onToggle: () => void; angkaJadi: Record<string, AngkaJadiState>; onOpenAngkaJadi: (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => void; onCopyAngkaJadi: (key: string) => void }) {
-  return (
-    <div className="animate-soft-pop depth-1 overflow-hidden rounded-2xl border" style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}>
-      <button type="button" onClick={onToggle} aria-expanded={open} className="pressable flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-white/[0.04]">
-        <div className="min-w-0">
-          <h3 className="display truncate text-base text-text">{market.marketName}</h3>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-text-soft">Terbaik {formatWins15(market.bestWins15)}/15</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2.5">
-          <span className="num accent-bg-soft accent-text rounded-full px-2.5 py-1 text-[11px] font-black">{market.totalCombos}</span>
-          <ChevronDown size={18} className={`text-text-soft transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-        </div>
-      </button>
-      {open && (
-        <div className="animate-fade-in space-y-4 border-t border-border-soft px-4 pb-4 pt-3.5">
-          {detail?.loading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
-            </div>
-          ) : detail?.error ? (
-            <StateBox text={detail.error} tone="error" />
-          ) : detail?.market ? (
-            <MarketDetailContent
-              market={detail.market}
-              angkaJadi={angkaJadi}
-              onOpenAngkaJadi={onOpenAngkaJadi}
-              onCopyAngkaJadi={onCopyAngkaJadi}
-            />
-          ) : null}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MarketDetailContent({ market, angkaJadi, onOpenAngkaJadi, onCopyAngkaJadi }: { market: InvestMarketDetail; angkaJadi: Record<string, AngkaJadiState>; onOpenAngkaJadi: (key: string, marketId: string, pair: InvestPair["pair"], filters: InvestFilter[]) => void; onCopyAngkaJadi: (key: string) => void }) {
-  return (
-    <>
-      {market.pairs.map((pair) => (
-        <div key={pair.pair}>
-          <div className="mb-2 flex items-center gap-2">
-            <span className="accent-text text-[11px] font-black uppercase tracking-wide">{pair.pairLabel}</span>
-            <span className="h-px flex-1 bg-white/10" />
-            <span className="text-[10px] font-bold uppercase tracking-wide text-text-soft">{pair.combos.length ? `${pair.combos.length} pilihan` : ""}</span>
-          </div>
-          <div className="space-y-2">
-            {pair.combos.map((combo) => {
-              const key = comboKey(market.marketId, pair.pair, combo.id);
-              return (
-                <ComboCard
-                  key={key}
-                  title={combo.label}
-                  subtitle={pair.pairLabel}
-                  combo={combo}
-                  state={angkaJadi[key]}
-                  index={0}
-                  onOpen={() => onOpenAngkaJadi(key, market.marketId, pair.pair, combo.filters)}
-                  onCopy={() => onCopyAngkaJadi(key)}
-                />
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </>
   );
 }
