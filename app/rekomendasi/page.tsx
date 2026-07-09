@@ -137,7 +137,7 @@ async function fetchAngkaJadi(row: InvestRow) {
   const json = await response.json().catch(() => ({}));
 
   if (!response.ok || !json.success) {
-    throw new Error(json.error || "Gagal membuat Angka Jadi.");
+    throw new Error(json.error || "Angka jadi belum bisa ditampilkan.");
   }
 
   return {
@@ -209,7 +209,7 @@ export default function RekomendasiPage() {
         [key]: {
           ...prev[key],
           loading: false,
-          error: e instanceof Error ? e.message : "Gagal membuat Angka Jadi.",
+          error: e instanceof Error ? e.message : "Angka jadi belum bisa ditampilkan.",
         },
       }));
     }
@@ -245,10 +245,10 @@ export default function RekomendasiPage() {
 
       <section className="depth-accent animate-soft-pop rounded-3xl border p-4">
         <div className="text-center">
-          <p className="accent-text text-[10px] font-black uppercase tracking-[0.22em]">Invest 2D</p>
-          <h1 className="display mt-2 text-3xl text-text">Rekomendasi Ringan</h1>
+          <p className="accent-text text-[10px] font-black uppercase tracking-[0.22em]">Rekomendasi Invest</p>
+          <h1 className="display mt-2 text-3xl text-text">Invest 2D</h1>
           <p className="mx-auto mt-2 max-w-[34ch] text-xs font-semibold leading-relaxed text-text-muted">
-            Pilih posisi, pilih pasaran, lalu buat Angka Jadi saat dibutuhkan.
+            Pilih posisi dan pasaran, lalu lihat angka jadi terbaik.
           </p>
         </div>
 
@@ -275,10 +275,9 @@ export default function RekomendasiPage() {
           })}
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <SummaryChip label="Posisi" value={activePairLabel.replace("2D ", "")} />
           <SummaryChip label="Pasaran" value={String(rows.length)} />
-          <SummaryChip label="Mode" value="Ringan" />
         </div>
       </section>
 
@@ -366,8 +365,7 @@ function InvestLiteCard({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <MetricChip label="Est" value={`${lineCountOf(row.combo) || "-"} line`} />
-        <MetricChip label="Skor" value={String(Math.round(Number(row.combo.recommendationScore || row.combo.avgScore || 0)))} />
+        <MetricChip label="Estimasi" value={`${lineCountOf(row.combo) || "-"} line`} />
         <MetricChip label="Posisi" value={row.pairLabel.replace("2D ", "")} />
         {state.latestResult ? <MetricChip label="Last" value={state.latestResult} /> : null}
       </div>
@@ -389,7 +387,7 @@ function InvestLiteCard({
           disabled={state.loading}
           className="pressable depth-3 min-h-11 rounded-2xl border px-3 text-[11px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
         >
-          {state.loading ? "Memuat" : hasLines ? "Refresh" : "Lihat Angka"}
+          {state.loading ? "Menghitung…" : hasLines ? "Lihat Ulang" : "Lihat Angka"}
         </button>
         <button
           type="button"
