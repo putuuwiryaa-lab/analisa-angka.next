@@ -1,28 +1,53 @@
 import type { TargetPair } from "@/lib/analysis/customDigit";
 import type { AnalysisScope } from "./ScopeSelectors";
 
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function inferMarketIdFromPath() {
+  if (typeof window === "undefined") return "";
+
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts[0] !== "analyze" || !parts[1]) return "";
+  return safeDecode(parts[1]).trim();
+}
+
 export async function postAnalyzeRequest({
   type,
-  data,
+  data: _data,
+  marketId,
   param,
   targetPair = "belakang",
   scope = "default",
 }: {
   token?: string | null | undefined;
   type: string;
-  data: string[];
+  /**
+   * Deprecated: histori tidak lagi dikirim ke /api/analyze.
+   * Server mengambil data asli berdasarkan marketId.
+   */
+  data?: string[];
+  marketId?: string;
   param: number;
   targetPair?: TargetPair;
   scope?: AnalysisScope;
 }) {
+  const resolvedMarketId = (marketId || inferMarketIdFromPath()).trim();
+  if (!resolvedMarketId) throw new Error("Market tidak valid untuk analisa.");
+
   const response = await fetch("/api/analyze", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      marketId: resolvedMarketId,
       type,
-      data,
       param,
       target_pair: targetPair,
       analysis_scope: scope,
