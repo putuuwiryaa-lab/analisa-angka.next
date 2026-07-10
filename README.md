@@ -203,19 +203,7 @@ Jangan commit `.env` berisi credential asli.
 - `admin_analisa_access_pins_view`
 - `admin_analisa_access_sessions_view`
 
-### 6.4 SQL setup tambahan
-
-SQL setup tambahan disimpan di folder:
-
-```txt
-supabase/migrations/
-```
-
-Untuk rate limit PIN, jalankan file berikut di Supabase SQL editor bila tabel belum ada:
-
-```txt
-supabase/migrations/20260710081000_create_analisa_rate_limits.sql
-```
+SQL setup dijalankan manual di Supabase.
 
 ---
 
@@ -256,8 +244,6 @@ lib/
     supabase-admin.ts
 
 middleware.ts
-supabase/
-  migrations/
 ```
 
 ---
