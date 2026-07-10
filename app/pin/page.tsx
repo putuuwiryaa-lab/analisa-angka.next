@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 
 const DEVICE_KEY = "analisa_device_id";
+const ADMIN_CONTACT_URL = process.env.NEXT_PUBLIC_ADMIN_CONTACT_URL || "";
 
 function getDeviceId() {
   if (typeof window === "undefined") return "";
@@ -26,6 +27,26 @@ function safeNextPath() {
   const params = new URLSearchParams(window.location.search);
   const next = params.get("next") || "/";
   return next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
+
+function AdminContactLink() {
+  if (!ADMIN_CONTACT_URL) {
+    return <p className="text-center text-xs font-bold text-text-muted">Belum punya kode akses? Hubungi admin.</p>;
+  }
+
+  return (
+    <div className="text-center">
+      <p className="text-xs font-bold text-text-muted">Belum punya kode akses?</p>
+      <a
+        href={ADMIN_CONTACT_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex items-center justify-center rounded-2xl border border-border px-4 py-3 text-xs font-black uppercase tracking-wide text-text transition hover:border-accent hover:text-accent"
+      >
+        Hubungi Admin
+      </a>
+    </div>
+  );
 }
 
 export default function PinPage() {
@@ -111,6 +132,10 @@ export default function PinPage() {
             {loading ? "Memeriksa Kode..." : "Lanjutkan"}
           </button>
         </form>
+
+        <div className="mt-5 border-t border-border pt-5">
+          <AdminContactLink />
+        </div>
       </section>
     </main>
   );
