@@ -169,6 +169,13 @@ ACCESS_SECRET=
 ADMIN_PASSWORD=
 ```
 
+Opsional:
+
+```env
+NEXT_PUBLIC_ADMIN_CONTACT_URL=
+INTERNAL_API_SECRET=
+```
+
 Keterangan:
 
 | Variable | Fungsi |
@@ -179,6 +186,8 @@ Keterangan:
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role untuk route server. Jangan expose ke client. |
 | `ACCESS_SECRET` | Secret HMAC untuk hash PIN, session, IP, dan admin session. |
 | `ADMIN_PASSWORD` | Password login `/admin/login`. |
+| `NEXT_PUBLIC_ADMIN_CONTACT_URL` | URL WhatsApp/admin pada halaman PIN, misalnya `https://wa.me/628xxxxxxxxxx`. |
+| `INTERNAL_API_SECRET` | Secret untuk request internal tepercaya ke `/api/analyze` tanpa session user. |
 
 Jangan commit `.env` berisi credential asli.
 
