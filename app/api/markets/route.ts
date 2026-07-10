@@ -1,24 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { NO_STORE_HEADERS, PRIVATE_SHORT_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
+import { createAdminClient } from "@/lib/server/supabase-admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const MARKET_COLUMNS = "id,name,history_data,market_order:order,updated_at,last_result";
-
-function createSupabaseClient() {
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Konfigurasi Supabase belum lengkap.");
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
 
 function readMarketField(market: unknown, field: string) {
   if (!market || typeof market !== "object") return undefined;
@@ -76,7 +64,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const supabase = createSupabaseClient();
+    const supabase = createAdminClient();
     const response = await supabase.from("markets").select(MARKET_COLUMNS).order("order", { ascending: true });
 
     if (response.error) throw response.error;
