@@ -16,11 +16,13 @@ export const ADMIN_ACCESS_SESSIONS_VIEW = "admin_analisa_access_sessions_view";
 
 const USER_MAX_AGE = 60 * 60 * 24 * 365 * 10;
 const ADMIN_MAX_AGE = 60 * 60 * 24 * 7;
+const LAST_SEEN_UPDATE_INTERVAL_MS = 10 * 60 * 1000;
 
 type AccessSessionRow = {
   id: string;
   device_id: string | null;
   revoked_at: string | null;
+  last_seen_at: string | null;
 };
 
 export type AccessResult =
@@ -159,6 +161,13 @@ export function clearAdminCookie(response: NextResponse) {
   response.cookies.set(ADMIN_COOKIE, "", { path: "/", maxAge: 0 });
 }
 
+function shouldUpdateLastSeen(lastSeenAt: string | null, now: number) {
+  if (!lastSeenAt) return true;
+
+  const lastSeenTime = new Date(lastSeenAt).getTime();
+  return !Number.isFinite(lastSeenTime) || now - lastSeenTime >= LAST_SEEN_UPDATE_INTERVAL_MS;
+}
+
 export async function requireActiveAccess(headers: Headers): Promise<AccessResult> {
   const token = parseCookie(headers, ACCESS_COOKIE);
   const deviceId = parseCookie(headers, DEVICE_COOKIE);
@@ -171,7 +180,7 @@ export async function requireActiveAccess(headers: Headers): Promise<AccessResul
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from(ACCESS_SESSIONS_TABLE)
-    .select("id, device_id, revoked_at")
+    .select("id, device_id, revoked_at, last_seen_at")
     .eq("session_token_hash", tokenHash)
     .maybeSingle<AccessSessionRow>();
 
@@ -192,10 +201,15 @@ export async function requireActiveAccess(headers: Headers): Promise<AccessResul
     return { ok: false, status: 401, error: "Session tidak cocok dengan device ini." };
   }
 
-  await supabase
-    .from(ACCESS_SESSIONS_TABLE)
-    .update({ last_seen_at: new Date().toISOString() })
-    .eq("id", data.id);
+  const now = Date.now();
+  if (shouldUpdateLastSeen(data.last_seen_at, now)) {
+    const { error: lastSeenError } = await supabase
+      .from(ACCESS_SESSIONS_TABLE)
+      .update({ last_seen_at: new Date(now).toISOString() })
+      .eq("id", data.id);
+
+    if (lastSeenError) console.error("ACCESS_LAST_SEEN_UPDATE_ERROR", lastSeenError);
+  }
 
   return { ok: true, sessionId: data.id, deviceId: data.device_id };
 }
