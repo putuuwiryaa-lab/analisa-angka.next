@@ -203,7 +203,7 @@ Jangan commit `.env` berisi credential asli.
 - `admin_analisa_access_pins_view`
 - `admin_analisa_access_sessions_view`
 
-SQL setup dijalankan manual di Supabase.
+SQL setup disimpan di luar repository dan dijalankan manual di Supabase.
 
 ---
 
@@ -267,3 +267,72 @@ Aplikasi berjalan di:
 ```txt
 http://localhost:3000
 ```
+
+Build production:
+
+```bash
+pnpm build
+```
+
+Typecheck:
+
+```bash
+pnpm typecheck
+```
+
+---
+
+## 9. Deployment Vercel
+
+Checklist deployment:
+
+1. Jalankan SQL setup akses secara manual di Supabase.
+2. Isi semua environment variables di Vercel.
+3. Deploy branch.
+4. Buka `/admin/login`.
+5. Login memakai `ADMIN_PASSWORD`.
+6. Generate PIN dari `/admin`.
+7. Test user login melalui `/pin`.
+8. Test revoke device dari `/admin`.
+
+---
+
+## 10. Catatan Keamanan
+
+- Jangan expose `SUPABASE_SERVICE_ROLE_KEY` ke client.
+- Jangan commit `.env`.
+- Route yang memakai service role hanya boleh berada di server.
+- Jangan membuka policy anon untuk tabel `analisa_access_pins`, `analisa_access_sessions`, dan `analisa_rate_limits`.
+- Ganti `ACCESS_SECRET` dengan string panjang dan acak.
+- Ganti `ADMIN_PASSWORD` jika ada dugaan bocor.
+
+---
+
+## 11. Catatan Produk
+
+Analisa Angka adalah alat bantu analisa berbasis data historis dan evaluasi sistem. Hasil analisa bukan jaminan hasil akhir. User tetap perlu memahami risiko dan memakai fitur sebagai alat bantu penyaringan, bukan kepastian.
+
+---
+
+## 12. Status Fitur Saat Ini
+
+Fitur aktif:
+
+- Dashboard pasaran.
+- Search pasaran.
+- Analisa per pasaran.
+- Rekap / racik angka.
+- Statistik pasaran.
+- Riwayat evaluasi.
+- Invest 2D dengan grouping Depan / Tengah / Belakang.
+- Invest Angka Jadi langsung di halaman Invest.
+- Copy Angka Jadi dari card Invest.
+- Sistem akses PIN 8 digit.
+- Admin panel generate/revoke akses.
+- Device binding berbasis cookie + localStorage device id.
+
+Fitur tidak dipakai:
+
+- Login Telegram lama.
+- JWT session lama.
+- Role TRIAL / PRO lama.
