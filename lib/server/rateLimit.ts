@@ -5,12 +5,20 @@ import { hashIp } from "./access";
 import { getClientIp } from "./http";
 
 export const RATE_LIMITS_TABLE = "analisa_rate_limits";
+const RATE_LIMIT_FAILURE_RPC = "record_rate_limit_failure";
 
 type RateLimitRow = {
   rate_key: string;
   failures: number;
   reset_at: string;
   locked_until: string | null;
+};
+
+type RateLimitFailureRow = {
+  failures: number;
+  reset_at: string;
+  locked_until: string | null;
+  is_locked: boolean;
 };
 
 type MemoryAttempt = {
@@ -94,10 +102,16 @@ function isRecoverableRateLimitError(error: unknown) {
   if (!error || typeof error !== "object") return false;
   const code = "code" in error ? String(error.code || "") : "";
   const message = "message" in error ? String(error.message || "") : "";
-  return code === "42P01" || message.toLowerCase().includes(RATE_LIMITS_TABLE);
+  return (
+    code === "42P01" ||
+    code === "42883" ||
+    code === "PGRST202" ||
+    message.toLowerCase().includes(RATE_LIMITS_TABLE) ||
+    message.toLowerCase().includes(RATE_LIMIT_FAILURE_RPC)
+  );
 }
 
-function rowIsLocked(row: RateLimitRow | null, now: number) {
+function rowIsLocked(row: { locked_until: string | null } | null, now: number) {
   if (!row?.locked_until) return 0;
   const lockedUntil = new Date(row.locked_until).getTime();
   return lockedUntil > now ? lockedUntil : 0;
@@ -130,36 +144,20 @@ export async function recordRateLimitFailure(config: RateLimitConfig): Promise<R
 
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from(RATE_LIMITS_TABLE)
-      .select("rate_key,failures,reset_at,locked_until")
-      .eq("rate_key", config.key)
-      .maybeSingle<RateLimitRow>();
+    const { data, error } = await supabase.rpc(RATE_LIMIT_FAILURE_RPC, {
+      p_rate_key: config.key,
+      p_max_attempts: config.maxAttempts,
+      p_window_ms: config.windowMs,
+      p_lock_ms: config.lockMs,
+    });
 
     if (error) throw error;
 
-    const lockedUntil = rowIsLocked(data, now);
-    if (lockedUntil) return blocked(config, lockedUntil, now);
+    const row = Array.isArray(data) ? (data[0] as RateLimitFailureRow | undefined) : undefined;
+    if (!row) throw new Error("RPC rate limit tidak mengembalikan hasil.");
 
-    const resetAtTime = data?.reset_at ? new Date(data.reset_at).getTime() : 0;
-    const isFreshWindow = Boolean(data && resetAtTime > now);
-    const failures = isFreshWindow ? Number(data!.failures || 0) + 1 : 1;
-    const resetAt = isFreshWindow ? new Date(resetAtTime) : new Date(now + config.windowMs);
-    const nextLockedUntil = failures >= config.maxAttempts ? new Date(now + config.lockMs) : null;
-
-    const { error: upsertError } = await supabase.from(RATE_LIMITS_TABLE).upsert(
-      {
-        rate_key: config.key,
-        failures,
-        reset_at: resetAt.toISOString(),
-        locked_until: nextLockedUntil?.toISOString() ?? null,
-        updated_at: new Date(now).toISOString(),
-      },
-      { onConflict: "rate_key" },
-    );
-
-    if (upsertError) throw upsertError;
-    if (nextLockedUntil) return blocked(config, nextLockedUntil.getTime(), now);
+    const lockedUntil = rowIsLocked(row, now);
+    if (row.is_locked && lockedUntil) return blocked(config, lockedUntil, now);
     return { ok: true };
   } catch (error) {
     if (!isRecoverableRateLimitError(error)) console.error("RATE_LIMIT_RECORD_ERROR", error);
