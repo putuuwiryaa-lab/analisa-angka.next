@@ -59,6 +59,7 @@ type InvestRow = {
 
 type AngkaState = {
   loading?: boolean;
+  generated?: boolean;
   copied?: boolean;
   error?: string;
   lines?: string[];
@@ -199,6 +200,7 @@ export default function RekomendasiPage() {
         [key]: {
           ...prev[key],
           loading: false,
+          generated: true,
           lines: result.lines,
           latestResult: result.latestResult,
         },
@@ -350,6 +352,7 @@ function InvestLiteCard({
   onCopy: () => void;
 }) {
   const lines = state.lines || [];
+  const generated = Boolean(state.generated);
   const hasLines = lines.length > 0;
 
   return (
@@ -365,13 +368,19 @@ function InvestLiteCard({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <MetricChip label={hasLines ? "Aktual" : "Estimasi"} value={`${hasLines ? lines.length : lineCountOf(row.combo) || "-"} line`} />
+        <MetricChip label={generated ? "Aktual" : "Estimasi"} value={`${generated ? lines.length : lineCountOf(row.combo) || "-"} line`} />
         <MetricChip label="Posisi" value={row.pairLabel.replace("2D ", "")} />
         {state.latestResult ? <MetricChip label="Last" value={state.latestResult} /> : null}
       </div>
 
       {state.error ? (
         <div className="mt-3 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-center text-xs font-bold text-danger">{state.error}</div>
+      ) : null}
+
+      {generated && !hasLines && !state.error ? (
+        <div className="mt-3 rounded-2xl border border-dashed border-border-soft p-3 text-center text-xs font-bold text-text-muted">
+          Tidak ada line yang lolos kombinasi ini.
+        </div>
       ) : null}
 
       {hasLines ? (
@@ -387,7 +396,7 @@ function InvestLiteCard({
           disabled={state.loading}
           className="pressable depth-3 min-h-11 rounded-2xl border px-3 text-[11px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
         >
-          {state.loading ? "Menghitung…" : hasLines ? "Lihat Ulang" : "Lihat Angka"}
+          {state.loading ? "Menghitung…" : generated ? "Lihat Ulang" : "Lihat Angka"}
         </button>
         <button
           type="button"
