@@ -89,7 +89,7 @@ export default function PinPage() {
   }
 
   return (
-    <main className="flex min-h-[100svh] items-center justify-center px-4 py-8">
+    <main className="flex min-h-[100svh] items-start justify-center px-4 pb-8 pt-10 sm:pt-14">
       <section className="w-full max-w-md rounded-[2rem] border border-border bg-surface p-6 shadow-2xl">
         <div className="mb-6 text-center">
           <p className="text-xs font-black uppercase tracking-[0.28em] text-accent">Akses Aplikasi</p>
