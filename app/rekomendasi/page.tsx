@@ -61,6 +61,7 @@ type AngkaState = {
   loading?: boolean;
   generated?: boolean;
   copied?: boolean;
+  copyError?: string;
   error?: string;
   lines?: string[];
   latestResult?: string;
@@ -87,6 +88,37 @@ function lineCountOf(combo: InvestCombo) {
 
 function lineText(lines: string[] = []) {
   return lines.join("*");
+}
+
+async function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Continue to the legacy fallback below.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "-9999px";
+  textarea.style.opacity = "0";
+  textarea.style.fontSize = "16px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+
+  if (!copied) {
+    throw new Error("Clipboard tidak tersedia.");
+  }
 }
 
 function shortComboLabel(value: string) {
@@ -191,7 +223,10 @@ export default function RekomendasiPage() {
     const current = angkaByKey[key];
     if (current?.loading) return;
 
-    setAngkaByKey((prev) => ({ ...prev, [key]: { ...prev[key], loading: true, error: undefined } }));
+    setAngkaByKey((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], loading: true, error: undefined, copyError: undefined },
+    }));
 
     try {
       const result = await fetchAngkaJadi(row);
@@ -222,11 +257,30 @@ export default function RekomendasiPage() {
     const lines = angkaByKey[key]?.lines || [];
     if (!lines.length) return;
 
-    await navigator.clipboard?.writeText(lineText(lines));
-    setAngkaByKey((prev) => ({ ...prev, [key]: { ...prev[key], copied: true } }));
-    window.setTimeout(() => {
-      setAngkaByKey((prev) => ({ ...prev, [key]: { ...prev[key], copied: false } }));
-    }, 1200);
+    setAngkaByKey((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], copied: false, copyError: undefined },
+    }));
+
+    try {
+      await copyText(lineText(lines));
+      setAngkaByKey((prev) => ({
+        ...prev,
+        [key]: { ...prev[key], copied: true, copyError: undefined },
+      }));
+      window.setTimeout(() => {
+        setAngkaByKey((prev) => ({ ...prev, [key]: { ...prev[key], copied: false } }));
+      }, 1200);
+    } catch {
+      setAngkaByKey((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          copied: false,
+          copyError: "Gagal menyalin. Tekan lama angka lalu salin manual.",
+        },
+      }));
+    }
   }
 
   return (
@@ -408,6 +462,10 @@ function InvestLiteCard({
           {state.copied ? "Tersalin" : "Copy"}
         </button>
       </div>
+
+      {state.copyError ? (
+        <p className="mt-2 text-center text-[10px] font-bold text-danger">{state.copyError}</p>
+      ) : null}
     </article>
   );
 }
