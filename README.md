@@ -37,11 +37,12 @@ User buka web
 
 ## 2. Sistem Akses PIN
 
-Sistem akses memakai 2 tabel utama:
+Sistem akses memakai 3 tabel utama:
 
 ```txt
 analisa_access_pins
 analisa_access_sessions
+analisa_rate_limits
 ```
 
 Alur:
@@ -52,6 +53,7 @@ Admin generate PIN di /admin
 User input PIN di /pin
 PIN berubah dari unused menjadi used
 Session device dibuat di analisa_access_sessions
+Percobaan PIN gagal dicatat di analisa_rate_limits
 Admin bisa revoke akses device
 ```
 
@@ -63,6 +65,7 @@ Keamanan:
 - Cookie admin memakai `analisa_admin_session`.
 - Cookie diset `httpOnly`, `sameSite=lax`, dan `secure` saat production.
 - API utama tetap memanggil `requireActiveAccess()` sehingga revoke admin langsung berlaku.
+- Rate limit PIN memakai tabel `analisa_rate_limits` agar lock percobaan PIN tetap konsisten di serverless.
 
 ---
 
@@ -193,6 +196,7 @@ Jangan commit `.env` berisi credential asli.
 
 - `analisa_access_pins`
 - `analisa_access_sessions`
+- `analisa_rate_limits`
 
 ### 6.3 View admin
 
@@ -236,6 +240,7 @@ lib/
   server/
     access.ts
     http.ts
+    rateLimit.ts
     supabase-admin.ts
 
 middleware.ts
@@ -297,7 +302,7 @@ Checklist deployment:
 - Jangan expose `SUPABASE_SERVICE_ROLE_KEY` ke client.
 - Jangan commit `.env`.
 - Route yang memakai service role hanya boleh berada di server.
-- Jangan membuka policy anon untuk tabel `analisa_access_pins` dan `analisa_access_sessions`.
+- Jangan membuka policy anon untuk tabel `analisa_access_pins`, `analisa_access_sessions`, dan `analisa_rate_limits`.
 - Ganti `ACCESS_SECRET` dengan string panjang dan acak.
 - Ganti `ADMIN_PASSWORD` jika ada dugaan bocor.
 
