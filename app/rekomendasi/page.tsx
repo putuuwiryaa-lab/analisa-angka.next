@@ -442,6 +442,7 @@ function InvestLiteCard({
         <MetricChip
           label={isRefreshing ? "Memperbarui" : generated ? "Aktual" : "Estimasi"}
           value={`${generated ? lines.length : lineCountOf(row.combo) || "-"} line`}
+          tone={isRefreshing ? "loading" : generated ? "accent" : "neutral"}
         />
         <MetricChip label="Posisi" value={row.pairLabel.replace("2D ", "")} />
         {state.latestResult ? <MetricChip label="Last" value={state.latestResult} /> : null}
@@ -492,10 +493,28 @@ function InvestLiteCard({
   );
 }
 
-function MetricChip({ label, value }: { label: string; value: string }) {
+type MetricTone = "neutral" | "accent" | "loading";
+
+function MetricChip({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: MetricTone;
+}) {
+  const toneClass =
+    tone === "accent"
+      ? "accent-bg-soft accent-border accent-text"
+      : tone === "loading"
+        ? "accent-bg-soft accent-border accent-text animate-pulse"
+        : "border-border-soft bg-white/[0.035] text-text-soft";
+  const valueClass = tone === "neutral" ? "text-text-muted" : "text-text";
+
   return (
-    <span className="rounded-full border border-border-soft bg-white/[0.035] px-2 py-1 text-[9px] font-black uppercase tracking-wide text-text-soft">
-      {label} <span className="text-text-muted">{value}</span>
+    <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wide transition-colors ${toneClass}`}>
+      {label} <span className={valueClass}>{value}</span>
     </span>
   );
 }
