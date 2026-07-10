@@ -230,7 +230,13 @@ export default function RekomendasiPage() {
 
     setAngkaByKey((prev) => ({
       ...prev,
-      [key]: { ...prev[key], loading: true, error: undefined, copyError: undefined },
+      [key]: {
+        ...prev[key],
+        loading: true,
+        copied: false,
+        error: undefined,
+        copyError: undefined,
+      },
     }));
 
     try {
@@ -414,9 +420,14 @@ function InvestLiteCard({
   const lines = state.lines || [];
   const generated = Boolean(state.generated);
   const hasLines = lines.length > 0;
+  const isRefreshing = generated && Boolean(state.loading);
 
   return (
-    <article className="animate-soft-pop depth-1 rounded-3xl border p-3.5" style={{ animationDelay: `${Math.min(index, 10) * 22}ms` }}>
+    <article
+      aria-busy={state.loading}
+      className="animate-soft-pop depth-1 rounded-3xl border p-3.5"
+      style={{ animationDelay: `${Math.min(index, 10) * 22}ms` }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="display truncate text-base text-text">{row.marketName}</h2>
@@ -427,8 +438,11 @@ function InvestLiteCard({
         </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        <MetricChip label={generated ? "Aktual" : "Estimasi"} value={`${generated ? lines.length : lineCountOf(row.combo) || "-"} line`} />
+      <div className="mt-3 flex flex-wrap gap-1.5" aria-live="polite">
+        <MetricChip
+          label={isRefreshing ? "Memperbarui" : generated ? "Aktual" : "Estimasi"}
+          value={`${generated ? lines.length : lineCountOf(row.combo) || "-"} line`}
+        />
         <MetricChip label="Posisi" value={row.pairLabel.replace("2D ", "")} />
         {state.latestResult ? <MetricChip label="Last" value={state.latestResult} /> : null}
       </div>
@@ -439,12 +453,14 @@ function InvestLiteCard({
 
       {generated && !hasLines && !state.error ? (
         <div className="mt-3 rounded-2xl border border-dashed border-border-soft p-3 text-center text-xs font-bold text-text-muted">
-          Tidak ada line yang lolos kombinasi ini.
+          {state.loading ? "Memperbarui angka…" : "Tidak ada line yang lolos kombinasi ini."}
         </div>
       ) : null}
 
       {hasLines ? (
-        <div className="num accent-text mt-3 max-h-[150px] overflow-y-auto rounded-2xl border border-border-soft bg-black/25 p-3 text-[13px] font-black leading-7">
+        <div
+          className={`num accent-text mt-3 max-h-[150px] overflow-y-auto rounded-2xl border border-border-soft bg-black/25 p-3 text-[13px] font-black leading-7 transition-opacity ${state.loading ? "opacity-45" : "opacity-100"}`}
+        >
           {lineText(lines)}
         </div>
       ) : null}
@@ -456,12 +472,12 @@ function InvestLiteCard({
           disabled={state.loading}
           className="pressable depth-3 min-h-11 rounded-2xl border px-3 text-[11px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
         >
-          {state.loading ? "Menghitung…" : generated ? "Lihat Ulang" : "Lihat Angka"}
+          {state.loading ? (generated ? "Memperbarui…" : "Menghitung…") : generated ? "Lihat Ulang" : "Lihat Angka"}
         </button>
         <button
           type="button"
           onClick={onCopy}
-          disabled={!hasLines}
+          disabled={!hasLines || state.loading}
           className="pressable accent-bg-soft accent-text flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 text-[11px] font-black uppercase tracking-wide disabled:opacity-45"
         >
           {state.copied ? <Check size={15} /> : <ClipboardCopy size={15} />}
