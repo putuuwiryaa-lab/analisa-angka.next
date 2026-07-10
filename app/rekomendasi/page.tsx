@@ -365,7 +365,7 @@ function InvestLiteCard({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <MetricChip label="Estimasi" value={`${lineCountOf(row.combo) || "-"} line`} />
+        <MetricChip label={hasLines ? "Aktual" : "Estimasi"} value={`${hasLines ? lines.length : lineCountOf(row.combo) || "-"} line`} />
         <MetricChip label="Posisi" value={row.pairLabel.replace("2D ", "")} />
         {state.latestResult ? <MetricChip label="Last" value={state.latestResult} /> : null}
       </div>
