@@ -37,11 +37,12 @@ User buka web
 
 ## 2. Sistem Akses PIN
 
-Sistem akses memakai 2 tabel utama:
+Sistem akses memakai 3 tabel utama:
 
 ```txt
 analisa_access_pins
 analisa_access_sessions
+analisa_rate_limits
 ```
 
 Alur:
@@ -52,6 +53,7 @@ Admin generate PIN di /admin
 User input PIN di /pin
 PIN berubah dari unused menjadi used
 Session device dibuat di analisa_access_sessions
+Percobaan PIN gagal dicatat di analisa_rate_limits
 Admin bisa revoke akses device
 ```
 
@@ -63,6 +65,7 @@ Keamanan:
 - Cookie admin memakai `analisa_admin_session`.
 - Cookie diset `httpOnly`, `sameSite=lax`, dan `secure` saat production.
 - API utama tetap memanggil `requireActiveAccess()` sehingga revoke admin langsung berlaku.
+- Rate limit PIN memakai tabel `analisa_rate_limits` agar lock percobaan PIN tetap konsisten di serverless.
 
 ---
 
@@ -193,13 +196,26 @@ Jangan commit `.env` berisi credential asli.
 
 - `analisa_access_pins`
 - `analisa_access_sessions`
+- `analisa_rate_limits`
 
 ### 6.3 View admin
 
 - `admin_analisa_access_pins_view`
 - `admin_analisa_access_sessions_view`
 
-SQL setup disimpan di luar repository dan dijalankan manual di Supabase.
+### 6.4 SQL setup tambahan
+
+SQL setup tambahan disimpan di folder:
+
+```txt
+supabase/migrations/
+```
+
+Untuk rate limit PIN, jalankan file berikut di Supabase SQL editor bila tabel belum ada:
+
+```txt
+supabase/migrations/20260710081000_create_analisa_rate_limits.sql
+```
 
 ---
 
@@ -236,9 +252,12 @@ lib/
   server/
     access.ts
     http.ts
+    rateLimit.ts
     supabase-admin.ts
 
 middleware.ts
+supabase/
+  migrations/
 ```
 
 ---
@@ -262,72 +281,3 @@ Aplikasi berjalan di:
 ```txt
 http://localhost:3000
 ```
-
-Build production:
-
-```bash
-pnpm build
-```
-
-Typecheck:
-
-```bash
-pnpm typecheck
-```
-
----
-
-## 9. Deployment Vercel
-
-Checklist deployment:
-
-1. Jalankan SQL setup akses secara manual di Supabase.
-2. Isi semua environment variables di Vercel.
-3. Deploy branch.
-4. Buka `/admin/login`.
-5. Login memakai `ADMIN_PASSWORD`.
-6. Generate PIN dari `/admin`.
-7. Test user login melalui `/pin`.
-8. Test revoke device dari `/admin`.
-
----
-
-## 10. Catatan Keamanan
-
-- Jangan expose `SUPABASE_SERVICE_ROLE_KEY` ke client.
-- Jangan commit `.env`.
-- Route yang memakai service role hanya boleh berada di server.
-- Jangan membuka policy anon untuk tabel `analisa_access_pins` dan `analisa_access_sessions`.
-- Ganti `ACCESS_SECRET` dengan string panjang dan acak.
-- Ganti `ADMIN_PASSWORD` jika ada dugaan bocor.
-
----
-
-## 11. Catatan Produk
-
-Analisa Angka adalah alat bantu analisa berbasis data historis dan evaluasi sistem. Hasil analisa bukan jaminan hasil akhir. User tetap perlu memahami risiko dan memakai fitur sebagai alat bantu penyaringan, bukan kepastian.
-
----
-
-## 12. Status Fitur Saat Ini
-
-Fitur aktif:
-
-- Dashboard pasaran.
-- Search pasaran.
-- Analisa per pasaran.
-- Rekap / racik angka.
-- Statistik pasaran.
-- Riwayat evaluasi.
-- Invest 2D dengan grouping Depan / Tengah / Belakang.
-- Invest Angka Jadi langsung di halaman Invest.
-- Copy Angka Jadi dari card Invest.
-- Sistem akses PIN 8 digit.
-- Admin panel generate/revoke akses.
-- Device binding berbasis cookie + localStorage device id.
-
-Fitur tidak dipakai:
-
-- Login Telegram lama.
-- JWT session lama.
-- Role TRIAL / PRO lama.
