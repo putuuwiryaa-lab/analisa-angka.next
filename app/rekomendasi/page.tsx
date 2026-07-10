@@ -218,6 +218,11 @@ export default function RekomendasiPage() {
   const errorMessage = error instanceof Error ? error.message : "";
   const showSkeleton = isPending && !data;
 
+  async function handleRefresh() {
+    setAngkaByKey({});
+    await refetch();
+  }
+
   async function handleGenerate(row: InvestRow) {
     const key = rowKey(row);
     const current = angkaByKey[key];
@@ -291,8 +296,9 @@ export default function RekomendasiPage() {
         </Button>
         <button
           type="button"
-          onClick={() => void refetch()}
-          className="pressable depth-3 flex h-11 w-11 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075]"
+          onClick={() => void handleRefresh()}
+          disabled={isFetching}
+          className="pressable depth-3 flex h-11 w-11 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075] disabled:opacity-45"
           aria-label="Perbarui Invest"
         >
           <RefreshCw size={17} className={isFetching ? "animate-spin" : ""} />
