@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Clock3, Database, Plus, RefreshCw, Search } from "lucide-react";
+import { Clock3, Database, Plus, RefreshCw, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -97,8 +97,18 @@ export default function DashboardPage() {
           placeholder="Cari pasaran…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-14 rounded-3xl pl-12 font-bold transition-colors focus:border-border-strong"
+          className="h-14 rounded-3xl pl-12 pr-12 font-bold transition-colors focus:border-border-strong"
         />
+        {search ? (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="pressable absolute right-2.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-text-soft hover:bg-white/[0.07] hover:text-text"
+            aria-label="Hapus pencarian"
+          >
+            <X size={18} />
+          </button>
+        ) : null}
       </div>
 
       <div className="grid min-h-[calc(100svh-21rem)] grid-cols-2 content-start gap-3 pb-6 sm:grid-cols-3">
