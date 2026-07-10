@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 
 const DEVICE_KEY = "analisa_device_id";
 const ADMIN_CONTACT_URL = process.env.NEXT_PUBLIC_ADMIN_CONTACT_URL || "";
+const ADMIN_CONTACT_MESSAGE = "Halo Admin, saya ingin meminta kode akses Analisa Angka.";
 
 function getDeviceId() {
   if (typeof window === "undefined") return "";
@@ -29,8 +30,23 @@ function safeNextPath() {
   return next.startsWith("/") && !next.startsWith("//") ? next : "/";
 }
 
+function adminContactUrl() {
+  if (!ADMIN_CONTACT_URL) return "";
+
+  try {
+    const url = new URL(ADMIN_CONTACT_URL);
+    url.searchParams.set("text", ADMIN_CONTACT_MESSAGE);
+    return url.toString();
+  } catch {
+    const separator = ADMIN_CONTACT_URL.includes("?") ? "&" : "?";
+    return `${ADMIN_CONTACT_URL}${separator}text=${encodeURIComponent(ADMIN_CONTACT_MESSAGE)}`;
+  }
+}
+
 function AdminContactLink() {
-  if (!ADMIN_CONTACT_URL) {
+  const contactUrl = adminContactUrl();
+
+  if (!contactUrl) {
     return <p className="text-center text-xs font-bold text-text-muted">Belum punya kode akses? Hubungi admin.</p>;
   }
 
@@ -38,7 +54,7 @@ function AdminContactLink() {
     <div className="text-center">
       <p className="text-xs font-bold text-text-muted">Belum punya kode akses?</p>
       <a
-        href={ADMIN_CONTACT_URL}
+        href={contactUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="mt-2 inline-flex items-center justify-center rounded-2xl border border-border px-4 py-3 text-xs font-black uppercase tracking-wide text-text transition hover:border-accent hover:text-accent"
