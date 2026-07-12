@@ -1,4 +1,4 @@
-import { ArrowLeft, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowLeft, RefreshCw, Sparkles, type LucideIcon } from "lucide-react";
 import {
   customFocusLabel,
   customFocusSubtitle,
@@ -30,7 +30,7 @@ function StatusPill({ label, value, onReset }: { label: string; value: string; o
 
 export function AnalysisPageChrome({
   title,
-  icon,
+  icon: Icon,
   marketId,
   isAI,
   isBBFS,
@@ -49,7 +49,7 @@ export function AnalysisPageChrome({
   onCustomFocusReset,
 }: {
   title: string;
-  icon: string;
+  icon: LucideIcon;
   marketId: string;
   isAI: boolean;
   isBBFS: boolean;
@@ -76,8 +76,8 @@ export function AnalysisPageChrome({
       <div className="animate-rise depth-1 relative mb-4 overflow-hidden rounded-3xl border p-4">
         <div className="accent-bg-soft absolute -right-12 -top-12 h-28 w-28 rounded-full blur-3xl" />
         <div className="relative mb-4 flex items-center gap-3">
-          <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-lg">
-            {icon}
+          <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border">
+            <Icon size={22} strokeWidth={1.9} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="depth-3 accent-text mb-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
