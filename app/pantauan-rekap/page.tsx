@@ -1,7 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BarChart3, Lock, RefreshCw } from "lucide-react";
+import {
+  Activity,
+  ArrowLeft,
+  BarChart3,
+  Binary,
+  Boxes,
+  Combine,
+  Feather,
+  Gauge,
+  Grid3X3,
+  Hash,
+  Layers3,
+  Lock,
+  MoveHorizontal,
+  PanelLeft,
+  PanelRight,
+  RefreshCw,
+  Scale,
+  ShieldAlert,
+  ShieldCheck,
+  SlidersHorizontal,
+  type LucideIcon,
+} from "lucide-react";
 import { StatisticCard } from "@/components/statistics/StatisticCard";
 import { useMarketStatistics, aiParamOptions } from "@/components/statistics/useMarketStatistics";
 import { Button } from "@/components/ui/Button";
@@ -23,16 +45,46 @@ import {
   targetPairs,
 } from "@/lib/analysis/statistics";
 
+function categoryIcon(key: string): LucideIcon {
+  if (key === "ai") return Activity;
+  if (key === "bbfs") return Grid3X3;
+  if (key === "off_digit") return ShieldAlert;
+  if (key === "off_jumlah") return Hash;
+  return Gauge;
+}
+
+function scopeIcon(key: string): LucideIcon {
+  if (key === "depan" || key === "2d_depan") return PanelLeft;
+  if (key === "tengah" || key === "2d_tengah") return MoveHorizontal;
+  if (key === "belakang" || key === "2d_belakang") return PanelRight;
+  if (key === "3d") return Layers3;
+  return Boxes;
+}
+
+function parameterIcon(category: string, value: number): LucideIcon {
+  if ((category === "ai" || category === "ai_parity") && value === 7) return Binary;
+  if ((category === "ai" || category === "ai_size") && value === 8) return Scale;
+  if (category === "bbfs" && value === 10) return Combine;
+  if (category.startsWith("off_")) {
+    if (value === 1) return Feather;
+    if (value === 2) return SlidersHorizontal;
+    return ShieldCheck;
+  }
+  return Hash;
+}
+
 function Pill({
   active,
   tone = "green",
   full = false,
+  Icon,
   onClick,
   children,
 }: {
   active: boolean;
   tone?: "green" | "gold";
   full?: boolean;
+  Icon?: LucideIcon;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -54,13 +106,16 @@ function Pill({
       type="button"
       onClick={onClick}
       className={cn(
-        "pressable min-h-[52px] rounded-2xl border px-2 py-3 text-[11px] font-black uppercase tracking-wide",
+        "pressable min-h-[58px] rounded-2xl border px-2 py-3 text-[11px] font-black uppercase tracking-wide",
         full && "col-span-full",
         !active && "depth-3 text-text-muted hover:border-border hover:bg-white/[0.065]",
       )}
       style={active ? activeStyle : undefined}
     >
-      {children}
+      <span className="flex items-center justify-center gap-1.5">
+        {Icon ? <Icon size={15} strokeWidth={1.9} /> : null}
+        <span>{children}</span>
+      </span>
     </button>
   );
 }
@@ -146,7 +201,12 @@ export default function StatisticsPage() {
         <SectionLabel title="Mode Statistik" />
         <div className="depth-1 grid grid-cols-3 gap-1.5 rounded-3xl border p-2 sm:grid-cols-7">
           {categories.map((item) => (
-            <Pill key={item.key} active={item.key === s.category} onClick={() => s.setCategory(item.key)}>
+            <Pill
+              key={item.key}
+              active={item.key === s.category}
+              Icon={categoryIcon(item.key)}
+              onClick={() => s.setCategory(item.key)}
+            >
               {item.title}
             </Pill>
           ))}
@@ -164,6 +224,7 @@ export default function StatisticsPage() {
                     key={item.key}
                     active={s.aiScope === item.key}
                     full={item.key === "2d_belakang"}
+                    Icon={scopeIcon(item.key)}
                     onClick={() => s.setAiScope(item.key)}
                   >
                     {item.label}
@@ -184,6 +245,7 @@ export default function StatisticsPage() {
                     key={item.key}
                     active={s.bbfsScope === item.key}
                     full={item.key === "2d_belakang"}
+                    Icon={scopeIcon(item.key)}
                     onClick={() => s.setBbfsScope(item.key)}
                   >
                     {item.label}
@@ -200,7 +262,12 @@ export default function StatisticsPage() {
             <div className="depth-2 space-y-3 rounded-3xl border p-3">
               <div className="grid grid-cols-3 gap-2">
                 {targetPairs.map((item) => (
-                  <Pill key={item.key} active={s.targetPair === item.key} onClick={() => s.setTargetPair(item.key)}>
+                  <Pill
+                    key={item.key}
+                    active={s.targetPair === item.key}
+                    Icon={scopeIcon(item.key)}
+                    onClick={() => s.setTargetPair(item.key)}
+                  >
                     {item.label}
                   </Pill>
                 ))}
@@ -222,6 +289,7 @@ export default function StatisticsPage() {
                   tone="gold"
                   active={s.param === value}
                   full={(isAiFamily && value >= 7) || (isBBFS && value === 10)}
+                  Icon={parameterIcon(s.category, value)}
                   onClick={() => s.setParam(value)}
                 >
                   {isAiFamily ? aiParamLabel(value) : isBBFS ? bbfsParamLabel(value) : String(value)}
