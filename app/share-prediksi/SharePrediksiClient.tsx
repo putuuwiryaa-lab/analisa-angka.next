@@ -2,7 +2,32 @@
 
 import { createElement as h, useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ClipboardCopy, Loader2, Share2 } from "lucide-react";
+import {
+  Activity,
+  ArrowLeft,
+  BadgeCheck,
+  Binary,
+  Boxes,
+  Check,
+  ClipboardCopy,
+  Combine,
+  Eraser,
+  Gauge,
+  Grid3X3,
+  Hash,
+  Layers3,
+  ListChecks,
+  Loader2,
+  MoveHorizontal,
+  PanelLeft,
+  PanelRight,
+  Scale,
+  Share2,
+  ShieldAlert,
+  TextCursorInput,
+  WandSparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { MODE_LABEL, REKAP_BADGE_OPTION, REKAP_MAX_MARKETS, SEPARATOR } from "./constants";
 import type { MarketOption, PickItem, ShareOption, ShareResponse, ShareRow } from "./types";
 import {
@@ -46,6 +71,35 @@ function rowId(row: ShareRow) {
 function orderRowsByIds(rows: ShareRow[], ids: string[]) {
   const byId = new Map(rows.map((row) => [rowId(row), row]));
   return ids.map((id) => byId.get(id.toLowerCase())).filter(Boolean) as ShareRow[];
+}
+
+function pickerIcon(group: string, item: PickItem): LucideIcon {
+  const key = item.key.toLowerCase();
+  const label = item.label.toLowerCase();
+
+  if (group === "Jenis") {
+    if (key === "rekap_badge") return BadgeCheck;
+    if (key === "ai") return Activity;
+    if (key === "bbfs") return Grid3X3;
+    if (key === "mati") return ShieldAlert;
+    if (key === "jumlah") return Hash;
+    if (key === "shio") return Gauge;
+  }
+
+  if (group === "Target") {
+    if (label.includes("depan")) return PanelLeft;
+    if (label.includes("tengah")) return MoveHorizontal;
+    if (label.includes("belakang")) return PanelRight;
+    if (label.includes("3d")) return Layers3;
+    if (label.includes("4d")) return Boxes;
+    return BadgeCheck;
+  }
+
+  if (label.includes("ganjil") || label.includes("genap")) return Binary;
+  if (label.includes("besar") || label.includes("kecil")) return Scale;
+  if (label.includes("ggbk")) return Combine;
+  if (label.includes("badge")) return BadgeCheck;
+  return Hash;
 }
 
 export function SharePrediksiClient() {
@@ -265,7 +319,7 @@ export function SharePrediksiClient() {
 
   return h("div", { className: "animate-rise pb-8" }, [
     h("button", { key: "back", type: "button", onClick: () => router.push("/"), className: "pressable depth-3 mb-3 inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, [h(ArrowLeft, { key: "i", size: 15 }), " Beranda"]),
-    h("section", { key: "hero", className: "depth-1 mb-4 rounded-3xl border p-4 text-center" }, h("div", { className: "depth-2 rounded-3xl border px-4 py-6" }, [h("div", { key: "title", className: "display text-2xl text-text" }, "Share Prediksi"), h("p", { key: "desc", className: "mt-2 text-xs font-semibold leading-relaxed text-text-muted" }, description), h("p", { key: "active", className: "mt-3 text-[11px] font-black uppercase tracking-wide text-accent" }, selectedTitle)])),
+    h("section", { key: "hero", className: "depth-1 mb-4 rounded-3xl border p-4 text-center" }, h("div", { className: "depth-2 rounded-3xl border px-4 py-6" }, [h("div", { key: "icon", className: "depth-3 accent-text mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border" }, h(Share2, { size: 21, strokeWidth: 1.9 })), h("div", { key: "title", className: "display text-2xl text-text" }, "Share Prediksi"), h("p", { key: "desc", className: "mt-2 text-xs font-semibold leading-relaxed text-text-muted" }, description), h("p", { key: "active", className: "mt-3 text-[11px] font-black uppercase tracking-wide text-accent" }, selectedTitle)])),
     error ? h("div", { key: "err", className: "mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger" }, error) : null,
     h("section", { key: "pickers", className: "depth-1 mb-4 rounded-3xl border p-4" }, [
       h("div", { key: "head", className: "mb-3 flex items-center justify-between gap-3 px-1" }, [h("span", { key: "t", className: "display text-xs text-text" }, "Pilihan Prediksi"), loadingOptions ? h(Loader2, { key: "l", size: 15, className: "animate-spin text-text-soft" }) : null]),
@@ -284,14 +338,15 @@ export function SharePrediksiClient() {
       h("div", { key: "label", className: "mb-2 px-1 text-[10px] font-black uppercase tracking-[0.18em] text-text-soft" }, label),
       h("div", { key: "items", className: "grid grid-cols-2 gap-2 sm:grid-cols-3" }, items.map((item) => {
         const active = item.key === activeKey;
-        return h("button", { key: item.key, type: "button", onClick: () => onPick(item.key), className: active ? "pressable accent-bg-soft accent-border min-h-11 rounded-2xl border px-3 py-2 text-center text-[11px] font-black uppercase tracking-wide text-text" : "pressable depth-3 min-h-11 rounded-2xl border px-3 py-2 text-center text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, item.label);
+        const Icon = pickerIcon(label, item);
+        return h("button", { key: item.key, type: "button", onClick: () => onPick(item.key), className: active ? "pressable accent-bg-soft accent-border flex min-h-[56px] items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-center text-[11px] font-black uppercase tracking-wide text-text" : "pressable depth-3 flex min-h-[56px] items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-center text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, [h(Icon, { key: "icon", size: 15, strokeWidth: 1.9 }), h("span", { key: "label" }, item.label)]);
       })),
     ]);
   }
 
   function renderSeparatorInput() {
     return h("div", { key: "Separator", className: "mb-3 last:mb-0" }, [
-      h("div", { key: "label", className: "mb-2 px-1 text-[10px] font-black uppercase tracking-[0.18em] text-text-soft" }, "Separator"),
+      h("div", { key: "label", className: "mb-2 flex items-center gap-1.5 px-1 text-[10px] font-black uppercase tracking-[0.18em] text-text-soft" }, [h(TextCursorInput, { key: "icon", size: 13 }), "Separator"]),
       h("input", {
         key: "input",
         type: "text",
@@ -310,13 +365,13 @@ export function SharePrediksiClient() {
     if (loadingMarkets) return h("div", { className: "depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted" }, "Memuat pasaran…");
     if (markets.length === 0) return h("div", { className: "depth-2 rounded-2xl border p-4 text-center text-[11px] font-black uppercase tracking-wide text-text-muted" }, "Belum ada pasaran");
     return h("div", {}, [
-      h("div", { key: "tools", className: "mb-3 grid grid-cols-2 gap-2" }, [h("button", { key: "first", type: "button", onClick: selectQuick, className: "pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, quickLabel), h("button", { key: "clear", type: "button", onClick: clearAll, className: "pressable depth-3 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, "Kosongkan")]),
+      h("div", { key: "tools", className: "mb-3 grid grid-cols-2 gap-2" }, [h("button", { key: "first", type: "button", onClick: selectQuick, className: "pressable depth-3 flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, [h(ListChecks, { key: "i", size: 15 }), quickLabel]), h("button", { key: "clear", type: "button", onClick: clearAll, className: "pressable depth-3 flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]" }, [h(Eraser, { key: "i", size: 15 }), "Kosongkan"])]),
       h("div", { key: "grid", className: "grid grid-cols-3 gap-2 sm:grid-cols-4" }, markets.map((row) => {
         const key = marketKey(row);
         const active = selected.has(key);
         return h("button", { key: key || marketLabel(row), type: "button", onClick: () => toggle(row), className: active ? "pressable animate-soft-pop accent-bg-soft accent-border relative flex min-h-[58px] items-center justify-center rounded-2xl border px-2 py-2 text-center" : "pressable animate-soft-pop depth-1 relative flex min-h-[58px] items-center justify-center rounded-2xl border px-2 py-2 text-center hover:border-border hover:bg-surface-2" }, [active ? h("span", { key: "check", className: "absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white" }, h(Check, { size: 11, strokeWidth: 3.2 })) : null, h("span", { key: "label", className: "line-clamp-2 text-[9px] font-black leading-3 tracking-wide text-text" }, marketLabel(row))]);
       })),
-      h("button", { key: "generate", type: "button", onClick: generate, disabled: loadingRows || selected.size === 0 || !selectedOption, className: "pressable depth-accent accent-text mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45" }, [loadingRows ? h(Loader2, { key: "l", size: 15, className: "animate-spin" }) : null, "Generate"]),
+      h("button", { key: "generate", type: "button", onClick: generate, disabled: loadingRows || selected.size === 0 || !selectedOption, className: "pressable depth-accent accent-text mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black uppercase tracking-wide disabled:opacity-45" }, [loadingRows ? h(Loader2, { key: "l", size: 15, className: "animate-spin" }) : h(WandSparkles, { key: "w", size: 16 }), "Generate"]),
     ]);
   }
 }

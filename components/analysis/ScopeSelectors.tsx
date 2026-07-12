@@ -1,6 +1,14 @@
 "use client";
 
 import {
+  Boxes,
+  Layers3,
+  MoveHorizontal,
+  PanelLeft,
+  PanelRight,
+  type LucideIcon,
+} from "lucide-react";
+import {
   CUSTOM_FOCUS_OPTIONS,
   customFocusSubtitle,
   type BBFSAnalysisScope,
@@ -14,28 +22,34 @@ type ScopeOption = {
   key: Exclude<AnalysisScope, "default">;
   title: string;
   subtitle: string;
+  Icon: LucideIcon;
 };
 
-export const TARGET_PAIR_OPTIONS: Array<{ key: TargetPair; title: string; subtitle: string }> = [
-  { key: "depan", title: "2D DEPAN", subtitle: "AS - KOP" },
-  { key: "tengah", title: "2D TENGAH", subtitle: "KOP - KEPALA" },
-  { key: "belakang", title: "2D BELAKANG", subtitle: "KEPALA - EKOR" },
+export const TARGET_PAIR_OPTIONS: Array<{
+  key: TargetPair;
+  title: string;
+  subtitle: string;
+  Icon: LucideIcon;
+}> = [
+  { key: "depan", title: "2D DEPAN", subtitle: "AS - KOP", Icon: PanelLeft },
+  { key: "tengah", title: "2D TENGAH", subtitle: "KOP - KEPALA", Icon: MoveHorizontal },
+  { key: "belakang", title: "2D BELAKANG", subtitle: "KEPALA - EKOR", Icon: PanelRight },
 ];
 
 export const BBFS_SCOPE_OPTIONS: ScopeOption[] = [
-  { key: "2d_depan", title: "2D DEPAN", subtitle: "AS - KOP" },
-  { key: "2d_tengah", title: "2D TENGAH", subtitle: "KOP - KEPALA" },
-  { key: "2d_belakang", title: "2D BELAKANG", subtitle: "KEPALA - EKOR" },
-  { key: "3d", title: "3D", subtitle: "KOP - KEPALA - EKOR" },
-  { key: "4d", title: "4D", subtitle: "AS - KOP - KEPALA - EKOR" },
+  { key: "2d_depan", title: "2D DEPAN", subtitle: "AS - KOP", Icon: PanelLeft },
+  { key: "2d_tengah", title: "2D TENGAH", subtitle: "KOP - KEPALA", Icon: MoveHorizontal },
+  { key: "2d_belakang", title: "2D BELAKANG", subtitle: "KEPALA - EKOR", Icon: PanelRight },
+  { key: "3d", title: "3D", subtitle: "KOP - KEPALA - EKOR", Icon: Layers3 },
+  { key: "4d", title: "4D", subtitle: "AS - KOP - KEPALA - EKOR", Icon: Boxes },
 ];
 
 export const AI_SCOPE_OPTIONS: ScopeOption[] = [
-  { key: "2d_depan", title: "2D DEPAN", subtitle: "AS - KOP" },
-  { key: "2d_tengah", title: "2D TENGAH", subtitle: "KOP - KEPALA" },
-  { key: "2d_belakang", title: "2D BELAKANG", subtitle: "KEPALA - EKOR" },
-  { key: "3d", title: "3D", subtitle: "KOP - KEPALA - EKOR" },
-  { key: "4d", title: "4D", subtitle: "AS - KOP - KEPALA - EKOR" },
+  { key: "2d_depan", title: "2D DEPAN", subtitle: "AS - KOP", Icon: PanelLeft },
+  { key: "2d_tengah", title: "2D TENGAH", subtitle: "KOP - KEPALA", Icon: MoveHorizontal },
+  { key: "2d_belakang", title: "2D BELAKANG", subtitle: "KEPALA - EKOR", Icon: PanelRight },
+  { key: "3d", title: "3D", subtitle: "KOP - KEPALA - EKOR", Icon: Layers3 },
+  { key: "4d", title: "4D", subtitle: "AS - KOP - KEPALA - EKOR", Icon: Boxes },
 ];
 
 export const VALID_TARGET_PAIRS: TargetPair[] = ["depan", "tengah", "belakang"];
@@ -52,7 +66,20 @@ export function analysisScopeLabel(scope: AnalysisScope | null) {
   return option ? `${option.title} · ${option.subtitle}` : "";
 }
 
-type SelectOption = { key: string; title: string; subtitle: string };
+type SelectOption = {
+  key: string;
+  title: string;
+  subtitle: string;
+  Icon: LucideIcon;
+};
+
+function focusIcon(key: CustomFocus): LucideIcon {
+  if (key === "depan") return PanelLeft;
+  if (key === "tengah") return MoveHorizontal;
+  if (key === "belakang") return PanelRight;
+  if (key === "3d") return Layers3;
+  return Boxes;
+}
 
 function SelectorPanel({
   title,
@@ -83,16 +110,23 @@ function SelectorButton({
   onClick: () => void;
   index?: number;
 }) {
+  const { Icon } = option;
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="pressable animate-soft-pop depth-3 accent-text relative min-h-16 w-full rounded-3xl border px-5 py-4 text-center hover:border-border hover:bg-white/[0.06]"
+      className="pressable animate-soft-pop depth-3 accent-text group relative flex min-h-[74px] w-full items-center gap-3 rounded-3xl border px-4 py-3 text-left hover:border-border hover:bg-white/[0.06]"
       style={{ animationDelay: `${Math.min(index, 8) * 26}ms` }}
     >
-      <span className="display block text-[15px]">{option.title}</span>
-      <span className="mt-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
-        {option.subtitle}
+      <span className="depth-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-150 group-hover:scale-[1.04]">
+        <Icon size={21} strokeWidth={1.9} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="display block text-[15px]">{option.title}</span>
+        <span className="mt-1.5 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
+          {option.subtitle}
+        </span>
       </span>
     </button>
   );
@@ -142,7 +176,12 @@ export function RekapFocusSelector({ onSelect }: { onSelect: (focus: CustomFocus
       {CUSTOM_FOCUS_OPTIONS.map((item, index) => (
         <SelectorButton
           key={item.key}
-          option={{ key: item.key, title: item.title, subtitle: customFocusSubtitle(item.key) }}
+          option={{
+            key: item.key,
+            title: item.title,
+            subtitle: customFocusSubtitle(item.key),
+            Icon: focusIcon(item.key),
+          }}
           onClick={() => onSelect(item.key)}
           index={index}
         />

@@ -25,7 +25,7 @@ function safeDecode(value: string) {
 }
 
 function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: ModeKey }) {
-  const { title, emoji } = MODES[type];
+  const { title, Icon } = MODES[type];
   const { state, flags, handlers, custom } = useAnalysisController({ type, marketId });
   const { param, targetPair, analysisScope, loading, result, error, customFocus } = state;
 
@@ -33,7 +33,7 @@ function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: M
     <div data-mode={type} className="animate-rise pb-8">
       <AnalysisPageChrome
         title={title}
-        icon={emoji}
+        icon={Icon}
         marketId={marketId}
         isAI={flags.isAI}
         isBBFS={flags.isBBFS}

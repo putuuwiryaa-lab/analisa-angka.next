@@ -3,7 +3,18 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, ClipboardCopy, RefreshCw, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ClipboardCopy,
+  Eye,
+  MoveHorizontal,
+  PanelLeft,
+  PanelRight,
+  RefreshCw,
+  Search,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -67,10 +78,10 @@ type AngkaState = {
   latestResult?: string;
 };
 
-const PAIR_OPTIONS: Array<{ key: Pair; label: string; short: string }> = [
-  { key: "depan", label: "2D Depan", short: "Depan" },
-  { key: "tengah", label: "2D Tengah", short: "Tengah" },
-  { key: "belakang", label: "2D Belakang", short: "Belakang" },
+const PAIR_OPTIONS: Array<{ key: Pair; label: string; short: string; Icon: LucideIcon }> = [
+  { key: "depan", label: "2D Depan", short: "Depan", Icon: PanelLeft },
+  { key: "tengah", label: "2D Tengah", short: "Tengah", Icon: MoveHorizontal },
+  { key: "belakang", label: "2D Belakang", short: "Belakang", Icon: PanelRight },
 ];
 
 function rowKey(row: InvestRow) {
@@ -323,6 +334,7 @@ export default function RekomendasiPage() {
         <div className="mt-4 grid grid-cols-3 gap-2">
           {PAIR_OPTIONS.map((item) => {
             const active = item.key === pair;
+            const { Icon } = item;
             return (
               <button
                 key={item.key}
@@ -333,10 +345,11 @@ export default function RekomendasiPage() {
                 }}
                 className={
                   active
-                    ? "pressable accent-bg-soft accent-border min-h-12 rounded-2xl border px-2 text-center text-[11px] font-black uppercase tracking-wide text-text"
-                    : "pressable depth-3 min-h-12 rounded-2xl border px-2 text-center text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
+                    ? "pressable accent-bg-soft accent-border flex min-h-[66px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 text-center text-[11px] font-black uppercase tracking-wide text-text"
+                    : "pressable depth-3 flex min-h-[66px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 text-center text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
                 }
               >
+                <Icon size={18} strokeWidth={1.9} />
                 {item.short}
               </button>
             );
@@ -471,8 +484,9 @@ function InvestLiteCard({
           type="button"
           onClick={onGenerate}
           disabled={state.loading}
-          className="pressable depth-3 min-h-11 rounded-2xl border px-3 text-[11px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
+          className="pressable depth-3 flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-3 text-[11px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
         >
+          {generated ? <RefreshCw size={15} className={state.loading ? "animate-spin" : ""} /> : <Eye size={15} />}
           {state.loading ? (generated ? "Memperbarui…" : "Menghitung…") : generated ? "Lihat Ulang" : "Lihat Angka"}
         </button>
         <button

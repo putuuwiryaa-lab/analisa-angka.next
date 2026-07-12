@@ -1,7 +1,16 @@
 import type { ReactNode } from "react";
+import { Binary, Combine, Hash, Scale, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { MiniLabel } from "./Shared";
 import type { RecommendationBadge } from "@/lib/analysis/recommendations";
+
+function optionIcon(label: string): LucideIcon {
+  const normalized = label.trim().toUpperCase();
+  if (normalized.includes("GENAP GANJIL") || normalized.includes("GANJIL GENAP")) return Binary;
+  if (normalized.includes("BESAR KECIL")) return Scale;
+  if (normalized.includes("GGBK")) return Combine;
+  return Hash;
+}
 
 export function CustomDigitOptionButton({
   active,
@@ -17,12 +26,14 @@ export function CustomDigitOptionButton({
   badge?: RecommendationBadge;
 }) {
   const recommended = Boolean(badge);
+  const Icon = optionIcon(label);
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "pressable relative min-h-14 rounded-2xl border p-4 text-center",
+        "pressable group relative min-h-[72px] rounded-2xl border p-3 text-center",
         active
           ? "depth-accent accent-text"
           : recommended
@@ -36,6 +47,9 @@ export function CustomDigitOptionButton({
           {badge === "fire" ? "🔥" : "👍"}
         </span>
       )}
+      <span className="depth-2 mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-[1.05]">
+        <Icon size={15} strokeWidth={1.9} />
+      </span>
       <span className="display block text-[13px] leading-5">{label}</span>
     </button>
   );

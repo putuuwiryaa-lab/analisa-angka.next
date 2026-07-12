@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Clock3, Database, Plus, RefreshCw, Search, X } from "lucide-react";
+import { Clock3, Database, Plus, RefreshCw, ScanSearch, Search, X, Zap } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -16,8 +16,8 @@ import {
 
 const WA_NUMBER = "6285119341538";
 const APP_LINKS = [
-  { name: "Scan Angka", href: "https://scan-angka.vercel.app" },
-  { name: "Angka Pro", href: "https://angkapro.online" },
+  { name: "Scan Angka", href: "https://scan-angka.vercel.app", Icon: ScanSearch },
+  { name: "Angka Pro", href: "https://angkapro.online", Icon: Zap },
 ];
 
 export default function DashboardPage() {
@@ -166,17 +166,21 @@ function CrossAppBanner() {
     <section className="animate-soft-pop mb-4 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-border-soft bg-white/[0.035] px-3 py-2" aria-label="Tools tambahan">
       <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.14em] text-text-soft">Tools tambahan</span>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-        {APP_LINKS.map((app) => (
-          <a
-            key={app.name}
-            href={app.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="pressable rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[11px] font-black leading-none text-primary-soft hover:border-primary/35"
-          >
-            {app.name}
-          </a>
-        ))}
+        {APP_LINKS.map((app) => {
+          const { Icon } = app;
+          return (
+            <a
+              key={app.name}
+              href={app.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="pressable inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[11px] font-black leading-none text-primary-soft hover:border-primary/35"
+            >
+              <Icon size={13} strokeWidth={2.1} />
+              {app.name}
+            </a>
+          );
+        })}
       </div>
     </section>
   );
