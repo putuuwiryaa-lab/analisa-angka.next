@@ -74,7 +74,6 @@ export function ParamSelector({
   const cfg = options[type] || options.ai;
   const isAiMode = type === "ai";
   const isBBFSMode = type === "bbfs";
-  const isGridThree = isAiMode || isBBFSMode || type === "mati" || type === "jumlah" || type === "shio";
 
   return (
     <div className="animate-soft-pop depth-1 mt-4 rounded-3xl border p-4">
@@ -83,38 +82,48 @@ export function ParamSelector({
         <p className="mt-1.5 text-xs font-medium text-text-muted">Pilih parameter untuk memulai analisa.</p>
       </div>
 
-      <div className={cn("grid gap-2.5", isGridThree ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4")}>
+      <div className="grid grid-cols-3 gap-2.5">
         {cfg.values.map((value, index) => {
           const isBbfsGgbk = isBBFSMode && value === 10;
           const isSpecial = (isAiMode && (value === 7 || value === 8)) || isBbfsGgbk;
           const hint = cfg.hints?.[value];
           const label = cfg.labels?.[value] || String(value);
+          const showDigitHint = (isAiMode && !isSpecial) || (isBBFSMode && !isBbfsGgbk);
           const Icon = parameterIcon(type, value);
 
           return (
             <button
               key={value}
+              type="button"
               onClick={() => onAnalyze(value)}
               className={cn(
-                "pressable animate-soft-pop depth-3 accent-text group relative rounded-3xl border text-center hover:border-border hover:bg-white/[0.06]",
-                isSpecial ? "col-span-3 min-h-[96px] p-4" : isGridThree ? "min-h-[96px] p-3" : "p-5",
+                "pressable animate-soft-pop depth-3 accent-text group relative flex items-center rounded-2xl border text-left hover:border-border hover:bg-white/[0.06]",
+                isSpecial
+                  ? "col-span-3 min-h-[76px] justify-start gap-3 px-4 py-3"
+                  : "min-h-[76px] justify-center gap-2 px-2.5 py-3",
               )}
               style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}
             >
-              <span className="depth-2 mx-auto mb-2.5 flex h-9 w-9 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-[1.05]">
+              <span className="depth-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-[1.05]">
                 <Icon size={17} strokeWidth={1.9} />
               </span>
-              <span className={cn("display block", isSpecial ? "text-[15px] leading-5" : "text-2xl")}>{label}</span>
-              {((isAiMode && !isSpecial) || (isBBFSMode && !isBbfsGgbk)) && (
-                <span className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-text-muted">
-                  DIGIT
+
+              <span className="min-w-0">
+                <span
+                  className={cn(
+                    "display block",
+                    isSpecial ? "text-[14px] leading-5" : "text-xl leading-none",
+                  )}
+                >
+                  {label}
                 </span>
-              )}
-              {hint && (
-                <span className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-text-muted">
-                  {hint}
-                </span>
-              )}
+                {showDigitHint ? (
+                  <span className="mt-1 block text-[9px] font-bold uppercase tracking-wide text-text-muted">DIGIT</span>
+                ) : null}
+                {hint ? (
+                  <span className="mt-1 block text-[9px] font-bold uppercase tracking-wide text-text-muted">{hint}</span>
+                ) : null}
+              </span>
             </button>
           );
         })}
