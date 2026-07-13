@@ -26,6 +26,7 @@ export function CustomDigitOptionButton({
   badge?: RecommendationBadge;
 }) {
   const recommended = Boolean(badge);
+  const numericLabel = /^\d+$/.test(label.trim());
   const Icon = optionIcon(label);
 
   return (
@@ -33,7 +34,8 @@ export function CustomDigitOptionButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "pressable group relative min-h-[72px] rounded-2xl border p-3 text-center",
+        "pressable group relative flex min-h-[64px] items-center justify-center gap-2.5 rounded-2xl border px-3 py-2.5 text-center",
+        badge && "pr-9",
         active
           ? "depth-accent accent-text"
           : recommended
@@ -43,14 +45,16 @@ export function CustomDigitOptionButton({
       )}
     >
       {badge && (
-        <span className="depth-2 absolute right-2.5 top-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full border px-1 text-[13px] leading-none">
+        <span className="depth-2 absolute right-2 top-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full border px-1 text-[13px] leading-none">
           {badge === "fire" ? "🔥" : "👍"}
         </span>
       )}
-      <span className="depth-2 mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-[1.05]">
+      <span className="depth-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-[1.05]">
         <Icon size={15} strokeWidth={1.9} />
       </span>
-      <span className="display block text-[13px] leading-5">{label}</span>
+      <span className={cn("display min-w-0", numericLabel ? "text-lg leading-none" : "text-[12px] leading-4")}>
+        {label}
+      </span>
     </button>
   );
 }
