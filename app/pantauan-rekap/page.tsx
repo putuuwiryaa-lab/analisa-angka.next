@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity,
-  ArrowLeft,
   BarChart3,
   Binary,
   Boxes,
@@ -20,13 +19,13 @@ import {
   MoveHorizontal,
   PanelLeft,
   PanelRight,
-  RefreshCw,
   Scale,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
+import { PageTopBar } from "@/components/layout/PageTopBar";
 import { StatisticCard } from "@/components/statistics/StatisticCard";
 import { useMarketStatistics, aiParamOptions } from "@/components/statistics/useMarketStatistics";
 import { Button } from "@/components/ui/Button";
@@ -186,7 +185,6 @@ export default function StatisticsPage() {
   const s = useMarketStatistics();
   const [visibleCount, setVisibleCount] = useState(20);
 
-  const isPosition = s.category === "off_digit";
   const isBBFS = s.category === "bbfs";
   const isAiFamily = isAiFamilyCategory(s.category);
   const selectedAI = aiScopeMeta(s.aiScope);
@@ -224,19 +222,13 @@ export default function StatisticsPage() {
 
   return (
     <div data-mode="statistics" className="animate-rise space-y-4 pb-5">
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
-          <ArrowLeft size={16} /> Beranda
-        </Button>
-        <button
-          type="button"
-          onClick={() => s.refetch()}
-          className="pressable depth-3 flex h-11 w-11 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075]"
-          aria-label="Refresh statistik"
-        >
-          <RefreshCw size={17} className={s.isFetching ? "animate-spin" : ""} />
-        </button>
-      </div>
+      <PageTopBar
+        title="Statistik"
+        onBack={() => router.push("/")}
+        onRefresh={() => s.refetch()}
+        refreshing={s.isFetching}
+        refreshLabel="Refresh statistik"
+      />
 
       <section className="animate-soft-pop depth-accent rounded-3xl border p-4">
         <div className="flex items-start gap-3">
