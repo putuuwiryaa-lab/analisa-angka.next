@@ -82,8 +82,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <CrossAppBanner />
-
       {errorMessage && (
         <div className="animate-soft-pop mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
           {errorMessage}
@@ -157,13 +155,18 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      <CrossAppBanner />
     </div>
   );
 }
 
 function CrossAppBanner() {
   return (
-    <section className="animate-soft-pop mb-4 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-border-soft bg-white/[0.035] px-3 py-2" aria-label="Tools tambahan">
+    <section
+      className="animate-soft-pop mb-4 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-border-soft bg-white/[0.035] px-3 py-2"
+      aria-label="Tools tambahan"
+    >
       <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.14em] text-text-soft">Tools tambahan</span>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
         {APP_LINKS.map((app) => {
