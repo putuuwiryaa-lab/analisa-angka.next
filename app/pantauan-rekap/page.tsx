@@ -265,12 +265,12 @@ export default function StatisticsPage() {
       <section className="animate-soft-pop depth-1 rounded-3xl border p-4">
         <StepHeader number={1} title="Pilih metode" subtitle="Tentukan jenis analisa yang ingin dibandingkan." />
         <div className="grid grid-cols-2 gap-2">
-          {MODE_OPTIONS.map((item, index) => (
+          {MODE_OPTIONS.map((item) => (
             <ModeButton
               key={item.key}
               option={item}
               active={item.key === s.category}
-              full={index === MODE_OPTIONS.length - 1}
+              full={item.key === "off_digit"}
               onClick={() => s.setCategory(item.key)}
             />
           ))}
