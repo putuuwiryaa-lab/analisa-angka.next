@@ -7,12 +7,14 @@ import {
   ArrowLeft,
   Check,
   ClipboardCopy,
+  Coins,
   Eye,
   MoveHorizontal,
   PanelLeft,
   PanelRight,
   RefreshCw,
   Search,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -315,7 +317,7 @@ export default function RekomendasiPage() {
           type="button"
           onClick={() => void handleRefresh()}
           disabled={isFetching}
-          className="pressable depth-3 flex h-11 w-11 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075] disabled:opacity-45"
+          className="pressable depth-3 flex h-11 w-11 items-center justify-center rounded-2xl border text-text-muted hover:border-border disabled:opacity-45"
           aria-label="Perbarui Invest"
         >
           <RefreshCw size={17} className={isFetching ? "animate-spin" : ""} />
@@ -323,12 +325,17 @@ export default function RekomendasiPage() {
       </div>
 
       <section className="depth-accent animate-soft-pop rounded-3xl border p-4">
-        <div className="text-center">
-          <p className="accent-text text-[10px] font-black uppercase tracking-[0.22em]">Rekomendasi Invest</p>
-          <h1 className="display mt-2 text-3xl text-text">Invest 2D</h1>
-          <p className="mx-auto mt-2 max-w-[34ch] text-xs font-semibold leading-relaxed text-text-muted">
-            Pilih posisi dan pasaran, lalu lihat angka jadi terbaik.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border">
+            <Coins size={21} strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="accent-text text-[9px] font-black uppercase tracking-[0.18em]">Rekomendasi Invest</p>
+            <h1 className="display mt-1 text-xl text-text">Invest 2D</h1>
+            <p className="mt-1 text-[10px] font-semibold leading-4 text-text-soft">
+              Pilih posisi lalu lihat kombinasi terbaik setiap pasaran.
+            </p>
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
@@ -343,75 +350,92 @@ export default function RekomendasiPage() {
                   setPair(item.key);
                   setSearch("");
                 }}
-                className={
+                className={`pressable flex min-h-[60px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 text-center text-[10px] font-black uppercase tracking-wide ${
                   active
-                    ? "pressable accent-bg-soft accent-border flex min-h-[66px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 text-center text-[11px] font-black uppercase tracking-wide text-text"
-                    : "pressable depth-3 flex min-h-[66px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 text-center text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
-                }
+                    ? "accent-bg-soft accent-border text-text"
+                    : "depth-3 border-border-soft text-text-muted hover:border-border"
+                }`}
               >
-                <Icon size={18} strokeWidth={1.9} />
+                <Icon size={17} strokeWidth={1.9} className={active ? "text-accent" : "text-text-soft"} />
                 {item.short}
               </button>
             );
           })}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <SummaryChip label="Posisi" value={activePairLabel.replace("2D ", "")} />
-          <SummaryChip label="Pasaran" value={String(rows.length)} />
+        <div className="mt-3 flex items-center justify-between gap-3 px-1 text-[10px] font-black uppercase tracking-wide text-text-soft">
+          <span>{activePairLabel}</span>
+          <span>{rows.length} pasaran</span>
         </div>
       </section>
 
       {errorMessage ? <StateBox text={errorMessage} tone="error" /> : null}
 
       <div className="relative">
-        <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
+        <Search size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
         <Input
           type="text"
           placeholder="Cari pasaran…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          className="h-14 rounded-3xl pl-11 text-sm font-bold"
+          className="h-12 rounded-2xl pl-11 pr-11 text-sm font-bold"
         />
+        {search ? (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="pressable absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-soft hover:bg-white/[0.06]"
+            aria-label="Hapus pencarian"
+          >
+            <X size={16} />
+          </button>
+        ) : null}
       </div>
 
-      <section className="min-h-[50svh] space-y-2.5">
-        {showSkeleton ? (
-          Array.from({ length: 8 }).map((_, index) => <Skeleton key={index} className="h-[132px] rounded-3xl" />)
-        ) : rows.length === 0 ? (
-          <StateBox text={search ? "Pasaran tidak ditemukan." : "Belum ada rekomendasi untuk posisi ini."} />
-        ) : (
-          rows.map((row, index) => {
-            const state = angkaByKey[rowKey(row)] || {};
-            return (
-              <InvestLiteCard
-                key={rowKey(row)}
-                row={row}
-                index={index}
-                state={state}
-                onGenerate={() => handleGenerate(row)}
-                onCopy={() => copyRow(row)}
-              />
-            );
-          })
-        )}
-      </section>
-    </div>
-  );
-}
+      <section className="min-h-[50svh]">
+        <div className="mb-3 flex items-end justify-between gap-3 px-1">
+          <div>
+            <p className="display text-sm text-text">Ranking Pasaran</p>
+            <p className="mt-1 text-[10px] font-semibold text-text-soft">Urut berdasarkan riwayat terbaik</p>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-wide text-text-soft">{rows.length} hasil</span>
+        </div>
 
-function SummaryChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-black/15 px-2 py-2 text-center">
-      <p className="num accent-text truncate text-sm font-black">{value}</p>
-      <p className="mt-0.5 truncate text-[9px] font-bold uppercase tracking-wide text-text-soft">{label}</p>
+        <div className="space-y-2.5">
+          {showSkeleton ? (
+            Array.from({ length: 8 }).map((_, index) => <Skeleton key={index} className="h-[124px] rounded-2xl" />)
+          ) : rows.length === 0 ? (
+            <StateBox text={search ? "Pasaran tidak ditemukan." : "Belum ada rekomendasi untuk posisi ini."} />
+          ) : (
+            rows.map((row, index) => {
+              const state = angkaByKey[rowKey(row)] || {};
+              return (
+                <InvestLiteCard
+                  key={rowKey(row)}
+                  row={row}
+                  index={index}
+                  state={state}
+                  onGenerate={() => handleGenerate(row)}
+                  onCopy={() => copyRow(row)}
+                />
+              );
+            })
+          )}
+        </div>
+      </section>
     </div>
   );
 }
 
 function StateBox({ text, tone = "neutral" }: { text: string; tone?: "neutral" | "error" }) {
   return (
-    <div className={`animate-soft-pop rounded-3xl border p-4 text-center text-xs font-bold ${tone === "error" ? "border-danger/30 bg-danger/10 text-danger" : "border-dashed text-text-muted"}`}>
+    <div
+      className={`animate-soft-pop rounded-2xl border p-4 text-center text-xs font-bold ${
+        tone === "error"
+          ? "border-danger/30 bg-danger/10 text-danger"
+          : "border-dashed border-border-soft text-text-muted"
+      }`}
+    >
       {text}
     </div>
   );
@@ -438,13 +462,15 @@ function InvestLiteCard({
   return (
     <article
       aria-busy={state.loading}
-      className="animate-soft-pop depth-1 rounded-3xl border p-3.5"
+      className="animate-soft-pop depth-1 rounded-2xl border p-3.5"
       style={{ animationDelay: `${Math.min(index, 10) * 22}ms` }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="display truncate text-base text-text">{row.marketName}</h2>
-          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">{shortComboLabel(row.combo.label)}</p>
+          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">
+            {shortComboLabel(row.combo.label)}
+          </p>
         </div>
         <span className="accent-bg-soft accent-text shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
           {formatWins15(row.combo.avgWins15)}/15
@@ -457,23 +483,26 @@ function InvestLiteCard({
           value={`${generated ? lines.length : lineCountOf(row.combo) || "-"} line`}
           tone={isRefreshing ? "loading" : generated ? "accent" : "neutral"}
         />
-        <MetricChip label="Posisi" value={row.pairLabel.replace("2D ", "")} />
-        {state.latestResult ? <MetricChip label="Last" value={state.latestResult} /> : null}
+        {state.latestResult ? <MetricChip label="Result" value={state.latestResult} /> : null}
       </div>
 
       {state.error ? (
-        <div className="mt-3 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-center text-xs font-bold text-danger">{state.error}</div>
+        <div className="mt-3 rounded-xl border border-danger/30 bg-danger/10 p-3 text-center text-xs font-bold text-danger">
+          {state.error}
+        </div>
       ) : null}
 
       {generated && !hasLines && !state.error ? (
-        <div className="mt-3 rounded-2xl border border-dashed border-border-soft p-3 text-center text-xs font-bold text-text-muted">
+        <div className="mt-3 rounded-xl border border-dashed border-border-soft p-3 text-center text-xs font-bold text-text-muted">
           {state.loading ? "Memperbarui angka…" : "Tidak ada line yang lolos kombinasi ini."}
         </div>
       ) : null}
 
       {hasLines ? (
         <div
-          className={`num accent-text mt-3 max-h-[150px] overflow-y-auto rounded-2xl border border-border-soft bg-black/25 p-3 text-[13px] font-black leading-7 transition-opacity ${state.loading ? "opacity-45" : "opacity-100"}`}
+          className={`num accent-text mt-3 max-h-[150px] overflow-y-auto rounded-xl border border-border-soft bg-black/25 p-3 text-[13px] font-black leading-7 transition-opacity ${
+            state.loading ? "opacity-45" : "opacity-100"
+          }`}
         >
           {lineText(lines)}
         </div>
@@ -484,16 +513,22 @@ function InvestLiteCard({
           type="button"
           onClick={onGenerate}
           disabled={state.loading}
-          className="pressable depth-3 flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-3 text-[11px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
+          className="pressable depth-3 flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-[11px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
         >
           {generated ? <RefreshCw size={15} className={state.loading ? "animate-spin" : ""} /> : <Eye size={15} />}
-          {state.loading ? (generated ? "Memperbarui…" : "Menghitung…") : generated ? "Lihat Ulang" : "Lihat Angka"}
+          {state.loading
+            ? generated
+              ? "Memperbarui…"
+              : "Menghitung…"
+            : generated
+              ? "Lihat Ulang"
+              : "Lihat Angka"}
         </button>
         <button
           type="button"
           onClick={onCopy}
           disabled={!hasLines || state.loading}
-          className="pressable accent-bg-soft accent-text flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 text-[11px] font-black uppercase tracking-wide disabled:opacity-45"
+          className="pressable accent-bg-soft accent-text flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 text-[11px] font-black uppercase tracking-wide disabled:opacity-45"
         >
           {state.copied ? <Check size={15} /> : <ClipboardCopy size={15} />}
           {state.copied ? "Tersalin" : "Copy"}
@@ -527,7 +562,9 @@ function MetricChip({
   const valueClass = tone === "neutral" ? "text-text-muted" : "text-text";
 
   return (
-    <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wide transition-colors ${toneClass}`}>
+    <span
+      className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-colors ${toneClass}`}
+    >
       {label} <span className={valueClass}>{value}</span>
     </span>
   );

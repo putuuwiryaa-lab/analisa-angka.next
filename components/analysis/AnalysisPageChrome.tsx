@@ -1,4 +1,4 @@
-import { ArrowLeft, RefreshCw, Sparkles, type LucideIcon } from "lucide-react";
+import { ArrowLeft, RefreshCw, RotateCcw, Sparkles, type LucideIcon } from "lucide-react";
 import {
   customFocusLabel,
   customFocusSubtitle,
@@ -8,23 +8,20 @@ import {
 import { analysisScopeLabel, targetPairLabel, type AnalysisScope } from "./ScopeSelectors";
 import { Button } from "@/components/ui/Button";
 
-function StatusPill({ label, value, onReset }: { label: string; value: string; onReset: () => void }) {
+function SelectionChip({ label, value, onReset }: { label: string; value: string; onReset: () => void }) {
   return (
-    <div className="animate-rise depth-3 mt-3 flex items-center justify-between gap-2 rounded-2xl border px-3 py-2.5">
-      <div className="min-w-0 flex-1 text-left">
-        <span className="mr-1.5 text-[10px] font-bold uppercase tracking-wide text-text-soft">
-          {label}:
-        </span>
-        <span className="accent-text text-[11px] font-black uppercase tracking-wide leading-relaxed">{value}</span>
-      </div>
-      <button
-        type="button"
-        onClick={onReset}
-        className="pressable shrink-0 rounded-full border border-border-soft bg-white/[0.035] px-3 py-1.5 text-[11px] font-bold text-text-muted hover:border-border hover:text-text"
-      >
-        Ganti
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onReset}
+      className="pressable depth-3 flex min-h-10 min-w-0 items-center gap-2 rounded-2xl border px-3 text-left hover:border-border"
+      aria-label={`Ganti ${label}`}
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-[9px] font-black uppercase tracking-wide text-text-soft">{label}</span>
+        <span className="accent-text block truncate text-[10px] font-black uppercase tracking-wide">{value}</span>
+      </span>
+      <RotateCcw size={13} className="shrink-0 text-text-soft" />
+    </button>
   );
 }
 
@@ -67,56 +64,62 @@ export function AnalysisPageChrome({
   onBBFSScopeReset: () => void;
   onCustomFocusReset: () => void;
 }) {
+  const hasSelection =
+    (isAI && Boolean(analysisScope)) ||
+    (needsTargetPair && Boolean(targetPair)) ||
+    (isBBFS && Boolean(analysisScope && analysisScope !== "default")) ||
+    (isRekapCustom && Boolean(customFocus));
+
   return (
     <>
       <Button variant="ghost" size="sm" className="mb-3" onClick={onBack}>
         <ArrowLeft size={16} /> Kembali
       </Button>
 
-      <div className="animate-rise depth-1 relative mb-4 overflow-hidden rounded-3xl border p-4">
+      <section className="animate-rise depth-accent relative mb-4 overflow-hidden rounded-3xl border p-4">
         <div className="accent-bg-soft absolute -right-12 -top-12 h-28 w-28 rounded-full blur-3xl" />
-        <div className="relative mb-4 flex items-center gap-3">
+
+        <div className="relative flex items-start gap-3">
           <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border">
             <Icon size={22} strokeWidth={1.9} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="depth-3 accent-text mb-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
+            <div className="accent-text flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.18em]">
               <Sparkles size={10} /> Mode Analisa
             </div>
-            <h2 className="display truncate text-base text-text">{title}</h2>
+            <h1 className="display mt-1 text-base text-text">{title}</h1>
+            <p className="display mt-3 break-words text-[1.75rem] leading-tight text-text sm:text-[2rem]">{marketId}</p>
           </div>
         </div>
 
-        <div className="depth-2 flex min-h-[88px] items-center justify-center rounded-[1.35rem] border px-5 py-5 text-center">
-          <p className="display break-words text-[2rem] leading-[1.05] text-text sm:text-[2.35rem]">
-            {marketId}
-          </p>
-        </div>
+        {hasSelection ? (
+          <div className="relative mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {isAI && analysisScope ? (
+              <SelectionChip label="AI" value={analysisScopeLabel(analysisScope)} onReset={onAIScopeReset} />
+            ) : null}
+            {needsTargetPair && targetPair ? (
+              <SelectionChip label="Fokus" value={targetPairLabel(targetPair)} onReset={onTargetPairReset} />
+            ) : null}
+            {isBBFS && analysisScope && analysisScope !== "default" ? (
+              <SelectionChip label="BBFS" value={analysisScopeLabel(analysisScope)} onReset={onBBFSScopeReset} />
+            ) : null}
+            {isRekapCustom && customFocus ? (
+              <SelectionChip
+                label="Rekap"
+                value={`${customFocusLabel(customFocus)} · ${customFocusSubtitle(customFocus)}`}
+                onReset={onCustomFocusReset}
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
-        {isAI && analysisScope && (
-          <StatusPill label="AI" value={analysisScopeLabel(analysisScope)} onReset={onAIScopeReset} />
-        )}
-        {needsTargetPair && targetPair && (
-          <StatusPill label="Fokus" value={targetPairLabel(targetPair)} onReset={onTargetPairReset} />
-        )}
-        {isBBFS && analysisScope && analysisScope !== "default" && (
-          <StatusPill label="BBFS" value={analysisScopeLabel(analysisScope)} onReset={onBBFSScopeReset} />
-        )}
-        {isRekapCustom && customFocus && (
-          <StatusPill
-            label="Rekap"
-            value={`${customFocusLabel(customFocus)} · ${customFocusSubtitle(customFocus)}`}
-            onReset={onCustomFocusReset}
-          />
-        )}
-      </div>
-
-      {(canStartAnalyze || loading) && (
+      {(canStartAnalyze || loading) ? (
         <Button variant="accent" size="lg" className="mb-4 w-full" onClick={onStartAnalyze} disabled={loading}>
           <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
           {loading ? "Memproses..." : "Mulai Analisa"}
         </Button>
-      )}
+      ) : null}
     </>
   );
 }
