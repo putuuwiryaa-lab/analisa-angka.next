@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity,
@@ -7,6 +8,8 @@ import {
   BarChart3,
   Binary,
   Boxes,
+  Check,
+  ChevronDown,
   Combine,
   Feather,
   Gauge,
@@ -33,25 +36,31 @@ import {
   aiParamLabel,
   aiScopeMeta,
   aiScopes,
-  aiScopeSubtitle,
   bbfsParamLabel,
   bbfsScopeMeta,
   bbfsScopes,
-  categories,
   formatUpdatedAt,
   isAiFamilyCategory,
   positionPairSubtitle,
   targetPairLabel,
   targetPairs,
+  type VisibleCategoryKey,
 } from "@/lib/analysis/statistics";
 
-function categoryIcon(key: string): LucideIcon {
-  if (key === "ai") return Activity;
-  if (key === "bbfs") return Grid3X3;
-  if (key === "off_digit") return ShieldAlert;
-  if (key === "off_jumlah") return Hash;
-  return Gauge;
-}
+type ModeOption = {
+  key: VisibleCategoryKey;
+  title: string;
+  subtitle: string;
+  Icon: LucideIcon;
+};
+
+const MODE_OPTIONS: ModeOption[] = [
+  { key: "ai", title: "Angka Ikut", subtitle: "Ranking digit terkuat", Icon: Activity },
+  { key: "bbfs", title: "BBFS", subtitle: "Ranking kumpulan digit", Icon: Grid3X3 },
+  { key: "off_digit", title: "Angka Mati", subtitle: "OFF digit per posisi", Icon: ShieldAlert },
+  { key: "off_jumlah", title: "Jumlah Mati", subtitle: "OFF jumlah 2D", Icon: Hash },
+  { key: "off_shio", title: "Shio Mati", subtitle: "OFF shio 2D", Icon: Gauge },
+];
 
 function scopeIcon(key: string): LucideIcon {
   if (key === "depan" || key === "2d_depan") return PanelLeft;
@@ -73,251 +82,333 @@ function parameterIcon(category: string, value: number): LucideIcon {
   return Hash;
 }
 
-function Pill({
-  active,
-  tone = "green",
-  full = false,
-  Icon,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  tone?: "green" | "gold";
-  full?: boolean;
-  Icon?: LucideIcon;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  const activeStyle =
-    tone === "gold"
-      ? {
-          background: "linear-gradient(135deg,#eac66f,#f1cf56)",
-          color: "#120d02",
-          borderColor: "transparent",
-        }
-      : {
-          background: "linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 76%,#2ec96f))",
-          color: "#03120d",
-          borderColor: "transparent",
-        };
+function bbfsParamOptions(scope: string) {
+  return scope === "4d" ? [7, 8, 9] : [7, 8, 9, 10];
+}
+
+function parameterLabel(category: string, value: number) {
+  if (category === "bbfs") return bbfsParamLabel(value);
+  if (category === "ai" || category === "ai_parity" || category === "ai_size") {
+    return value === 7 || value === 8 ? aiParamLabel(value) : `${value} Digit`;
+  }
+  if (category === "off_digit") return `${value} Digit OFF`;
+  if (category === "off_jumlah") return `${value} Jumlah`;
+  return `${value} Shio`;
+}
+
+function parameterHint(category: string, value: number) {
+  if (!category.startsWith("off_")) return undefined;
+  if (value === 1) return "Ringan";
+  if (value === 2) return "Seimbang";
+  return "Ketat";
+}
+
+function ModeButton({ option, active, full, onClick }: { option: ModeOption; active: boolean; full?: boolean; onClick: () => void }) {
+  const { Icon } = option;
 
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "pressable min-h-[58px] rounded-2xl border px-2 py-3 text-[11px] font-black uppercase tracking-wide",
-        full && "col-span-full",
-        !active && "depth-3 text-text-muted hover:border-border hover:bg-white/[0.065]",
+        "pressable flex min-h-[78px] items-center gap-3 rounded-2xl border px-3 py-3 text-left",
+        full && "col-span-2",
+        active ? "depth-accent accent-border" : "depth-3 hover:border-border hover:bg-white/[0.055]",
       )}
-      style={active ? activeStyle : undefined}
     >
-      <span className="flex items-center justify-center gap-1.5">
-        {Icon ? <Icon size={15} strokeWidth={1.9} /> : null}
-        <span>{children}</span>
+      <span
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
+          active ? "accent-bg-soft accent-text accent-border" : "depth-2 text-text-muted",
+        )}
+      >
+        <Icon size={18} strokeWidth={1.9} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={cn("display block text-[12px]", active ? "accent-text" : "text-text")}>{option.title}</span>
+        <span className="mt-1 block text-[10px] font-semibold leading-4 text-text-soft">{option.subtitle}</span>
+      </span>
+      {active ? <Check size={16} className="shrink-0 text-accent" strokeWidth={2.4} /> : null}
+    </button>
+  );
+}
+
+function ChoiceButton({
+  active,
+  title,
+  subtitle,
+  Icon,
+  full,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  subtitle?: string;
+  Icon: LucideIcon;
+  full?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "pressable flex min-h-[62px] items-center justify-center gap-2 rounded-2xl border px-2.5 py-2.5 text-center",
+        full && "col-span-full",
+        active ? "accent-bg-soft accent-border text-text" : "depth-3 text-text-muted hover:border-border hover:bg-white/[0.055]",
+      )}
+    >
+      <Icon size={16} strokeWidth={1.9} className={active ? "text-accent" : "text-text-soft"} />
+      <span className="min-w-0">
+        <span className="display block text-[11px] leading-4">{title}</span>
+        {subtitle ? <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-wide text-text-soft">{subtitle}</span> : null}
       </span>
     </button>
   );
 }
 
-function SectionLabel({ title, right }: { title: string; right?: string }) {
+function StepHeader({ number, title, subtitle }: { number: number; title: string; subtitle: string }) {
   return (
-    <div className="mb-3 flex items-center gap-3 px-1">
-      <span className="accent-text text-[11px] font-black uppercase tracking-wide">{title}</span>
-      <span className="h-px flex-1 bg-white/10" />
-      {right && <span className="max-w-[48%] truncate text-[11px] font-bold uppercase tracking-wide text-text-soft">{right}</span>}
+    <div className="mb-3 flex items-start gap-3">
+      <span className="accent-bg-soft accent-border accent-text flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-black">
+        {number}
+      </span>
+      <div className="min-w-0">
+        <p className="display text-[12px] text-text">{title}</p>
+        <p className="mt-1 text-[10px] font-semibold leading-4 text-text-soft">{subtitle}</p>
+      </div>
     </div>
   );
-}
-
-function bbfsParamOptions(scope: string) {
-  return scope === "4d" ? [7, 8, 9] : [7, 8, 9, 10];
 }
 
 export default function StatisticsPage() {
   const router = useRouter();
   const s = useMarketStatistics();
+  const [visibleCount, setVisibleCount] = useState(20);
 
   const isPosition = s.category === "off_digit";
   const isBBFS = s.category === "bbfs";
   const isAiFamily = isAiFamilyCategory(s.category);
   const selectedAI = aiScopeMeta(s.aiScope);
   const selectedBBFS = bbfsScopeMeta(s.bbfsScope);
-  const categoryMeta = categories.find((c) => c.key === s.category) || categories[0];
+  const selectedMode = MODE_OPTIONS.find((item) => item.key === s.category) || MODE_OPTIONS[0];
 
-  const paramOptions = s.category === "ai_parity" ? [7] : s.category === "ai_size" ? [8] : s.category === "ai" ? aiParamOptions(s.aiScope) : isBBFS ? bbfsParamOptions(s.bbfsScope) : [1, 2, 3];
-  const filterLabel = isBBFS
-    ? `${categoryMeta.title} ${selectedBBFS.label} ${bbfsParamLabel(s.param)}`
+  const paramOptions =
+    s.category === "ai_parity"
+      ? [7]
+      : s.category === "ai_size"
+        ? [8]
+        : s.category === "ai"
+          ? aiParamOptions(s.aiScope)
+          : isBBFS
+            ? bbfsParamOptions(s.bbfsScope)
+            : [1, 2, 3];
+
+  const targetLabel = isBBFS
+    ? selectedBBFS.label
     : isAiFamily
-      ? `${selectedAI.label} ${s.category === "ai" ? aiParamLabel(s.param) : categoryMeta.title}`
-      : isPosition
-        ? `2D ${targetPairLabel(s.targetPair)} OFF ${s.param}`
-        : `${categoryMeta.title} ${targetPairLabel(s.targetPair)} OFF ${s.param}`;
+      ? selectedAI.label
+      : `2D ${targetPairLabel(s.targetPair)}`;
+  const outputLabel = parameterLabel(s.category, s.param);
+  const filterLabel = `${selectedMode.title} · ${targetLabel} · ${outputLabel}`;
 
-  const topItems = s.items.slice(0, 100);
-  const latestUpdate = topItems[0]?.updated_at;
+  const allItems = s.items.slice(0, 100);
+  const topItems = allItems.slice(0, visibleCount);
+  const latestUpdate = allItems[0]?.updated_at;
   const isLockedStatistic = Boolean(s.error && /vip|akses|fitur analisa gratis/i.test(s.error));
+  const hasMore = topItems.length < allItems.length;
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [s.category, s.aiScope, s.bbfsScope, s.targetPair, s.param]);
 
   return (
-    <div data-mode="statistics" className="animate-rise space-y-5 pb-4">
-      <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
-        <ArrowLeft size={16} /> Beranda
-      </Button>
-
-      <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-5">
-        <div
-          className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full blur-3xl"
-          style={{ backgroundColor: "color-mix(in srgb, var(--accent) 12%, transparent)" }}
-        />
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="accent-text text-[11px] font-black uppercase tracking-wide">Statistik Pasaran</p>
-            <h2 className="display mt-2 text-3xl text-text">Ranking</h2>
-            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
-              {filterLabel} · {topItems.length} pasaran
-            </p>
-          </div>
-          <button
-            onClick={() => s.refetch()}
-            className="pressable depth-3 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075]"
-            aria-label="Refresh statistik"
-          >
-            <RefreshCw size={19} className={s.isFetching ? "animate-spin" : ""} />
-          </button>
-        </div>
-        <div className="relative mt-5 grid grid-cols-2 gap-3">
-          <div className="depth-2 rounded-2xl border px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-wide text-text-soft">Mode</p>
-            <p className="display accent-text mt-1 truncate text-[12px]">{filterLabel}</p>
-          </div>
-          <div className="depth-2 rounded-2xl border px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-wide text-text-soft">Update</p>
-            <p className="display mt-1 truncate text-[11px] text-text">{formatUpdatedAt(latestUpdate)}</p>
-          </div>
-        </div>
+    <div data-mode="statistics" className="animate-rise space-y-4 pb-5">
+      <div className="flex items-center justify-between gap-3">
+        <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
+          <ArrowLeft size={16} /> Beranda
+        </Button>
+        <button
+          type="button"
+          onClick={() => s.refetch()}
+          className="pressable depth-3 flex h-11 w-11 items-center justify-center rounded-2xl border text-text-muted hover:border-border hover:bg-white/[0.075]"
+          aria-label="Refresh statistik"
+        >
+          <RefreshCw size={17} className={s.isFetching ? "animate-spin" : ""} />
+        </button>
       </div>
 
-      <section className="animate-soft-pop">
-        <SectionLabel title="Mode Statistik" />
-        <div className="depth-1 grid grid-cols-3 gap-1.5 rounded-3xl border p-2 sm:grid-cols-7">
-          {categories.map((item) => (
-            <Pill
-              key={item.key}
-              active={item.key === s.category}
-              Icon={categoryIcon(item.key)}
-              onClick={() => s.setCategory(item.key)}
-            >
-              {item.title}
-            </Pill>
-          ))}
+      <section className="animate-soft-pop depth-accent rounded-3xl border p-4">
+        <div className="flex items-start gap-3">
+          <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border">
+            <BarChart3 size={21} strokeWidth={1.9} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="accent-text text-[10px] font-black uppercase tracking-[0.18em]">Statistik Pasaran</p>
+            <h1 className="display mt-1 text-2xl text-text">Ranking Performa</h1>
+            <p className="mt-1.5 text-[11px] font-semibold leading-5 text-text-muted">
+              Bandingkan pasaran berdasarkan riwayat 15 hasil terakhir.
+            </p>
+          </div>
+        </div>
+
+        <div className="depth-2 mt-4 flex items-center gap-3 rounded-2xl border px-3 py-3">
+          <SlidersHorizontal size={16} className="shrink-0 text-accent" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-black uppercase tracking-wide text-text-soft">Ranking aktif</p>
+            <p className="mt-1 truncate text-[11px] font-black uppercase tracking-wide text-text">{filterLabel}</p>
+          </div>
+          <span className="shrink-0 text-[9px] font-bold text-text-soft">{formatUpdatedAt(latestUpdate)}</span>
         </div>
       </section>
 
-      <section className="animate-soft-pop">
-        <SectionLabel title="Filter Ranking" right={filterLabel} />
-        <div className="depth-1 space-y-4 rounded-3xl border p-4">
-          {isAiFamily && (
-            <div className="depth-2 space-y-3 rounded-3xl border p-3">
-              <div className="grid grid-cols-2 gap-2">
-                {aiScopes.map((item) => (
-                  <Pill
-                    key={item.key}
-                    active={s.aiScope === item.key}
-                    full={item.key === "2d_belakang"}
-                    Icon={scopeIcon(item.key)}
-                    onClick={() => s.setAiScope(item.key)}
-                  >
-                    {item.label}
-                  </Pill>
-                ))}
-              </div>
-              <p className="depth-3 rounded-2xl border px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-wide text-text-soft">
-                {aiScopeSubtitle(s.aiScope)}
-              </p>
-            </div>
-          )}
+      <section className="animate-soft-pop depth-1 rounded-3xl border p-4">
+        <StepHeader number={1} title="Pilih metode" subtitle="Tentukan jenis analisa yang ingin dibandingkan." />
+        <div className="grid grid-cols-2 gap-2">
+          {MODE_OPTIONS.map((item, index) => (
+            <ModeButton
+              key={item.key}
+              option={item}
+              active={item.key === s.category}
+              full={index === MODE_OPTIONS.length - 1}
+              onClick={() => s.setCategory(item.key)}
+            />
+          ))}
+        </div>
 
-          {isBBFS && (
-            <div className="depth-2 space-y-3 rounded-3xl border p-3">
-              <div className="grid grid-cols-2 gap-2">
-                {bbfsScopes.map((item) => (
-                  <Pill
-                    key={item.key}
-                    active={s.bbfsScope === item.key}
-                    full={item.key === "2d_belakang"}
-                    Icon={scopeIcon(item.key)}
-                    onClick={() => s.setBbfsScope(item.key)}
-                  >
-                    {item.label}
-                  </Pill>
-                ))}
-              </div>
-              <p className="depth-3 rounded-2xl border px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-wide text-text-soft">
-                {selectedBBFS.subtitle}
-              </p>
-            </div>
-          )}
+        <div className="my-4 h-px bg-white/10" />
 
-          {!isAiFamily && !isBBFS && (
-            <div className="depth-2 space-y-3 rounded-3xl border p-3">
-              <div className="grid grid-cols-3 gap-2">
-                {targetPairs.map((item) => (
-                  <Pill
-                    key={item.key}
-                    active={s.targetPair === item.key}
-                    Icon={scopeIcon(item.key)}
-                    onClick={() => s.setTargetPair(item.key)}
-                  >
-                    {item.label}
-                  </Pill>
-                ))}
-              </div>
-              {isPosition && (
-                <p className="depth-3 rounded-2xl border px-3 py-2.5 text-center text-[11px] font-black uppercase tracking-wide text-text-soft">
-                  {positionPairSubtitle(s.targetPair)}
-                </p>
-              )}
-            </div>
-          )}
+        <StepHeader
+          number={2}
+          title={isAiFamily || isBBFS ? "Pilih target" : "Pilih posisi 2D"}
+          subtitle={isAiFamily || isBBFS ? "Tentukan cakupan angka yang dinilai." : "Tentukan bagian hasil yang ingin dibandingkan."}
+        />
 
-          <div className="depth-2 rounded-3xl border p-3">
-            <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-text-soft">Parameter</p>
-            <div className="grid grid-cols-3 gap-2">
-              {paramOptions.map((value) => (
-                <Pill
-                  key={value}
-                  tone="gold"
-                  active={s.param === value}
-                  full={(isAiFamily && value >= 7) || (isBBFS && value === 10)}
-                  Icon={parameterIcon(s.category, value)}
-                  onClick={() => s.setParam(value)}
-                >
-                  {isAiFamily ? aiParamLabel(value) : isBBFS ? bbfsParamLabel(value) : String(value)}
-                </Pill>
+        {isAiFamily ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              {aiScopes.map((item) => (
+                <ChoiceButton
+                  key={item.key}
+                  active={s.aiScope === item.key}
+                  title={item.label}
+                  Icon={scopeIcon(item.key)}
+                  full={item.key === "2d_belakang"}
+                  onClick={() => s.setAiScope(item.key)}
+                />
               ))}
             </div>
-          </div>
+            <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
+              {selectedAI.subtitle}
+            </p>
+          </>
+        ) : isBBFS ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              {bbfsScopes.map((item) => (
+                <ChoiceButton
+                  key={item.key}
+                  active={s.bbfsScope === item.key}
+                  title={item.label}
+                  Icon={scopeIcon(item.key)}
+                  full={item.key === "2d_belakang"}
+                  onClick={() => s.setBbfsScope(item.key)}
+                />
+              ))}
+            </div>
+            <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
+              {selectedBBFS.subtitle}
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              {targetPairs.map((item) => (
+                <ChoiceButton
+                  key={item.key}
+                  active={s.targetPair === item.key}
+                  title={item.label}
+                  Icon={scopeIcon(item.key)}
+                  onClick={() => s.setTargetPair(item.key)}
+                />
+              ))}
+            </div>
+            <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
+              {positionPairSubtitle(s.targetPair)}
+            </p>
+          </>
+        )}
+
+        <div className="my-4 h-px bg-white/10" />
+
+        <StepHeader
+          number={3}
+          title={isAiFamily || isBBFS ? "Pilih output" : "Pilih tingkat OFF"}
+          subtitle={isAiFamily || isBBFS ? "Tentukan jumlah atau jenis digit yang diranking." : "Semakin tinggi, semakin ketat filternya."}
+        />
+        <div className="grid grid-cols-3 gap-2">
+          {paramOptions.map((value) => (
+            <ChoiceButton
+              key={value}
+              active={s.param === value}
+              title={parameterLabel(s.category, value)}
+              subtitle={parameterHint(s.category, value)}
+              Icon={parameterIcon(s.category, value)}
+              full={(isAiFamily && value >= 7) || (isBBFS && value === 10)}
+              onClick={() => s.setParam(value)}
+            />
+          ))}
+        </div>
+
+        <div className="accent-bg-soft accent-border mt-4 flex items-center gap-2 rounded-2xl border px-3 py-2.5">
+          <Check size={15} className="shrink-0 text-accent" strokeWidth={2.4} />
+          <p className="min-w-0 truncate text-[10px] font-black uppercase tracking-wide text-text">{filterLabel}</p>
         </div>
       </section>
 
       <section>
-        <SectionLabel title="Hasil Ranking" right={`${topItems.length} pasaran`} />
+        <div className="mb-3 flex items-end justify-between gap-3 px-1">
+          <div>
+            <p className="display text-sm text-text">Ranking Pasaran</p>
+            <p className="mt-1 text-[10px] font-semibold text-text-soft">
+              {s.isFetching ? "Memperbarui data…" : `${allItems.length} pasaran ditemukan`}
+            </p>
+          </div>
+          {allItems.length > 0 ? (
+            <span className="text-[10px] font-black uppercase tracking-wide text-text-soft">
+              {topItems.length}/{allItems.length}
+            </span>
+          ) : null}
+        </div>
+
         {s.loading ? (
           <div className="grid gap-3">
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-3xl" />)}
           </div>
         ) : topItems.length ? (
-          <div className="grid gap-3">
-            {topItems.map((item, index) => (
-              <StatisticCard
-                key={item.id || `${item.market_id}-${item.group_key}-${item.param}-${item.position}-${item.target_pair}-${item.analysis_scope}`}
-                item={item}
-                index={index}
-                relatedStats={s.relatedStats}
-                onOpen={(url) => router.push(url)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-3">
+              {topItems.map((item, index) => (
+                <StatisticCard
+                  key={item.id || `${item.market_id}-${item.group_key}-${item.param}-${item.position}-${item.target_pair}-${item.analysis_scope}`}
+                  item={item}
+                  index={index}
+                  relatedStats={s.relatedStats}
+                  onOpen={(url) => router.push(url)}
+                />
+              ))}
+            </div>
+
+            {hasMore ? (
+              <button
+                type="button"
+                onClick={() => setVisibleCount((current) => Math.min(current + 20, allItems.length))}
+                className="pressable depth-3 mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.055]"
+              >
+                <ChevronDown size={16} /> Tampilkan Berikutnya
+              </button>
+            ) : null}
+          </>
         ) : (
           <div className="animate-soft-pop depth-1 rounded-3xl border p-7 text-center">
             <div className="depth-2 mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border text-text-soft">
@@ -333,11 +424,11 @@ export default function StatisticsPage() {
                   ? s.error
                   : `Belum ada pasaran yang masuk kriteria ${filterLabel}.`}
             </p>
-            {!isLockedStatistic && (
+            {!isLockedStatistic ? (
               <Button variant="ghost" className="mt-5" onClick={() => s.refetch()}>
                 Muat Ulang
               </Button>
-            )}
+            ) : null}
           </div>
         )}
       </section>
