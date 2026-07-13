@@ -4,9 +4,9 @@ import { use, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Share2, Target } from "lucide-react";
+import { ChevronRight, Share2, Target } from "lucide-react";
 import { MODES, type ModeKey } from "@/components/analysis/modes";
-import { Button } from "@/components/ui/Button";
+import { PageTopBar } from "@/components/layout/PageTopBar";
 import { cn } from "@/lib/cn";
 import { fetchMarkets } from "@/lib/markets/client";
 
@@ -154,9 +154,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
 
   return (
     <div className="animate-rise space-y-4 pb-5">
-      <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
-        <ArrowLeft size={16} /> Beranda
-      </Button>
+      <PageTopBar title="Pilih Analisa" onBack={() => router.push("/")} />
 
       <section className="animate-soft-pop depth-accent rounded-3xl border p-4">
         <div className="flex items-center gap-3">

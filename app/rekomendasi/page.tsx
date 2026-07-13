@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   Check,
   ClipboardCopy,
   Coins,
@@ -17,7 +16,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { PageTopBar } from "@/components/layout/PageTopBar";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -309,20 +308,13 @@ export default function RekomendasiPage() {
 
   return (
     <div data-mode="invest" className="animate-rise space-y-4 pb-5">
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
-          <ArrowLeft size={16} /> Beranda
-        </Button>
-        <button
-          type="button"
-          onClick={() => void handleRefresh()}
-          disabled={isFetching}
-          className="pressable depth-3 flex h-11 w-11 items-center justify-center rounded-2xl border text-text-muted hover:border-border disabled:opacity-45"
-          aria-label="Perbarui Invest"
-        >
-          <RefreshCw size={17} className={isFetching ? "animate-spin" : ""} />
-        </button>
-      </div>
+      <PageTopBar
+        title="Invest"
+        onBack={() => router.push("/")}
+        onRefresh={() => void handleRefresh()}
+        refreshing={isFetching}
+        refreshLabel="Perbarui Invest"
+      />
 
       <section className="depth-accent animate-soft-pop rounded-3xl border p-4">
         <div className="flex items-center gap-3">

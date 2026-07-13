@@ -1,4 +1,4 @@
-import { ArrowLeft, RefreshCw, RotateCcw, Sparkles, type LucideIcon } from "lucide-react";
+import { RefreshCw, RotateCcw, Sparkles, type LucideIcon } from "lucide-react";
 import {
   customFocusLabel,
   customFocusSubtitle,
@@ -6,6 +6,7 @@ import {
   type TargetPair,
 } from "@/lib/analysis/customDigit";
 import { analysisScopeLabel, targetPairLabel, type AnalysisScope } from "./ScopeSelectors";
+import { PageTopBar } from "@/components/layout/PageTopBar";
 import { Button } from "@/components/ui/Button";
 
 function SelectionChip({ label, value, onReset }: { label: string; value: string; onReset: () => void }) {
@@ -72,9 +73,9 @@ export function AnalysisPageChrome({
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="mb-3" onClick={onBack}>
-        <ArrowLeft size={16} /> Kembali
-      </Button>
+      <div className="mb-3">
+        <PageTopBar title="Analisa" onBack={onBack} backLabel="Kembali" />
+      </div>
 
       <section className="animate-rise depth-accent relative mb-4 overflow-hidden rounded-3xl border p-4">
         <div className="accent-bg-soft absolute -right-12 -top-12 h-28 w-28 rounded-full blur-3xl" />
