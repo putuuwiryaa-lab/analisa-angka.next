@@ -57,10 +57,8 @@ function AnalysisMenuCard({ item, marketId, index }: { item: MenuItem; marketId:
       href={`/analyze/${encodeURIComponent(safeDecode(marketId))}/${item.mode}`}
       data-mode={item.mode}
       className={cn(
-        "pressable animate-soft-pop depth-1 group relative overflow-hidden rounded-3xl border p-3.5 text-left hover:border-border",
-        item.full
-          ? "col-span-2 flex min-h-[84px] items-center gap-3"
-          : "flex min-h-[122px] flex-col items-start",
+        "pressable animate-soft-pop depth-1 group relative flex items-center gap-3 overflow-hidden rounded-3xl border p-3.5 text-left hover:border-border",
+        item.full ? "col-span-2 min-h-[84px]" : "min-h-[100px]",
       )}
       style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
     >
@@ -74,17 +72,14 @@ function AnalysisMenuCard({ item, marketId, index }: { item: MenuItem; marketId:
         <Icon size={item.full ? 20 : 19} strokeWidth={1.9} />
       </span>
 
-      <span className={cn("min-w-0", item.full ? "flex-1" : "mt-3 flex-1")}>
+      <span className="min-w-0 flex-1">
         <span className="accent-text display block text-[12px] leading-4">{title}</span>
         <span className="mt-1.5 block text-[10px] font-semibold leading-4 text-text-soft">{item.subtitle}</span>
       </span>
 
       <ChevronRight
         size={17}
-        className={cn(
-          "shrink-0 text-text-soft transition-transform duration-150 group-hover:translate-x-0.5",
-          !item.full && "absolute bottom-3.5 right-3.5",
-        )}
+        className="shrink-0 text-text-soft transition-transform duration-150 group-hover:translate-x-0.5"
       />
     </Link>
   );
