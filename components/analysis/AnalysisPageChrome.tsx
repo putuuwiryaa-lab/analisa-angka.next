@@ -80,16 +80,18 @@ export function AnalysisPageChrome({
       <section className="animate-rise depth-accent relative mb-4 overflow-hidden rounded-3xl border p-4">
         <div className="accent-bg-soft absolute -right-12 -top-12 h-28 w-28 rounded-full blur-3xl" />
 
-        <div className="relative flex items-start gap-3">
+        <div className="relative flex items-center gap-3">
           <div className="depth-3 accent-text flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border">
             <Icon size={22} strokeWidth={1.9} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="accent-text flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.18em]">
-              <Sparkles size={10} /> Mode Analisa
+            <div className="accent-text text-[9px] font-black uppercase tracking-[0.18em]">Pasaran Analisa</div>
+            <h1 className="display mt-1 break-words text-[2rem] leading-none text-text sm:text-[2.25rem]">
+              {marketId}
+            </h1>
+            <div className="depth-3 accent-text mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
+              <Sparkles size={10} /> {title}
             </div>
-            <h1 className="display mt-1 text-base text-text">{title}</h1>
-            <p className="display mt-3 break-words text-[1.75rem] leading-tight text-text sm:text-[2rem]">{marketId}</p>
           </div>
         </div>
 
