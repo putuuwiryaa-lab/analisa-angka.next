@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -132,7 +132,7 @@ function ShareMenuCard({ index = 0 }: { index?: number }) {
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({ children }: { children: ReactNode }) {
   return (
     <div className="mb-3 flex items-center gap-3 px-1">
       <p className="text-[10px] font-black uppercase tracking-[0.18em] text-text-soft">{children}</p>
