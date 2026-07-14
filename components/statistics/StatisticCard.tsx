@@ -1,5 +1,6 @@
 import {
   type MarketStatistic,
+  type RelatedStatsMap,
   bbfsScopeSubtitle,
   marketUrl,
   movementText,
@@ -20,6 +21,7 @@ export function StatisticCard({
 }: {
   item: MarketStatistic;
   index: number;
+  relatedStats?: RelatedStatsMap;
   onOpen: (url: string) => void;
 }) {
   const marketName = item.market_name || item.market_id;
