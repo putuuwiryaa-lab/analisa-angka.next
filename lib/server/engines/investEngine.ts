@@ -22,6 +22,12 @@ const PAIR_POSITIONS: Record<InvestPair, { d1: string; d2: string }> = {
   belakang: { d1: "kepala", d2: "ekor" },
 };
 
+const PAIR_POSITION_LABELS: Record<InvestPair, { d1: string; d2: string }> = {
+  depan: { d1: "AS", d2: "KOP" },
+  tengah: { d1: "KOP", d2: "KPL" },
+  belakang: { d1: "KPL", d2: "EKR" },
+};
+
 const PAIR_LABEL: Record<InvestPair, string> = {
   depan: "2D DEPAN",
   tengah: "2D TENGAH",
@@ -74,6 +80,19 @@ function filterDescriptor(f: InvestFilter, pair: InvestPair) {
     default:
       throw new Error(`Filter invest tak dikenal: ${(f as InvestFilter).kind}`);
   }
+}
+
+function comboLabelForPair(label: string, pair: InvestPair) {
+  const positions = PAIR_POSITION_LABELS[pair];
+  return label
+    .replace(/Mati Kepala/g, `OFF ${positions.d1}`)
+    .replace(/Mati Ekor/g, `OFF ${positions.d2}`)
+    .replace(/Shio Mati/g, "OFF Shio")
+    .replace(/Jumlah Mati/g, "OFF Jumlah")
+    .replace(/Ganjil\/Genap/g, "Ganjil Genap")
+    .replace(/Besar\/Kecil/g, "Besar Kecil")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function statKey(d: { group_key: string; position: string; param: number; target_pair: string; analysis_scope: string }) {
@@ -228,7 +247,7 @@ export function evaluateMarketInvest(
       const scores = matches.map((m) => m!.score ?? 0);
       const baseCombo: InvestComboResult = {
         id: combo.id,
-        label: combo.label,
+        label: comboLabelForPair(combo.label, pair),
         expectedLines: combo.expectedLines,
         hitRate: combo.hitRate,
         avgWins15: round1(avg(wins15)),
