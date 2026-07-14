@@ -1,13 +1,10 @@
 import {
   type MarketStatistic,
-  type RelatedStatsMap,
-  badgeLabel,
   bbfsScopeSubtitle,
   marketUrl,
   movementText,
   movementTone,
   positionPairSubtitle,
-  relatedLabels,
   statTitle,
 } from "@/lib/analysis/statistics";
 
@@ -19,17 +16,14 @@ const solidAccentStyle = {
 export function StatisticCard({
   item,
   index,
-  relatedStats,
   onOpen,
 }: {
   item: MarketStatistic;
   index: number;
-  relatedStats: RelatedStatsMap;
   onOpen: (url: string) => void;
 }) {
   const marketName = item.market_name || item.market_id;
   const topRank = index === 0;
-  const alsoLabels = relatedLabels(item, relatedStats);
   const movement = movementText(item.rank_movement);
   const tone = movementTone(item);
 
@@ -65,26 +59,21 @@ export function StatisticCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="display break-words text-[1.05rem] leading-tight text-text sm:text-base">{marketName}</p>
-              <p className="accent-text mt-1 break-words text-[10px] font-black uppercase leading-4 tracking-wide sm:text-[11px]">
-                {statTitle(item)}
+          <div className="min-w-0">
+            <p className="display break-words text-[1.05rem] leading-tight text-text sm:text-base">{marketName}</p>
+            <p className="accent-text mt-1 break-words text-[10px] font-black uppercase leading-4 tracking-wide sm:text-[11px]">
+              {statTitle(item)}
+            </p>
+            {item.group_key === "off_digit" && (
+              <p className="mt-1 text-[10px] font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
+                {positionPairSubtitle(item.target_pair)}
               </p>
-              {item.group_key === "off_digit" && (
-                <p className="mt-1 text-[10px] font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
-                  {positionPairSubtitle(item.target_pair)}
-                </p>
-              )}
-              {item.group_key === "bbfs" && (
-                <p className="mt-1 text-[10px] font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
-                  {bbfsScopeSubtitle(item.analysis_scope)}
-                </p>
-              )}
-            </div>
-            <span className="accent-bg-soft accent-text w-fit shrink-0 rounded-full border border-border-soft px-2.5 py-1 text-[10px] font-black uppercase tracking-wide sm:text-[11px]">
-              {badgeLabel(item)}
-            </span>
+            )}
+            {item.group_key === "bbfs" && (
+              <p className="mt-1 text-[10px] font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
+                {bbfsScopeSubtitle(item.analysis_scope)}
+              </p>
+            )}
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2 text-center">
@@ -101,15 +90,6 @@ export function StatisticCard({
               </p>
             </div>
           </div>
-
-          {alsoLabels.length > 0 && (
-            <div className="depth-2 mt-3 rounded-2xl border px-3 py-2">
-              <p className="text-[9px] font-black uppercase tracking-wide text-text-muted sm:text-[10px]">Juga unggul</p>
-              <p className="accent-text mt-1 line-clamp-3 break-words text-[10px] font-black uppercase leading-4 tracking-wide sm:text-[11px]">
-                {alsoLabels.join(" · ")}
-              </p>
-            </div>
-          )}
 
           <button
             type="button"
