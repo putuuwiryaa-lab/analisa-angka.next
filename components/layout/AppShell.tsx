@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { BarChart3, Coins } from "lucide-react";
+import { AccessGuard } from "@/components/access/AccessGuard";
 import { InstallAppBanner } from "@/components/install/InstallAppBanner";
 import { Logo } from "@/components/ui/Logo";
 
@@ -19,6 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={cnPad(hideHeader, showBottomNav, isAccessRoute, isAdminRoute)}>
+      {!isAccessRoute && <AccessGuard />}
       {!hideHeader && <HeroHeader />}
       <main className="min-w-0 flex-1">{children}</main>
       {showBottomNav && <BottomNav />}
