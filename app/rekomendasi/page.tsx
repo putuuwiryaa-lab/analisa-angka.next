@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
+  Box,
   Check,
   ClipboardCopy,
   Coins,
@@ -20,9 +21,14 @@ import { PageTopBar } from "@/components/layout/PageTopBar";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-type Pair = "depan" | "tengah" | "belakang";
+type Pair = "depan" | "tengah" | "belakang" | "3d";
 
-type InvestFilter = { kind: string; param: number };
+type InvestFilter = {
+  kind: string;
+  param: number;
+  pair?: "tengah" | "belakang";
+  position?: "kop" | "kepala" | "ekor";
+};
 
 type InvestCombo = {
   id: string;
@@ -83,6 +89,7 @@ const PAIR_OPTIONS: Array<{ key: Pair; label: string; short: string; Icon: Lucid
   { key: "depan", label: "2D Depan", short: "Depan", Icon: PanelLeft },
   { key: "tengah", label: "2D Tengah", short: "Tengah", Icon: MoveHorizontal },
   { key: "belakang", label: "2D Belakang", short: "Belakang", Icon: PanelRight },
+  { key: "3d", label: "3D", short: "3D", Icon: Box },
 ];
 
 function rowKey(row: InvestRow) {
@@ -127,10 +134,7 @@ async function copyText(text: string) {
 
   const copied = document.execCommand("copy");
   document.body.removeChild(textarea);
-
-  if (!copied) {
-    throw new Error("Clipboard tidak tersedia.");
-  }
+  if (!copied) throw new Error("Clipboard tidak tersedia.");
 }
 
 function shortComboLabel(value: string) {
@@ -148,7 +152,6 @@ function shortComboLabel(value: string) {
 function bestRowForPair(market: InvestMarketOverview, pair: Pair): InvestRow | null {
   const item = market.topCombos.find((combo) => combo.pair === pair);
   if (!item?.combo) return null;
-
   return {
     marketId: market.marketId,
     marketName: market.marketName,
@@ -161,16 +164,13 @@ function bestRowForPair(market: InvestMarketOverview, pair: Pair): InvestRow | n
 async function fetchInvestOverview(): Promise<InvestOverviewResponse> {
   const response = await fetch("/api/invest", { cache: "no-store" });
   const json = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(json.error || "Gagal memuat rekomendasi invest.");
-  }
-
+  if (!response.ok) throw new Error(json.error || "Gagal memuat rekomendasi invest.");
   return json as InvestOverviewResponse;
 }
 
 async function fetchAngkaJadi(row: InvestRow) {
-  const response = await fetch("/api/invest/angka-jadi", {
+  const endpoint = row.pair === "3d" ? "/api/invest/angka-jadi-3d" : "/api/invest/angka-jadi";
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -180,11 +180,9 @@ async function fetchAngkaJadi(row: InvestRow) {
     }),
   });
   const json = await response.json().catch(() => ({}));
-
   if (!response.ok || !json.success) {
     throw new Error(json.error || "Angka jadi belum bisa ditampilkan.");
   }
-
   return {
     lines: Array.isArray(json.lines) ? (json.lines as string[]) : [],
     latestResult: String(json.latest_result || "----"),
@@ -206,14 +204,14 @@ export default function RekomendasiPage() {
   });
 
   const rows = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
     return (data?.markets || [])
       .map((market) => bestRowForPair(market, pair))
       .filter(Boolean)
       .filter((row) => {
         if (!row) return false;
-        if (!q) return true;
-        return row.marketId.toLowerCase().includes(q) || row.marketName.toLowerCase().includes(q);
+        if (!query) return true;
+        return row.marketId.toLowerCase().includes(query) || row.marketName.toLowerCase().includes(query);
       })
       .sort((a, b) => {
         if (!a || !b) return 0;
@@ -237,13 +235,12 @@ export default function RekomendasiPage() {
 
   async function handleGenerate(row: InvestRow) {
     const key = rowKey(row);
-    const current = angkaByKey[key];
-    if (current?.loading) return;
+    if (angkaByKey[key]?.loading) return;
 
-    setAngkaByKey((prev) => ({
-      ...prev,
+    setAngkaByKey((previous) => ({
+      ...previous,
       [key]: {
-        ...prev[key],
+        ...previous[key],
         loading: true,
         copied: false,
         error: undefined,
@@ -253,23 +250,23 @@ export default function RekomendasiPage() {
 
     try {
       const result = await fetchAngkaJadi(row);
-      setAngkaByKey((prev) => ({
-        ...prev,
+      setAngkaByKey((previous) => ({
+        ...previous,
         [key]: {
-          ...prev[key],
+          ...previous[key],
           loading: false,
           generated: true,
           lines: result.lines,
           latestResult: result.latestResult,
         },
       }));
-    } catch (e) {
-      setAngkaByKey((prev) => ({
-        ...prev,
+    } catch (requestError) {
+      setAngkaByKey((previous) => ({
+        ...previous,
         [key]: {
-          ...prev[key],
+          ...previous[key],
           loading: false,
-          error: e instanceof Error ? e.message : "Angka jadi belum bisa ditampilkan.",
+          error: requestError instanceof Error ? requestError.message : "Angka jadi belum bisa ditampilkan.",
         },
       }));
     }
@@ -280,25 +277,28 @@ export default function RekomendasiPage() {
     const lines = angkaByKey[key]?.lines || [];
     if (!lines.length) return;
 
-    setAngkaByKey((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], copied: false, copyError: undefined },
+    setAngkaByKey((previous) => ({
+      ...previous,
+      [key]: { ...previous[key], copied: false, copyError: undefined },
     }));
 
     try {
       await copyText(lineText(lines));
-      setAngkaByKey((prev) => ({
-        ...prev,
-        [key]: { ...prev[key], copied: true, copyError: undefined },
+      setAngkaByKey((previous) => ({
+        ...previous,
+        [key]: { ...previous[key], copied: true, copyError: undefined },
       }));
       window.setTimeout(() => {
-        setAngkaByKey((prev) => ({ ...prev, [key]: { ...prev[key], copied: false } }));
+        setAngkaByKey((previous) => ({
+          ...previous,
+          [key]: { ...previous[key], copied: false },
+        }));
       }, 1200);
     } catch {
-      setAngkaByKey((prev) => ({
-        ...prev,
+      setAngkaByKey((previous) => ({
+        ...previous,
         [key]: {
-          ...prev[key],
+          ...previous[key],
           copied: false,
           copyError: "Gagal menyalin. Tekan lama angka lalu salin manual.",
         },
@@ -323,14 +323,14 @@ export default function RekomendasiPage() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="accent-text text-[9px] font-black uppercase tracking-[0.18em]">Rekomendasi Invest</p>
-            <h1 className="display mt-1 text-xl text-text">Invest 2D</h1>
+            <h1 className="display mt-1 text-xl text-text">Invest 2D &amp; 3D</h1>
             <p className="mt-1 text-[10px] font-semibold leading-4 text-text-soft">
               Pilih posisi lalu lihat kombinasi terbaik setiap pasaran.
             </p>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-4 grid grid-cols-4 gap-2">
           {PAIR_OPTIONS.map((item) => {
             const active = item.key === pair;
             const { Icon } = item;
@@ -342,7 +342,7 @@ export default function RekomendasiPage() {
                   setPair(item.key);
                   setSearch("");
                 }}
-                className={`pressable flex min-h-[60px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 text-center text-[10px] font-black uppercase tracking-wide ${
+                className={`pressable flex min-h-[60px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 text-center text-[9px] font-black uppercase tracking-wide ${
                   active
                     ? "accent-bg-soft accent-border text-text"
                     : "depth-3 border-border-soft text-text-muted hover:border-border"
@@ -399,19 +399,16 @@ export default function RekomendasiPage() {
           ) : rows.length === 0 ? (
             <StateBox text={search ? "Pasaran tidak ditemukan." : "Belum ada rekomendasi untuk posisi ini."} />
           ) : (
-            rows.map((row, index) => {
-              const state = angkaByKey[rowKey(row)] || {};
-              return (
-                <InvestLiteCard
-                  key={rowKey(row)}
-                  row={row}
-                  index={index}
-                  state={state}
-                  onGenerate={() => handleGenerate(row)}
-                  onCopy={() => copyRow(row)}
-                />
-              );
-            })
+            rows.map((row, index) => (
+              <InvestLiteCard
+                key={rowKey(row)}
+                row={row}
+                index={index}
+                state={angkaByKey[rowKey(row)] || {}}
+                onGenerate={() => handleGenerate(row)}
+                onCopy={() => copyRow(row)}
+              />
+            ))
           )}
         </div>
       </section>
@@ -527,9 +524,7 @@ function InvestLiteCard({
         </button>
       </div>
 
-      {state.copyError ? (
-        <p className="mt-2 text-center text-[10px] font-bold text-danger">{state.copyError}</p>
-      ) : null}
+      {state.copyError ? <p className="mt-2 text-center text-[10px] font-bold text-danger">{state.copyError}</p> : null}
     </article>
   );
 }
@@ -554,9 +549,7 @@ function MetricChip({
   const valueClass = tone === "neutral" ? "text-text-muted" : "text-text";
 
   return (
-    <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-colors ${toneClass}`}
-    >
+    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-colors ${toneClass}`}>
       {label} <span className={valueClass}>{value}</span>
     </span>
   );
