@@ -8,6 +8,9 @@ export type Invest3DPair = "tengah" | "belakang";
 export type Invest3DPosition = "kop" | "kepala" | "ekor";
 
 export type Invest3DFilter =
+  | { kind: "ai_3d"; param: 5 }
+  | { kind: "ai_3d_parity"; param: 1 }
+  | { kind: "ai_3d_size"; param: 1 }
   | { kind: "ai_pair"; pair: Invest3DPair; param: 4 | 6 }
   | { kind: "parity_pair"; pair: Invest3DPair; param: 1 }
   | { kind: "size_pair"; pair: Invest3DPair; param: 1 }
@@ -25,6 +28,7 @@ export interface Invest3DCombo {
   filters: Invest3DFilter[];
 }
 
+type OffCounts = [number, number, number];
 type PositionMeta = { key: Invest3DPosition; label: string };
 
 const POSITIONS: PositionMeta[] = [
@@ -32,6 +36,41 @@ const POSITIONS: PositionMeta[] = [
   { key: "kepala", label: "KPL" },
   { key: "ekor", label: "EKR" },
 ];
+
+function offParts(counts: OffCounts) {
+  const filters: Invest3DFilter[] = [];
+  const labels: string[] = [];
+  const ids: string[] = [];
+
+  POSITIONS.forEach((position, index) => {
+    const param = counts[index];
+    if (param < 1 || param > 3) return;
+    filters.push({ kind: "off_position", position: position.key, param: param as 1 | 2 | 3 });
+    labels.push(`OFF ${position.label} ${param}`);
+    ids.push(`off-${position.key}${param}`);
+  });
+
+  return { filters, labels, ids };
+}
+
+function ai3dFiveRange(counts: OffCounts) {
+  const total = counts.reduce((value, count) => value * (10 - count), 1);
+  const values: number[] = [];
+
+  for (let kopOverlap = 0; kopOverlap <= Math.min(counts[0], 5); kopOverlap += 1) {
+    for (let kepalaOverlap = 0; kepalaOverlap <= Math.min(counts[1], 5); kepalaOverlap += 1) {
+      for (let ekorOverlap = 0; ekorOverlap <= Math.min(counts[2], 5); ekorOverlap += 1) {
+        const noAi =
+          (5 - counts[0] + kopOverlap) *
+          (5 - counts[1] + kepalaOverlap) *
+          (5 - counts[2] + ekorOverlap);
+        values.push(total - noAi);
+      }
+    }
+  }
+
+  return { min: Math.min(...values), max: Math.max(...values) };
+}
 
 function buildInvest3DCatalog(): Invest3DCombo[] {
   const catalog: Invest3DCombo[] = [];
@@ -42,34 +81,70 @@ function buildInvest3DCatalog(): Invest3DCombo[] {
     expectedLines: number,
     filters: Invest3DFilter[],
     family: string,
+    stability = 0,
   ) => {
     if (expectedLines < INVEST_3D_TARGET_MIN || expectedLines > INVEST_3D_TARGET_MAX) {
       throw new Error(`Katalog Invest 3D di luar target: ${id} = ${expectedLines}`);
     }
-    catalog.push({ id, label, family, expectedLines, stability: 0, hitRate: 100, filters });
+    catalog.push({ id, label, family, expectedLines, stability, hitRate: 100, filters });
   };
 
-  // Semua pola OFF posisi 1-3 yang secara matematis menghasilkan 500-600 line.
+  // 19 pola OFF posisi yang selalu menghasilkan 500-600 line.
   for (let kop = 0; kop <= 3; kop += 1) {
     for (let kepala = 0; kepala <= 3; kepala += 1) {
       for (let ekor = 0; ekor <= 3; ekor += 1) {
         if (kop === 0 && kepala === 0 && ekor === 0) continue;
-        const counts = [kop, kepala, ekor];
+        const counts: OffCounts = [kop, kepala, ekor];
         const expectedLines = (10 - kop) * (10 - kepala) * (10 - ekor);
         if (expectedLines < INVEST_3D_TARGET_MIN || expectedLines > INVEST_3D_TARGET_MAX) continue;
+        const parts = offParts(counts);
+        push(`3d-${parts.ids.join("-")}`, parts.labels.join(" + "), expectedLines, parts.filters, "off_position");
+      }
+    }
+  }
 
-        const filters: Invest3DFilter[] = [];
-        const labels: string[] = [];
-        const ids: string[] = [];
-        POSITIONS.forEach((position, index) => {
-          const param = counts[index];
-          if (param < 1 || param > 3) return;
-          filters.push({ kind: "off_position", position: position.key, param: param as 1 | 2 | 3 });
-          labels.push(`OFF ${position.label} ${param}`);
-          ids.push(`off-${position.key}${param}`);
-        });
+  // AI 3D berbasis himpunan lima digit: 12 pola OFF aman × 3 metode global.
+  const globalAiFilters: Array<{
+    id: string;
+    label: string;
+    family: string;
+    filter: Invest3DFilter;
+  }> = [
+    { id: "ai5", label: "AI 3D 5", family: "ai_3d", filter: { kind: "ai_3d", param: 5 } },
+    {
+      id: "parity",
+      label: "Ganjil Genap 3D",
+      family: "ai_3d_parity",
+      filter: { kind: "ai_3d_parity", param: 1 },
+    },
+    {
+      id: "size",
+      label: "Besar Kecil 3D",
+      family: "ai_3d_size",
+      filter: { kind: "ai_3d_size", param: 1 },
+    },
+  ];
 
-        push(`3d-${ids.join("-")}`, labels.join(" + "), expectedLines, filters, "off_position");
+  for (let kop = 0; kop <= 3; kop += 1) {
+    for (let kepala = 0; kepala <= 3; kepala += 1) {
+      for (let ekor = 0; ekor <= 3; ekor += 1) {
+        const counts: OffCounts = [kop, kepala, ekor];
+        const range = ai3dFiveRange(counts);
+        if (range.min < INVEST_3D_TARGET_MIN || range.max > INVEST_3D_TARGET_MAX) continue;
+        const parts = offParts(counts);
+        const expectedLines = (range.min + range.max) / 2;
+        const stability = (range.max - range.min) / 2;
+
+        for (const method of globalAiFilters) {
+          push(
+            `3d-${method.id}-${parts.ids.join("-")}`,
+            `${method.label} + ${parts.labels.join(" + ")}`,
+            expectedLines,
+            [method.filter, ...parts.filters],
+            method.family,
+            stability,
+          );
+        }
       }
     }
   }
@@ -182,6 +257,7 @@ function buildInvest3DCatalog(): Invest3DCombo[] {
         { kind: "bbfs_pair", pair: "belakang", param: right },
       ],
       "cross_pair",
+      36,
     );
     push(
       `3d-bbfs-tengah${rightName.toLowerCase()}-bbfs-belakang9`,
@@ -192,6 +268,7 @@ function buildInvest3DCatalog(): Invest3DCombo[] {
         { kind: "bbfs_pair", pair: "belakang", param: 9 },
       ],
       "cross_pair",
+      36,
     );
   }
 
@@ -207,6 +284,7 @@ function buildInvest3DCatalog(): Invest3DCombo[] {
         { kind: "bbfs_pair", pair: "belakang", param: bbfs },
       ],
       "cross_pair",
+      32,
     );
     push(
       `3d-bbfs-tengah${bbfsName.toLowerCase()}-ai-belakang6`,
@@ -217,6 +295,7 @@ function buildInvest3DCatalog(): Invest3DCombo[] {
         { kind: "ai_pair", pair: "belakang", param: 6 },
       ],
       "cross_pair",
+      32,
     );
   }
 
@@ -230,6 +309,7 @@ function buildInvest3DCatalog(): Invest3DCombo[] {
       { kind: "size_pair", pair: "belakang", param: 1 },
     ],
     "cross_pair",
+    12.5,
   );
   push(
     "3d-size-tengah-parity-belakang",
@@ -240,10 +320,11 @@ function buildInvest3DCatalog(): Invest3DCombo[] {
       { kind: "parity_pair", pair: "belakang", param: 1 },
     ],
     "cross_pair",
+    12.5,
   );
 
   const uniqueIds = new Set(catalog.map((combo) => combo.id));
-  if (catalog.length !== 55 || uniqueIds.size !== catalog.length) {
+  if (catalog.length !== 91 || uniqueIds.size !== catalog.length) {
     throw new Error(`Katalog Invest 3D tidak valid: ${catalog.length} resep, ${uniqueIds.size} ID unik`);
   }
 
