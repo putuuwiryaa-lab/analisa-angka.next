@@ -65,7 +65,7 @@ export const _0x9a025f = [
   { n: "R33 Mid Spiral", f: (c: string, p: string, p2: string) => { const biji = _0xJ2d(c[1], c[2]); const base = _0xc3c54e(biji - 1); return Array.from(new Set([base, _0xc3c54e(base + 1), _0xc3c54e(base + 3), _0xc3c54e(base + 4)])); }, dg: 4 },
   { n: "R34 Hex Surge", f: (c: string, p: string, p2: string) => { const biji = _0xJ2d(c[2], c[3]); const X = _0xc3c54e(biji + 6); return Array.from(new Set([X, _0xc3c54e(X + 2), _0xc3c54e(X + 3), _0xc3c54e(X + 7)])); }, dg: 4 },
   { n: "R35 Step Six", f: (c: string, p: string, p2: string) => { const X = _0xc3c54e(+c[3] - 1); return Array.from(new Set([X, _0xc3c54e(X + 1), _0xc3c54e(X + 2), _0xc3c54e(X + 3), _0xc3c54e(X + 4), _0xc3c54e(X + 5)])); }, dg: 6 },
-  { n: "R36 Ekor Main Sebelumnya", f: (c: string, p: string, p2: string) => [...AI_EKOR_MAIN[+c[3]]], dg: 6 },
+  { n: "R36 Tail-State Transition Matrix", f: (c: string, p: string, p2: string) => [...AI_EKOR_MAIN[+c[3]]], dg: 6 },
 ];
 
 function _0xSeedRank(seed: string, digit: number) {
