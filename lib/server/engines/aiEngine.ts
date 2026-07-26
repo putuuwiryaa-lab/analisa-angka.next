@@ -1,7 +1,20 @@
 import "server-only";
 import { AI_I, AI_L, AI_B, AI_T, AI_P, _0xc3c54e, _0xJ2d } from './tables';
 
-export const _0xe57f0c: Record<number, number> = { 4: 11, 5: 12, 6: 13 };
+export const _0xe57f0c: Record<number, number> = { 3: 11, 4: 12, 5: 13, 6: 14 };
+
+const AI_EKOR_MAIN: Record<number, number[]> = {
+  0: [4, 6, 8, 1, 3, 7],
+  1: [3, 5, 9, 2, 4, 8],
+  2: [0, 6, 3, 7, 5, 9],
+  3: [1, 7, 0, 2, 4, 6],
+  4: [0, 2, 8, 1, 5, 9],
+  5: [1, 3, 7, 0, 2, 6],
+  6: [0, 4, 8, 1, 7, 9],
+  7: [1, 3, 5, 0, 4, 8],
+  8: [0, 6, 4, 1, 5, 9],
+  9: [1, 5, 7, 0, 2, 6],
+};
 
 type AiEngineOptions = {
   targetIndexes?: number[];
@@ -13,7 +26,7 @@ type AiRumusStat = { name: string; dg: number; hits: number; valid: number; thre
 export type AiValidation = { sr: AiRumusStat[]; vote: AiVote; elitCount: number; fallback: boolean };
 
 function thresholdForDigitCount(dg: number, thresholds?: Record<number, number>) {
-  return thresholds?.[dg] ?? _0xe57f0c[dg] ?? 10;
+  return thresholds?.[dg] ?? _0xe57f0c[dg] ?? 11;
 }
 
 export const _0x9a025f = [
@@ -52,6 +65,7 @@ export const _0x9a025f = [
   { n: "R33 Mid Spiral", f: (c: string, p: string, p2: string) => { const biji = _0xJ2d(c[1], c[2]); const base = _0xc3c54e(biji - 1); return Array.from(new Set([base, _0xc3c54e(base + 1), _0xc3c54e(base + 3), _0xc3c54e(base + 4)])); }, dg: 4 },
   { n: "R34 Hex Surge", f: (c: string, p: string, p2: string) => { const biji = _0xJ2d(c[2], c[3]); const X = _0xc3c54e(biji + 6); return Array.from(new Set([X, _0xc3c54e(X + 2), _0xc3c54e(X + 3), _0xc3c54e(X + 7)])); }, dg: 4 },
   { n: "R35 Step Six", f: (c: string, p: string, p2: string) => { const X = _0xc3c54e(+c[3] - 1); return Array.from(new Set([X, _0xc3c54e(X + 1), _0xc3c54e(X + 2), _0xc3c54e(X + 3), _0xc3c54e(X + 4), _0xc3c54e(X + 5)])); }, dg: 6 },
+  { n: "R36 Ekor Main Sebelumnya", f: (c: string, p: string, p2: string) => [...AI_EKOR_MAIN[+c[3]]], dg: 6 },
 ];
 
 function _0xSeedRank(seed: string, digit: number) {
@@ -68,7 +82,7 @@ function _0xSeedRank(seed: string, digit: number) {
 
 /**
  * Bagian BERAT — DIJALANKAN SEKALI.
- * Walk-forward 35 rumus × 14 langkah. Menghasilkan:
+ * Walk-forward 36 rumus × 14 langkah. Menghasilkan:
  *  - vote   : tally suara per digit 0-9 dari rumus elite (dipakai seleksi digit,
  *             ganjil/genap, dan besar/kecil — sumber tunggal)
  *  - sr     : statistik per-rumus untuk panel "Detail Validasi"
@@ -215,4 +229,4 @@ export function _0xEngineAI(D: string[], param: number = 6, options: AiEngineOpt
   const targetIndexes = options.targetIndexes?.length ? options.targetIndexes : [2, 3];
   const { vote } = runAiValidation(D, targetIndexes, options.thresholds);
   return selectAiDigits(D, vote, param, targetIndexes);
-    }
+}
