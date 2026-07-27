@@ -2,7 +2,6 @@ import type { ShareOption, ShareRow } from "./types";
 import { marketLabel } from "./utils";
 
 export const INVEST_SHARE_MODE = "invest";
-export const INVEST_SHARE_MAX_MARKETS = 1;
 
 export type InvestSharePair = "depan" | "tengah" | "belakang" | "3d";
 
