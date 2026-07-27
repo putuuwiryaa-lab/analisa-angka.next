@@ -138,18 +138,11 @@ export function availableInvestShareMarketIds(
 function buildInvestShareBlock(row: ShareRow) {
   const invest = (row as InvestShareRow).invest;
   if (!invest?.lines?.length) return "";
-
-  return [
-    `*INVEST ${invest.pairLabel.toUpperCase()}*`,
-    `*${marketLabel(row)}*`,
-    `Kombinasi: ${invest.comboLabel}`,
-    `${invest.lineCount} line`,
-    invest.lines.join("*"),
-  ].join("\n");
+  return `*${marketLabel(row)}* — ${invest.lineCount} line`;
 }
 
 export function buildInvestShareText(rows: ShareRow[]) {
-  return rows.map(buildInvestShareBlock).filter(Boolean).join("\n\n");
+  return rows.map(buildInvestShareBlock).filter(Boolean).join("\n");
 }
 
 export function buildInvestPreviewText(rows: ShareRow[]) {
