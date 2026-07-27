@@ -11,6 +11,7 @@ import {
   Check,
   ChevronRight,
   ClipboardCopy,
+  Coins,
   Combine,
   Eraser,
   Gauge,
@@ -32,6 +33,22 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { MODE_LABEL, REKAP_BADGE_OPTION, REKAP_MAX_MARKETS, SEPARATOR } from "./constants";
+import {
+  INVEST_SHARE_MAX_MARKETS,
+  INVEST_SHARE_MODE,
+  INVEST_SHARE_OPTIONS,
+  availableInvestShareMarketIds,
+  buildInvestPreviewText,
+  buildInvestShareText,
+  findInvestShareCombo,
+  findInvestShareMarket,
+  investSharePair,
+  investShareTargetKey,
+  investShareTargetLabel,
+  isInvestShareOption,
+  type InvestShareOverviewResponse,
+  type InvestShareRow,
+} from "./investShare";
 import type { MarketOption, PickItem, ShareOption, ShareResponse, ShareRow } from "./types";
 import {
   buildPreviewText,
@@ -53,20 +70,55 @@ import {
 type Step = 1 | 2 | 3;
 
 function optionModeKey(option: ShareOption | null) {
+  if (isInvestShareOption(option)) return INVEST_SHARE_MODE;
   return option ? displayMode(option) : "";
 }
 
 function optionLabelMode(option: ShareOption) {
+  if (isInvestShareOption(option)) return "Invest";
   const mode = displayMode(option);
   return MODE_LABEL[mode] || mode.toUpperCase();
 }
 
 function optionMatchesMode(option: ShareOption, mode: string) {
-  return displayMode(option) === mode;
+  return optionModeKey(option) === mode;
+}
+
+function optionTargetKey(option: ShareOption) {
+  return isInvestShareOption(option) ? investShareTargetKey(option) : targetKey(option);
+}
+
+function optionTargetLabel(option: ShareOption) {
+  return isInvestShareOption(option) ? investShareTargetLabel(option) : targetLabel(option);
+}
+
+function optionOutputKey(option: ShareOption) {
+  return isInvestShareOption(option) ? "invest_lines" : outputKey(option);
+}
+
+function optionOutputLabel(option: ShareOption) {
+  return isInvestShareOption(option) ? "Angka Jadi" : outputLabel(option);
+}
+
+function shareOptionSort(a: ShareOption, b: ShareOption) {
+  const rank = (option: ShareOption) => {
+    if (isRekapBadge(option)) return 0;
+    if (isInvestShareOption(option)) return 1;
+    return 2;
+  };
+  const rankDiff = rank(a) - rank(b);
+  if (rankDiff !== 0) return rankDiff;
+
+  if (isInvestShareOption(a) && isInvestShareOption(b)) {
+    const pairOrder = { depan: 1, tengah: 2, belakang: 3, "3d": 4 } as const;
+    return pairOrder[investSharePair(a)] - pairOrder[investSharePair(b)];
+  }
+
+  return optionSort(a, b);
 }
 
 function firstSorted(options: ShareOption[]) {
-  return [...options].sort(optionSort)[0] || null;
+  return [...options].sort(shareOptionSort)[0] || null;
 }
 
 function rowId(row: ShareRow) {
@@ -84,6 +136,7 @@ function pickerIcon(group: string, item: PickItem): LucideIcon {
 
   if (group === "Jenis") {
     if (key === "rekap_badge") return BadgeCheck;
+    if (key === INVEST_SHARE_MODE) return Coins;
     if (key === "ai") return Activity;
     if (key === "bbfs") return Grid3X3;
     if (key === "mati") return ShieldAlert;
@@ -104,6 +157,7 @@ function pickerIcon(group: string, item: PickItem): LucideIcon {
   if (label.includes("besar") || label.includes("kecil")) return Scale;
   if (label.includes("ggbk")) return Combine;
   if (label.includes("badge")) return BadgeCheck;
+  if (label.includes("angka jadi")) return Coins;
   return Hash;
 }
 
@@ -138,7 +192,11 @@ function StepButton({
       >
         {complete && !active ? <Check size={12} strokeWidth={3} /> : number}
       </span>
-      <span className={`mt-1.5 block truncate text-[9px] font-black uppercase tracking-wide ${active ? "text-text" : "text-text-soft"}`}>
+      <span
+        className={`mt-1.5 block truncate text-[9px] font-black uppercase tracking-wide ${
+          active ? "text-text" : "text-text-soft"
+        }`}
+      >
         {title}
       </span>
     </button>
@@ -159,14 +217,26 @@ function SectionHeading({ number, title, subtitle }: { number: Step; title: stri
   );
 }
 
-function ActionButton({ children, primary, disabled, onClick }: { children: ReactNode; primary?: boolean; disabled?: boolean; onClick: () => void }) {
+function ActionButton({
+  children,
+  primary,
+  disabled,
+  onClick,
+}: {
+  children: ReactNode;
+  primary?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
       className={`pressable flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-[11px] font-black uppercase tracking-wide disabled:pointer-events-none disabled:opacity-45 ${
-        primary ? "depth-accent accent-border accent-text" : "depth-3 border-border-soft text-text-muted hover:border-border"
+        primary
+          ? "depth-accent accent-border accent-text"
+          : "depth-3 border-border-soft text-text-muted hover:border-border"
       }`}
     >
       {children}
@@ -184,6 +254,8 @@ export function SharePrediksiClient() {
   const [marketSearch, setMarketSearch] = useState("");
   const [rows, setRows] = useState<ShareRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [investOverview, setInvestOverview] = useState<InvestShareOverviewResponse | null>(null);
+  const [loadingInvestOverview, setLoadingInvestOverview] = useState(false);
   const [loadingMarkets, setLoadingMarkets] = useState(true);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
@@ -191,13 +263,19 @@ export function SharePrediksiClient() {
   const [copied, setCopied] = useState(false);
 
   const allOptions = useMemo(
-    () => uniqueBy([REKAP_BADGE_OPTION, ...options].sort(optionSort), (option) => option.key),
+    () =>
+      uniqueBy(
+        [REKAP_BADGE_OPTION, ...INVEST_SHARE_OPTIONS, ...options].sort(shareOptionSort),
+        (option) => option.key,
+      ),
     [options],
   );
   const selectedMode = optionModeKey(selectedOption);
-  const selectedTarget = selectedOption ? targetKey(selectedOption) : "";
-  const selectedOutput = selectedOption ? outputKey(selectedOption) : "";
+  const selectedTarget = selectedOption ? optionTargetKey(selectedOption) : "";
+  const selectedOutput = selectedOption ? optionOutputKey(selectedOption) : "";
   const rekapBadgeSelected = isRekapBadge(selectedOption);
+  const investSelected = isInvestShareOption(selectedOption);
+  const activeInvestPair = investSharePair(selectedOption);
 
   const selectedMarketRows = useMemo(() => {
     const byKey = new Map(markets.map((row) => [marketKey(row), row]));
@@ -209,37 +287,47 @@ export function SharePrediksiClient() {
     [selectedMarketRows],
   );
 
+  const marketChoices = useMemo(() => {
+    if (!investSelected) return markets;
+    const availableIds = availableInvestShareMarketIds(investOverview, activeInvestPair);
+    return markets.filter((row) => availableIds.has(String(row.marketId || "").trim().toLowerCase()));
+  }, [activeInvestPair, investOverview, investSelected, markets]);
+
   const filteredMarkets = useMemo(() => {
     const query = marketSearch.trim().toLowerCase();
-    if (!query) return markets;
-    return markets.filter((row) => {
+    if (!query) return marketChoices;
+    return marketChoices.filter((row) => {
       const id = String(row.marketId || "").toLowerCase();
       const label = marketLabel(row).toLowerCase();
       return id.includes(query) || label.includes(query);
     });
-  }, [marketSearch, markets]);
+  }, [marketChoices, marketSearch]);
 
   const jenisItems = useMemo<PickItem[]>(() => {
-    return uniqueBy(allOptions, displayMode).map((option) => ({
-      key: displayMode(option),
+    return uniqueBy(allOptions, optionModeKey).map((option) => ({
+      key: optionModeKey(option),
       label: optionLabelMode(option),
     }));
   }, [allOptions]);
 
   const targetItems = useMemo<PickItem[]>(() => {
-    return uniqueBy(allOptions.filter((option) => optionMatchesMode(option, selectedMode)), targetKey).map((option) => ({
-      key: targetKey(option),
-      label: targetLabel(option) || "Semua Posisi",
+    return uniqueBy(
+      allOptions.filter((option) => optionMatchesMode(option, selectedMode)),
+      optionTargetKey,
+    ).map((option) => ({
+      key: optionTargetKey(option),
+      label: optionTargetLabel(option) || "Semua Posisi",
     }));
   }, [allOptions, selectedMode]);
 
   const outputItems = useMemo<PickItem[]>(() => {
     return uniqueBy(
       allOptions.filter(
-        (option) => optionMatchesMode(option, selectedMode) && targetKey(option) === selectedTarget,
+        (option) =>
+          optionMatchesMode(option, selectedMode) && optionTargetKey(option) === selectedTarget,
       ),
-      outputKey,
-    ).map((option) => ({ key: outputKey(option), label: outputLabel(option) }));
+      optionOutputKey,
+    ).map((option) => ({ key: optionOutputKey(option), label: optionOutputLabel(option) }));
   }, [allOptions, selectedMode, selectedTarget]);
 
   const selectedRows = useMemo(
@@ -247,12 +335,18 @@ export function SharePrediksiClient() {
     [rows, selected],
   );
   const shareText = useMemo(
-    () => buildShareText(selectedOption, selectedRows, selectedSeparator || SEPARATOR),
-    [selectedOption, selectedRows, selectedSeparator],
+    () =>
+      investSelected
+        ? buildInvestShareText(selectedRows)
+        : buildShareText(selectedOption, selectedRows, selectedSeparator || SEPARATOR),
+    [investSelected, selectedOption, selectedRows, selectedSeparator],
   );
   const previewText = useMemo(
-    () => buildPreviewText(selectedOption, selectedRows, selectedSeparator || SEPARATOR),
-    [selectedOption, selectedRows, selectedSeparator],
+    () =>
+      investSelected
+        ? buildInvestPreviewText(selectedRows)
+        : buildPreviewText(selectedOption, selectedRows, selectedSeparator || SEPARATOR),
+    [investSelected, selectedOption, selectedRows, selectedSeparator],
   );
 
   useEffect(() => {
@@ -294,15 +388,48 @@ export function SharePrediksiClient() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!investSelected || investOverview) return;
+
+    let active = true;
+    setLoadingInvestOverview(true);
+    setError("");
+    fetchJson<InvestShareOverviewResponse>("/api/invest")
+      .then((data) => {
+        if (active) setInvestOverview(data);
+      })
+      .catch((err) => {
+        if (active) setError(err instanceof Error ? err.message : "Gagal memuat rekomendasi INVEST.");
+      })
+      .finally(() => {
+        if (active) setLoadingInvestOverview(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [investOverview, investSelected]);
+
   function resetResult() {
     setRows([]);
     setCopied(false);
   }
 
   function chooseOption(next: ShareOption) {
+    const changesInvestContext =
+      isInvestShareOption(selectedOption) ||
+      isInvestShareOption(next) ||
+      optionTargetKey(selectedOption || next) !== optionTargetKey(next);
+
     setSelectedOption(next);
     resetResult();
     setError("");
+
+    if (changesInvestContext) {
+      setSelected(new Set());
+      setMarketSearch("");
+      return;
+    }
 
     if (isRekapBadge(next) && selected.size > REKAP_MAX_MARKETS) {
       setSelected((current) => new Set(Array.from(current).slice(0, REKAP_MAX_MARKETS)));
@@ -319,7 +446,7 @@ export function SharePrediksiClient() {
   function chooseTarget(key: string) {
     const next = firstSorted(
       allOptions.filter(
-        (option) => optionMatchesMode(option, selectedMode) && targetKey(option) === key,
+        (option) => optionMatchesMode(option, selectedMode) && optionTargetKey(option) === key,
       ),
     );
     if (!next) return;
@@ -331,8 +458,8 @@ export function SharePrediksiClient() {
       allOptions.filter(
         (option) =>
           optionMatchesMode(option, selectedMode) &&
-          targetKey(option) === selectedTarget &&
-          outputKey(option) === key,
+          optionTargetKey(option) === selectedTarget &&
+          optionOutputKey(option) === key,
       ),
     );
     if (!next) return;
@@ -349,6 +476,12 @@ export function SharePrediksiClient() {
     if (!key) return;
     resetResult();
     setError("");
+
+    if (investSelected) {
+      setSelected((current) => (current.has(key) ? new Set() : new Set([key])));
+      return;
+    }
+
     setSelected((current) => {
       const next = new Set(current);
       if (next.has(key)) {
@@ -367,7 +500,11 @@ export function SharePrediksiClient() {
   function selectQuick() {
     resetResult();
     setError("");
-    const limit = rekapBadgeSelected ? REKAP_MAX_MARKETS : filteredMarkets.length;
+    const limit = investSelected
+      ? INVEST_SHARE_MAX_MARKETS
+      : rekapBadgeSelected
+        ? REKAP_MAX_MARKETS
+        : filteredMarkets.length;
     setSelected(new Set(filteredMarkets.slice(0, limit).map(marketKey).filter(Boolean)));
   }
 
@@ -382,8 +519,68 @@ export function SharePrediksiClient() {
       setError("Pilih jenis prediksi dulu.");
       return;
     }
+    if (investSelected && loadingInvestOverview) {
+      setError("Rekomendasi INVEST masih dimuat.");
+      return;
+    }
+    if (investSelected && !investOverview) {
+      setError("Rekomendasi INVEST belum tersedia.");
+      return;
+    }
     setError("");
     setStep(2);
+  }
+
+  async function generateInvest() {
+    const marketId = selectedIds[0];
+    if (!marketId) throw new Error("Pilih satu pasaran untuk Share INVEST.");
+
+    const market = findInvestShareMarket(investOverview, marketId);
+    const topCombo = findInvestShareCombo(market, activeInvestPair);
+    if (!market || !topCombo) {
+      throw new Error("Kandidat INVEST aktif tidak ditemukan untuk pasaran ini.");
+    }
+
+    const endpoint =
+      activeInvestPair === "3d" ? "/api/invest/angka-jadi-3d" : "/api/invest/angka-jadi";
+    const payload =
+      activeInvestPair === "3d"
+        ? { marketId, filters: topCombo.combo.filters }
+        : { marketId, pair: activeInvestPair, filters: topCombo.combo.filters };
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || !json.success) {
+      throw new Error(json.error || "Gagal membuat angka jadi INVEST.");
+    }
+
+    const lines = Array.isArray(json.lines)
+      ? json.lines.map((line: unknown) => String(line).trim()).filter(Boolean)
+      : [];
+    if (!lines.length) throw new Error("Angka jadi INVEST kosong.");
+
+    const sourceRow = selectedMarketRows[0];
+    const shareRow: InvestShareRow = {
+      marketId,
+      marketName: market.marketName || sourceRow?.marketName || marketId,
+      updatedAt: null,
+      order: sourceRow?.order ?? null,
+      baseResult: String(json.latest_result || ""),
+      invest: {
+        pair: activeInvestPair,
+        pairLabel: topCombo.pairLabel || investShareTargetLabel(selectedOption),
+        comboLabel: topCombo.combo.label,
+        lineCount: lines.length,
+        lines,
+        latestResult: String(json.latest_result || ""),
+        wins15: topCombo.combo.avgWins15,
+      },
+    };
+
+    setRows([shareRow]);
   }
 
   async function generate() {
@@ -392,6 +589,9 @@ export function SharePrediksiClient() {
     if (isRekapBadge(selectedOption) && selectedIds.length > REKAP_MAX_MARKETS) {
       return setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
     }
+    if (investSelected && selectedIds.length > INVEST_SHARE_MAX_MARKETS) {
+      return setError("Share INVEST hanya satu pasaran sekali generate.");
+    }
 
     setLoadingRows(true);
     setRows([]);
@@ -399,6 +599,12 @@ export function SharePrediksiClient() {
     setError("");
 
     try {
+      if (investSelected) {
+        await generateInvest();
+        setStep(3);
+        return;
+      }
+
       if (isRekapBadge(selectedOption)) {
         const params = new URLSearchParams({
           limit: String(REKAP_MAX_MARKETS),
@@ -451,25 +657,37 @@ export function SharePrediksiClient() {
   }
 
   const selectedTitle = selectedOption
-    ? [optionLabelMode(selectedOption), targetLabel(selectedOption), outputLabel(selectedOption)]
+    ? [optionLabelMode(selectedOption), optionTargetLabel(selectedOption), optionOutputLabel(selectedOption)]
         .filter(Boolean)
         .join(" · ")
     : "Pilih prediksi";
   const fallback = selected.size
     ? "Belum ada hasil. Kembali ke pilihan pasaran lalu tekan Generate."
     : "Belum ada pasaran yang dipilih.";
-  const countLabel = rekapBadgeSelected
-    ? `${selected.size}/${REKAP_MAX_MARKETS}`
-    : `${selected.size}`;
-  const quickLabel = rekapBadgeSelected
-    ? `Pilih ${REKAP_MAX_MARKETS} Pertama`
-    : marketSearch
-      ? "Pilih Hasil Cari"
-      : "Pilih Semua";
-  const description = rekapBadgeSelected
-    ? `Maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`
-    : "Pilih format, pasaran, lalu buat teks siap dibagikan.";
+  const countLabel = investSelected
+    ? `${selected.size}/${INVEST_SHARE_MAX_MARKETS}`
+    : rekapBadgeSelected
+      ? `${selected.size}/${REKAP_MAX_MARKETS}`
+      : `${selected.size}`;
+  const quickLabel = investSelected
+    ? "Pilih Pertama"
+    : rekapBadgeSelected
+      ? `Pilih ${REKAP_MAX_MARKETS} Pertama`
+      : marketSearch
+        ? "Pilih Hasil Cari"
+        : "Pilih Semua";
+  const description = investSelected
+    ? "Bagikan angka jadi dari kombinasi INVEST ranking aktif. Satu pasaran sekali generate."
+    : rekapBadgeSelected
+      ? `Maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`
+      : "Pilih format, pasaran, lalu buat teks siap dibagikan.";
   const canOpenResult = Boolean(shareText || rows.length);
+  const loadingMarketChoices = loadingMarkets || (investSelected && loadingInvestOverview);
+  const emptyMarketText = investSelected
+    ? "Belum ada kandidat INVEST aktif untuk target ini."
+    : marketSearch
+      ? "Pasaran tidak ditemukan."
+      : "Belum ada pasaran.";
 
   function renderPicker(
     label: string,
@@ -499,7 +717,11 @@ export function SharePrediksiClient() {
                     : "depth-3 border-border-soft text-text-muted hover:border-border"
                 }`}
               >
-                <Icon size={15} strokeWidth={1.9} className={active ? "text-accent" : "text-text-soft"} />
+                <Icon
+                  size={15}
+                  strokeWidth={1.9}
+                  className={active ? "text-accent" : "text-text-soft"}
+                />
                 <span>{item.label}</span>
               </button>
             );
@@ -607,21 +829,30 @@ export function SharePrediksiClient() {
               {renderPicker("Jenis", jenisItems, selectedMode, chooseJenis)}
               {renderPicker("Target", targetItems, selectedTarget, chooseTarget)}
               {renderPicker("Output", outputItems, selectedOutput, chooseOutput)}
-              {rekapBadgeSelected ? null : renderSeparatorInput()}
+              {rekapBadgeSelected || investSelected ? null : renderSeparatorInput()}
             </>
           )}
 
           <div className="accent-bg-soft accent-border mt-4 rounded-2xl border px-3 py-3 text-center">
             <p className="text-[9px] font-black uppercase tracking-wide text-text-soft">Pilihan aktif</p>
-            <p className="accent-text mt-1 text-[11px] font-black uppercase tracking-wide">{selectedTitle}</p>
+            <p className="accent-text mt-1 text-[11px] font-black uppercase tracking-wide">
+              {selectedTitle}
+            </p>
           </div>
 
           <button
             type="button"
             onClick={openMarketsStep}
-            disabled={!selectedOption || loadingOptions}
+            disabled={
+              !selectedOption ||
+              loadingOptions ||
+              (investSelected && loadingInvestOverview)
+            }
             className="pressable depth-accent accent-border accent-text mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-black uppercase tracking-wide disabled:opacity-45"
           >
+            {investSelected && loadingInvestOverview ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : null}
             Lanjut Pilih Pasaran <ChevronRight size={16} />
           </button>
         </section>
@@ -661,7 +892,10 @@ export function SharePrediksiClient() {
             </div>
 
             <div className="mb-3 grid grid-cols-2 gap-2">
-              <ActionButton onClick={selectQuick} disabled={loadingMarkets || filteredMarkets.length === 0}>
+              <ActionButton
+                onClick={selectQuick}
+                disabled={loadingMarketChoices || filteredMarkets.length === 0}
+              >
                 <ListChecks size={15} /> {quickLabel}
               </ActionButton>
               <ActionButton onClick={clearAll} disabled={selected.size === 0}>
@@ -669,13 +903,13 @@ export function SharePrediksiClient() {
               </ActionButton>
             </div>
 
-            {loadingMarkets ? (
+            {loadingMarketChoices ? (
               <div className="depth-3 flex min-h-32 items-center justify-center rounded-2xl border text-text-soft">
                 <Loader2 size={18} className="animate-spin" />
               </div>
             ) : filteredMarkets.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border-soft px-4 py-10 text-center text-xs font-bold text-text-muted">
-                Pasaran tidak ditemukan.
+                {emptyMarketText}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -712,8 +946,16 @@ export function SharePrediksiClient() {
             <ActionButton onClick={() => setStep(1)}>
               <ArrowLeft size={15} /> Ubah
             </ActionButton>
-            <ActionButton primary onClick={() => void generate()} disabled={loadingRows || selected.size === 0}>
-              {loadingRows ? <Loader2 size={15} className="animate-spin" /> : <WandSparkles size={16} />}
+            <ActionButton
+              primary
+              onClick={() => void generate()}
+              disabled={loadingRows || selected.size === 0}
+            >
+              {loadingRows ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <WandSparkles size={16} />
+              )}
               {loadingRows ? "Membuat…" : `Generate (${selected.size})`}
             </ActionButton>
           </div>
