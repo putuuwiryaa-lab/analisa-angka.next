@@ -34,7 +34,6 @@ import {
 } from "lucide-react";
 import { MODE_LABEL, REKAP_BADGE_OPTION, REKAP_MAX_MARKETS, SEPARATOR } from "./constants";
 import {
-  INVEST_SHARE_MAX_MARKETS,
   INVEST_SHARE_MODE,
   INVEST_SHARE_OPTIONS,
   availableInvestShareMarketIds,
@@ -68,6 +67,11 @@ import {
 } from "./utils";
 
 type Step = 1 | 2 | 3;
+
+type InvestGenerationResult = {
+  rows: InvestShareRow[];
+  failedMarkets: string[];
+};
 
 function optionModeKey(option: ShareOption | null) {
   if (isInvestShareOption(option)) return INVEST_SHARE_MODE;
@@ -106,6 +110,7 @@ function shareOptionSort(a: ShareOption, b: ShareOption) {
     if (isInvestShareOption(option)) return 1;
     return 2;
   };
+
   const rankDiff = rank(a) - rank(b);
   if (rankDiff !== 0) return rankDiff;
 
@@ -260,6 +265,7 @@ export function SharePrediksiClient() {
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState(false);
 
   const allOptions = useMemo(
@@ -270,6 +276,7 @@ export function SharePrediksiClient() {
       ),
     [options],
   );
+
   const selectedMode = optionModeKey(selectedOption);
   const selectedTarget = selectedOption ? optionTargetKey(selectedOption) : "";
   const selectedOutput = selectedOption ? optionOutputKey(selectedOption) : "";
@@ -303,37 +310,44 @@ export function SharePrediksiClient() {
     });
   }, [marketChoices, marketSearch]);
 
-  const jenisItems = useMemo<PickItem[]>(() => {
-    return uniqueBy(allOptions, optionModeKey).map((option) => ({
-      key: optionModeKey(option),
-      label: optionLabelMode(option),
-    }));
-  }, [allOptions]);
+  const jenisItems = useMemo<PickItem[]>(
+    () =>
+      uniqueBy(allOptions, optionModeKey).map((option) => ({
+        key: optionModeKey(option),
+        label: optionLabelMode(option),
+      })),
+    [allOptions],
+  );
 
-  const targetItems = useMemo<PickItem[]>(() => {
-    return uniqueBy(
-      allOptions.filter((option) => optionMatchesMode(option, selectedMode)),
-      optionTargetKey,
-    ).map((option) => ({
-      key: optionTargetKey(option),
-      label: optionTargetLabel(option) || "Semua Posisi",
-    }));
-  }, [allOptions, selectedMode]);
+  const targetItems = useMemo<PickItem[]>(
+    () =>
+      uniqueBy(
+        allOptions.filter((option) => optionMatchesMode(option, selectedMode)),
+        optionTargetKey,
+      ).map((option) => ({
+        key: optionTargetKey(option),
+        label: optionTargetLabel(option) || "Semua Posisi",
+      })),
+    [allOptions, selectedMode],
+  );
 
-  const outputItems = useMemo<PickItem[]>(() => {
-    return uniqueBy(
-      allOptions.filter(
-        (option) =>
-          optionMatchesMode(option, selectedMode) && optionTargetKey(option) === selectedTarget,
-      ),
-      optionOutputKey,
-    ).map((option) => ({ key: optionOutputKey(option), label: optionOutputLabel(option) }));
-  }, [allOptions, selectedMode, selectedTarget]);
+  const outputItems = useMemo<PickItem[]>(
+    () =>
+      uniqueBy(
+        allOptions.filter(
+          (option) =>
+            optionMatchesMode(option, selectedMode) && optionTargetKey(option) === selectedTarget,
+        ),
+        optionOutputKey,
+      ).map((option) => ({ key: optionOutputKey(option), label: optionOutputLabel(option) })),
+    [allOptions, selectedMode, selectedTarget],
+  );
 
   const selectedRows = useMemo(
     () => rows.filter((row) => selected.has(marketKey(row))),
     [rows, selected],
   );
+
   const shareText = useMemo(
     () =>
       investSelected
@@ -341,6 +355,7 @@ export function SharePrediksiClient() {
         : buildShareText(selectedOption, selectedRows, selectedSeparator || SEPARATOR),
     [investSelected, selectedOption, selectedRows, selectedSeparator],
   );
+
   const previewText = useMemo(
     () =>
       investSelected
@@ -353,6 +368,7 @@ export function SharePrediksiClient() {
     let active = true;
     setLoadingMarkets(true);
     setError("");
+
     fetchJson<MarketOption[]>("/api/markets")
       .then((items) => {
         if (!active) return;
@@ -364,6 +380,7 @@ export function SharePrediksiClient() {
       .finally(() => {
         if (active) setLoadingMarkets(false);
       });
+
     return () => {
       active = false;
     };
@@ -372,6 +389,7 @@ export function SharePrediksiClient() {
   useEffect(() => {
     let active = true;
     setLoadingOptions(true);
+
     fetchJson<ShareOption[]>("/api/share-predictions/options")
       .then((items) => {
         if (!active) return;
@@ -383,6 +401,7 @@ export function SharePrediksiClient() {
       .finally(() => {
         if (active) setLoadingOptions(false);
       });
+
     return () => {
       active = false;
     };
@@ -394,6 +413,7 @@ export function SharePrediksiClient() {
     let active = true;
     setLoadingInvestOverview(true);
     setError("");
+
     fetchJson<InvestShareOverviewResponse>("/api/invest")
       .then((data) => {
         if (active) setInvestOverview(data);
@@ -413,34 +433,20 @@ export function SharePrediksiClient() {
   function resetResult() {
     setRows([]);
     setCopied(false);
+    setNotice("");
   }
 
   function chooseOption(next: ShareOption) {
-    const changesInvestContext =
-      isInvestShareOption(selectedOption) ||
-      isInvestShareOption(next) ||
-      optionTargetKey(selectedOption || next) !== optionTargetKey(next);
-
     setSelectedOption(next);
-    resetResult();
+    setSelected(new Set());
+    setMarketSearch("");
     setError("");
-
-    if (changesInvestContext) {
-      setSelected(new Set());
-      setMarketSearch("");
-      return;
-    }
-
-    if (isRekapBadge(next) && selected.size > REKAP_MAX_MARKETS) {
-      setSelected((current) => new Set(Array.from(current).slice(0, REKAP_MAX_MARKETS)));
-      setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
-    }
+    resetResult();
   }
 
   function chooseJenis(key: string) {
     const next = firstSorted(allOptions.filter((option) => optionMatchesMode(option, key)));
-    if (!next) return;
-    chooseOption(next);
+    if (next) chooseOption(next);
   }
 
   function chooseTarget(key: string) {
@@ -449,8 +455,7 @@ export function SharePrediksiClient() {
         (option) => optionMatchesMode(option, selectedMode) && optionTargetKey(option) === key,
       ),
     );
-    if (!next) return;
-    chooseOption(next);
+    if (next) chooseOption(next);
   }
 
   function chooseOutput(key: string) {
@@ -462,8 +467,7 @@ export function SharePrediksiClient() {
           optionOutputKey(option) === key,
       ),
     );
-    if (!next) return;
-    chooseOption(next);
+    if (next) chooseOption(next);
   }
 
   function chooseSeparator(value: string) {
@@ -474,25 +478,22 @@ export function SharePrediksiClient() {
   function toggle(row: ShareRow) {
     const key = marketKey(row);
     if (!key) return;
+
     resetResult();
     setError("");
-
-    if (investSelected) {
-      setSelected((current) => (current.has(key) ? new Set() : new Set([key])));
-      return;
-    }
-
     setSelected((current) => {
       const next = new Set(current);
       if (next.has(key)) {
         next.delete(key);
-      } else {
-        if (rekapBadgeSelected && next.size >= REKAP_MAX_MARKETS) {
-          setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
-          return next;
-        }
-        next.add(key);
+        return next;
       }
+
+      if (rekapBadgeSelected && next.size >= REKAP_MAX_MARKETS) {
+        setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
+        return next;
+      }
+
+      next.add(key);
       return next;
     });
   }
@@ -500,11 +501,7 @@ export function SharePrediksiClient() {
   function selectQuick() {
     resetResult();
     setError("");
-    const limit = investSelected
-      ? INVEST_SHARE_MAX_MARKETS
-      : rekapBadgeSelected
-        ? REKAP_MAX_MARKETS
-        : filteredMarkets.length;
+    const limit = rekapBadgeSelected ? REKAP_MAX_MARKETS : filteredMarkets.length;
     setSelected(new Set(filteredMarkets.slice(0, limit).map(marketKey).filter(Boolean)));
   }
 
@@ -527,18 +524,16 @@ export function SharePrediksiClient() {
       setError("Rekomendasi INVEST belum tersedia.");
       return;
     }
+
     setError("");
     setStep(2);
   }
 
-  async function generateInvest() {
-    const marketId = selectedIds[0];
-    if (!marketId) throw new Error("Pilih satu pasaran untuk Share INVEST.");
-
+  async function generateInvestMarket(marketId: string): Promise<InvestShareRow> {
     const market = findInvestShareMarket(investOverview, marketId);
     const topCombo = findInvestShareCombo(market, activeInvestPair);
     if (!market || !topCombo) {
-      throw new Error("Kandidat INVEST aktif tidak ditemukan untuk pasaran ini.");
+      throw new Error("Kandidat INVEST aktif tidak ditemukan.");
     }
 
     const endpoint =
@@ -547,6 +542,7 @@ export function SharePrediksiClient() {
       activeInvestPair === "3d"
         ? { marketId, filters: topCombo.combo.filters }
         : { marketId, pair: activeInvestPair, filters: topCombo.combo.filters };
+
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -562,8 +558,11 @@ export function SharePrediksiClient() {
       : [];
     if (!lines.length) throw new Error("Angka jadi INVEST kosong.");
 
-    const sourceRow = selectedMarketRows[0];
-    const shareRow: InvestShareRow = {
+    const sourceRow = selectedMarketRows.find(
+      (row) => String(row.marketId || "").trim().toLowerCase() === marketId.trim().toLowerCase(),
+    );
+
+    return {
       marketId,
       marketName: market.marketName || sourceRow?.marketName || marketId,
       updatedAt: null,
@@ -579,8 +578,26 @@ export function SharePrediksiClient() {
         wins15: topCombo.combo.avgWins15,
       },
     };
+  }
 
-    setRows([shareRow]);
+  async function generateInvest(): Promise<InvestGenerationResult> {
+    const generatedRows: InvestShareRow[] = [];
+    const failedMarkets: string[] = [];
+
+    for (const marketId of selectedIds) {
+      try {
+        generatedRows.push(await generateInvestMarket(marketId));
+      } catch {
+        const sourceRow = selectedMarketRows.find(
+          (row) => String(row.marketId || "").trim().toLowerCase() === marketId.trim().toLowerCase(),
+        );
+        failedMarkets.push(
+          marketLabel(sourceRow || { marketId, marketName: marketId, updatedAt: null, order: null }),
+        );
+      }
+    }
+
+    return { rows: generatedRows, failedMarkets };
   }
 
   async function generate() {
@@ -589,18 +606,23 @@ export function SharePrediksiClient() {
     if (isRekapBadge(selectedOption) && selectedIds.length > REKAP_MAX_MARKETS) {
       return setError(`Rekap Badge maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`);
     }
-    if (investSelected && selectedIds.length > INVEST_SHARE_MAX_MARKETS) {
-      return setError("Share INVEST hanya satu pasaran sekali generate.");
-    }
 
     setLoadingRows(true);
     setRows([]);
     setCopied(false);
     setError("");
+    setNotice("");
 
     try {
       if (investSelected) {
-        await generateInvest();
+        const result = await generateInvest();
+        if (!result.rows.length) throw new Error("Tidak ada Share INVEST yang berhasil dibuat.");
+        setRows(result.rows);
+        if (result.failedMarkets.length) {
+          setNotice(
+            `${result.rows.length} pasaran berhasil. Gagal: ${result.failedMarkets.join(", ")}.`,
+          );
+        }
         setStep(3);
         return;
       }
@@ -624,9 +646,7 @@ export function SharePrediksiClient() {
         targetPair: selectedOption.targetPair,
         analysisScope: selectedOption.analysisScope,
       });
-      const data = await fetchJson<ShareResponse>(
-        `/api/share-predictions?${params.toString()}`,
-      );
+      const data = await fetchJson<ShareResponse>(`/api/share-predictions?${params.toString()}`);
       setRows(orderRowsByIds(data.rows || [], selectedIds));
       setStep(3);
     } catch (err) {
@@ -661,26 +681,27 @@ export function SharePrediksiClient() {
         .filter(Boolean)
         .join(" · ")
     : "Pilih prediksi";
+
   const fallback = selected.size
     ? "Belum ada hasil. Kembali ke pilihan pasaran lalu tekan Generate."
     : "Belum ada pasaran yang dipilih.";
-  const countLabel = investSelected
-    ? `${selected.size}/${INVEST_SHARE_MAX_MARKETS}`
-    : rekapBadgeSelected
-      ? `${selected.size}/${REKAP_MAX_MARKETS}`
-      : `${selected.size}`;
-  const quickLabel = investSelected
-    ? "Pilih Pertama"
-    : rekapBadgeSelected
-      ? `Pilih ${REKAP_MAX_MARKETS} Pertama`
-      : marketSearch
-        ? "Pilih Hasil Cari"
-        : "Pilih Semua";
+
+  const countLabel = rekapBadgeSelected
+    ? `${selected.size}/${REKAP_MAX_MARKETS}`
+    : `${selected.size}`;
+
+  const quickLabel = rekapBadgeSelected
+    ? `Pilih ${REKAP_MAX_MARKETS} Pertama`
+    : marketSearch
+      ? "Pilih Hasil Cari"
+      : "Pilih Semua";
+
   const description = investSelected
-    ? "Bagikan angka jadi dari kombinasi INVEST ranking aktif. Satu pasaran sekali generate."
+    ? "Pilih seluruh pasaran yang diinginkan, lalu sistem membuat Share INVEST secara otomatis."
     : rekapBadgeSelected
       ? `Maksimal ${REKAP_MAX_MARKETS} pasaran sekali generate.`
       : "Pilih format, pasaran, lalu buat teks siap dibagikan.";
+
   const canOpenResult = Boolean(shareText || rows.length);
   const loadingMarketChoices = loadingMarkets || (investSelected && loadingInvestOverview);
   const emptyMarketText = investSelected
@@ -812,6 +833,12 @@ export function SharePrediksiClient() {
         </div>
       ) : null}
 
+      {notice ? (
+        <div className="accent-bg-soft accent-border mb-4 rounded-2xl border p-3.5 text-center text-xs font-bold text-text-muted">
+          {notice}
+        </div>
+      ) : null}
+
       {step === 1 ? (
         <section className="animate-soft-pop depth-1 rounded-3xl border p-4">
           <SectionHeading
@@ -843,11 +870,7 @@ export function SharePrediksiClient() {
           <button
             type="button"
             onClick={openMarketsStep}
-            disabled={
-              !selectedOption ||
-              loadingOptions ||
-              (investSelected && loadingInvestOverview)
-            }
+            disabled={!selectedOption || loadingOptions || (investSelected && loadingInvestOverview)}
             className="pressable depth-accent accent-border accent-text mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-black uppercase tracking-wide disabled:opacity-45"
           >
             {investSelected && loadingInvestOverview ? (
@@ -967,7 +990,7 @@ export function SharePrediksiClient() {
           <SectionHeading
             number={3}
             title="Hasil & Bagikan"
-            subtitle={`${selectedTitle} · ${selected.size} pasaran`}
+            subtitle={`${selectedTitle} · ${rows.length || selected.size} pasaran`}
           />
 
           <pre className="depth-2 max-h-[52svh] min-h-[180px] overflow-y-auto whitespace-pre-wrap break-words rounded-2xl border p-4 font-mono text-[12px] font-bold leading-6 text-text">
