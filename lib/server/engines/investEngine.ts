@@ -1,15 +1,19 @@
 import "server-only";
-import { createAdminClient } from "@/lib/server/supabase-admin";
 import {
+  MAX_LOSS_STREAK_ALLOWED,
   MIN_WINS_15,
   MIN_WINS_LAST_5,
-  MAX_LOSS_STREAK_ALLOWED,
 } from "@/lib/analysis/statistics";
 import {
   INVEST_CATALOG,
   type InvestCombo,
   type InvestFilter,
 } from "./investCatalog";
+import {
+  fetchWinningMarketStatistics,
+  groupMarketStatistics,
+  type MarketStatisticRow as StatRow,
+} from "./marketStatisticsPagination";
 
 export type InvestPair = "depan" | "tengah" | "belakang";
 export type InvestRecommendationStatus = "UTAMA" | "ROTASI" | "PANAS";
@@ -39,24 +43,6 @@ const BBFS_SCOPE: Record<InvestPair, string> = {
   tengah: "2d_tengah",
   belakang: "2d_belakang",
 };
-
-interface StatRow {
-  market_id: string;
-  market_name?: string | null;
-  group_key: string;
-  mode: string;
-  position: string | null;
-  param: number;
-  target_pair: string | null;
-  analysis_scope: string | null;
-  wins_15: number;
-  wins_last_5: number;
-  max_loss_streak: number;
-  score: number | null;
-}
-
-const STAT_SELECT =
-  "market_id,market_name,group_key,mode,position,param,target_pair,analysis_scope,wins_15,wins_last_5,max_loss_streak,score";
 
 function filterDescriptor(f: InvestFilter, pair: InvestPair) {
   const pos = PAIR_POSITIONS[pair];
@@ -104,7 +90,11 @@ function rowKey(r: StatRow) {
 }
 
 function isWinning(r: StatRow) {
-  return r.wins_15 >= MIN_WINS_15 && r.wins_last_5 >= MIN_WINS_LAST_5 && r.max_loss_streak <= MAX_LOSS_STREAK_ALLOWED;
+  return (
+    r.wins_15 >= MIN_WINS_15 &&
+    r.wins_last_5 >= MIN_WINS_LAST_5 &&
+    r.max_loss_streak <= MAX_LOSS_STREAK_ALLOWED
+  );
 }
 
 function buildWinningMap(rows: StatRow[]) {
@@ -275,33 +265,10 @@ export function evaluateMarketInvest(
 }
 
 export async function loadInvestOverview(catalog: InvestCombo[] = INVEST_CATALOG): Promise<InvestMarketResult[]> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("market_statistics")
-    .select(STAT_SELECT)
-    .eq("is_active", true)
-    .gte("wins_15", MIN_WINS_15)
-    .gte("wins_last_5", MIN_WINS_LAST_5)
-    .lte("max_loss_streak", MAX_LOSS_STREAK_ALLOWED)
-    .limit(5000);
-
-  if (error) throw error;
-
-  const rows = (data || []) as StatRow[];
-  const byMarket = new Map<string, StatRow[]>();
-  const names = new Map<string, string>();
-  for (const r of rows) {
-    if (!r.market_id) continue;
-    let bucket = byMarket.get(r.market_id);
-    if (!bucket) {
-      bucket = [];
-      byMarket.set(r.market_id, bucket);
-    }
-    bucket.push(r);
-    if (r.market_name) names.set(r.market_id, r.market_name);
-  }
-
+  const rows = await fetchWinningMarketStatistics();
+  const { byMarket, names } = groupMarketStatistics(rows);
   const results: InvestMarketResult[] = [];
+
   for (const [marketId, marketRows] of byMarket) {
     results.push(evaluateMarketInvest(marketId, names.get(marketId) || marketId, marketRows, catalog));
   }
@@ -310,21 +277,11 @@ export async function loadInvestOverview(catalog: InvestCombo[] = INVEST_CATALOG
   return results;
 }
 
-export async function loadInvestForMarket(marketId: string, catalog: InvestCombo[] = INVEST_CATALOG): Promise<InvestMarketResult> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("market_statistics")
-    .select(STAT_SELECT)
-    .eq("market_id", marketId)
-    .eq("is_active", true)
-    .gte("wins_15", MIN_WINS_15)
-    .gte("wins_last_5", MIN_WINS_LAST_5)
-    .lte("max_loss_streak", MAX_LOSS_STREAK_ALLOWED)
-    .limit(2000);
-
-  if (error) throw error;
-
-  const rows = (data || []) as StatRow[];
+export async function loadInvestForMarket(
+  marketId: string,
+  catalog: InvestCombo[] = INVEST_CATALOG,
+): Promise<InvestMarketResult> {
+  const rows = await fetchWinningMarketStatistics(marketId);
   const name = rows.find((r) => r.market_name)?.market_name || marketId;
   return evaluateMarketInvest(marketId, name, rows, catalog);
 }
