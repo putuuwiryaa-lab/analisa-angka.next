@@ -1,6 +1,6 @@
 import { createElement } from "react";
-import { SharePrediksiClient } from "./SharePrediksiClient";
+import { SharePrediksiHubClient } from "./SharePrediksiHubClient";
 
 export default function SharePrediksiPage() {
-  return createElement(SharePrediksiClient);
+  return createElement(SharePrediksiHubClient);
 }
