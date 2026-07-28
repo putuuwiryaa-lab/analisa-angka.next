@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CustomFocus, TargetPair } from "@/lib/analysis/customDigit";
 import { analysisCacheKey, readAnalysisCache, writeAnalysisCache } from "@/lib/analysis/sessionCache";
@@ -45,22 +45,26 @@ export function useAnalysisController({ type, marketId }: { type: string; market
   const urlScope = searchParams.has("analysis_scope") ? parseAnalysisScope(searchParams.get("analysis_scope")) : null;
   const urlTargetPair = searchParams.has("target_pair") ? parseTargetPair(searchParams.get("target_pair")) : null;
   const urlCustomFocus = parseCustomFocus(searchParams.get("custom_focus"));
+  const initialParam = autoMode && Number.isFinite(autoParam) && autoParam > 0 ? autoParam : type === "rekap" ? 3 : urlParam;
 
-  const initialFlags = buildAnalysisControllerFlags({
-    type,
-    param: autoMode && Number.isFinite(autoParam) && autoParam > 0 ? autoParam : type === "rekap" ? 3 : urlParam,
-    targetPair: null,
-    analysisScope: null,
-    customFocus: urlCustomFocus,
-    loading: false,
-    result: null,
-    autoMode,
-  });
+  const initialFlags = useMemo(
+    () =>
+      buildAnalysisControllerFlags({
+        type,
+        param: initialParam,
+        targetPair: null,
+        analysisScope: null,
+        customFocus: urlCustomFocus,
+        loading: false,
+        result: null,
+        autoMode,
+      }),
+    [autoMode, initialParam, type, urlCustomFocus],
+  );
 
   const isAI = initialFlags.isAI;
   const isBBFS = initialFlags.isBBFS;
   const needsTargetPair = initialFlags.needsTargetPair;
-  const initialParam = autoMode && Number.isFinite(autoParam) && autoParam > 0 ? autoParam : type === "rekap" ? 3 : urlParam;
 
   const [param, setParam] = useState<number | null>(initialParam);
   const [targetPair, setTargetPair] = useState<TargetPair | null>(
@@ -95,152 +99,187 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     customOffShioCountByPair,
   } = rekap.state;
 
-  const flags = buildAnalysisControllerFlags({
-    type,
-    param,
-    targetPair,
-    analysisScope,
-    customFocus,
-    loading,
-    result,
-    autoMode,
-  });
+  const flags = useMemo(
+    () =>
+      buildAnalysisControllerFlags({
+        type,
+        param,
+        targetPair,
+        analysisScope,
+        customFocus,
+        loading,
+        result,
+        autoMode,
+      }),
+    [analysisScope, autoMode, customFocus, loading, param, result, targetPair, type],
+  );
 
-  const pushFlowUrl = (state: FlowUrlState) => {
-    const params = new URLSearchParams();
-    if (state.analysisScope && state.analysisScope !== "default") params.set("analysis_scope", state.analysisScope);
-    if (state.targetPair) params.set("target_pair", state.targetPair);
-    if (state.customFocus) params.set("custom_focus", state.customFocus);
-    if (state.param && state.param > 0) params.set("param", String(state.param));
-    if (state.result) params.set("result", "1");
-    const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  };
+  const pushFlowUrl = useCallback(
+    (state: FlowUrlState) => {
+      const params = new URLSearchParams();
+      if (state.analysisScope && state.analysisScope !== "default") params.set("analysis_scope", state.analysisScope);
+      if (state.targetPair) params.set("target_pair", state.targetPair);
+      if (state.customFocus) params.set("custom_focus", state.customFocus);
+      if (state.param && state.param > 0) params.set("param", String(state.param));
+      if (state.result) params.set("result", "1");
+      const query = params.toString();
+      router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router],
+  );
 
-  const resetBeforeAnalyze = () => {
+  const resetBeforeAnalyze = useCallback(() => {
     setLoading(true);
     setError("");
     setDetailValidationOpen(false);
     setAngkaJadiOpen(false);
-  };
+  }, []);
 
-  const postAnalyze: PostAnalyze = (
-    analysisType,
-    data,
-    analysisParam,
-    analysisTargetPair = "belakang",
-    scope = "default",
-  ) =>
-    postAnalyzeRequest({
-      type: analysisType,
+  const postAnalyze = useCallback<PostAnalyze>(
+    (
+      analysisType,
       data,
-      param: analysisParam,
-      targetPair: analysisTargetPair,
-      scope,
-    });
+      analysisParam,
+      analysisTargetPair = "belakang",
+      scope = "default",
+    ) =>
+      postAnalyzeRequest({
+        type: analysisType,
+        data,
+        param: analysisParam,
+        targetPair: analysisTargetPair,
+        scope,
+      }),
+    [],
+  );
 
-  const handleTargetPairSelect = (pair: TargetPair) => {
-    setTargetPair(pair);
-    setParam(0);
-    setResult(null);
-    setError("");
-    pushFlowUrl({ targetPair: pair });
-  };
+  const handleTargetPairSelect = useCallback(
+    (pair: TargetPair) => {
+      setTargetPair(pair);
+      setParam(0);
+      setResult(null);
+      setError("");
+      pushFlowUrl({ targetPair: pair });
+    },
+    [pushFlowUrl],
+  );
 
-  const handleScopeSelect = (scope: Exclude<AnalysisScope, "default">) => {
-    const pair = targetPairFromScope(scope);
-    setAnalysisScope(scope);
-    setTargetPair(pair);
-    setParam(0);
-    setResult(null);
-    setError("");
-    pushFlowUrl({ analysisScope: scope, targetPair: pair });
-  };
+  const handleScopeSelect = useCallback(
+    (scope: Exclude<AnalysisScope, "default">) => {
+      const pair = targetPairFromScope(scope);
+      setAnalysisScope(scope);
+      setTargetPair(pair);
+      setParam(0);
+      setResult(null);
+      setError("");
+      pushFlowUrl({ analysisScope: scope, targetPair: pair });
+    },
+    [pushFlowUrl],
+  );
 
-  const resetScope = () => {
+  const resetScope = useCallback(() => {
     setAnalysisScope(null);
     setParam(0);
     setResult(null);
     setError("");
     pushFlowUrl({});
-  };
+  }, [pushFlowUrl]);
 
-  const handleTargetPairReset = () => {
+  const handleTargetPairReset = useCallback(() => {
     setTargetPair(null);
     setParam(0);
     setResult(null);
     setError("");
     pushFlowUrl({});
-  };
+  }, [pushFlowUrl]);
 
-  const handleCustomFocusReset = () => {
+  const handleCustomFocusReset = useCallback(() => {
     rekap.setters.setCustomFocus(null);
     rekap.handlers.resetCustomRekapSelections();
     setResult(null);
     setError("");
     pushFlowUrl({});
-  };
+  }, [pushFlowUrl, rekap.handlers.resetCustomRekapSelections, rekap.setters.setCustomFocus]);
 
-  const selectCustomFocus = (focus: CustomFocus) => {
-    rekap.setters.setCustomFocus(focus);
-    rekap.handlers.resetCustomRekapSelections();
-    setResult(null);
-    setError("");
-    pushFlowUrl({ customFocus: focus, param: 3 });
-  };
+  const selectCustomFocus = useCallback(
+    (focus: CustomFocus) => {
+      rekap.setters.setCustomFocus(focus);
+      rekap.handlers.resetCustomRekapSelections();
+      setResult(null);
+      setError("");
+      pushFlowUrl({ customFocus: focus, param: 3 });
+    },
+    [pushFlowUrl, rekap.handlers.resetCustomRekapSelections, rekap.setters.setCustomFocus],
+  );
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (loading) return;
     if (typeof window !== "undefined" && window.history.length > 1) router.back();
     else router.push(`/analyze/${encodeURIComponent(marketId)}`);
-  };
+  }, [loading, marketId, router]);
 
-  const handleAnalyze = async (selectedParam: number, selectedTargetPair?: TargetPair) => {
-    const selectedScope = analysisScope || "default";
-    if (isAI && !analysisScope) return setError("Pilih jenis Angka Ikut dulu.");
-    if (isBBFS && selectedScope === "default") return setError("Pilih jenis BBFS dulu.");
+  const handleAnalyze = useCallback(
+    async (selectedParam: number, selectedTargetPair?: TargetPair) => {
+      const selectedScope = analysisScope || "default";
+      if (isAI && !analysisScope) return setError("Pilih jenis Angka Ikut dulu.");
+      if (isBBFS && selectedScope === "default") return setError("Pilih jenis BBFS dulu.");
 
-    const requestScope = requestScopeForAnalyze(type, selectedScope);
-    const finalTargetPair =
-      isBBFS || isAI ? targetPairFromScope(selectedScope) : selectedTargetPair || targetPair || "belakang";
+      const requestScope = requestScopeForAnalyze(type, selectedScope);
+      const finalTargetPair =
+        isBBFS || isAI ? targetPairFromScope(selectedScope) : selectedTargetPair || targetPair || "belakang";
 
-    if (needsTargetPair && !finalTargetPair) return setError("Pilih fokus 2D dulu.");
+      if (needsTargetPair && !finalTargetPair) return setError("Pilih fokus 2D dulu.");
 
-    setTargetPair(finalTargetPair);
-    setParam(selectedParam);
-    setError("");
-    pushFlowUrl({ analysisScope: selectedScope, targetPair: finalTargetPair, param: selectedParam, result: true });
+      setTargetPair(finalTargetPair);
+      setParam(selectedParam);
+      setError("");
+      pushFlowUrl({ analysisScope: selectedScope, targetPair: finalTargetPair, param: selectedParam, result: true });
 
-    const cacheKey = analysisCacheKey({
+      const cacheKey = analysisCacheKey({
+        marketId,
+        type,
+        param: selectedParam,
+        targetPair: finalTargetPair,
+        analysisScope: selectedScope,
+      });
+
+      const cached = result ? null : readAnalysisCache(cacheKey);
+      if (cached) {
+        setResult(cached);
+        setDetailValidationOpen(false);
+        setAngkaJadiOpen(false);
+        return;
+      }
+
+      resetBeforeAnalyze();
+
+      try {
+        const data = await getMarketData();
+        const nextResult = await postAnalyze(type, data, selectedParam, finalTargetPair, requestScope);
+        setResult(nextResult);
+        writeAnalysisCache(cacheKey, nextResult);
+        setDetailValidationOpen(false);
+      } catch (e: any) {
+        setError(e.message || "Error koneksi server");
+      }
+
+      setLoading(false);
+    },
+    [
+      analysisScope,
+      getMarketData,
+      isAI,
+      isBBFS,
       marketId,
+      needsTargetPair,
+      postAnalyze,
+      pushFlowUrl,
+      resetBeforeAnalyze,
+      result,
+      targetPair,
       type,
-      param: selectedParam,
-      targetPair: finalTargetPair,
-      analysisScope: selectedScope,
-    });
-
-    const cached = result ? null : readAnalysisCache(cacheKey);
-    if (cached) {
-      setResult(cached);
-      setDetailValidationOpen(false);
-      setAngkaJadiOpen(false);
-      return;
-    }
-
-    resetBeforeAnalyze();
-
-    try {
-      const data = await getMarketData();
-      const nextResult = await postAnalyze(type, data, selectedParam, finalTargetPair, requestScope);
-      setResult(nextResult);
-      writeAnalysisCache(cacheKey, nextResult);
-      setDetailValidationOpen(false);
-    } catch (e: any) {
-      setError(e.message || "Error koneksi server");
-    }
-
-    setLoading(false);
-  };
+    ],
+  );
 
   useEffect(() => {
     if (autoMode) return;
@@ -307,24 +346,27 @@ export function useAnalysisController({ type, marketId }: { type: string; market
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoMode, autoParam, autoTargetPair, type]);
 
-  const runCustomGenerate = async (genState: any) => {
-    if (!genState.customFocus) return setError("Pilih jenis rekap dulu.");
-    if (!hasAnyCustomFilter(genState)) return setError("Pilih minimal satu filter dulu.");
+  const runCustomGenerate = useCallback(
+    async (genState: any) => {
+      if (!genState.customFocus) return setError("Pilih jenis rekap dulu.");
+      if (!hasAnyCustomFilter(genState)) return setError("Pilih minimal satu filter dulu.");
 
-    pushFlowUrl({ customFocus: genState.customFocus, param: 3, result: true });
-    resetBeforeAnalyze();
+      pushFlowUrl({ customFocus: genState.customFocus, param: 3, result: true });
+      resetBeforeAnalyze();
 
-    try {
-      const data = await getMarketData();
-      setResult(await runCustomDigitGenerate(postAnalyze, data, genState));
-    } catch (e: any) {
-      setError(e.message || "Gagal generate custom digit");
-    }
+      try {
+        const data = await getMarketData();
+        setResult(await runCustomDigitGenerate(postAnalyze, data, genState));
+      } catch (e: any) {
+        setError(e.message || "Gagal generate custom digit");
+      }
 
-    setLoading(false);
-  };
+      setLoading(false);
+    },
+    [getMarketData, postAnalyze, pushFlowUrl, resetBeforeAnalyze],
+  );
 
-  const handleCustomDigitGenerate = () => runCustomGenerate(rekap.state);
+  const handleCustomDigitGenerate = useCallback(() => runCustomGenerate(rekap.state), [rekap.state, runCustomGenerate]);
 
   useEffect(() => {
     if (type !== "rekap" || !investPreset || investStartedRef.current) return;

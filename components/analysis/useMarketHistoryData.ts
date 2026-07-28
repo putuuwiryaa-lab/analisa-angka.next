@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   MARKETS_STALE_TIME,
@@ -9,7 +10,7 @@ import {
 export function useMarketHistoryData(marketId: string) {
   const queryClient = useQueryClient();
 
-  const getMarketData = async () => {
+  const getMarketData = useCallback(async () => {
     const history = await queryClient.fetchQuery<MarketHistoryResponse>({
       queryKey: marketHistoryQueryKey(marketId),
       queryFn: () => fetchMarketHistory(marketId),
@@ -23,7 +24,7 @@ export function useMarketHistoryData(marketId: string) {
     }
 
     return history.data;
-  };
+  }, [marketId, queryClient]);
 
-  return { getMarketData };
+  return useMemo(() => ({ getMarketData }), [getMarketData]);
 }
