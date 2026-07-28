@@ -42,8 +42,8 @@ function jumlahTarget(result: string, targetPair: TargetPair = 'belakang') {
 }
 
 function aiThresholds(scope: AnalysisScope = 'default'): Record<number, number> {
-  if (scope === '4d') return { 3: 12, 4: 13, 5: 14, 6: 14 };
-  if (scope === '3d') return { 3: 11, 4: 12, 5: 13, 6: 14 };
+  if (scope === '4d') return { 3: 13, 4: 14, 5: 14, 6: 14 };
+  if (scope === '3d') return { 3: 12, 4: 13, 5: 14, 6: 14 };
   return { 3: 11, 4: 12, 5: 13, 6: 14 };
 }
 
