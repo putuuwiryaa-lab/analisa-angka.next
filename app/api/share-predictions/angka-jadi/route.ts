@@ -8,6 +8,7 @@ import {
   sanitizeShareAngkaJadiMarketIds,
   shareAngkaJadiMethodCount,
 } from "@/lib/server/engines/shareAngkaJadi";
+import { attachShareMethodDetails } from "@/lib/server/engines/shareMethodDetails";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
     }
 
     const result = await generateShareAngkaJadiBatch(focus, config, marketIds);
-    return NextResponse.json({ success: true, ...result }, { headers: NO_STORE_HEADERS });
+    const rows = await attachShareMethodDetails(result.rows, focus, config);
+    return NextResponse.json({ success: true, ...result, rows }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal membuat rekap angka jadi.";
     return NextResponse.json(
