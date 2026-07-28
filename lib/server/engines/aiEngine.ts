@@ -16,6 +16,8 @@ const AI_EKOR_MAIN: Record<number, number[]> = {
   9: [1, 5, 7, 0, 2, 6],
 };
 
+const AI_RANKING_WINDOW = 17;
+
 type AiEngineOptions = {
   targetIndexes?: number[];
   thresholds?: Record<number, number>;
@@ -140,7 +142,8 @@ export function runAiValidation(
 
 /**
  * Bagian RINGAN — seleksi N digit dari vote yang SUDAH dihitung.
- * freq/recency + penyeimbang ganjil-genap & besar-kecil + tie-break FNV deterministik.
+ * Semua jumlah output memakai window ranking 17 result yang sama agar
+ * AI 2D, 4D, dan 6D mengikuti satu urutan seleksi yang konsisten.
  */
 export function selectAiDigits(
   D: string[],
@@ -148,10 +151,8 @@ export function selectAiDigits(
   param: number = 6,
   targetIndexes: number[] = [2, 3],
 ): number[] {
-  const U = D.slice(-17);
-
-  const windowSize = Math.max(1, Math.min(param, U.length));
-  const recentWindow = U.slice(-windowSize);
+  const U = D.slice(-AI_RANKING_WINDOW);
+  const recentWindow = U;
 
   const freq: Record<number, number> = {};
   const latest: Record<number, number> = {};
@@ -167,7 +168,7 @@ export function selectAiDigits(
     });
   });
 
-  const latestResult = recentWindow[recentWindow.length - 1] || U[U.length - 1] || "0000";
+  const latestResult = recentWindow[recentWindow.length - 1] || "0000";
   targetIndexes.forEach((index) => {
     latest[parseInt(latestResult[index])] = 1;
   });
