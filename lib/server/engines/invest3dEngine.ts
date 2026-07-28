@@ -1,9 +1,8 @@
 import "server-only";
-import { createAdminClient } from "@/lib/server/supabase-admin";
 import {
+  MAX_LOSS_STREAK_ALLOWED,
   MIN_WINS_15,
   MIN_WINS_LAST_5,
-  MAX_LOSS_STREAK_ALLOWED,
 } from "@/lib/analysis/statistics";
 import {
   INVEST_3D_CATALOG,
@@ -13,23 +12,13 @@ import {
   type Invest3DCombo,
   type Invest3DFilter,
 } from "./invest3dCatalog";
+import {
+  fetchWinningMarketStatistics,
+  groupMarketStatistics,
+  type MarketStatisticRow as StatRow,
+} from "./marketStatisticsPagination";
 
 export type Invest3DRecommendationStatus = "UTAMA" | "ROTASI" | "PANAS";
-
-interface StatRow {
-  market_id: string;
-  market_name?: string | null;
-  group_key: string;
-  mode: string;
-  position: string | null;
-  param: number;
-  target_pair: string | null;
-  analysis_scope: string | null;
-  wins_15: number;
-  wins_last_5: number;
-  max_loss_streak: number;
-  score: number | null;
-}
 
 type StatDescriptor = {
   group_key: string;
@@ -39,9 +28,6 @@ type StatDescriptor = {
   target_pair: string;
   analysis_scope: string;
 };
-
-const STAT_SELECT =
-  "market_id,market_name,group_key,mode,position,param,target_pair,analysis_scope,wins_15,wins_last_5,max_loss_streak,score";
 
 function filterDescriptor(filter: Invest3DFilter): StatDescriptor {
   switch (filter.kind) {
@@ -320,39 +306,17 @@ export function evaluateMarketInvest3D(
   };
 }
 
-function groupRowsByMarket(rows: StatRow[]) {
-  const byMarket = new Map<string, StatRow[]>();
-  const names = new Map<string, string>();
-  for (const row of rows) {
-    if (!row.market_id) continue;
-    const bucket = byMarket.get(row.market_id) || [];
-    bucket.push(row);
-    byMarket.set(row.market_id, bucket);
-    if (row.market_name) names.set(row.market_id, row.market_name);
-  }
-  return { byMarket, names };
-}
-
 export async function loadInvest3DOverview(
   catalog: Invest3DCombo[] = INVEST_3D_CATALOG,
 ): Promise<Invest3DMarketResult[]> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("market_statistics")
-    .select(STAT_SELECT)
-    .eq("is_active", true)
-    .gte("wins_15", MIN_WINS_15)
-    .gte("wins_last_5", MIN_WINS_LAST_5)
-    .lte("max_loss_streak", MAX_LOSS_STREAK_ALLOWED)
-    .limit(5000);
-
-  if (error) throw error;
-
-  const { byMarket, names } = groupRowsByMarket((data || []) as StatRow[]);
+  const rows = await fetchWinningMarketStatistics();
+  const { byMarket, names } = groupMarketStatistics(rows);
   const results: Invest3DMarketResult[] = [];
+
   for (const [marketId, marketRows] of byMarket) {
     results.push(evaluateMarketInvest3D(marketId, names.get(marketId) || marketId, marketRows, catalog));
   }
+
   results.sort((a, b) => Number(b.hasAny) - Number(a.hasAny) || a.marketName.localeCompare(b.marketName));
   return results;
 }
@@ -361,20 +325,7 @@ export async function loadInvest3DForMarket(
   marketId: string,
   catalog: Invest3DCombo[] = INVEST_3D_CATALOG,
 ): Promise<Invest3DMarketResult> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("market_statistics")
-    .select(STAT_SELECT)
-    .eq("market_id", marketId)
-    .eq("is_active", true)
-    .gte("wins_15", MIN_WINS_15)
-    .gte("wins_last_5", MIN_WINS_LAST_5)
-    .lte("max_loss_streak", MAX_LOSS_STREAK_ALLOWED)
-    .limit(2000);
-
-  if (error) throw error;
-
-  const rows = (data || []) as StatRow[];
+  const rows = await fetchWinningMarketStatistics(marketId);
   const name = rows.find((row) => row.market_name)?.market_name || marketId;
   return evaluateMarketInvest3D(marketId, name, rows, catalog);
 }
