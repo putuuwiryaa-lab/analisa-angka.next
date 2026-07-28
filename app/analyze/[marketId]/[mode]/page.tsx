@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { memo, use, useCallback } from "react";
 import { ParamSelector } from "@/components/analysis/ParamSelector";
 import { CustomDigitBuilder } from "@/components/analysis/CustomDigitBuilder";
 import { RekapResult } from "@/components/analysis/RekapResult";
@@ -16,6 +16,11 @@ import {
   TargetPairSelector,
 } from "@/components/analysis/ScopeSelectors";
 
+const MemoizedAnalysisPageChrome = memo(AnalysisPageChrome);
+const MemoizedCustomDigitBuilder = memo(CustomDigitBuilder);
+const MemoizedAnalysisResult = memo(AnalysisResult);
+const MemoizedRekapResult = memo(RekapResult);
+
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value);
@@ -28,10 +33,11 @@ function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: M
   const { title, Icon } = MODES[type];
   const { state, flags, handlers, custom } = useAnalysisController({ type, marketId });
   const { param, targetPair, analysisScope, loading, result, error, customFocus } = state;
+  const handleStartAnalyze = useCallback(() => handlers.handleAnalyze(param || 1), [handlers.handleAnalyze, param]);
 
   return (
     <div data-mode={type} className="animate-rise pb-8">
-      <AnalysisPageChrome
+      <MemoizedAnalysisPageChrome
         title={title}
         icon={Icon}
         marketId={marketId}
@@ -45,7 +51,7 @@ function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: M
         loading={loading}
         canStartAnalyze={flags.canStartAnalyze}
         onBack={handlers.handleBack}
-        onStartAnalyze={() => handlers.handleAnalyze(param || 1)}
+        onStartAnalyze={handleStartAnalyze}
         onAIScopeReset={handlers.resetScope}
         onTargetPairReset={handlers.handleTargetPairReset}
         onBBFSScopeReset={handlers.resetScope}
@@ -67,7 +73,7 @@ function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: M
       )}
 
       {customFocus && (
-        <CustomDigitBuilder
+        <MemoizedCustomDigitBuilder
           show={flags.showCustomDigitBuilder}
           marketId={marketId}
           customFocus={customFocus}
@@ -83,9 +89,9 @@ function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: M
         </div>
       )}
 
-      {result && type === "rekap" && <RekapResult result={result} />}
+      {result && type === "rekap" && <MemoizedRekapResult result={result} />}
       {result && type !== "rekap" && (
-        <AnalysisResult
+        <MemoizedAnalysisResult
           type={type}
           result={result}
           param={param}
