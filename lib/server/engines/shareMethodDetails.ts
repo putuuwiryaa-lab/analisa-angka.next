@@ -104,7 +104,7 @@ function detailsFor(
 
   if (config.aiDigit) {
     const snapshot = find(snapshots, row.marketId, row.baseResult, "ai", config.aiDigit, focus, "default");
-    add(details, `AI ${config.aiDigit}`, digits(snapshot?.result).join(""));
+    add(details, "AI", digits(snapshot?.result).join(""));
   }
 
   if (config.parity) {
@@ -129,7 +129,7 @@ function detailsFor(
       focus,
       `2d_${focus}`,
     );
-    const label = config.bbfsDigit === 10 ? "GGBK 8" : `BBFS ${config.bbfsDigit}`;
+    const label = config.bbfsDigit === 10 ? "GGBK" : "BBFS";
     add(details, label, digits(snapshot?.result).join(""));
   }
 
@@ -137,7 +137,7 @@ function detailsFor(
     const count = config.offPositions[position];
     if (!count) continue;
     const snapshot = find(snapshots, row.marketId, row.baseResult, "mati", count, "belakang", "default");
-    add(details, `OFF ${positionLabel[position]} ${count}`, offDigits(snapshot?.result, position).join(""));
+    add(details, `OFF ${positionLabel[position]}`, offDigits(snapshot?.result, position).join(" "));
   }
 
   if (config.offJumlah) {
@@ -150,7 +150,7 @@ function detailsFor(
       focus,
       "default",
     );
-    add(details, `OFF Jumlah ${config.offJumlah}`, numbers(snapshot?.result).join("*"));
+    add(details, "OFF Jumlah", numbers(snapshot?.result).join(" "));
   }
 
   if (config.offShio) {
@@ -163,7 +163,7 @@ function detailsFor(
       focus,
       "default",
     );
-    add(details, `OFF Shio ${config.offShio}`, numbers(snapshot?.result).join("*"));
+    add(details, "OFF Shio", numbers(snapshot?.result).join(" "));
   }
 
   return details;
