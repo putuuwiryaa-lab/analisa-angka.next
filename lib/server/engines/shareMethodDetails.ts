@@ -1,8 +1,8 @@
 import "server-only";
 
 import { customFocusPositions, type PositionKey, type TargetPair } from "@/lib/analysis/customDigit";
-import type { ShareAngkaJadiConfig, ShareAngkaJadiRow } from "./shareAngkaJadi";
 import { createAdminClient } from "@/lib/server/supabase-admin";
+import type { ShareAngkaJadiConfig, ShareAngkaJadiRow } from "./shareAngkaJadi";
 
 export type ShareMethodDetail = { label: string; value: string };
 
@@ -33,31 +33,33 @@ function unwrap(value: unknown): unknown {
   return value;
 }
 
-function numbers(value: unknown) {
+function numbers(value: unknown): number[] {
   const raw = unwrap(value);
   if (Array.isArray(raw)) return Array.from(new Set(raw.flatMap(numbers)));
   if (typeof raw === "number") return Number.isFinite(raw) ? [raw] : [];
   return Array.from(new Set((String(raw ?? "").match(/-?\d+/g) || []).map(Number)));
 }
 
-function digits(value: unknown) {
+function digits(value: unknown): number[] {
   const raw = unwrap(value);
-  if (typeof raw === "string") return Array.from(new Set((raw.match(/\d/g) || []).map(Number)));
-  return numbers(raw).filter((value) => Number.isInteger(value) && value >= 0 && value <= 9);
+  if (typeof raw === "string") {
+    return Array.from(new Set((raw.match(/\d/g) || []).map(Number)));
+  }
+  return numbers(raw).filter((number) => Number.isInteger(number) && number >= 0 && number <= 9);
 }
 
-function text(value: unknown) {
+function text(value: unknown): string {
   const raw = unwrap(value);
   return String(Array.isArray(raw) ? raw[0] ?? "" : raw ?? "").trim().toUpperCase();
 }
 
-function offDigits(value: unknown, position: PositionKey) {
+function offDigits(value: unknown, position: PositionKey): number[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   const record = value as Record<string, unknown>;
   return digits(record[position.toUpperCase()] ?? record[position]);
 }
 
-function modes(config: ShareAngkaJadiConfig) {
+function modes(config: ShareAngkaJadiConfig): string[] {
   const result = new Set<string>();
   if (config.aiDigit || config.parity || config.size) result.add("ai");
   if (config.parity) result.add("ai_parity");
@@ -77,7 +79,7 @@ function find(
   param: number,
   targetPair: string,
   scope: string,
-) {
+): Snapshot | undefined {
   return rows.find((row) =>
     clean(row.market_id) === clean(marketId)
     && clean(row.base_result) === clean(baseResult)
@@ -88,46 +90,92 @@ function find(
   );
 }
 
-function add(details: ShareMethodDetail[], label: string, value: string) {
+function add(details: ShareMethodDetail[], label: string, value: string): void {
   if (value.trim()) details.push({ label, value: value.trim() });
 }
 
-function detailsFor(row: ShareAngkaJadiRow, focus: TargetPair, config: ShareAngkaJadiConfig, snapshots: Snapshot[]) {
+function detailsFor(
+  row: ShareAngkaJadiRow,
+  focus: TargetPair,
+  config: ShareAngkaJadiConfig,
+  snapshots: Snapshot[],
+): ShareMethodDetail[] {
   const details: ShareMethodDetail[] = [];
-  if (config.aiDigit) add(details, `AI ${config.aiDigit}`, digits(find(snapshots, row.marketId, row.baseResult, "ai", config.aiDigit, focus, "default")?.result).join(""));
+
+  if (config.aiDigit) {
+    const snapshot = find(snapshots, row.marketId, row.baseResult, "ai", config.aiDigit, focus, "default");
+    add(details, `AI ${config.aiDigit}`, digits(snapshot?.result).join(""));
+  }
+
   if (config.parity) {
     const snapshot = find(snapshots, row.marketId, row.baseResult, "ai_parity", 1, focus, "default")
       || find(snapshots, row.marketId, row.baseResult, "ai", 7, focus, "default");
     add(details, "Ganjil Genap", text(snapshot?.result));
   }
+
   if (config.size) {
     const snapshot = find(snapshots, row.marketId, row.baseResult, "ai_size", 1, focus, "default")
       || find(snapshots, row.marketId, row.baseResult, "ai", 8, focus, "default");
     add(details, "Besar Kecil", text(snapshot?.result));
   }
+
   if (config.bbfsDigit) {
-    const snapshot = find(snapshots, row.marketId, row.baseResult, "bbfs", config.bbfsDigit, focus, `2d_${focus}`);
-    add(details, config.bbfsDigit === 10 ? "GGBK 8" : `BBFS ${config.bbfsDigit}`, digits(snapshot?.result).join(""));
+    const snapshot = find(
+      snapshots,
+      row.marketId,
+      row.baseResult,
+      "bbfs",
+      config.bbfsDigit,
+      focus,
+      `2d_${focus}`,
+    );
+    const label = config.bbfsDigit === 10 ? "GGBK 8" : `BBFS ${config.bbfsDigit}`;
+    add(details, label, digits(snapshot?.result).join(""));
   }
+
   for (const position of customFocusPositions(focus)) {
     const count = config.offPositions[position];
     if (!count) continue;
     const snapshot = find(snapshots, row.marketId, row.baseResult, "mati", count, "belakang", "default");
     add(details, `OFF ${positionLabel[position]} ${count}`, offDigits(snapshot?.result, position).join(""));
   }
+
   if (config.offJumlah) {
-    const snapshot = find(snapshots, row.marketId, row.baseResult, "jumlah", config.offJumlah, focus, "default");
+    const snapshot = find(
+      snapshots,
+      row.marketId,
+      row.baseResult,
+      "jumlah",
+      config.offJumlah,
+      focus,
+      "default",
+    );
     add(details, `OFF Jumlah ${config.offJumlah}`, numbers(snapshot?.result).join("*"));
   }
+
   if (config.offShio) {
-    const snapshot = find(snapshots, row.marketId, row.baseResult, "shio", config.offShio, focus, "default");
+    const snapshot = find(
+      snapshots,
+      row.marketId,
+      row.baseResult,
+      "shio",
+      config.offShio,
+      focus,
+      "default",
+    );
     add(details, `OFF Shio ${config.offShio}`, numbers(snapshot?.result).join("*"));
   }
+
   return details;
 }
 
-export async function attachShareMethodDetails(rows: ShareAngkaJadiRow[], focus: TargetPair, config: ShareAngkaJadiConfig) {
-  if (!rows.length) return rows;
+export async function attachShareMethodDetails(
+  rows: ShareAngkaJadiRow[],
+  focus: TargetPair,
+  config: ShareAngkaJadiConfig,
+): Promise<Array<ShareAngkaJadiRow & { methods: ShareMethodDetail[] }>> {
+  if (!rows.length) return [];
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("analysis_snapshots")
@@ -136,7 +184,11 @@ export async function attachShareMethodDetails(rows: ShareAngkaJadiRow[], focus:
     .in("mode", modes(config))
     .order("updated_at", { ascending: false })
     .limit(10000);
+
   if (error) throw error;
   const snapshots = (data || []) as Snapshot[];
-  return rows.map((row) => ({ ...row, methods: detailsFor(row, focus, config, snapshots) }));
+  return rows.map((row) => ({
+    ...row,
+    methods: detailsFor(row, focus, config, snapshots),
+  }));
 }
