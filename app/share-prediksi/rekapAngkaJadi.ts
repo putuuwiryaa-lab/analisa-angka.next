@@ -16,10 +16,16 @@ export type RekapAngkaJadiConfig = {
   offShio: RekapAngkaJadiCount | null;
 };
 
+export type RekapAngkaJadiMethod = {
+  label: string;
+  value: string;
+};
+
 export type RekapAngkaJadiRow = ShareRow & {
   baseResult: string;
   lineCount: number;
   lines: string[];
+  methods?: RekapAngkaJadiMethod[];
 };
 
 export type RekapAngkaJadiFailure = {
@@ -136,7 +142,14 @@ export function hasShioOption(options: ShareOption[], focus: TargetPair, param: 
 
 function buildBlock(row: RekapAngkaJadiRow) {
   if (!row.lines?.length) return "";
-  return [`*${marketLabel(row)}* - ${row.lineCount} line`, row.lines.join("*")].join("\n");
+  const header = `*${marketLabel(row)}* - ${row.lineCount} line`;
+  const methodLines = (row.methods || [])
+    .filter((method) => method.label && method.value)
+    .map((method) => `${method.label}: ${method.value}`);
+  const numberLines = row.lines.join("*");
+  return methodLines.length
+    ? [header, ...methodLines, "", numberLines].join("\n")
+    : [header, numberLines].join("\n");
 }
 
 export function buildRekapAngkaJadiShareText(rows: RekapAngkaJadiRow[]) {
