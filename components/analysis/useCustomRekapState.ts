@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { CustomFocus, TargetPair } from "@/lib/analysis/customDigit";
 import type { PairAiMap, PairBBFSMap, PairBoolMap, PairCountMap } from "./customDigitGenerate";
 
@@ -41,20 +41,31 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
   const [customOffJumlahCountByPair, setCustomOffJumlahCountByPair] = useState<PairCountMap>({});
   const [customOffShioCountByPair, setCustomOffShioCountByPair] = useState<PairCountMap>({});
 
-  const setCustomAiDigitForPair = (pair: TargetPair, value: 2 | 4 | 6 | null) =>
+  const setCustomAiDigitForPair = useCallback((pair: TargetPair, value: 2 | 4 | 6 | null) => {
     setCustomAiDigitByPair((prev) => ({ ...prev, [pair]: value }));
-  const setCustomAiParityForPair = (pair: TargetPair, value: boolean) =>
-    setCustomAiParityByPair((prev) => ({ ...prev, [pair]: value }));
-  const setCustomAiSizeForPair = (pair: TargetPair, value: boolean) =>
-    setCustomAiSizeByPair((prev) => ({ ...prev, [pair]: value }));
-  const setCustomBBFSDigitForPair = (pair: TargetPair, value: BBFSDigit | null) =>
-    setCustomBBFSDigitByPair((prev) => ({ ...prev, [pair]: value }));
-  const setCustomOffJumlahCountForPair = (pair: TargetPair, value: number | null) =>
-    setCustomOffJumlahCountByPair((prev) => ({ ...prev, [pair]: value }));
-  const setCustomOffShioCountForPair = (pair: TargetPair, value: number | null) =>
-    setCustomOffShioCountByPair((prev) => ({ ...prev, [pair]: value }));
+  }, []);
 
-  const resetCustomRekapSelections = () => {
+  const setCustomAiParityForPair = useCallback((pair: TargetPair, value: boolean) => {
+    setCustomAiParityByPair((prev) => ({ ...prev, [pair]: value }));
+  }, []);
+
+  const setCustomAiSizeForPair = useCallback((pair: TargetPair, value: boolean) => {
+    setCustomAiSizeByPair((prev) => ({ ...prev, [pair]: value }));
+  }, []);
+
+  const setCustomBBFSDigitForPair = useCallback((pair: TargetPair, value: BBFSDigit | null) => {
+    setCustomBBFSDigitByPair((prev) => ({ ...prev, [pair]: value }));
+  }, []);
+
+  const setCustomOffJumlahCountForPair = useCallback((pair: TargetPair, value: number | null) => {
+    setCustomOffJumlahCountByPair((prev) => ({ ...prev, [pair]: value }));
+  }, []);
+
+  const setCustomOffShioCountForPair = useCallback((pair: TargetPair, value: number | null) => {
+    setCustomOffShioCountByPair((prev) => ({ ...prev, [pair]: value }));
+  }, []);
+
+  const resetCustomRekapSelections = useCallback(() => {
     setCustomAiDigitByPair({});
     setCustomAiParityByPair({});
     setCustomAiSizeByPair({});
@@ -70,9 +81,9 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
     setCustomOffEkorCount(null);
     setCustomOffJumlahCountByPair({});
     setCustomOffShioCountByPair({});
-  };
+  }, []);
 
-  const applyCustomRekapState = (nextState: CustomRekapState) => {
+  const applyCustomRekapState = useCallback((nextState: CustomRekapState) => {
     setCustomFocus(nextState.customFocus);
     setCustomAiDigitByPair(nextState.customAiDigitByPair);
     setCustomAiParityByPair(nextState.customAiParityByPair);
@@ -89,30 +100,49 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
     setCustomOffEkorCount(nextState.customOffEkorCount);
     setCustomOffJumlahCountByPair(nextState.customOffJumlahCountByPair);
     setCustomOffShioCountByPair(nextState.customOffShioCountByPair);
-  };
+  }, []);
 
-  const state: CustomRekapState = {
-    customFocus,
-    customAiDigitByPair,
-    customAiParityByPair,
-    customAiSizeByPair,
-    customAi3dDigit,
-    customAi3dParity,
-    customAi3dSize,
-    customAi4dDigit,
-    customBBFSDigit,
-    customBBFSDigitByPair,
-    customOffAsCount,
-    customOffKopCount,
-    customOffKepalaCount,
-    customOffEkorCount,
-    customOffJumlahCountByPair,
-    customOffShioCountByPair,
-  };
+  const state = useMemo<CustomRekapState>(
+    () => ({
+      customFocus,
+      customAiDigitByPair,
+      customAiParityByPair,
+      customAiSizeByPair,
+      customAi3dDigit,
+      customAi3dParity,
+      customAi3dSize,
+      customAi4dDigit,
+      customBBFSDigit,
+      customBBFSDigitByPair,
+      customOffAsCount,
+      customOffKopCount,
+      customOffKepalaCount,
+      customOffEkorCount,
+      customOffJumlahCountByPair,
+      customOffShioCountByPair,
+    }),
+    [
+      customFocus,
+      customAiDigitByPair,
+      customAiParityByPair,
+      customAiSizeByPair,
+      customAi3dDigit,
+      customAi3dParity,
+      customAi3dSize,
+      customAi4dDigit,
+      customBBFSDigit,
+      customBBFSDigitByPair,
+      customOffAsCount,
+      customOffKopCount,
+      customOffKepalaCount,
+      customOffEkorCount,
+      customOffJumlahCountByPair,
+      customOffShioCountByPair,
+    ],
+  );
 
-  return {
-    state,
-    setters: {
+  const setters = useMemo(
+    () => ({
       setCustomFocus,
       setCustomAiDigitByPair,
       setCustomAiParityByPair,
@@ -129,8 +159,12 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
       setCustomOffEkorCount,
       setCustomOffJumlahCountByPair,
       setCustomOffShioCountByPair,
-    },
-    handlers: {
+    }),
+    [],
+  );
+
+  const handlers = useMemo(
+    () => ({
       setCustomAiDigitForPair,
       setCustomAiParityForPair,
       setCustomAiSizeForPair,
@@ -139,6 +173,18 @@ export function useCustomRekapState(initialCustomFocus: CustomFocus | null) {
       setCustomOffShioCountForPair,
       resetCustomRekapSelections,
       applyCustomRekapState,
-    },
-  };
+    }),
+    [
+      applyCustomRekapState,
+      resetCustomRekapSelections,
+      setCustomAiDigitForPair,
+      setCustomAiParityForPair,
+      setCustomAiSizeForPair,
+      setCustomBBFSDigitForPair,
+      setCustomOffJumlahCountForPair,
+      setCustomOffShioCountForPair,
+    ],
+  );
+
+  return useMemo(() => ({ state, setters, handlers }), [handlers, setters, state]);
 }
