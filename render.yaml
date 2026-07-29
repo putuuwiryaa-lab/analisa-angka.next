@@ -9,7 +9,6 @@ services:
     startCommand: pnpm start
     autoDeployTrigger: commit
     healthCheckPath: /pin
-    maxShutdownDelaySeconds: 30
     envVars:
       - key: NODE_ENV
         value: production
