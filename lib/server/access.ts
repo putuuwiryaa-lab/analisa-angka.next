@@ -49,6 +49,22 @@ function hmac(value: string, purpose: string) {
   return crypto.createHmac("sha256", secret()).update(`${purpose}:${value}`).digest("hex");
 }
 
+function normalizeHostname(value: string | null) {
+  const hostname = (value || "").split(",")[0].trim().toLowerCase();
+  if (!hostname) return "";
+  return hostname.startsWith("[") ? hostname : hostname.replace(/:\d+$/, "");
+}
+
+function shouldTemporarilyBypassPin(headers: Headers) {
+  if (process.env.TEMPORARY_DISABLE_PIN !== "true") return false;
+
+  const hostname =
+    normalizeHostname(headers.get("x-forwarded-host")) ||
+    normalizeHostname(headers.get("host"));
+
+  return hostname.endsWith(".onrender.com");
+}
+
 export function normalizePin(value: unknown) {
   return String(value || "").replace(/\D/g, "").slice(0, 8);
 }
@@ -169,6 +185,10 @@ function shouldUpdateLastSeen(lastSeenAt: string | null, now: number) {
 }
 
 export async function requireActiveAccess(headers: Headers): Promise<AccessResult> {
+  if (shouldTemporarilyBypassPin(headers)) {
+    return { ok: true, sessionId: "temporary-render-pin-bypass", deviceId: null };
+  }
+
   const token = parseCookie(headers, ACCESS_COOKIE);
   const deviceId = parseCookie(headers, DEVICE_COOKIE);
 
