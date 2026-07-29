@@ -25,6 +25,27 @@ function isPublicPath(pathname: string) {
   return /\.(?:png|jpg|jpeg|webp|gif|svg|ico|css|js|txt|xml|json)$/i.test(pathname);
 }
 
+function normalizeHostname(value: string | null) {
+  const hostname = (value || "").split(",")[0].trim().toLowerCase();
+  if (!hostname) return "";
+  return hostname.startsWith("[") ? hostname : hostname.replace(/:\d+$/, "");
+}
+
+function shouldTemporarilyBypassPin(req: NextRequest) {
+  if (process.env.TEMPORARY_DISABLE_PIN !== "true") return false;
+
+  const hostname =
+    normalizeHostname(req.headers.get("x-forwarded-host")) ||
+    normalizeHostname(req.headers.get("host")) ||
+    req.nextUrl.hostname.toLowerCase();
+
+  return hostname.endsWith(".onrender.com");
+}
+
+function safeNextPath(value: string | null) {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
 function isInternalAnalyzeRequest(req: NextRequest) {
   if (req.nextUrl.pathname !== "/api/analyze") return false;
 
@@ -48,6 +69,13 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const hasAccess = Boolean(req.cookies.get(ACCESS_COOKIE)?.value);
   const hasAdmin = Boolean(req.cookies.get(ADMIN_COOKIE)?.value);
+  const bypassPin = shouldTemporarilyBypassPin(req);
+
+  if (bypassPin && pathname === "/pin") {
+    return NextResponse.redirect(
+      new URL(safeNextPath(req.nextUrl.searchParams.get("next")), req.url),
+    );
+  }
 
   if (isPublicPath(pathname) || isInternalAnalyzeRequest(req)) {
     return NextResponse.next();
@@ -62,6 +90,8 @@ export function middleware(req: NextRequest) {
     if (hasAdmin) return NextResponse.next();
     return redirectWithNext(req, "/admin/login");
   }
+
+  if (bypassPin) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
     if (hasAccess) return NextResponse.next();
