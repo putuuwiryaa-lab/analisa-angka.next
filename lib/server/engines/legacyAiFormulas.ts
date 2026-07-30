@@ -44,47 +44,47 @@ export function expandLegacyAi(primaryDigit: number): number[] {
  */
 export const LEGACY_AI_FORMULAS: LegacyAiFormula[] = [
   {
-    n: "R37 Legacy MB Mid Sum",
+    n: "R37 Void Resonance",
     f: (c: string) => expandLegacyAi(AI_B[_0xJ2d(c[1], c[2])]),
     dg: 3,
   },
   {
-    n: "R38 Legacy MB As Ekor",
+    n: "R38 Eclipse Vanguard",
     f: (c: string) => expandLegacyAi(AI_B[_0xJ2d(c[0], c[3])]),
     dg: 3,
   },
   {
-    n: "R39 Legacy Index Kop Minus As",
+    n: "R39 Crown Rift",
     f: (c: string) => expandLegacyAi(AI_I[_0xc3c54e(+c[1] - +c[0])]),
     dg: 3,
   },
   {
-    n: "R40 Legacy Tysen As Ekor",
+    n: "R40 Aether Pulse",
     f: (c: string) => expandLegacyAi(AI_T[_0xc3c54e(+c[0] + +c[3])]),
     dg: 3,
   },
   {
-    n: "R41 Legacy ML Kepala Kali Ekor",
+    n: "R41 Obsidian Veil",
     f: (c: string) => expandLegacyAi(AI_L[_0xc3c54e(+c[2] * +c[3])]),
     dg: 3,
   },
   {
-    n: "R42 Legacy ML As Minus Kop",
+    n: "R42 Phantom Surge",
     f: (c: string) => expandLegacyAi(AI_L[_0xc3c54e(+c[0] - +c[1])]),
     dg: 3,
   },
   {
-    n: "R43 Legacy MB Front Trinity",
+    n: "R43 Nova Trinity",
     f: (c: string) => expandLegacyAi(AI_B[_0xc3c54e(+c[0] + +c[1] + +c[2])]),
     dg: 3,
   },
   {
-    n: "R44 Legacy Index Digit Sum",
+    n: "R44 Nexus Prime",
     f: (c: string) => expandLegacyAi(AI_I[_0xc3c54e(+c[0] + +c[1] + +c[2] + +c[3])]),
     dg: 3,
   },
   {
-    n: "R45 Legacy Digital Root",
+    n: "R45 Zenith Echo",
     f: (c: string) => expandLegacyAi(digitalRoot(+c[0] + +c[1] + +c[2] + +c[3])),
     dg: 3,
   },
