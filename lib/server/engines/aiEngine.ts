@@ -1,5 +1,6 @@
 import "server-only";
 import { AI_I, AI_L, AI_B, AI_T, AI_P, _0xc3c54e, _0xJ2d } from './tables';
+import { LEGACY_AI_FORMULAS } from './legacyAiFormulas';
 
 export const _0xe57f0c: Record<number, number> = { 3: 11, 4: 12, 5: 13, 6: 14 };
 
@@ -68,6 +69,7 @@ export const _0x9a025f = [
   { n: "R34 Hex Surge", f: (c: string, p: string, p2: string) => { const biji = _0xJ2d(c[2], c[3]); const X = _0xc3c54e(biji + 6); return Array.from(new Set([X, _0xc3c54e(X + 2), _0xc3c54e(X + 3), _0xc3c54e(X + 7)])); }, dg: 4 },
   { n: "R35 Step Six", f: (c: string, p: string, p2: string) => { const X = _0xc3c54e(+c[3] - 1); return Array.from(new Set([X, _0xc3c54e(X + 1), _0xc3c54e(X + 2), _0xc3c54e(X + 3), _0xc3c54e(X + 4), _0xc3c54e(X + 5)])); }, dg: 6 },
   { n: "R36 Tail-State Transition Matrix", f: (c: string, p: string, p2: string) => [...AI_EKOR_MAIN[+c[3]]], dg: 6 },
+  ...LEGACY_AI_FORMULAS,
 ];
 
 function _0xSeedRank(seed: string, digit: number) {
@@ -84,7 +86,7 @@ function _0xSeedRank(seed: string, digit: number) {
 
 /**
  * Bagian BERAT — DIJALANKAN SEKALI.
- * Walk-forward 36 rumus × 14 langkah. Menghasilkan:
+ * Walk-forward 45 rumus × 14 langkah. Menghasilkan:
  *  - vote   : tally suara per digit 0-9 dari rumus elite (dipakai seleksi digit,
  *             ganjil/genap, dan besar/kecil — sumber tunggal)
  *  - sr     : statistik per-rumus untuk panel "Detail Validasi"
