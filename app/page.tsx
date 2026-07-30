@@ -122,7 +122,9 @@ export default function DashboardPage() {
                 style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}
               >
                 <div className="depth-2 flex min-h-[48px] items-center justify-center border-b border-border-soft px-3 transition-colors group-hover:bg-white/[0.04]">
-                  <span className="display line-clamp-2 text-[12px] leading-4 text-text">{m.name || m.id}</span>
+                  <span className="display line-clamp-2 text-[12px] leading-4 text-text">
+                    {String(m.name || m.id).toUpperCase()}
+                  </span>
                 </div>
                 <div className="flex flex-1 items-center justify-center">
                   <span className="num text-2xl font-black tracking-[0.08em] text-accent transition-transform duration-150 group-hover:scale-[1.03]">{m.lastResult || "----"}</span>
