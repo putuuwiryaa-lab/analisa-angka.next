@@ -9,6 +9,7 @@ export const MARKET_STAT_SELECT = "id,market_id,market_name,group_key,group_labe
 export type CategoryKey = "ai" | "ai_parity" | "ai_size" | "bbfs" | "off_digit" | "off_jumlah" | "off_shio";
 export type VisibleCategoryKey = CategoryKey;
 export type TargetPair = "depan" | "tengah" | "belakang";
+export type MatiPosition = "as" | "kop" | "kepala" | "ekor";
 export type AnalysisScope = "default" | "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
 export type AiStatScope = "4d" | "3d" | "2d_depan" | "2d_tengah" | "2d_belakang";
 
@@ -37,11 +38,12 @@ export type MarketStatistic = {
 
 export type RelatedStatsMap = Record<string, MarketStatistic[]>;
 export type PositionPairMeta = { label: string; subtitle: string };
+export type MatiPositionMeta = { key: MatiPosition; label: string; subtitle: string };
 
 export const categories: Array<{ key: VisibleCategoryKey; title: string }> = [
   { key: "ai", title: "AI" },
   { key: "bbfs", title: "BBFS" },
-  { key: "off_digit", title: "OFF 2D" },
+  { key: "off_digit", title: "OFF Digit" },
   { key: "off_jumlah", title: "Jumlah" },
   { key: "off_shio", title: "Shio" },
 ];
@@ -50,6 +52,13 @@ export const targetPairs: Array<{ key: TargetPair; label: string }> = [
   { key: "depan", label: "Depan" },
   { key: "tengah", label: "Tengah" },
   { key: "belakang", label: "Belakang" },
+];
+
+export const matiPositions: MatiPositionMeta[] = [
+  { key: "as", label: "AS", subtitle: "Digit pertama" },
+  { key: "kop", label: "KOP", subtitle: "Digit kedua" },
+  { key: "kepala", label: "KEPALA", subtitle: "Digit ketiga" },
+  { key: "ekor", label: "EKOR", subtitle: "Digit keempat" },
 ];
 
 export const aiScopes: Array<{ key: AiStatScope; label: string; subtitle: string; targetPair: TargetPair; analysisScope: "default" | "3d" | "4d" }> = [
@@ -86,6 +95,18 @@ export function targetPairLabel(value?: string) {
   if (value === "tengah") return "Tengah";
   if (value === "belakang") return "Belakang";
   return "Semua";
+}
+
+export function matiPositionMeta(value?: string) {
+  return matiPositions.find((item) => item.key === value) || matiPositions[0];
+}
+
+export function matiPositionLabel(value?: string) {
+  return matiPositionMeta(value).label;
+}
+
+export function matiPositionSubtitle(value?: string) {
+  return matiPositionMeta(value).subtitle;
 }
 
 export function aiScopeMeta(value?: string) {
@@ -151,7 +172,7 @@ export function statTitle(item: MarketStatistic) {
   if (item.group_key === "ai_parity") return cleanLabel(`${aiScopeLabel(item.analysis_scope)} Ganjil Genap ${item.analysis_scope === "default" ? targetPairLabel(item.target_pair) : ""}`);
   if (item.group_key === "ai_size") return cleanLabel(`${aiScopeLabel(item.analysis_scope)} Besar Kecil ${item.analysis_scope === "default" ? targetPairLabel(item.target_pair) : ""}`);
   if (item.group_key === "bbfs") return `BBFS ${bbfsScopeLabel(item.analysis_scope)} ${bbfsParamLabel(item.param)}`;
-  if (item.group_key === "off_digit") return `2D ${targetPairLabel(item.target_pair)} · OFF ${item.param}`;
+  if (item.group_key === "off_digit") return `Angka Mati ${matiPositionLabel(item.position)} · OFF ${item.param}`;
   if (item.group_key === "off_jumlah") return `OFF Jumlah ${targetPairLabel(item.target_pair)} ${item.param}`;
   if (item.group_key === "off_shio") return `OFF Shio ${targetPairLabel(item.target_pair)} ${item.param}`;
   return item.group_label || "Statistik";
@@ -162,7 +183,7 @@ export function shortStatTitle(item: MarketStatistic) {
   if (item.group_key === "ai_parity") return cleanLabel(`${aiScopeLabel(item.analysis_scope)} Ganjil Genap ${item.analysis_scope === "default" ? targetPairLabel(item.target_pair) : ""}`);
   if (item.group_key === "ai_size") return cleanLabel(`${aiScopeLabel(item.analysis_scope)} Besar Kecil ${item.analysis_scope === "default" ? targetPairLabel(item.target_pair) : ""}`);
   if (item.group_key === "bbfs") return `BBFS ${bbfsScopeLabel(item.analysis_scope)} ${bbfsParamLabel(item.param)}`;
-  if (item.group_key === "off_digit") return `2D ${targetPairLabel(item.target_pair)} OFF ${item.param}`;
+  if (item.group_key === "off_digit") return `Mati ${matiPositionLabel(item.position)} OFF ${item.param}`;
   if (item.group_key === "off_jumlah") return `Jumlah ${item.param} ${targetPairLabel(item.target_pair)}`;
   if (item.group_key === "off_shio") return `Shio ${item.param} ${targetPairLabel(item.target_pair)}`;
   return item.group_label || "Statistik";
@@ -176,7 +197,7 @@ export function relatedGroupKey(item: MarketStatistic) {
   if (item.group_key === "bbfs") return `${item.group_key}|${item.analysis_scope || "default"}`;
   if (item.group_key === "ai" || item.group_key === "ai_parity" || item.group_key === "ai_size") return `${item.group_key}|${item.analysis_scope || "default"}|${item.target_pair || "all"}`;
   if (item.group_key === "off_jumlah" || item.group_key === "off_shio") return `${item.group_key}|${item.target_pair || "all"}`;
-  if (item.group_key === "off_digit") return `${item.group_key}|${item.target_pair || "all"}`;
+  if (item.group_key === "off_digit") return `${item.group_key}|${item.position || "all"}`;
   return item.group_key;
 }
 
