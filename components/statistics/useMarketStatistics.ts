@@ -6,6 +6,7 @@ import {
   type AiStatScope,
   type AnalysisScope,
   type MarketStatistic,
+  type MatiPosition,
   type RelatedStatsMap,
   type TargetPair,
   type VisibleCategoryKey,
@@ -35,6 +36,7 @@ function paramOptionsForCategory(category: VisibleCategoryKey, aiScope: AiStatSc
 async function fetchStatistics(args: {
   category: VisibleCategoryKey;
   targetPair: TargetPair;
+  matiPosition: MatiPosition;
   aiScope: AiStatScope;
   bbfsScope: AnalysisScope;
   param: number;
@@ -42,6 +44,7 @@ async function fetchStatistics(args: {
   const params = new URLSearchParams({
     category: args.category,
     targetPair: args.targetPair,
+    matiPosition: args.matiPosition,
     aiScope: args.aiScope,
     bbfsScope: args.bbfsScope,
     param: String(args.param),
@@ -63,6 +66,7 @@ async function fetchStatistics(args: {
 export function useMarketStatistics() {
   const [category, setCategory] = useState<VisibleCategoryKey>("ai");
   const [targetPair, setTargetPair] = useState<TargetPair>("belakang");
+  const [matiPosition, setMatiPosition] = useState<MatiPosition>("as");
   const [aiScope, setAiScope] = useState<AiStatScope>("2d_depan");
   const [bbfsScope, setBbfsScope] = useState<AnalysisScope>("2d_belakang");
   const [param, setParam] = useState<number>(4);
@@ -73,8 +77,8 @@ export function useMarketStatistics() {
   }, [category, aiScope, bbfsScope, param]);
 
   const query = useQuery({
-    queryKey: ["marketStatistics", category, targetPair, aiScope, bbfsScope, param],
-    queryFn: () => fetchStatistics({ category, targetPair, aiScope, bbfsScope, param }),
+    queryKey: ["marketStatistics", category, targetPair, matiPosition, aiScope, bbfsScope, param],
+    queryFn: () => fetchStatistics({ category, targetPair, matiPosition, aiScope, bbfsScope, param }),
     staleTime: STATISTICS_STALE_TIME,
     gcTime: STATISTICS_GC_TIME,
     placeholderData: keepPreviousData,
@@ -85,6 +89,8 @@ export function useMarketStatistics() {
     setCategory,
     targetPair,
     setTargetPair,
+    matiPosition,
+    setMatiPosition,
     aiScope,
     setAiScope,
     bbfsScope,
