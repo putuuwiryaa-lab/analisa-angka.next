@@ -297,7 +297,7 @@ export function AnalysisResult({
   const effectiveMode = result.evaluationMode || type;
   const effectiveParam = result.evaluationParam || param || 1;
   const effectiveAnalysisScope = (result.analysis_scope || analysisScope || "default") as AnalysisScope;
-  const formulaTotal = type === "ai" || type === "bbfs" ? 35 : type === "jumlah" ? 56 : type === "shio" ? 60 : 50;
+  const formulaTotal = type === "ai" || type === "bbfs" ? 45 : type === "jumlah" ? 56 : type === "shio" ? 60 : 50;
   const isBBFSResult = type === "bbfs";
   const isAIResult = type === "ai";
   const isBbfsGgbkResult = isBBFSResult && effectiveParam === 10 && Boolean(result.bbfsGgbk);
