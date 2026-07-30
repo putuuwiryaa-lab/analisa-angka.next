@@ -40,6 +40,9 @@ import {
   bbfsScopes,
   formatUpdatedAt,
   isAiFamilyCategory,
+  matiPositionLabel,
+  matiPositionSubtitle,
+  matiPositions,
   positionPairSubtitle,
   targetPairLabel,
   targetPairs,
@@ -67,6 +70,13 @@ function scopeIcon(key: string): LucideIcon {
   if (key === "belakang" || key === "2d_belakang") return PanelRight;
   if (key === "3d") return Layers3;
   return Boxes;
+}
+
+function matiPositionIcon(key: string): LucideIcon {
+  if (key === "as") return PanelLeft;
+  if (key === "kop") return MoveHorizontal;
+  if (key === "kepala") return Layers3;
+  return PanelRight;
 }
 
 function parameterIcon(category: string, value: number): LucideIcon {
@@ -187,6 +197,7 @@ export default function StatisticsPage() {
 
   const isBBFS = s.category === "bbfs";
   const isAiFamily = isAiFamilyCategory(s.category);
+  const isOffDigit = s.category === "off_digit";
   const selectedAI = aiScopeMeta(s.aiScope);
   const selectedBBFS = bbfsScopeMeta(s.bbfsScope);
   const selectedMode = MODE_OPTIONS.find((item) => item.key === s.category) || MODE_OPTIONS[0];
@@ -206,7 +217,9 @@ export default function StatisticsPage() {
     ? selectedBBFS.label
     : isAiFamily
       ? selectedAI.label
-      : `2D ${targetPairLabel(s.targetPair)}`;
+      : isOffDigit
+        ? matiPositionLabel(s.matiPosition)
+        : `2D ${targetPairLabel(s.targetPair)}`;
   const outputLabel = parameterLabel(s.category, s.param);
   const filterLabel = `${selectedMode.title} · ${targetLabel} · ${outputLabel}`;
 
@@ -218,7 +231,7 @@ export default function StatisticsPage() {
 
   useEffect(() => {
     setVisibleCount(20);
-  }, [s.category, s.aiScope, s.bbfsScope, s.targetPair, s.param]);
+  }, [s.category, s.aiScope, s.bbfsScope, s.targetPair, s.matiPosition, s.param]);
 
   return (
     <div data-mode="statistics" className="animate-rise space-y-4 pb-5">
@@ -272,8 +285,14 @@ export default function StatisticsPage() {
 
         <StepHeader
           number={2}
-          title={isAiFamily || isBBFS ? "Pilih target" : "Pilih posisi 2D"}
-          subtitle={isAiFamily || isBBFS ? "Tentukan cakupan angka yang dinilai." : "Tentukan bagian hasil yang ingin dibandingkan."}
+          title={isAiFamily || isBBFS ? "Pilih target" : isOffDigit ? "Pilih posisi" : "Pilih posisi 2D"}
+          subtitle={
+            isAiFamily || isBBFS
+              ? "Tentukan cakupan angka yang dinilai."
+              : isOffDigit
+                ? "Tentukan posisi digit yang ingin diranking."
+                : "Tentukan bagian hasil yang ingin dibandingkan."
+          }
         />
 
         {isAiFamily ? (
@@ -310,6 +329,24 @@ export default function StatisticsPage() {
             </div>
             <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
               {selectedBBFS.subtitle}
+            </p>
+          </>
+        ) : isOffDigit ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              {matiPositions.map((item) => (
+                <ChoiceButton
+                  key={item.key}
+                  active={s.matiPosition === item.key}
+                  title={item.label}
+                  subtitle={item.subtitle}
+                  Icon={matiPositionIcon(item.key)}
+                  onClick={() => s.setMatiPosition(item.key)}
+                />
+              ))}
+            </div>
+            <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
+              {matiPositionLabel(s.matiPosition)} · {matiPositionSubtitle(s.matiPosition)}
             </p>
           </>
         ) : (
