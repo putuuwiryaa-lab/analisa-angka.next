@@ -3,9 +3,9 @@ import {
   type RelatedStatsMap,
   bbfsScopeSubtitle,
   marketUrl,
+  matiPositionSubtitle,
   movementText,
   movementTone,
-  positionPairSubtitle,
   statTitle,
 } from "@/lib/analysis/statistics";
 
@@ -68,7 +68,7 @@ export function StatisticCard({
             </p>
             {item.group_key === "off_digit" && (
               <p className="mt-1 text-[10px] font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
-                {positionPairSubtitle(item.target_pair)}
+                {matiPositionSubtitle(item.position)}
               </p>
             )}
             {item.group_key === "bbfs" && (
