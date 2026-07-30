@@ -13,6 +13,7 @@ import {
   type AiStatScope,
   type AnalysisScope,
   type MarketStatistic,
+  type MatiPosition,
   type RelatedStatsMap,
   type TargetPair,
   type VisibleCategoryKey,
@@ -23,6 +24,7 @@ export const dynamic = "force-dynamic";
 
 const VALID_CATEGORIES = new Set(["ai", "ai_parity", "ai_size", "bbfs", "off_digit", "off_jumlah", "off_shio"]);
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
+const VALID_MATI_POSITIONS = new Set(["as", "kop", "kepala", "ekor"]);
 const VALID_AI_SCOPES = new Set(["4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 
@@ -34,6 +36,10 @@ function parseCategory(value: string | null): VisibleCategoryKey {
 
 function parseTargetPair(value: string | null): TargetPair {
   return VALID_TARGET_PAIRS.has(value || "") ? (value as TargetPair) : "belakang";
+}
+
+function parseMatiPosition(value: string | null): MatiPosition {
+  return VALID_MATI_POSITIONS.has(value || "") ? (value as MatiPosition) : "as";
 }
 
 function parseAiScope(value: string | null): AiStatScope {
@@ -58,6 +64,7 @@ export async function GET(request: NextRequest) {
     const search = request.nextUrl.searchParams;
     const category = parseCategory(search.get("category"));
     const targetPair = parseTargetPair(search.get("targetPair"));
+    const matiPosition = parseMatiPosition(search.get("matiPosition"));
     const aiScope = parseAiScope(search.get("aiScope"));
     const bbfsScope = parseAnalysisScope(search.get("bbfsScope"));
     const rawParam = Number(search.get("param") || 0);
@@ -70,7 +77,7 @@ export async function GET(request: NextRequest) {
     const isPositionCategory = category === "off_digit";
     const isBBFSCategory = category === "bbfs";
     const isAiCategory = isAiFamilyCategory(category);
-    const isPairCategory = category === "off_digit" || category === "off_jumlah" || category === "off_shio";
+    const isPairCategory = category === "off_jumlah" || category === "off_shio";
 
     const selectedBBFS = bbfsScopeMeta(bbfsScope);
     const selectedAI = aiScopeMeta(aiScope);
@@ -90,7 +97,12 @@ export async function GET(request: NextRequest) {
       .limit(200);
 
     if (isPositionCategory) {
-      query = query.eq("mode", "mati_2d").eq("param", queryParam).eq("target_pair", targetPair).eq("analysis_scope", "default");
+      query = query
+        .eq("mode", "mati")
+        .eq("param", queryParam)
+        .eq("position", matiPosition)
+        .eq("target_pair", "all")
+        .eq("analysis_scope", "default");
     } else if (isBBFSCategory) {
       query = query.eq("mode", "bbfs").eq("param", queryParam).eq("target_pair", selectedBBFS.targetPair).eq("analysis_scope", bbfsScope);
     } else if (isAiCategory) {
@@ -125,7 +137,7 @@ export async function GET(request: NextRequest) {
     if (relatedError) throw relatedError;
 
     const relatedStats = ((relatedData || []) as MarketStatistic[])
-      .filter((row) => row.group_key !== "off_digit" || row.mode === "mati_2d")
+      .filter((row) => row.group_key !== "off_digit" || row.mode === "mati")
       .reduce<RelatedStatsMap>((acc, row) => {
         (acc[row.market_id] ||= []).push(row);
         return acc;
