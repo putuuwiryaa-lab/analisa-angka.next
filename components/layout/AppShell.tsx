@@ -44,14 +44,13 @@ function cnPad(hideHeader: boolean, showBottomNav: boolean, isAccessRoute: boole
 
 function HeroHeader() {
   return (
-    <header className="animate-fade-in mb-5 flex items-start justify-between gap-3 pt-3 sm:mb-6 sm:items-center sm:gap-4 sm:pt-4">
+    <header className="animate-fade-in mb-5 flex items-start justify-between gap-2 pt-3 sm:mb-6 sm:items-center sm:gap-4 sm:pt-4">
       <div className="min-w-0 flex-1 pr-1">
-        <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Dashboard Analisis</p>
         <h1 className="display max-w-[11.5ch] whitespace-normal break-words text-[2.1rem] uppercase leading-[0.98] text-text sm:max-w-none sm:text-4xl">ANALISA ANGKA</h1>
         <p className="mt-2 text-sm font-medium leading-snug text-text-soft sm:text-base">Prediksi berbasis matematis</p>
       </div>
-      <div className="animate-soft-pop relative mr-1 mt-1 flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-[1.45rem] border border-primary/15 bg-white/90 shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:mr-0 sm:mt-0 sm:h-20 sm:w-20">
-        <div className="pointer-events-none absolute inset-2 rounded-[1rem] bg-primary/[0.055]" />
+      <div className="animate-soft-pop relative mr-3 mt-1 flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-[1.7rem] border border-primary/45 bg-primary/18 shadow-[0_0_34px_rgba(124,58,237,0.30),0_0_54px_rgba(40,215,255,0.10)] sm:mr-0 sm:mt-0 sm:h-20 sm:w-20">
+        <div className="pointer-events-none absolute inset-[-0.45rem] rounded-[2rem] bg-primary/10 blur-xl" />
         <Logo className="relative h-11 w-11 sm:h-12 sm:w-12" />
       </div>
     </header>
@@ -59,11 +58,11 @@ function HeroHeader() {
 }
 
 function BottomNav() {
-  const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl border px-2 hover:bg-surface-2";
-  const softGlow = "0 8px 20px color-mix(in srgb, var(--accent) 9%, transparent)";
+  const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl border px-2 hover:border-border hover:bg-white/[0.075]";
+  const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
 
   return (
-    <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bg-deep/92 backdrop-blur-xl">
+    <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
       <div className="mx-auto grid max-w-3xl grid-cols-3 items-end gap-2 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3 sm:gap-3">
         <Link
           data-mode="statistics"
