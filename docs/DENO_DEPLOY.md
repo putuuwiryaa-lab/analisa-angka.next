@@ -13,8 +13,10 @@ Aplikasi ini memakai Next.js App Router, Route Handlers, middleware akses PIN, S
 Konfigurasi build dibaca dari `deno.json`:
 
 - framework: `nextjs`
-- install: `pnpm install --frozen-lockfile`
-- build: `pnpm build`
+- install: `deno install --allow-scripts`
+- build: `deno task build`
+
+Installer native Deno dipakai karena `pnpm` pada builder Deno berjalan melalui compatibility shim dan pada dependency tree aplikasi ini dapat melewati batas memory saat tahap install.
 
 ## 2. Environment variables
 
@@ -54,11 +56,18 @@ Variabel itu sebaiknya tidak dibuat sama sekali pada Deno.
 
 ## 3. Deployment pertama
 
-1. Jalankan deployment dari branch migrasi atau preview terlebih dahulu.
-2. Pastikan build menyelesaikan `pnpm install --frozen-lockfile` dan `pnpm build`.
-3. Jangan pindahkan domain sebelum pengujian selesai.
+1. Jalankan deployment dari branch atau preview terlebih dahulu.
+2. Pastikan tahap Install menjalankan `deno install --allow-scripts`.
+3. Pastikan tahap Build menjalankan `deno task build`.
+4. Jangan pindahkan domain sebelum pengujian selesai.
 
-## 4. Checklist pengujian
+## 4. Troubleshooting install memory
+
+Jika log berhenti pada `pnpm install` dengan pesan memory limit 3072 MiB, berarti revision masih memakai konfigurasi lama. Pastikan commit terbaru sudah terambil dan Config source menunjukkan `deno.json deploy section`, lalu jalankan ulang deployment.
+
+Build Free menyediakan 3 GB RAM. Mengganti installer ke Deno lebih tepat daripada mencoba menambah memory, karena 4 GB hanya tersedia pada plan yang mendukungnya.
+
+## 5. Checklist pengujian
 
 - `/pin` terbuka untuk user tanpa cookie.
 - Aktivasi PIN menghasilkan cookie akses dan device.
@@ -73,7 +82,7 @@ Variabel itu sebaiknya tidak dibuat sama sekali pada Deno.
 - Service worker tidak menyajikan cache deployment lama.
 - Rate limit PIN mencatat IP secara benar.
 
-## 5. Domain
+## 6. Domain
 
 Setelah preview stabil:
 
@@ -83,14 +92,15 @@ Setelah preview stabil:
 4. Pindahkan traffic ke Deno.
 5. Pertahankan Render sebagai fallback sampai deployment Deno stabil.
 
-## 6. Catatan kompatibilitas
+## 7. Catatan kompatibilitas
 
 - `deno.json` mengaktifkan opsi kompatibilitas yang direkomendasikan untuk Next.js.
+- `nodeModulesDir` diset ke `auto` agar dependency npm tersedia melalui `node_modules`.
 - Modul server memakai import eksplisit `node:crypto` dan `node:buffer`.
 - Komponen Vercel Analytics tidak dirender lagi karena aplikasi tidak berjalan di Vercel.
-- Dependency `@vercel/analytics` masih tercatat pada lockfile dan dapat dibersihkan kemudian saat lockfile diregenerasi secara lokal.
+- Dependency `@vercel/analytics` masih tercatat pada pnpm lockfile dan dapat dibersihkan saat lockfile diregenerasi secara lokal.
 - Bypass PIN tetap hanya berlaku untuk hostname `.onrender.com` dan hanya jika `TEMPORARY_DISABLE_PIN=true`.
 
-## 7. Rollback
+## 8. Rollback
 
 Jika deployment Deno gagal setelah domain dipindahkan, kembalikan DNS ke endpoint Render. Database Supabase tidak perlu dimigrasikan karena tetap menjadi sumber data utama.
