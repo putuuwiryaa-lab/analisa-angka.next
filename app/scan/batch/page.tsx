@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Check, Clipboard, Layers3, Play, Search, Square, SquareCheckBig, X } from "lucide-react";
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { Check, ChevronDown, Clipboard, Search, Square, SquareCheckBig, X } from "lucide-react";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
 
@@ -150,87 +150,89 @@ export default function BatchScanPage() {
     window.setTimeout(() => setCopied(false), 1400);
   }
 
+  const digitMaximum = isShioMode(scanMode) ? 12 : 10;
+
   return (
     <div className="animate-rise space-y-4">
       <section className="depth-1 rounded-3xl border p-4 sm:p-5">
-        <div className="mb-4 flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary-soft"><Layers3 size={22} /></div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary-soft">Multi-pasaran</p>
-            <h2 className="display text-2xl text-text">Batch Scan</h2>
-            <p className="mt-1 text-sm font-medium text-text-soft">Maksimal {MAX_MARKETS} pasaran. Tidak ada proses Adaptif.</p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <NumberField label="Data uji" value={rounds} min={1} max={100} hint="maks. 100" onChange={setRounds} />
+            <NumberField label="Patah" value={patah} min={0} max={rounds} hint={`maks. ${rounds}`} onChange={setPatah} />
           </div>
-        </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <SelectField label="Jenis scan" value={scanMode} onChange={(value) => changeMode(value as ScanMode)}>
-            {MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
-          </SelectField>
-
-          {isPositionMode(scanMode) ? (
-            <SelectField label="Target posisi" value={targetPos} onChange={(value) => setTargetPos(value as Posisi)}>
-              <option value="A">AS</option><option value="C">COP</option><option value="K">KPL</option><option value="E">EKR</option>
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField label="Jenis" value={scanMode} onChange={(value) => changeMode(value as ScanMode)}>
+              {MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
             </SelectField>
-          ) : is3DMode(scanMode) ? (
-            <SelectField label="Target 3D" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
-              <option value="depan">3D Depan</option><option value="belakang">3D Belakang</option>
-            </SelectField>
-          ) : (
-            <SelectField label="Target 2D" value={target2D} onChange={(value) => setTarget2D(value as Target2D)}>
-              <option value="depan">2D Depan</option><option value="tengah">2D Tengah</option><option value="belakang">2D Belakang</option>
-            </SelectField>
-          )}
 
-          <NumberField label="Data uji" value={rounds} min={1} max={100} onChange={setRounds} />
-          <NumberField label="Toleransi patah" value={patah} min={0} max={rounds} onChange={setPatah} />
-          <NumberField label="Jumlah digit" value={digitCount} min={1} max={isShioMode(scanMode) ? 12 : 10} onChange={setDigitCount} />
-          <label>
-            <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">Pemisah output</span>
-            <input value={separator} onChange={(event) => setSeparator(event.target.value.slice(0, 16))} className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-3 text-sm font-bold text-text outline-none focus:border-primary/50" />
-          </label>
-        </div>
+            {isPositionMode(scanMode) ? (
+              <SelectField label="Target" value={targetPos} onChange={(value) => setTargetPos(value as Posisi)}>
+                <option value="A">AS</option><option value="C">COP</option><option value="K">KPL</option><option value="E">EKR</option>
+              </SelectField>
+            ) : is3DMode(scanMode) ? (
+              <SelectField label="Target" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
+                <option value="depan">Depan</option><option value="belakang">Belakang</option>
+              </SelectField>
+            ) : (
+              <SelectField label="Target" value={target2D} onChange={(value) => setTarget2D(value as Target2D)}>
+                <option value="depan">Depan</option><option value="tengah">Tengah</option><option value="belakang">Belakang</option>
+              </SelectField>
+            )}
+          </div>
 
-        <div className="mt-3">
-          <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">Peringkat yang dipakai</span>
-          <div className="grid grid-cols-3 gap-2">
-            {[1, 2, 3].map((rank) => {
-              const active = topRanks.includes(rank);
-              return (
-                <button key={rank} type="button" onClick={() => toggleRank(rank)} className={`pressable flex h-11 items-center justify-center gap-2 rounded-2xl border text-xs font-black uppercase tracking-wide ${active ? "border-primary/40 bg-primary/15 text-primary-soft" : "border-border-soft bg-white/[0.025] text-text-muted"}`}>
-                  {active ? <SquareCheckBig size={16} /> : <Square size={16} />} Top {rank}
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField label="Jumlah digit" value={String(digitCount)} onChange={(value) => setDigitCount(Number(value))}>
+              {Array.from({ length: digitMaximum }, (_, index) => index + 1).map((digit) => <option key={digit} value={digit}>{digit} digit</option>)}
+            </SelectField>
+            <TextField label="Pemisah output" value={separator} onChange={(value) => setSeparator(value.slice(0, 16))} />
+          </div>
+
+          <div>
+            <FieldLabel>Peringkat yang dipakai</FieldLabel>
+            <div className="grid grid-cols-3 gap-2">
+              {[1, 2, 3].map((rank) => {
+                const active = topRanks.includes(rank);
+                return (
+                  <button key={rank} type="button" onClick={() => toggleRank(rank)} className={`pressable flex h-[4.5rem] items-center justify-center gap-2 rounded-2xl border text-xs font-black uppercase tracking-wide shadow-inner shadow-black/10 ${active ? "border-primary/40 bg-primary/15 text-primary-soft" : "border-border-soft bg-surface text-text-muted"}`}>
+                    {active ? <SquareCheckBig size={17} /> : <Square size={17} />} Top {rank}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
 
       <section className="depth-1 rounded-3xl border p-4 sm:p-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-text-soft">Daftar pasaran</p>
             <h2 className="display text-lg text-text">Dipilih {selected.length}/{MAX_MARKETS}</h2>
           </div>
-          {selected.length ? <button onClick={() => setSelected([])} className="pressable flex h-9 items-center gap-1.5 rounded-xl border border-danger/25 bg-danger/10 px-3 text-[10px] font-black uppercase text-danger"><X size={14} /> Bersihkan</button> : null}
+          {selected.length ? (
+            <button type="button" onClick={() => setSelected([])} className="pressable flex h-9 items-center gap-1.5 rounded-xl border border-danger/25 bg-danger/10 px-3 text-[10px] font-black uppercase text-danger">
+              <X size={14} /> Bersihkan
+            </button>
+          ) : null}
         </div>
 
         <div className="relative mb-3">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-soft" size={17} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari pasaran" className="h-12 w-full rounded-2xl border border-border-soft bg-surface pl-10 pr-4 text-sm font-bold text-text outline-none focus:border-primary/50" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" size={18} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari pasaran" className="h-[4.5rem] w-full rounded-2xl border border-border-soft bg-surface pl-12 pr-4 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50" />
         </div>
 
-        <button type="button" onClick={selectVisible} disabled={marketsLoading || !filteredMarkets.length} className="pressable mb-3 h-10 w-full rounded-xl border border-border-soft bg-white/[0.025] text-[11px] font-black uppercase tracking-wide text-text-muted disabled:opacity-50">Pilih semua hasil pencarian</button>
+        <button type="button" onClick={selectVisible} disabled={marketsLoading || !filteredMarkets.length} className="pressable mb-3 h-14 w-full rounded-2xl border border-border-soft bg-surface text-[11px] font-black uppercase tracking-wide text-text-muted shadow-inner shadow-black/10 disabled:opacity-50">
+          Pilih semua hasil pencarian
+        </button>
 
         <div className="grid max-h-[25rem] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
           {filteredMarkets.map((market) => {
             const active = selected.includes(market.id);
             return (
-              <button key={market.id} type="button" onClick={() => toggleMarket(market.id)} className={`pressable min-h-20 rounded-2xl border p-3 text-left ${active ? "border-primary/45 bg-primary/15" : "border-border-soft bg-white/[0.025]"}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <span className={`line-clamp-2 text-[11px] font-black uppercase ${active ? "text-primary-soft" : "text-text"}`}>{market.name || market.id}</span>
-                  {active ? <Check size={15} className="shrink-0 text-primary-soft" /> : null}
-                </div>
-                <span className="num mt-2 block text-lg font-black tracking-wider text-accent">{market.lastResult || "----"}</span>
+              <button key={market.id} type="button" onClick={() => toggleMarket(market.id)} className={`pressable flex min-h-16 items-center justify-between gap-2 rounded-2xl border px-3 py-3 text-left shadow-inner shadow-black/10 ${active ? "border-primary/45 bg-primary/15" : "border-border-soft bg-surface"}`}>
+                <span className={`line-clamp-2 text-[11px] font-black uppercase leading-snug ${active ? "text-primary-soft" : "text-text"}`}>{market.name || market.id}</span>
+                {active ? <Check size={16} className="shrink-0 text-primary-soft" /> : null}
               </button>
             );
           })}
@@ -238,9 +240,8 @@ export default function BatchScanPage() {
 
         {error ? <div className="mt-4 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">{error}</div> : null}
 
-        <button type="button" onClick={runBatch} disabled={loading || marketsLoading || !selected.length} className="pressable mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-primary/45 bg-primary/20 px-4 text-sm font-black uppercase tracking-wide text-primary-soft disabled:cursor-not-allowed disabled:opacity-50">
-          <Play size={18} fill="currentColor" />
-          {loading ? `Memproses ${selected.length} pasaran…` : "Jalankan Batch Scan"}
+        <button type="button" onClick={runBatch} disabled={loading || marketsLoading || !selected.length} className="pressable mt-5 flex h-16 w-full items-center justify-center rounded-2xl border border-primary/70 bg-primary px-4 text-base font-black text-bg-deep shadow-[0_12px_30px_rgba(105,151,255,0.18)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50">
+          {loading ? `Memproses ${selected.length} pasaran…` : "Batch Scan Sekarang"}
         </button>
       </section>
 
@@ -251,7 +252,7 @@ export default function BatchScanPage() {
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-text-soft">Output siap salin</p>
               <h2 className="display text-xl text-text">{result.title}</h2>
             </div>
-            <button onClick={copyOutput} className="pressable flex h-10 items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-[10px] font-black uppercase tracking-wide text-primary-soft">
+            <button type="button" onClick={copyOutput} className="pressable flex h-10 items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-[10px] font-black uppercase tracking-wide text-primary-soft">
               {copied ? <Check size={15} /> : <Clipboard size={15} />}{copied ? "Tersalin" : "Salin"}
             </button>
           </div>
@@ -269,20 +270,39 @@ export default function BatchScanPage() {
   );
 }
 
-function SelectField({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
+function FieldLabel({ children }: { children: ReactNode }) {
+  return <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.12em] text-text-muted">{children}</span>;
+}
+
+function SelectField({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
   return (
-    <label>
-      <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-3 text-sm font-bold text-text outline-none focus:border-primary/50">{children}</select>
+    <label className="block min-w-0">
+      <FieldLabel>{label}</FieldLabel>
+      <div className="relative">
+        <select value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)} className="h-[4.5rem] w-full appearance-none rounded-2xl border border-border-soft bg-surface px-4 pr-10 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50">{children}</select>
+        <ChevronDown size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-soft" />
+      </div>
     </label>
   );
 }
 
-function NumberField({ label, value, min, max, disabled, onChange }: { label: string; value: number; min: number; max: number; disabled?: boolean; onChange: (value: number) => void }) {
+function NumberField({ label, value, min, max, hint, onChange }: { label: string; value: number; min: number; max: number; hint?: string; onChange: (value: number) => void }) {
   return (
-    <label>
-      <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">{label}</span>
-      <input type="number" value={value} min={min} max={max} disabled={disabled} onChange={(event) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))} className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-3 text-sm font-bold text-text outline-none focus:border-primary/50 disabled:opacity-60" />
+    <label className="block min-w-0">
+      <FieldLabel>{label}</FieldLabel>
+      <div className="relative">
+        <input type="number" inputMode="numeric" value={value} min={min} max={max} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))} className="h-[4.5rem] w-full rounded-2xl border border-border-soft bg-surface px-4 pr-20 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50" />
+        {hint ? <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-text-soft/55">{hint}</span> : null}
+      </div>
+    </label>
+  );
+}
+
+function TextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block min-w-0">
+      <FieldLabel>{label}</FieldLabel>
+      <input value={value} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value)} className="h-[4.5rem] w-full rounded-2xl border border-border-soft bg-surface px-4 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50" />
     </label>
   );
 }
