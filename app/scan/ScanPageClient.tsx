@@ -161,7 +161,11 @@ export default function ScanPageClient() {
       kolomHidup: [...item.kolomHidup],
       activeColumns: item.activeColumns,
       predictionValues: predictionValues(item),
-      snapshotRows: item.result.rows.map((row) => ({ ...row, deret: [...row.deret], targetDigits: [...row.targetDigits] })),
+      snapshotRows: item.result.rows.map((row) => ({
+        ...row,
+        deret: [...row.deret],
+        targetDigits: Array.isArray(row.targetDigits) && row.targetDigits.length ? [...row.targetDigits] : [row.targetDigit],
+      })),
       savedLatestDraw: item.result.latestDraw,
     };
     setSavedTreks((current) => [saved, ...current.filter((trek) => trek.id !== id)].slice(0, 50));
