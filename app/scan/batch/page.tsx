@@ -27,7 +27,6 @@ const MODES: { value: ScanMode; label: string; digits: number }[] = [
   { value: "off_3d", label: "OFF 3D", digits: 3 },
   { value: "shio", label: "Shio", digits: 6 },
   { value: "off_shio", label: "OFF Shio", digits: 6 },
-  { value: "experiment_x7", label: "Experiment X7", digits: 7 },
 ];
 
 async function writeClipboard(value: string) {
@@ -85,11 +84,6 @@ export default function BatchScanPage() {
   function changeMode(mode: ScanMode) {
     setScanMode(mode);
     setDigitCount(MODES.find((item) => item.value === mode)?.digits ?? 7);
-    if (mode === "experiment_x7") {
-      setRounds(7);
-      setPatah(0);
-      setTopRanks([1]);
-    }
   }
 
   function toggleMarket(id: string) {
@@ -181,15 +175,15 @@ export default function BatchScanPage() {
             <SelectField label="Target 3D" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
               <option value="depan">3D Depan</option><option value="belakang">3D Belakang</option>
             </SelectField>
-          ) : scanMode !== "experiment_x7" ? (
+          ) : (
             <SelectField label="Target 2D" value={target2D} onChange={(value) => setTarget2D(value as Target2D)}>
               <option value="depan">2D Depan</option><option value="tengah">2D Tengah</option><option value="belakang">2D Belakang</option>
             </SelectField>
-          ) : null}
+          )}
 
-          <NumberField label="Data uji" value={rounds} min={1} max={100} disabled={scanMode === "experiment_x7"} onChange={setRounds} />
-          <NumberField label="Toleransi patah" value={patah} min={0} max={rounds} disabled={scanMode === "experiment_x7"} onChange={setPatah} />
-          <NumberField label="Jumlah digit" value={digitCount} min={1} max={isShioMode(scanMode) ? 12 : 10} disabled={scanMode === "experiment_x7"} onChange={setDigitCount} />
+          <NumberField label="Data uji" value={rounds} min={1} max={100} onChange={setRounds} />
+          <NumberField label="Toleransi patah" value={patah} min={0} max={rounds} onChange={setPatah} />
+          <NumberField label="Jumlah digit" value={digitCount} min={1} max={isShioMode(scanMode) ? 12 : 10} onChange={setDigitCount} />
           <label>
             <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">Pemisah output</span>
             <input value={separator} onChange={(event) => setSeparator(event.target.value.slice(0, 16))} className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-3 text-sm font-bold text-text outline-none focus:border-primary/50" />
@@ -202,7 +196,7 @@ export default function BatchScanPage() {
             {[1, 2, 3].map((rank) => {
               const active = topRanks.includes(rank);
               return (
-                <button key={rank} type="button" disabled={scanMode === "experiment_x7" && rank !== 1} onClick={() => toggleRank(rank)} className={`pressable flex h-11 items-center justify-center gap-2 rounded-2xl border text-xs font-black uppercase tracking-wide disabled:opacity-35 ${active ? "border-primary/40 bg-primary/15 text-primary-soft" : "border-border-soft bg-white/[0.025] text-text-muted"}`}>
+                <button key={rank} type="button" onClick={() => toggleRank(rank)} className={`pressable flex h-11 items-center justify-center gap-2 rounded-2xl border text-xs font-black uppercase tracking-wide ${active ? "border-primary/40 bg-primary/15 text-primary-soft" : "border-border-soft bg-white/[0.025] text-text-muted"}`}>
                   {active ? <SquareCheckBig size={16} /> : <Square size={16} />} Top {rank}
                 </button>
               );
