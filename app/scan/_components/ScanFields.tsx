@@ -1,5 +1,8 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { is3DMode, isPositionMode } from "@/lib/shared/scan-mode";
 import { marketLabel, MODE_OPTIONS } from "../_lib";
@@ -31,42 +34,101 @@ type Props = {
   onScan: () => void;
 };
 
+type SelectOption = {
+  value: string;
+  label: string;
+};
+
+const POSITION_OPTIONS: SelectOption[] = [
+  { value: "A", label: "AS" },
+  { value: "C", label: "COP" },
+  { value: "K", label: "KPL" },
+  { value: "E", label: "EKR" },
+];
+
+const TARGET_3D_OPTIONS: SelectOption[] = [
+  { value: "depan", label: "Depan" },
+  { value: "belakang", label: "Belakang" },
+];
+
+const TARGET_2D_OPTIONS: SelectOption[] = [
+  { value: "depan", label: "Depan" },
+  { value: "tengah", label: "Tengah" },
+  { value: "belakang", label: "Belakang" },
+];
+
 export default function ScanFields(props: Props) {
   const digitMaximum = props.scanMode === "shio" || props.scanMode === "off_shio" ? 12 : 10;
+  const digitOptions = Array.from({ length: digitMaximum }, (_, index) => ({
+    value: String(index + 1),
+    label: `${index + 1} digit`,
+  }));
+
   return (
     <section className="depth-1 rounded-2xl border p-3 sm:p-4">
       <div className="space-y-3">
-        <MarketSelectField markets={props.markets} value={props.marketId} selectedMarket={props.selectedMarket} disabled={props.marketsLoading} onChange={props.onMarketChange} />
+        <MarketSelectField
+          markets={props.markets}
+          value={props.marketId}
+          selectedMarket={props.selectedMarket}
+          disabled={props.marketsLoading}
+          onChange={props.onMarketChange}
+        />
+
         <div className="grid grid-cols-2 gap-2.5">
           <NumberField label="Data uji" value={props.rounds} min={1} max={100} hint="maks. 100" onChange={props.onRoundsChange} />
           <NumberField label="Patah" value={props.patah} min={0} max={props.rounds} hint={`maks. ${props.rounds}`} onChange={props.onPatahChange} />
         </div>
+
         <div className="grid grid-cols-2 gap-2.5">
-          <SelectField label="Jenis" value={props.scanMode} onChange={(value) => props.onModeChange(value as ScanMode)}>
-            {MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </SelectField>
+          <ThemedSelect
+            label="Jenis"
+            value={props.scanMode}
+            options={MODE_OPTIONS}
+            onChange={(value) => props.onModeChange(value as ScanMode)}
+          />
+
           {isPositionMode(props.scanMode) ? (
-            <SelectField label="Target" value={props.targetPos} onChange={(value) => props.onTargetPosChange(value as Posisi)}>
-              <option value="A">AS</option><option value="C">COP</option><option value="K">KPL</option><option value="E">EKR</option>
-            </SelectField>
+            <ThemedSelect
+              label="Target"
+              value={props.targetPos}
+              options={POSITION_OPTIONS}
+              onChange={(value) => props.onTargetPosChange(value as Posisi)}
+            />
           ) : is3DMode(props.scanMode) ? (
-            <SelectField label="Target" value={props.target3D} onChange={(value) => props.onTarget3DChange(value as Target3D)}>
-              <option value="depan">Depan</option><option value="belakang">Belakang</option>
-            </SelectField>
+            <ThemedSelect
+              label="Target"
+              value={props.target3D}
+              options={TARGET_3D_OPTIONS}
+              onChange={(value) => props.onTarget3DChange(value as Target3D)}
+            />
           ) : (
-            <SelectField label="Target" value={props.target2D} onChange={(value) => props.onTarget2DChange(value as Target2D)}>
-              <option value="depan">Depan</option><option value="tengah">Tengah</option><option value="belakang">Belakang</option>
-            </SelectField>
+            <ThemedSelect
+              label="Target"
+              value={props.target2D}
+              options={TARGET_2D_OPTIONS}
+              onChange={(value) => props.onTarget2DChange(value as Target2D)}
+            />
           )}
         </div>
+
         <div className="grid grid-cols-2 gap-2.5">
-          <SelectField label="Jumlah digit" value={String(props.digitCount)} onChange={(value) => props.onDigitCountChange(Number(value))}>
-            {Array.from({ length: digitMaximum }, (_, index) => index + 1).map((digit) => <option key={digit} value={digit}>{digit} digit</option>)}
-          </SelectField>
+          <ThemedSelect
+            label="Jumlah digit"
+            value={String(props.digitCount)}
+            options={digitOptions}
+            onChange={(value) => props.onDigitCountChange(Number(value))}
+          />
           <NumberField label="Batas hasil" value={props.stopScan} min={1} max={5} onChange={props.onStopScanChange} />
         </div>
       </div>
-      <button type="button" onClick={props.onScan} disabled={props.loading || props.marketsLoading || !props.marketId} className="pressable mt-4 flex h-[3.25rem] w-full items-center justify-center rounded-xl border border-primary/70 bg-primary px-4 text-sm font-black text-bg-deep shadow-[0_10px_24px_rgba(105,151,255,0.16)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50">
+
+      <button
+        type="button"
+        onClick={props.onScan}
+        disabled={props.loading || props.marketsLoading || !props.marketId}
+        className="pressable mt-4 flex h-[3.25rem] w-full items-center justify-center rounded-xl border border-primary/70 bg-primary px-4 text-sm font-black text-bg-deep shadow-[0_10px_24px_rgba(105,151,255,0.16)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
+      >
         {props.loading ? "Memproses Scan…" : "Scan Sekarang"}
       </button>
     </section>
@@ -77,44 +139,238 @@ function FieldLabel({ children }: { children: ReactNode }) {
   return <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted">{children}</span>;
 }
 
-function MarketSelectField({ markets, value, selectedMarket, disabled, onChange }: { markets: Market[]; value: string; selectedMarket: Market | null; disabled?: boolean; onChange: (value: string) => void }) {
+function MarketSelectField({
+  markets,
+  value,
+  selectedMarket,
+  disabled,
+  onChange,
+}: {
+  markets: Market[];
+  value: string;
+  selectedMarket: Market | null;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const normalizedQuery = query.trim().toLocaleLowerCase("id-ID");
+  const filteredMarkets = normalizedQuery
+    ? markets.filter((market) => `${marketLabel(market)} ${market.lastResult || ""}`.toLocaleLowerCase("id-ID").includes(normalizedQuery))
+    : markets;
+
+  useEffect(() => {
+    if (!open) return;
+
+    searchRef.current?.focus();
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const selectMarket = (marketId: string) => {
+    onChange(marketId);
+    setQuery("");
+    setOpen(false);
+  };
+
   return (
-    <label className="block">
+    <div ref={rootRef} className={`relative ${open ? "z-50" : "z-0"}`}>
       <FieldLabel>Pasaran</FieldLabel>
-      <div className="relative">
-        <div className="flex h-12 items-center gap-2.5 rounded-xl border border-border-soft bg-surface px-3 shadow-inner shadow-black/10">
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_4px_rgba(105,151,255,0.12)]" />
-          <span className="min-w-0 flex-1 truncate text-sm font-black text-text">{selectedMarket ? marketLabel(selectedMarket) : disabled ? "MEMUAT PASARAN…" : "PILIH PASARAN"}</span>
-          <span className="num shrink-0 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-sm font-black tracking-[0.06em] text-accent">{selectedMarket?.lastResult || "----"}</span>
-          <ChevronDown size={16} className="shrink-0 text-text-soft" />
+      <button
+        type="button"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex h-12 w-full items-center gap-2.5 rounded-xl border border-border-soft bg-surface px-3 text-left shadow-inner shadow-black/10 outline-none transition-colors hover:border-border-strong focus:border-primary/60 focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-55"
+      >
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_4px_rgba(124,77,255,0.14)]" />
+        <span className="min-w-0 flex-1 truncate text-sm font-black text-text">
+          {selectedMarket ? marketLabel(selectedMarket) : disabled ? "MEMUAT PASARAN…" : "PILIH PASARAN"}
+        </span>
+        <span className="num shrink-0 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-sm font-black tracking-[0.06em] text-accent">
+          {selectedMarket?.lastResult || "----"}
+        </span>
+        <ChevronDown size={16} className={`shrink-0 text-text-soft transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-2xl border border-border-strong bg-surface-2 shadow-[0_24px_70px_rgba(0,0,0,0.55)] ring-1 ring-white/5">
+          <div className="border-b border-border-soft bg-surface-2 p-2">
+            <div className="flex h-10 items-center gap-2 rounded-xl border border-border-soft bg-bg/70 px-3 focus-within:border-primary/55 focus-within:ring-2 focus-within:ring-primary/10">
+              <Search size={15} className="shrink-0 text-text-soft" />
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Cari pasaran…"
+                className="h-full min-w-0 flex-1 bg-transparent text-sm font-bold text-text outline-none placeholder:text-text-faint"
+              />
+            </div>
+          </div>
+
+          <div role="listbox" aria-label="Daftar pasaran" className="max-h-[min(18rem,52vh)] overflow-y-auto p-1.5">
+            {filteredMarkets.length ? (
+              filteredMarkets.map((market) => {
+                const selected = market.id === value;
+                return (
+                  <button
+                    key={market.id}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => selectMarket(market.id)}
+                    className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                      selected ? "bg-primary/16 text-text" : "text-text-muted hover:bg-white/[0.06] hover:text-text"
+                    }`}
+                  >
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${selected ? "bg-primary" : "bg-text-faint"}`} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-black">{marketLabel(market)}</span>
+                    <span className="num shrink-0 rounded-lg border border-accent/25 bg-accent/10 px-2 py-1 text-xs font-black text-accent">
+                      {market.lastResult || "----"}
+                    </span>
+                    <Check size={15} className={selected ? "text-primary-soft" : "invisible"} />
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-3 py-8 text-center text-xs font-bold text-text-soft">Pasaran tidak ditemukan</div>
+            )}
+          </div>
         </div>
-        <select value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)} disabled={disabled} aria-label="Pilih pasaran" className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
-          <option value="">Pilih pasaran</option>
-          {markets.map((market) => <option key={market.id} value={market.id}>{marketLabel(market)} · {market.lastResult || "----"}</option>)}
-        </select>
-      </div>
-    </label>
+      ) : null}
+    </div>
   );
 }
 
-function SelectField({ label, value, onChange, disabled, children }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; children: ReactNode }) {
+function ThemedSelect({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  options: readonly SelectOption[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selectedOption = options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className={`relative min-w-0 ${open ? "z-40" : "z-0"}`}>
+      <FieldLabel>{label}</FieldLabel>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex h-12 w-full items-center rounded-xl border border-border-soft bg-surface px-3 text-left text-sm font-black text-text shadow-inner shadow-black/10 outline-none transition-colors hover:border-border-strong focus:border-primary/60 focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-55"
+      >
+        <span className="min-w-0 flex-1 truncate">{selectedOption?.label || "Pilih"}</span>
+        <ChevronDown size={16} className={`ml-2 shrink-0 text-text-soft transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open ? (
+        <div
+          role="listbox"
+          aria-label={label}
+          className="absolute left-0 right-0 top-full mt-2 max-h-56 overflow-y-auto rounded-xl border border-border-strong bg-surface-2 p-1.5 shadow-[0_20px_55px_rgba(0,0,0,0.5)] ring-1 ring-white/5"
+        >
+          {options.map((option) => {
+            const selected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-black transition-colors ${
+                  selected ? "bg-primary/16 text-text" : "text-text-muted hover:bg-white/[0.06] hover:text-text"
+                }`}
+              >
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                <Check size={14} className={selected ? "text-primary-soft" : "invisible"} />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  min,
+  max,
+  hint,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  hint?: string;
+  disabled?: boolean;
+  onChange: (value: number) => void;
+}) {
   return (
     <label className="block min-w-0">
       <FieldLabel>{label}</FieldLabel>
       <div className="relative">
-        <select value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)} disabled={disabled} className="h-12 w-full appearance-none rounded-xl border border-border-soft bg-surface px-3 pr-8 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55">{children}</select>
-        <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-soft" />
-      </div>
-    </label>
-  );
-}
-
-function NumberField({ label, value, min, max, hint, disabled, onChange }: { label: string; value: number; min: number; max: number; hint?: string; disabled?: boolean; onChange: (value: number) => void }) {
-  return (
-    <label className="block min-w-0">
-      <FieldLabel>{label}</FieldLabel>
-      <div className="relative">
-        <input type="number" inputMode="numeric" value={value} min={min} max={max} disabled={disabled} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))} className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55" />
+        <input
+          type="number"
+          inputMode="numeric"
+          value={value}
+          min={min}
+          max={max}
+          disabled={disabled}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))}
+          className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55"
+        />
         {hint ? <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">{hint}</span> : null}
       </div>
     </label>
