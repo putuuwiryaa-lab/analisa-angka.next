@@ -117,6 +117,7 @@ export default function DashboardPage() {
               <Link
                 key={m.id}
                 href={`/analyze/${encodeURIComponent(m.id)}`}
+                prefetch={false}
                 className="pressable animate-soft-pop depth-1 group flex h-[112px] flex-col overflow-hidden rounded-3xl border text-center hover:border-border hover:bg-surface-2"
                 style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}
               >
