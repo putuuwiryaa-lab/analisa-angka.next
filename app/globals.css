@@ -29,15 +29,15 @@
   --color-border-soft: rgba(255, 255, 255, 0.095);
   --color-border-strong: rgba(255, 255, 255, 0.24);
 
-  /* Warna per-mode analisa */
-  --color-mode-ai: #e6b84d;
-  --color-mode-bbfs: #ec9a4a;
-  --color-mode-mati: #f26b86;
-  --color-mode-jumlah: #22b8a8;
-  --color-mode-shio: #4fb6c9;
-  --color-mode-rekap: #78a8f2;
-  --color-mode-invest: #c084fc;
-  --color-mode-statistics: #34d399;
+  /* Alias kompatibilitas: seluruh mode memakai electric purple yang sama */
+  --color-mode-ai: var(--color-primary);
+  --color-mode-bbfs: var(--color-primary);
+  --color-mode-mati: var(--color-primary);
+  --color-mode-jumlah: var(--color-primary);
+  --color-mode-shio: var(--color-primary);
+  --color-mode-rekap: var(--color-primary);
+  --color-mode-invest: var(--color-primary);
+  --color-mode-statistics: var(--color-primary);
 
   /* Radius */
   --radius-lg: 1rem;
@@ -239,32 +239,9 @@
   }
 }
 
+/* Semua mode berbagi identitas electric purple yang sama. */
 [data-mode] {
   --accent: var(--color-primary);
-}
-[data-mode="ai"] {
-  --accent: var(--color-mode-ai);
-}
-[data-mode="bbfs"] {
-  --accent: var(--color-mode-bbfs);
-}
-[data-mode="mati"] {
-  --accent: var(--color-mode-mati);
-}
-[data-mode="jumlah"] {
-  --accent: var(--color-mode-jumlah);
-}
-[data-mode="shio"] {
-  --accent: var(--color-mode-shio);
-}
-[data-mode="rekap"] {
-  --accent: var(--color-mode-rekap);
-}
-[data-mode="invest"] {
-  --accent: var(--color-mode-invest);
-}
-[data-mode="statistics"] {
-  --accent: var(--color-mode-statistics);
 }
 
 .admin-route main > section:nth-of-type(2) {
