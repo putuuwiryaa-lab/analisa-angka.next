@@ -37,6 +37,10 @@ function requestHostname(req: NextRequest) {
 function redirectApexToWww(req: NextRequest) {
   if (requestHostname(req) !== APEX_HOSTNAME) return null;
 
+  // Service worker lama pada apex harus bisa mengambil pembaruan dari origin yang sama
+  // agar cache aplikasi sebelum migrasi dapat dibersihkan.
+  if (req.nextUrl.pathname === "/sw.js") return null;
+
   const url = req.nextUrl.clone();
   url.protocol = "https:";
   url.hostname = PRIMARY_HOSTNAME;
