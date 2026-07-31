@@ -4,6 +4,7 @@ import { Providers } from "./providers";
 import { AppShell } from "@/components/layout/AppShell";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
+import "./modern-clean.css";
 import "./accessibility.css";
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
   description: "Aplikasi analisa angka berbasis evaluasi statistik.",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "Analisa Angka",
   },
   openGraph: {
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0d0a1a",
+  themeColor: "#f6f8fc",
   width: "device-width",
   initialScale: 1,
 };
