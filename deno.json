@@ -5,9 +5,10 @@
     "unsafe-proto",
     "sloppy-imports"
   ],
+  "nodeModulesDir": "auto",
   "deploy": {
     "framework": "nextjs",
-    "install": "pnpm install --frozen-lockfile",
-    "build": "pnpm build"
+    "install": "deno install --allow-scripts",
+    "build": "deno task build"
   }
 }
