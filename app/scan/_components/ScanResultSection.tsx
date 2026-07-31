@@ -23,46 +23,68 @@ export function trekId(marketId: string, item: AutoScanItem) {
 
 export default function ScanResultSection({ result, marketTitle, marketId, savedId, onSave, onView }: Props) {
   const frequencyRows = buildFrequencyRows(result);
+  const unit = isShioMode(result.config.scanMode) ? "shio" : "digit";
+
   return (
-    <section className="depth-1 rounded-3xl border p-4 sm:p-5">
-      <p className="mb-4 text-sm font-bold leading-relaxed text-text-soft">
-        <strong className="text-text">{marketTitle}</strong>{" · "}
-        <strong className="text-text">{analysisTitle(result.config.scanMode, result.config.targetPos, result.config.target2D, result.config.target3D)}</strong>
-        {` · ${result.config.digitCount} ${isShioMode(result.config.scanMode) ? "shio" : "digit"} · ${result.config.L} data · patah ${result.config.patah} · ${result.totalMatched} hasil`}
-      </p>
-      <div className="space-y-2.5">
+    <section className="depth-1 rounded-2xl border p-3 sm:p-4">
+      <div className="mb-3">
+        <h2 className="truncate text-base font-black text-text">{marketTitle}</h2>
+        <p className="mt-0.5 text-[11px] font-bold text-text-soft">
+          {analysisTitle(result.config.scanMode, result.config.targetPos, result.config.target2D, result.config.target3D)} · {result.config.digitCount} {unit}
+        </p>
+        <p className="mt-0.5 text-[10px] font-bold text-text-muted">
+          {result.config.L} data · patah {result.config.patah} · {result.totalMatched} hasil
+        </p>
+      </div>
+
+      <div className="space-y-2">
         {result.items.length ? result.items.map((item, index) => {
           const style = ROLE[index] ?? ROLE[2];
           const id = trekId(marketId, item);
+          const labels = labelsFromValues(item.angkaHidup, item.scanMode);
+
           return (
-            <article key={`${item.code}-${index}`} className={`rounded-2xl border p-3 ${style.row}`}>
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className={`max-w-[7.5rem] shrink-0 truncate rounded-xl border px-3 py-2 text-sm font-black ${style.badge}`}>{item.formula}</span>
-                  <div className="num flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-2xl font-black tracking-[0.06em] text-accent">{labelsFromValues(item.angkaHidup, item.scanMode).map((digit, digitIndex) => <span key={`${digit}-${digitIndex}`}>{digit}</span>)}</div>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button type="button" onClick={() => onSave(item)} className="pressable h-11 rounded-xl border border-primary/40 bg-primary/10 px-3 text-xs font-black text-primary-soft">{savedId === id ? "Tersimpan" : "Simpan"}</button>
-                  <button type="button" onClick={() => onView(item)} className="pressable h-11 rounded-xl border border-primary/40 bg-primary/10 px-3 text-xs font-black text-primary-soft">Lihat</button>
-                </div>
+            <article key={`${item.code}-${index}`} className={`rounded-xl border p-2.5 ${style.row}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className={`max-w-[11rem] truncate rounded-lg border px-2.5 py-1.5 text-[11px] font-black ${style.badge}`}>{item.formula}</span>
+                <span className="text-[10px] font-black uppercase tracking-wide text-text-muted">Hasil {index + 1}</span>
+              </div>
+
+              <div className="num mt-3 flex min-h-10 w-full flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xl font-black tracking-[0.05em] text-accent">
+                {labels.map((digit, digitIndex) => <span key={`${digit}-${digitIndex}`}>{digit}</span>)}
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => onSave(item)} className="pressable h-10 rounded-lg border border-primary/40 bg-primary/10 px-3 text-[11px] font-black text-primary-soft">
+                  {savedId === id ? "Tersimpan" : "Simpan"}
+                </button>
+                <button type="button" onClick={() => onView(item)} className="pressable h-10 rounded-lg border border-primary/40 bg-primary/10 px-3 text-[11px] font-black text-primary-soft">
+                  Lihat
+                </button>
               </div>
             </article>
           );
-        }) : <div className="rounded-2xl border border-dashed border-border-soft p-7 text-center text-sm font-bold text-text-muted">Belum ada trek yang cocok.</div>}
+        }) : (
+          <div className="rounded-xl border border-dashed border-border-soft p-5 text-center text-xs font-bold text-text-muted">Belum ada trek yang cocok.</div>
+        )}
       </div>
+
       {result.items.length ? (
-        <div className="mt-4 rounded-3xl border border-border-soft bg-surface/75 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="display text-xl text-text">Frekuensi {isShioMode(result.config.scanMode) ? "Shio" : "Digit"}</h2>
-            <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 text-xs font-black text-primary-soft">{result.items.length} hasil scan</span>
+        <details className="mt-3 rounded-xl border border-border-soft bg-surface/75">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-black text-text [&::-webkit-details-marker]:hidden">
+            <span>Frekuensi {isShioMode(result.config.scanMode) ? "Shio" : "Digit"}</span>
+            <span className="rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-[10px] font-black text-primary-soft">{result.items.length} hasil</span>
+          </summary>
+          <div className="grid grid-cols-2 gap-1.5 border-t border-border-soft p-2.5">
+            {frequencyRows.map((row) => (
+              <div key={row.value} className={`flex h-9 items-center rounded-lg border border-accent/20 bg-bg-deep/25 px-2.5 ${row.count === 0 ? "opacity-25" : ""}`}>
+                <b className="num w-8 text-lg text-accent">{row.label}</b>
+                <span className="mr-1.5 text-xs font-black text-text-soft">×</span>
+                <span className="text-[11px] font-bold text-text">{row.count}</span>
+              </div>
+            ))}
           </div>
-          <p className="mt-2 text-xs font-bold leading-relaxed text-text-soft">Dihitung dari semua angka hidup yang tampil pada hasil scan.</p>
-          <div className="mt-4 space-y-2">{frequencyRows.map((row) => (
-            <div key={row.value} className={`flex h-12 items-center rounded-xl border border-accent/20 bg-bg-deep/25 px-4 ${row.count === 0 ? "opacity-25" : ""}`}>
-              <b className="num w-12 text-2xl text-accent">{row.label}</b><span className="mr-3 font-black text-text-soft">×</span><span className="font-mono text-base font-bold text-text">{row.count} kali muncul</span>
-            </div>
-          ))}</div>
-        </div>
+        </details>
       ) : null}
     </section>
   );
