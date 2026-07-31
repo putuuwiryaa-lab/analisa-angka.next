@@ -11,7 +11,6 @@ export const SCAN_MODES = [
   "off_3d",
   "shio",
   "off_shio",
-  "experiment_x7",
 ] as const;
 
 export type ScanMode = (typeof SCAN_MODES)[number];
