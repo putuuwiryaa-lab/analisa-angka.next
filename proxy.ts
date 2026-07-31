@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const ACCESS_COOKIE = "analisa_access_token";
 const ADMIN_COOKIE = "analisa_admin_session";
+const TEMPORARY_DENO_PIN_BYPASS_UNTIL = Date.parse("2026-08-07T09:08:00.000Z");
 
 const PUBLIC_PATHS = new Set([
   "/pin",
@@ -31,7 +32,12 @@ function normalizeHostname(value: string | null) {
   return hostname.startsWith("[") ? hostname : hostname.replace(/:\d+$/, "");
 }
 
+function isTemporaryDenoPinBypassActive() {
+  return Boolean(process.env.DENO_DEPLOY_APP_ID) && Date.now() < TEMPORARY_DENO_PIN_BYPASS_UNTIL;
+}
+
 function shouldTemporarilyBypassPin(req: NextRequest) {
+  if (isTemporaryDenoPinBypassActive()) return true;
   if (process.env.TEMPORARY_DISABLE_PIN !== "true") return false;
 
   const hostname =
