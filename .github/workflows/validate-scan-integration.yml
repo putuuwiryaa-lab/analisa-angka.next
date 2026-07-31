@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/integrate-scan-module
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
