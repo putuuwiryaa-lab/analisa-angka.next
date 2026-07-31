@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Clock3, Database, Plus, RefreshCw, ScanSearch, Search, X, Zap } from "lucide-react";
+import { Clock3, Database, Plus, RefreshCw, Search, X, Zap } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -16,7 +16,6 @@ import {
 
 const WA_NUMBER = "6285119341538";
 const APP_LINKS = [
-  { name: "Scan Angka", href: "https://scan-angka.vercel.app", Icon: ScanSearch },
   { name: "Angka Pro", href: "https://angkapro.online", Icon: Zap },
 ];
 
