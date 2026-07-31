@@ -3,82 +3,58 @@
 Tanggal audit: 31 Juli 2026  
 Target: `putuuwiryaa-lab/analisa-angka.next`
 
-## Ringkasan
+## Keputusan desain
 
-Tema lama konsisten secara teknis karena memakai token global, tetapi hasil visualnya terlalu gelap dan suram untuk dashboard yang digunakan berulang kali. Kombinasi canvas navy hampir hitam, beberapa permukaan gelap dengan luminansi berdekatan, glow ungu, gradient bertumpuk, dan shadow hitam membuat hierarki antarkomponen kurang tegas.
+Perubahan dibatasi secara ketat pada warna. Layout, spacing, ukuran, radius, struktur kartu, header, navigasi, urutan konten, dan perilaku komponen tetap memakai implementasi asli.
 
-Arah baru memakai sistem **modern clean light**: canvas off-white, kartu putih, teks slate, border tipis, shadow ringan, primary indigo, accent cyan, dan warna mode analisa yang lebih terkontrol.
+Tema lama memakai canvas navy hampir hitam dengan beberapa surface yang luminansinya terlalu berdekatan. Akibatnya kartu mudah menyatu dengan background dan keseluruhan aplikasi terasa suram. Tema putih penuh juga ditolak karena membuat UI terlalu flat dan kehilangan karakter.
 
-## Temuan utama
+Arah final adalah **bright soft-dark**: tetap gelap, tetapi canvas dan kartu dinaikkan luminansinya, kontras antarlapisan diperjelas, dan aksen dibuat lebih segar.
 
-1. `app/globals.css` menetapkan background `#0b0d16` dan `#080914`, dengan surface `#171329` dan `#172033`. Jarak luminansi antarlevel terlalu sempit sehingga banyak kartu terlihat menyatu.
-2. Background halaman memakai tiga radial gradient dan satu linear gradient. Dikombinasikan dengan glow pada logo, kartu, dan tombol, hasilnya terasa berat.
-3. Beberapa komponen memakai tint putih transparan seperti `bg-white/[0.035]`, `hover:bg-white/[0.07]`, dan `bg-white/10`. Kelas ini khusus untuk dark theme dan perlu diaudit bertahap setelah perubahan token global.
-4. Navigasi bawah memakai canvas gelap transparan dan glow per-mode. Pada aplikasi data, navigasi lebih mudah dibaca bila menggunakan bar putih, border tipis, dan shadow ringan.
-5. `data-mode="scan"` sudah digunakan pada navigasi, tetapi token warna Scan belum didefinisikan di theme utama. Akibatnya Scan jatuh ke warna primary umum.
-6. Warna mode analisa cukup membantu orientasi, tetapi versi lama terlalu neon di atas permukaan gelap. Warna tersebut dipertahankan dengan saturasi dan luminansi yang lebih sesuai untuk background terang.
-
-## Sistem warna baru
+## Sistem warna final
 
 ### Fondasi
 
 | Token | Nilai | Fungsi |
 |---|---:|---|
-| `--color-bg` | `#F6F8FC` | Canvas utama |
-| `--color-bg-deep` | `#FFFFFF` | Navigation bar dan on-primary text legacy |
-| `--color-surface` | `#FFFFFF` | Card, input, panel |
-| `--color-surface-2` | `#F8FAFC` | Secondary surface |
-| `--color-surface-pressed` | `#E2E8F0` | Pressed/selected surface |
-| `--color-text` | `#172033` | Teks utama |
-| `--color-text-muted` | `#475569` | Teks sekunder |
-| `--color-text-soft` | `#64748B` | Label dan metadata |
-| `--color-text-faint` | `#94A3B8` | Placeholder dan teks tersier |
-| `--color-primary` | `#5657D9` | Primary action dan identity |
-| `--color-primary-soft` | `#6D6EE8` | Hover dan secondary primary |
-| `--color-accent` | `#0891B2` | Result/highlight |
-| `--color-success` | `#059669` | Status berhasil |
-| `--color-danger` | `#DC2626` | Error dan destructive state |
+| `--color-bg` | `#1A1D2E` | Canvas utama |
+| `--color-bg-deep` | `#141624` | Area paling dalam dan navigation backdrop |
+| `--color-surface` | `#25283B` | Card utama |
+| `--color-surface-2` | `#2D3148` | Card sekunder dan input |
+| `--color-surface-pressed` | `#3B405C` | Selected/pressed surface |
+| `--color-text` | `#F9FAFF` | Teks utama |
+| `--color-text-muted` | `#D8DEF0` | Teks sekunder |
+| `--color-text-soft` | `#AAB5D0` | Label dan metadata |
+| `--color-text-faint` | `#7C879F` | Placeholder dan teks tersier |
+| `--color-primary` | `#8B7CF6` | Identitas dan aksi utama |
+| `--color-primary-soft` | `#B3A6FF` | Aksen primary lembut |
+| `--color-accent` | `#48C6E8` | Highlight dan result |
+| `--color-success` | `#57D6A6` | Status berhasil |
+| `--color-danger` | `#FF6F85` | Error dan destructive state |
 
 ### Mode analisa
 
 | Mode | Nilai |
 |---|---:|
-| AI | `#B7791F` |
-| BBFS | `#C2410C` |
-| Angka Mati | `#E11D48` |
-| Jumlah | `#0F766E` |
-| Shio | `#0891B2` |
-| Rekap | `#2563EB` |
-| Invest | `#7C3AED` |
-| Statistik | `#059669` |
-| Scan | `#0E7490` |
+| AI | `#F5C761` |
+| BBFS | `#F5A65B` |
+| Angka Mati | `#FF7893` |
+| Jumlah | `#47D7C2` |
+| Shio | `#52C7E8` |
+| Rekap | `#7EAEFF` |
+| Invest | `#C792FF` |
+| Statistik | `#5EE0A0` |
+| Scan | `#56CFE1` |
 
-## Prinsip visual
-
-- Gunakan warna mode untuk orientasi, bukan sebagai background dominan.
-- Kartu utama memakai putih dengan satu border dan satu shadow ringan.
-- Gradient hanya untuk background global yang sangat halus atau accent card penting.
-- Glow dihilangkan dari komponen rutin.
-- Label kecil memakai uppercase seperlunya; konten utama tetap memakai kontras tinggi.
-- Status sukses, peringatan, dan error harus dibedakan oleh warna serta teks/icon, bukan warna saja.
-
-## Implementasi pada branch
+## Implementasi
 
 Branch: `agent/modern-clean-color-system`
 
-- `components/layout/ModernCleanTheme.tsx`: menyuntikkan override token global, background, surface depth, dan token Scan melalui elemen `<style>` app-wide. Jalur ini dipilih karena Deno gagal ketika stylesheet global tambahan diimpor dari `app/layout.tsx`.
-- `components/layout/AppShell.tsx`: memasang theme override, membersihkan hero header, dan merapikan bottom navigation.
-- `components/ui/Logo.tsx`: mengganti gradient logo ke indigo-cyan yang lebih modern.
-- `docs/UI_COLOR_AUDIT_2026-07-31.md`: mendokumentasikan temuan, palette, dan batas scope.
+- `components/layout/ModernCleanTheme.tsx` hanya mengoverride token warna, background, warna surface, border, shadow, glow, dan warna per-mode.
+- `components/layout/AppShell.tsx` mempertahankan seluruh class layout asli; perubahan hanya memasang theme global.
+- `components/ui/Logo.tsx` hanya mengganti warna gradient logo.
+- Tidak ada perubahan pada engine, API, Supabase, autentikasi, routing, isi menu, ukuran, spacing, atau struktur komponen.
 
-## Validasi
+## Catatan audit lanjutan
 
-- Deno Deploy berhasil setelah theme override dipindahkan dari global CSS import ke `ModernCleanTheme.tsx`.
-- Perubahan hanya menyentuh lapisan visual dan dokumentasi; engine, API, Supabase, dan alur menu tidak diubah.
-
-## Tahap lanjutan setelah review visual
-
-1. Uji route utama pada mobile: `/`, `/analyze/[marketId]`, `/scan`, `/scan/batch`, `/pantauan-rekap`, dan `/rekomendasi`.
-2. Periksa elemen yang masih memakai shadow, gradient, atau tint putih hard-coded.
-3. Jalankan pemeriksaan kontras teks kecil dan state disabled.
-4. Setelah visual disetujui, satukan token final ke `app/globals.css` agar theme kembali memiliki satu sumber utama.
+Komponen yang memakai warna hard-coded perlu diperiksa melalui preview per route. Koreksi lanjutan tetap harus berupa pergantian warna saja, tanpa mengubah markup atau class layout.
