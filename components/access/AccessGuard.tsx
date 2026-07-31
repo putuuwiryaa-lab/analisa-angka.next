@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const ACCESS_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const ACCESS_CHECK_INTERVAL_MS = 8 * 60 * 60 * 1000;
 const ACCESS_CHECK_STORAGE_KEY = "analisa_access_checked_at";
 
 function loginUrl() {
