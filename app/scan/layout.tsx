@@ -21,6 +21,7 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
       <header className="animate-fade-in mb-3 flex items-center justify-between gap-2.5 rounded-2xl border border-border-soft bg-surface/75 p-2.5 backdrop-blur-xl">
         <Link
           href="/"
+          prefetch={false}
           className="pressable flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-soft bg-white/[0.04] text-text-muted hover:border-border hover:text-text"
           aria-label="Kembali ke Analisa Angka"
         >
@@ -39,11 +40,11 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/92 backdrop-blur-xl" aria-label="Navigasi Scan Angka">
         <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2 px-3 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-2 sm:px-5">
-          <Link href="/scan" className={navClass(scanActive)} aria-current={scanActive ? "page" : undefined}>
+          <Link href="/scan" prefetch={false} className={navClass(scanActive)} aria-current={scanActive ? "page" : undefined}>
             <ScanSearch size={17} />
             Scan
           </Link>
-          <Link href="/scan/batch" className={navClass(batchActive)} aria-current={batchActive ? "page" : undefined}>
+          <Link href="/scan/batch" prefetch={false} className={navClass(batchActive)} aria-current={batchActive ? "page" : undefined}>
             <Layers3 size={17} />
             Batch
           </Link>
