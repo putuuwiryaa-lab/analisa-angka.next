@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Check, Clipboard, Play, Save, Search, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, ChevronDown, Clipboard, Save, Trash2 } from "lucide-react";
 import type { AutoScanItem, AutoScanResult, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
 
@@ -69,7 +69,6 @@ async function copyText(text: string) {
 export default function ScanPage() {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [marketId, setMarketId] = useState("");
-  const [marketQuery, setMarketQuery] = useState("");
   const [marketsLoading, setMarketsLoading] = useState(true);
   const [scanMode, setScanMode] = useState<ScanMode>("ai_2d_belakang");
   const [targetPos, setTargetPos] = useState<Posisi>("K");
@@ -110,11 +109,7 @@ export default function ScanPage() {
   }, []);
 
   const selectedMarket = markets.find((market) => market.id === marketId) ?? null;
-  const filteredMarkets = useMemo(() => {
-    const query = marketQuery.trim().toLowerCase();
-    if (!query) return markets;
-    return markets.filter((market) => `${market.id} ${market.name}`.toLowerCase().includes(query));
-  }, [markets, marketQuery]);
+  const digitMaximum = isShioMode(scanMode) ? 12 : 10;
 
   function changeMode(mode: ScanMode) {
     setScanMode(mode);
@@ -203,55 +198,86 @@ export default function ScanPage() {
   return (
     <div className="animate-rise space-y-4">
       <section className="depth-1 rounded-3xl border p-4 sm:p-5">
-        <div className="mb-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary-soft">Scanner Rumus Otomatis</p>
-          <h2 className="display mt-1 text-2xl text-text">Scan satu pasaran</h2>
-          <p className="mt-1 text-sm font-medium text-text-soft">Engine Scan dipindahkan tanpa modul Adaptif.</p>
-        </div>
+        <div className="space-y-4">
+          <MarketSelectField
+            markets={markets}
+            value={marketId}
+            selectedMarket={selectedMarket}
+            disabled={marketsLoading}
+            onChange={setMarketId}
+          />
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="sm:col-span-2">
-            <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">Cari pasaran</span>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-soft" size={17} />
-              <input
-                value={marketQuery}
-                onChange={(event) => setMarketQuery(event.target.value)}
-                placeholder="Nama atau kode pasaran"
-                className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-4 pl-10 text-sm font-bold text-text outline-none focus:border-primary/50"
-              />
-            </div>
-          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <NumberField
+              label="Data uji"
+              value={rounds}
+              min={1}
+              max={100}
+              hint="maks. 100"
+              disabled={scanMode === "experiment_x7"}
+              onChange={setRounds}
+            />
+            <NumberField
+              label="Patah"
+              value={patah}
+              min={0}
+              max={rounds}
+              hint={`maks. ${rounds}`}
+              disabled={scanMode === "experiment_x7"}
+              onChange={setPatah}
+            />
+          </div>
 
-          <SelectField label="Pasaran" value={marketId} onChange={setMarketId} disabled={marketsLoading}>
-            <option value="">Pilih pasaran</option>
-            {filteredMarkets.map((market) => (
-              <option key={market.id} value={market.id}>{marketLabel(market)} · {market.lastResult || "----"}</option>
-            ))}
-          </SelectField>
-
-          <SelectField label="Jenis scan" value={scanMode} onChange={(value) => changeMode(value as ScanMode)}>
-            {MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </SelectField>
-
-          {isPositionMode(scanMode) ? (
-            <SelectField label="Target posisi" value={targetPos} onChange={(value) => setTargetPos(value as Posisi)}>
-              <option value="A">AS</option><option value="C">COP</option><option value="K">KPL</option><option value="E">EKR</option>
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField label="Jenis" value={scanMode} onChange={(value) => changeMode(value as ScanMode)}>
+              {MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </SelectField>
-          ) : is3DMode(scanMode) ? (
-            <SelectField label="Target 3D" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
-              <option value="depan">3D Depan</option><option value="belakang">3D Belakang</option>
-            </SelectField>
-          ) : scanMode !== "experiment_x7" ? (
-            <SelectField label="Target 2D" value={target2D} onChange={(value) => setTarget2D(value as Target2D)}>
-              <option value="depan">2D Depan</option><option value="tengah">2D Tengah</option><option value="belakang">2D Belakang</option>
-            </SelectField>
-          ) : null}
 
-          <NumberField label="Data uji" value={rounds} min={1} max={100} disabled={scanMode === "experiment_x7"} onChange={setRounds} />
-          <NumberField label="Toleransi patah" value={patah} min={0} max={rounds} disabled={scanMode === "experiment_x7"} onChange={setPatah} />
-          <NumberField label="Jumlah digit" value={digitCount} min={1} max={isShioMode(scanMode) ? 12 : 10} disabled={scanMode === "experiment_x7"} onChange={setDigitCount} />
-          <NumberField label="Jumlah hasil" value={stopScan} min={1} max={5} disabled={scanMode === "experiment_x7"} onChange={setStopScan} />
+            {isPositionMode(scanMode) ? (
+              <SelectField label="Target" value={targetPos} onChange={(value) => setTargetPos(value as Posisi)}>
+                <option value="A">AS</option>
+                <option value="C">COP</option>
+                <option value="K">KPL</option>
+                <option value="E">EKR</option>
+              </SelectField>
+            ) : is3DMode(scanMode) ? (
+              <SelectField label="Target" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
+                <option value="depan">Depan</option>
+                <option value="belakang">Belakang</option>
+              </SelectField>
+            ) : scanMode !== "experiment_x7" ? (
+              <SelectField label="Target" value={target2D} onChange={(value) => setTarget2D(value as Target2D)}>
+                <option value="depan">Depan</option>
+                <option value="tengah">Tengah</option>
+                <option value="belakang">Belakang</option>
+              </SelectField>
+            ) : (
+              <SelectField label="Target" value="otomatis" disabled onChange={() => undefined}>
+                <option value="otomatis">Otomatis</option>
+              </SelectField>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField
+              label="Jumlah digit"
+              value={String(digitCount)}
+              disabled={scanMode === "experiment_x7"}
+              onChange={(value) => setDigitCount(Number(value))}
+            >
+              {Array.from({ length: digitMaximum }, (_, index) => index + 1).map((digit) => (
+                <option key={digit} value={digit}>{digit} digit</option>
+              ))}
+            </SelectField>
+            <NumberField
+              label="Batas hasil"
+              value={stopScan}
+              min={1}
+              max={5}
+              disabled={scanMode === "experiment_x7"}
+              onChange={setStopScan}
+            />
+          </div>
         </div>
 
         {error ? <div className="mt-4 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">{error}</div> : null}
@@ -260,10 +286,9 @@ export default function ScanPage() {
           type="button"
           onClick={runScan}
           disabled={loading || marketsLoading || !marketId}
-          className="pressable mt-4 flex h-13 w-full items-center justify-center gap-2 rounded-2xl border border-primary/45 bg-primary/20 px-4 text-sm font-black uppercase tracking-wide text-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
+          className="pressable mt-5 flex h-16 w-full items-center justify-center rounded-2xl border border-primary/70 bg-primary px-4 text-base font-black text-bg-deep shadow-[0_12px_30px_rgba(105,151,255,0.18)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Play size={18} fill="currentColor" />
-          {loading ? "Memproses scan…" : "Mulai Scan"}
+          {loading ? "Memproses Scan…" : "Scan Sekarang"}
         </button>
       </section>
 
@@ -342,30 +367,98 @@ export default function ScanPage() {
   );
 }
 
-function SelectField({ label, value, onChange, disabled, children }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; children: React.ReactNode }) {
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.12em] text-text-muted">{children}</span>;
+}
+
+function MarketSelectField({ markets, value, selectedMarket, disabled, onChange }: {
+  markets: Market[];
+  value: string;
+  selectedMarket: Market | null;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
   return (
-    <label>
-      <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-3 text-sm font-bold text-text outline-none focus:border-primary/50 disabled:opacity-60">
-        {children}
-      </select>
+    <label className="block">
+      <FieldLabel>Pasaran</FieldLabel>
+      <div className="relative">
+        <div className="flex h-[4.5rem] items-center gap-3 rounded-2xl border border-border-soft bg-surface px-4 shadow-inner shadow-black/10">
+          <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_6px_rgba(105,151,255,0.12)]" />
+          <span className="min-w-0 flex-1 truncate text-base font-black text-text">
+            {selectedMarket ? marketLabel(selectedMarket) : disabled ? "MEMUAT PASARAN…" : "PILIH PASARAN"}
+          </span>
+          <span className="num shrink-0 rounded-xl border border-accent/30 bg-accent/10 px-3 py-1.5 text-base font-black tracking-[0.08em] text-accent">
+            {selectedMarket?.lastResult || "----"}
+          </span>
+          <ChevronDown size={18} className="shrink-0 text-text-soft" />
+        </div>
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          aria-label="Pilih pasaran"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+        >
+          <option value="">Pilih pasaran</option>
+          {markets.map((market) => (
+            <option key={market.id} value={market.id}>{marketLabel(market)} · {market.lastResult || "----"}</option>
+          ))}
+        </select>
+      </div>
     </label>
   );
 }
 
-function NumberField({ label, value, min, max, disabled, onChange }: { label: string; value: number; min: number; max: number; disabled?: boolean; onChange: (value: number) => void }) {
+function SelectField({ label, value, onChange, disabled, children }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <label>
-      <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">{label}</span>
-      <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        disabled={disabled}
-        onChange={(event) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))}
-        className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-3 text-sm font-bold text-text outline-none focus:border-primary/50 disabled:opacity-60"
-      />
+    <label className="block min-w-0">
+      <FieldLabel>{label}</FieldLabel>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          className="h-[4.5rem] w-full appearance-none rounded-2xl border border-border-soft bg-surface px-4 pr-10 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55"
+        >
+          {children}
+        </select>
+        <ChevronDown size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-soft" />
+      </div>
+    </label>
+  );
+}
+
+function NumberField({ label, value, min, max, hint, disabled, onChange }: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  hint?: string;
+  disabled?: boolean;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <FieldLabel>{label}</FieldLabel>
+      <div className="relative">
+        <input
+          type="number"
+          inputMode="numeric"
+          value={value}
+          min={min}
+          max={max}
+          disabled={disabled}
+          onChange={(event) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))}
+          className="h-[4.5rem] w-full rounded-2xl border border-border-soft bg-surface px-4 pr-20 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55"
+        />
+        {hint ? <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-text-soft/55">{hint}</span> : null}
+      </div>
     </label>
   );
 }
