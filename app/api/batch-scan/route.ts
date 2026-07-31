@@ -169,7 +169,7 @@ export async function POST(req: Request) {
     }
 
     const rows = (data ?? []) as MarketRow[];
-    const byId = new Map(rows.map((row) => [row.id, row]));
+    const byId = new Map<string, MarketRow>(rows.map((row): [string, MarketRow] => [row.id, row]));
     const results: BatchLine[] = [];
 
     for (const id of marketIds) {
