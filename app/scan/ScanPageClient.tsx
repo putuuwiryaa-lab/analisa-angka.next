@@ -109,11 +109,6 @@ export default function ScanPageClient() {
   function changeMode(mode: ScanMode) {
     setScanMode(mode);
     setDigitCount(MODE_OPTIONS.find((item) => item.value === mode)?.digits ?? 7);
-    if (mode === "experiment_x7") {
-      setRounds(7);
-      setPatah(0);
-      setStopScan(1);
-    }
   }
 
   async function runScan() {

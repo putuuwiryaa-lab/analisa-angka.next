@@ -97,7 +97,6 @@ export const MODE_OPTIONS: { value: ScanMode; label: string; digits: number }[] 
   { value: "off_3d", label: "OFF 3D", digits: 3 },
   { value: "shio", label: "Shio", digits: 6 },
   { value: "off_shio", label: "OFF Shio", digits: 6 },
-  { value: "experiment_x7", label: "Experiment X7", digits: 7 },
 ];
 
 const MODE_VALUES = new Set<ScanMode>(MODE_OPTIONS.map((option) => option.value));
@@ -116,7 +115,7 @@ function capitalized(value: string) {
 
 export function analysisTitle(mode: ScanMode, targetPos: Posisi, target2D: Target2D, target3D: Target3D) {
   const label = modeLabel(mode);
-  if (mode === "experiment_x7" || isShioMode(mode)) return label;
+  if (isShioMode(mode)) return label;
   if (isPositionMode(mode)) return `${label} ${POSITION_LABEL[targetPos]}`;
   if (is3DMode(mode)) return `${label} ${capitalized(target3D)}`;
   return `${label} ${capitalized(target2D)}`;
@@ -171,7 +170,6 @@ function statusFor(mode: ScanMode, targets: number[], values: number[]) {
 }
 
 export function predictionValues(item: AutoScanItem) {
-  if (item.scanMode === "experiment_x7") return item.angkaHidup;
   const values = pickColumns(item.kolomHidup, item.result.deretLive);
   return isJumlah2DMode(item.scanMode) ? values.filter((digit) => digit !== 0) : values;
 }

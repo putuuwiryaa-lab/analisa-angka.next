@@ -52,15 +52,14 @@ export async function POST(req: Request) {
     }
 
     const scanMode = (body?.scanMode ?? DEFAULT_SCAN_MODE) as ScanMode;
-    const experiment = scanMode === "experiment_x7";
-    const L = experiment ? 7 : clamp(body?.L, 14, 1, 100);
+    const L = clamp(body?.L, 14, 1, 100);
     const config = {
       L,
-      patah: experiment ? 0 : clamp(body?.patah, 0, 0, L),
+      patah: clamp(body?.patah, 0, 0, L),
       targetPos: body?.targetPos as Posisi | undefined,
       target2D: body?.target2D as Target2D | undefined,
       target3D: body?.target3D as Target3D | undefined,
-      digitCount: experiment ? 7 : clamp(body?.digitCount ?? body?.minHidup, DEFAULT_DIGIT_COUNT, 1, 12),
+      digitCount: clamp(body?.digitCount ?? body?.minHidup, DEFAULT_DIGIT_COUNT, 1, 12),
       stopScan: clamp(body?.stopScan, DEFAULT_STOP_SCAN, 1, 20),
       scanMode,
     };

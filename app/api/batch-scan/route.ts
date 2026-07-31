@@ -85,17 +85,16 @@ function readRequest(source: Record<string, unknown>, fallback?: ScanRequest): S
   if (!isTarget2D(target2D)) return "Target 2D tidak valid.";
   if (!isTarget3D(target3D)) return "Target 3D tidak valid.";
 
-  const experiment = scanMode === "experiment_x7";
-  const L = experiment ? 7 : clamp(source.L, fallback?.L ?? 14, 1, 100);
+  const L = clamp(source.L, fallback?.L ?? 14, 1, 100);
   return {
     scanMode,
     targetPos,
     target2D,
     target3D,
-    digitCount: experiment ? 7 : clamp(source.digitCount, fallback?.digitCount ?? 7, 1, 12),
-    topRanks: experiment ? [1] : normalizeRanks(source.topRanks ?? fallback?.topRanks),
+    digitCount: clamp(source.digitCount, fallback?.digitCount ?? 7, 1, 12),
+    topRanks: normalizeRanks(source.topRanks ?? fallback?.topRanks),
     L,
-    patah: experiment ? 0 : clamp(source.patah, fallback?.patah ?? 0, 0, L),
+    patah: clamp(source.patah, fallback?.patah ?? 0, 0, L),
   };
 }
 
