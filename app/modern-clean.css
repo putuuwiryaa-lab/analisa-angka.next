@@ -1,8 +1,8 @@
 /* ============================================================
    MODERN CLEAN THEME OVERRIDES
    Light, neutral, data-product oriented visual system.
-   Imported after globals.css so the existing semantic classes
-   keep working across every route without changing app logic.
+   Imported after globals.css so existing semantic classes keep
+   working across every route without changing application logic.
    ============================================================ */
 
 :root {
@@ -44,12 +44,12 @@ body {
   background:
     radial-gradient(circle at 88% 2%, rgba(86, 87, 217, 0.08), transparent 28%),
     radial-gradient(circle at 5% 22%, rgba(8, 145, 178, 0.055), transparent 25%),
-    linear-gradient(180deg, #f9fbff 0%, var(--color-bg) 52%, #f2f5fa 100%);
+    linear-gradient(180deg, #f9fbff 0%, #f6f8fc 52%, #f2f5fa 100%);
   color: var(--color-text);
 }
 
 ::selection {
-  background-color: color-mix(in srgb, var(--color-primary) 82%, white 18%);
+  background-color: var(--color-primary);
   color: #ffffff;
 }
 
@@ -60,38 +60,29 @@ select {
 }
 
 .depth-1 {
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   border-color: var(--color-border-soft);
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.035),
-    0 10px 30px rgba(15, 23, 42, 0.055);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.055);
 }
 
 .depth-2 {
-  background: linear-gradient(180deg, #fbfcfe 0%, #f5f7fb 100%);
+  background: #f8fafc;
   border-color: var(--color-border-soft);
 }
 
 .depth-3 {
-  background: rgba(241, 245, 249, 0.9);
+  background: #f1f5f9;
   border-color: rgba(15, 23, 42, 0.075);
 }
 
 .depth-accent {
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--accent, var(--color-primary)) 8%, white),
-      color-mix(in srgb, var(--accent, var(--color-primary)) 3%, #f8fafc)
-    );
-  border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 22%, transparent);
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--accent, var(--color-primary)) 8%, transparent);
+  background: #ffffff;
+  border-color: var(--color-border);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
 }
 
 .depth-glow-soft {
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.03),
-    0 12px 30px rgba(15, 23, 42, 0.055);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.055);
 }
 
 .pressable:active,
@@ -107,27 +98,6 @@ select {
   --accent: var(--color-mode-scan);
 }
 
-/* Replace dark-theme-only translucent white fills with light-theme neutrals. */
-[class~="bg-white/10"] {
-  background-color: rgba(15, 23, 42, 0.055) !important;
-}
-
-[class~="bg-white/[0.035]"] {
-  background-color: rgba(255, 255, 255, 0.76) !important;
-}
-
-[class~="hover:bg-white/[0.04]"]:hover,
-[class~="hover:bg-white/[0.055]"]:hover,
-[class~="hover:bg-white/[0.07]"]:hover,
-[class~="hover:bg-white/[0.075]"]:hover {
-  background-color: rgba(15, 23, 42, 0.04) !important;
-}
-
-.group:hover [class~="group-hover:bg-white/[0.04]"] {
-  background-color: rgba(15, 23, 42, 0.035) !important;
-}
-
-/* Fixed bottom navigation should read as a clean floating system bar. */
 nav[class*="fixed"][class*="bottom-0"] {
   box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.06);
 }
