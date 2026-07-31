@@ -1,44 +1,45 @@
-const MODERN_CLEAN_CSS = String.raw`
+const COLOR_THEME_CSS = String.raw`
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --color-bg: #f6f8fc;
-  --color-bg-deep: #ffffff;
-  --color-surface: #ffffff;
-  --color-surface-2: #f8fafc;
-  --color-surface-pressed: #e2e8f0;
+  --color-bg: #1a1d2e;
+  --color-bg-deep: #141624;
+  --color-surface: #25283b;
+  --color-surface-2: #2d3148;
+  --color-surface-pressed: #3b405c;
 
-  --color-text: #172033;
-  --color-text-muted: #475569;
-  --color-text-soft: #64748b;
-  --color-text-faint: #94a3b8;
+  --color-text: #f9faff;
+  --color-text-muted: #d8def0;
+  --color-text-soft: #aab5d0;
+  --color-text-faint: #7c879f;
 
-  --color-primary: #5657d9;
-  --color-primary-soft: #6d6ee8;
-  --color-accent: #0891b2;
-  --color-success: #059669;
-  --color-danger: #dc2626;
+  --color-primary: #8b7cf6;
+  --color-primary-soft: #b3a6ff;
+  --color-accent: #48c6e8;
+  --color-success: #57d6a6;
+  --color-danger: #ff6f85;
 
-  --color-border: rgba(15, 23, 42, 0.1);
-  --color-border-soft: rgba(15, 23, 42, 0.06);
-  --color-border-strong: rgba(15, 23, 42, 0.16);
+  --color-border: rgba(226, 232, 255, 0.16);
+  --color-border-soft: rgba(226, 232, 255, 0.1);
+  --color-border-strong: rgba(226, 232, 255, 0.25);
 
-  --color-mode-ai: #b7791f;
-  --color-mode-bbfs: #c2410c;
-  --color-mode-mati: #e11d48;
-  --color-mode-jumlah: #0f766e;
-  --color-mode-shio: #0891b2;
-  --color-mode-rekap: #2563eb;
-  --color-mode-invest: #7c3aed;
-  --color-mode-statistics: #059669;
-  --color-mode-scan: #0e7490;
+  --color-mode-ai: #f5c761;
+  --color-mode-bbfs: #f5a65b;
+  --color-mode-mati: #ff7893;
+  --color-mode-jumlah: #47d7c2;
+  --color-mode-shio: #52c7e8;
+  --color-mode-rekap: #7eaeff;
+  --color-mode-invest: #c792ff;
+  --color-mode-statistics: #5ee0a0;
+  --color-mode-scan: #56cfe1;
 }
 
 body {
   background:
-    radial-gradient(circle at 88% 2%, rgba(86, 87, 217, 0.08), transparent 28%),
-    radial-gradient(circle at 5% 22%, rgba(8, 145, 178, 0.055), transparent 25%),
-    linear-gradient(180deg, #f9fbff 0%, #f6f8fc 52%, #f2f5fa 100%);
+    radial-gradient(circle at 86% 6%, rgba(139, 124, 246, 0.18), transparent 30%),
+    radial-gradient(circle at 8% 18%, rgba(72, 198, 232, 0.09), transparent 28%),
+    radial-gradient(circle at 76% 78%, rgba(71, 215, 194, 0.065), transparent 34%),
+    linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-deep) 100%);
   color: var(--color-text);
 }
 
@@ -50,53 +51,56 @@ body {
 input,
 textarea,
 select {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 .depth-1 {
-  background: rgba(255, 255, 255, 0.96);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface) 97%, white 3%),
+    color-mix(in srgb, var(--color-surface) 92%, black 8%)
+  );
   border-color: var(--color-border-soft);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.055);
+  box-shadow: 0 14px 36px rgba(5, 7, 18, 0.22);
 }
 
 .depth-2 {
-  background: #f8fafc;
-  border-color: var(--color-border-soft);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-2) 98%, white 2%),
+    color-mix(in srgb, var(--color-surface-2) 90%, black 10%)
+  );
+  border-color: rgba(190, 201, 238, 0.14);
 }
 
 .depth-3 {
-  background: #f1f5f9;
-  border-color: rgba(15, 23, 42, 0.075);
+  background: rgba(112, 128, 178, 0.16);
+  border-color: rgba(174, 188, 230, 0.15);
 }
 
 .depth-accent {
-  background: #ffffff;
-  border-color: var(--color-border);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent, var(--color-primary)) 18%, var(--color-surface)),
+    color-mix(in srgb, var(--accent, var(--color-primary)) 10%, var(--color-bg-deep))
+  );
+  border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 36%, transparent);
+  box-shadow: 0 16px 38px color-mix(in srgb, var(--accent, var(--color-primary)) 14%, transparent);
 }
 
 .depth-glow-soft {
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.055);
-}
-
-.pressable:active,
-.pressable:hover:active {
-  filter: brightness(0.985);
+  box-shadow: 0 14px 34px rgba(5, 7, 18, 0.2), 0 0 34px rgba(139, 124, 246, 0.1);
 }
 
 .tap-glow::after {
-  background: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.055), transparent 64%);
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.11), transparent 64%);
 }
 
 [data-mode="scan"] {
   --accent: var(--color-mode-scan);
 }
-
-nav[class*="fixed"][class*="bottom-0"] {
-  box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.06);
-}
 `;
 
 export function ModernCleanTheme() {
-  return <style data-theme="modern-clean">{MODERN_CLEAN_CSS}</style>;
+  return <style data-theme="bright-soft-dark">{COLOR_THEME_CSS}</style>;
 }
