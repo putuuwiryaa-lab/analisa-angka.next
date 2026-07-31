@@ -1,9 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Clipboard, Play, Save, Search, Trash2 } from "lucide-react";
-import type { AutoScanItem, AutoScanResult, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
-import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
+import { Check, ChevronDown, Clipboard, Save, Trash2, X } from "lucide-react";
+import { KOLOM, SHIO_KOLOM } from "@/lib/engine/types";
+import type {
+  AutoScanItem,
+  AutoScanResult,
+  BacktestRow,
+  Kolom,
+  Posisi,
+  ScanMode,
+  Target2D,
+  Target3D,
+} from "@/lib/engine/types";
+import {
+  is3DMode,
+  isJumlah2DMode,
+  isOffMode,
+  isPositionMode,
+  isShioMode,
+} from "@/lib/shared/scan-mode";
 
 type Market = {
   id: string;
@@ -24,7 +40,20 @@ type SavedTrek = {
   offDigits: number[];
 };
 
+type FrequencyRow = {
+  value: number;
+  label: string;
+  count: number;
+};
+
 const STORAGE_KEY = "analisa_scan_saved_treks_v1";
+
+const POSITION_LABEL: Record<Posisi, string> = {
+  A: "AS",
+  C: "COP",
+  K: "KPL",
+  E: "EKR",
+};
 
 const MODE_OPTIONS: { value: ScanMode; label: string; digits: number }[] = [
   { value: "posisi", label: "Posisi", digits: 7 },
@@ -42,13 +71,121 @@ const MODE_OPTIONS: { value: ScanMode; label: string; digits: number }[] = [
   { value: "experiment_x7", label: "Experiment X7", digits: 7 },
 ];
 
+const RESULT_ROLE_STYLES = [
+  {
+    row: "border-accent/55 bg-accent/[0.09]",
+    badge: "border-accent/55 bg-accent text-bg-deep",
+  },
+  {
+    row: "border-primary/50 bg-primary/[0.10]",
+    badge: "border-primary/55 bg-primary/25 text-primary-soft",
+  },
+  {
+    row: "border-border bg-white/[0.055]",
+    badge: "border-border bg-white/[0.10] text-text-muted",
+  },
+] as const;
+
 function marketLabel(market: Market) {
   return String(market.name || market.id).toUpperCase();
 }
 
+function modeLabel(mode: ScanMode) {
+  return MODE_OPTIONS.find((option) => option.value === mode)?.label ?? mode;
+}
+
+function capitalized(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function analysisTitle(mode: ScanMode, targetPos: Posisi, target2D: Target2D, target3D: Target3D) {
+  const label = modeLabel(mode);
+  if (mode === "experiment_x7" || isShioMode(mode)) return label;
+  if (isPositionMode(mode)) return `${label} ${POSITION_LABEL[targetPos]}`;
+  if (is3DMode(mode)) return `${label} ${capitalized(target3D)}`;
+  return `${label} ${capitalized(target2D)}`;
+}
+
+function scanDescription(item: AutoScanItem, count: number) {
+  const unit = isShioMode(item.scanMode) ? "shio" : "digit";
+  return `${analysisTitle(item.scanMode, item.targetPos, item.target2D, item.target3D)} ${count} ${unit}`;
+}
+
+function labelValue(value: number, mode: ScanMode) {
+  return isShioMode(mode) ? String(value + 1).padStart(2, "0") : String(value);
+}
+
+function labelsFromValues(values: number[], mode: ScanMode) {
+  return values.map((value) => labelValue(value, mode));
+}
+
 function displayDigits(values: number[], mode: ScanMode) {
-  if (isShioMode(mode)) return values.map((digit) => String(digit + 1).padStart(2, "0")).join("-");
-  return values.join("");
+  return labelsFromValues(values, mode).join(isShioMode(mode) ? "-" : "");
+}
+
+function pickColumns(columns: Kolom[], deret: number[]) {
+  const source: readonly string[] = deret.length === 12 ? SHIO_KOLOM : KOLOM;
+  return columns
+    .map((column) => deret[source.indexOf(column)])
+    .filter((digit): digit is number => Number.isFinite(digit));
+}
+
+function targetDigits(row: BacktestRow) {
+  return row.targetDigits?.length ? row.targetDigits : [row.targetDigit];
+}
+
+function rowValues(item: AutoScanItem, row: BacktestRow) {
+  const targets = targetDigits(row);
+  return pickColumns(item.kolomHidup, row.deret).map((digit) => ({
+    digit,
+    hit: targets.includes(digit),
+  }));
+}
+
+function rowStatus(item: AutoScanItem, row: BacktestRow) {
+  const targets = targetDigits(row);
+  const values = rowValues(item, row).map(({ digit }) => digit);
+  const hitCount = targets.filter((digit) => values.includes(digit)).length;
+
+  if (isOffMode(item.scanMode)) return values.some((digit) => targets.includes(digit)) ? "❌" : "✅";
+  if (item.scanMode === "bbfs_2d_belakang" || item.scanMode === "bbfs_3d") {
+    return targets.every((digit) => values.includes(digit)) ? "✅" : "❌";
+  }
+  if (item.scanMode === "ai_3d") {
+    return hitCount >= Math.min(2, targets.length) ? "✅" : "❌";
+  }
+  return values.some((digit) => targets.includes(digit)) ? "✅" : "❌";
+}
+
+function predictionValues(item: AutoScanItem) {
+  if (item.scanMode === "experiment_x7") return item.angkaHidup;
+  const values = pickColumns(item.kolomHidup, item.result.deretLive);
+  return isJumlah2DMode(item.scanMode) ? values.filter((digit) => digit !== 0) : values;
+}
+
+function rowText(item: AutoScanItem, row: BacktestRow) {
+  return rowValues(item, row)
+    .map(({ digit }) => labelValue(digit, item.scanMode))
+    .join(isShioMode(item.scanMode) ? "-" : "");
+}
+
+function buildFrequencyRows(result: AutoScanResult): FrequencyRow[] {
+  const maximum = isShioMode(result.config.scanMode) ? 12 : 10;
+  const counts = Array.from({ length: maximum }, () => 0);
+
+  for (const item of result.items) {
+    for (const value of item.angkaHidup) {
+      if (Number.isInteger(value) && value >= 0 && value < counts.length) counts[value] += 1;
+    }
+  }
+
+  return counts
+    .map((count, value) => ({
+      value,
+      label: labelValue(value, result.config.scanMode),
+      count,
+    }))
+    .sort((left, right) => right.count - left.count || left.value - right.value);
 }
 
 async function copyText(text: string) {
@@ -69,7 +206,6 @@ async function copyText(text: string) {
 export default function ScanPage() {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [marketId, setMarketId] = useState("");
-  const [marketQuery, setMarketQuery] = useState("");
   const [marketsLoading, setMarketsLoading] = useState(true);
   const [scanMode, setScanMode] = useState<ScanMode>("ai_2d_belakang");
   const [targetPos, setTargetPos] = useState<Posisi>("K");
@@ -81,10 +217,12 @@ export default function ScanPage() {
   const [stopScan, setStopScan] = useState(3);
   const [marketName, setMarketName] = useState("");
   const [result, setResult] = useState<AutoScanResult | null>(null);
+  const [viewItem, setViewItem] = useState<AutoScanItem | null>(null);
   const [savedTreks, setSavedTreks] = useState<SavedTrek[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiedCode, setCopiedCode] = useState("");
+  const [savedCode, setSavedCode] = useState("");
 
   useEffect(() => {
     fetch("/api/markets")
@@ -109,12 +247,25 @@ export default function ScanPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!viewItem) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setViewItem(null);
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [viewItem]);
+
   const selectedMarket = markets.find((market) => market.id === marketId) ?? null;
-  const filteredMarkets = useMemo(() => {
-    const query = marketQuery.trim().toLowerCase();
-    if (!query) return markets;
-    return markets.filter((market) => `${market.id} ${market.name}`.toLowerCase().includes(query));
-  }, [markets, marketQuery]);
+  const digitMaximum = isShioMode(scanMode) ? 12 : 10;
+  const frequencyRows = useMemo(() => result ? buildFrequencyRows(result) : [], [result]);
 
   function changeMode(mode: ScanMode) {
     setScanMode(mode);
@@ -136,6 +287,7 @@ export default function ScanPage() {
     setLoading(true);
     setError("");
     setResult(null);
+    setViewItem(null);
     try {
       const response = await fetch("/api/scan", {
         method: "POST",
@@ -181,21 +333,22 @@ export default function ScanPage() {
       offDigits: item.angkaMati,
     };
     persistSaved([trek, ...savedTreks].slice(0, 100));
+    setSavedCode(item.code);
+    window.setTimeout(() => setSavedCode(""), 1400);
   }
 
   function deleteTrek(id: string) {
     persistSaved(savedTreks.filter((item) => item.id !== id));
   }
 
-  async function copyItem(item: AutoScanItem) {
-    const text = [
-      String(marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran").toUpperCase(),
-      displayDigits(item.angkaHidup, item.scanMode),
-      item.angkaMati.length ? `OFF: ${displayDigits(item.angkaMati, item.scanMode)}` : "",
-      item.formula,
-      item.code,
-    ].filter(Boolean).join("\n");
-    await copyText(text);
+  async function copyTrek(item: AutoScanItem) {
+    const title = String(marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran").toUpperCase();
+    const description = scanDescription(item, result?.config.digitCount ?? digitCount);
+    const history = item.result.rows.map((row) => `${row.displayDraw} ➜ ${rowText(item, row)} ${rowStatus(item, row)}`);
+    const prediction = predictionValues(item).map((value) => labelValue(value, item.scanMode)).join(isShioMode(item.scanMode) ? "-" : "");
+    const next = `${item.result.latestDraw} ➜ ${prediction} ??`;
+
+    await copyText([`*${title}*`, description, "", ...history, next].join("\n"));
     setCopiedCode(item.code);
     window.setTimeout(() => setCopiedCode(""), 1400);
   }
@@ -203,55 +356,86 @@ export default function ScanPage() {
   return (
     <div className="animate-rise space-y-4">
       <section className="depth-1 rounded-3xl border p-4 sm:p-5">
-        <div className="mb-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary-soft">Scanner Rumus Otomatis</p>
-          <h2 className="display mt-1 text-2xl text-text">Scan satu pasaran</h2>
-          <p className="mt-1 text-sm font-medium text-text-soft">Engine Scan dipindahkan tanpa modul Adaptif.</p>
-        </div>
+        <div className="space-y-4">
+          <MarketSelectField
+            markets={markets}
+            value={marketId}
+            selectedMarket={selectedMarket}
+            disabled={marketsLoading}
+            onChange={setMarketId}
+          />
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="sm:col-span-2">
-            <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">Cari pasaran</span>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-soft" size={17} />
-              <input
-                value={marketQuery}
-                onChange={(event) => setMarketQuery(event.target.value)}
-                placeholder="Nama atau kode pasaran"
-                className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-4 pl-10 text-sm font-bold text-text outline-none focus:border-primary/50"
-              />
-            </div>
-          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <NumberField
+              label="Data uji"
+              value={rounds}
+              min={1}
+              max={100}
+              hint="maks. 100"
+              disabled={scanMode === "experiment_x7"}
+              onChange={setRounds}
+            />
+            <NumberField
+              label="Patah"
+              value={patah}
+              min={0}
+              max={rounds}
+              hint={`maks. ${rounds}`}
+              disabled={scanMode === "experiment_x7"}
+              onChange={setPatah}
+            />
+          </div>
 
-          <SelectField label="Pasaran" value={marketId} onChange={setMarketId} disabled={marketsLoading}>
-            <option value="">Pilih pasaran</option>
-            {filteredMarkets.map((market) => (
-              <option key={market.id} value={market.id}>{marketLabel(market)} · {market.lastResult || "----"}</option>
-            ))}
-          </SelectField>
-
-          <SelectField label="Jenis scan" value={scanMode} onChange={(value) => changeMode(value as ScanMode)}>
-            {MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </SelectField>
-
-          {isPositionMode(scanMode) ? (
-            <SelectField label="Target posisi" value={targetPos} onChange={(value) => setTargetPos(value as Posisi)}>
-              <option value="A">AS</option><option value="C">COP</option><option value="K">KPL</option><option value="E">EKR</option>
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField label="Jenis" value={scanMode} onChange={(value) => changeMode(value as ScanMode)}>
+              {MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </SelectField>
-          ) : is3DMode(scanMode) ? (
-            <SelectField label="Target 3D" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
-              <option value="depan">3D Depan</option><option value="belakang">3D Belakang</option>
-            </SelectField>
-          ) : scanMode !== "experiment_x7" ? (
-            <SelectField label="Target 2D" value={target2D} onChange={(value) => setTarget2D(value as Target2D)}>
-              <option value="depan">2D Depan</option><option value="tengah">2D Tengah</option><option value="belakang">2D Belakang</option>
-            </SelectField>
-          ) : null}
 
-          <NumberField label="Data uji" value={rounds} min={1} max={100} disabled={scanMode === "experiment_x7"} onChange={setRounds} />
-          <NumberField label="Toleransi patah" value={patah} min={0} max={rounds} disabled={scanMode === "experiment_x7"} onChange={setPatah} />
-          <NumberField label="Jumlah digit" value={digitCount} min={1} max={isShioMode(scanMode) ? 12 : 10} disabled={scanMode === "experiment_x7"} onChange={setDigitCount} />
-          <NumberField label="Jumlah hasil" value={stopScan} min={1} max={5} disabled={scanMode === "experiment_x7"} onChange={setStopScan} />
+            {isPositionMode(scanMode) ? (
+              <SelectField label="Target" value={targetPos} onChange={(value) => setTargetPos(value as Posisi)}>
+                <option value="A">AS</option>
+                <option value="C">COP</option>
+                <option value="K">KPL</option>
+                <option value="E">EKR</option>
+              </SelectField>
+            ) : is3DMode(scanMode) ? (
+              <SelectField label="Target" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
+                <option value="depan">Depan</option>
+                <option value="belakang">Belakang</option>
+              </SelectField>
+            ) : scanMode !== "experiment_x7" ? (
+              <SelectField label="Target" value={target2D} onChange={(value) => setTarget2D(value as Target2D)}>
+                <option value="depan">Depan</option>
+                <option value="tengah">Tengah</option>
+                <option value="belakang">Belakang</option>
+              </SelectField>
+            ) : (
+              <SelectField label="Target" value="otomatis" disabled onChange={() => undefined}>
+                <option value="otomatis">Otomatis</option>
+              </SelectField>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField
+              label="Jumlah digit"
+              value={String(digitCount)}
+              disabled={scanMode === "experiment_x7"}
+              onChange={(value) => setDigitCount(Number(value))}
+            >
+              {Array.from({ length: digitMaximum }, (_, index) => index + 1).map((digit) => (
+                <option key={digit} value={digit}>{digit} digit</option>
+              ))}
+            </SelectField>
+            <NumberField
+              label="Batas hasil"
+              value={stopScan}
+              min={1}
+              max={5}
+              disabled={scanMode === "experiment_x7"}
+              onChange={setStopScan}
+            />
+          </div>
         </div>
 
         {error ? <div className="mt-4 rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">{error}</div> : null}
@@ -260,53 +444,88 @@ export default function ScanPage() {
           type="button"
           onClick={runScan}
           disabled={loading || marketsLoading || !marketId}
-          className="pressable mt-4 flex h-13 w-full items-center justify-center gap-2 rounded-2xl border border-primary/45 bg-primary/20 px-4 text-sm font-black uppercase tracking-wide text-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
+          className="pressable mt-5 flex h-16 w-full items-center justify-center rounded-2xl border border-primary/70 bg-primary px-4 text-base font-black text-bg-deep shadow-[0_12px_30px_rgba(105,151,255,0.18)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Play size={18} fill="currentColor" />
-          {loading ? "Memproses scan…" : "Mulai Scan"}
+          {loading ? "Memproses Scan…" : "Scan Sekarang"}
         </button>
       </section>
 
       {result ? (
-        <section className="space-y-3">
-          <div className="flex items-end justify-between gap-3 px-1">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-text-soft">Hasil {marketName}</p>
-              <h2 className="display text-xl text-text">{result.totalMatched} trek ditemukan</h2>
-            </div>
-            <span className="rounded-full border border-border-soft bg-surface px-3 py-1 text-[10px] font-black uppercase tracking-wide text-text-muted">{result.totalChecked} rumus</span>
+        <section className="depth-1 rounded-3xl border p-4 sm:p-5">
+          <p className="mb-4 text-sm font-bold leading-relaxed text-text-soft">
+            <strong className="text-text">{String(marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran").toUpperCase()}</strong>
+            {" · "}
+            <strong className="text-text">{analysisTitle(result.config.scanMode, result.config.targetPos, result.config.target2D, result.config.target3D)}</strong>
+            {` · ${result.config.digitCount} ${isShioMode(result.config.scanMode) ? "shio" : "digit"} · ${result.config.L} data · patah ${result.config.patah} · ${result.totalMatched} hasil`}
+          </p>
+
+          <div className="space-y-2.5">
+            {result.items.length ? result.items.map((item, index) => {
+              const style = RESULT_ROLE_STYLES[index] ?? RESULT_ROLE_STYLES[2];
+              return (
+                <article key={`${item.code}-${index}`} className={`rounded-2xl border p-3 ${style.row}`}>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className={`max-w-[7.5rem] shrink-0 truncate rounded-xl border px-3 py-2 text-sm font-black ${style.badge}`}>
+                        {item.formula}
+                      </span>
+                      <div className="num flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-2xl font-black tracking-[0.06em] text-accent">
+                        {labelsFromValues(item.angkaHidup, item.scanMode).map((digit, digitIndex) => (
+                          <span key={`${digit}-${digitIndex}`}>{digit}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => saveTrek(item)}
+                        className="pressable h-11 rounded-xl border border-primary/40 bg-primary/10 px-3 text-xs font-black text-primary-soft"
+                      >
+                        {savedCode === item.code ? "Tersimpan" : "Simpan"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewItem(item)}
+                        className="pressable h-11 rounded-xl border border-primary/40 bg-primary/10 px-3 text-xs font-black text-primary-soft"
+                      >
+                        Lihat
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            }) : (
+              <div className="rounded-2xl border border-dashed border-border-soft p-7 text-center text-sm font-bold text-text-muted">
+                Belum ada trek yang cocok.
+              </div>
+            )}
           </div>
 
-          {result.items.length ? result.items.map((item, index) => (
-            <article key={`${item.code}-${index}`} className="depth-1 rounded-3xl border p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-wide text-primary-soft">Peringkat {index + 1}</p>
-                  <p className="mt-1 truncate text-xs font-bold text-text-muted">{item.formula}</p>
-                </div>
-                <span className="rounded-full border border-border-soft px-2.5 py-1 text-[10px] font-black text-text-soft">{item.activeColumns || "X7"}</span>
+          {result.items.length ? (
+            <div className="mt-4 rounded-3xl border border-border-soft bg-surface/75 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="display text-xl text-text">Frekuensi {isShioMode(result.config.scanMode) ? "Shio" : "Digit"}</h2>
+                <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 text-xs font-black text-primary-soft">
+                  {result.items.length} hasil scan
+                </span>
               </div>
-
-              <div className="my-4 rounded-3xl border border-primary/20 bg-primary/10 px-4 py-5 text-center">
-                <div className="num break-all text-4xl font-black tracking-[0.13em] text-accent">{displayDigits(item.angkaHidup, item.scanMode) || "-"}</div>
-                {item.angkaMati.length ? <p className="mt-2 text-xs font-black uppercase tracking-wide text-text-muted">OFF {displayDigits(item.angkaMati, item.scanMode)}</p> : null}
+              <p className="mt-2 text-xs font-bold leading-relaxed text-text-soft">
+                Dihitung dari semua angka hidup yang tampil pada hasil scan.
+              </p>
+              <div className="mt-4 space-y-2">
+                {frequencyRows.map((row) => (
+                  <div
+                    key={row.value}
+                    className={`flex h-12 items-center rounded-xl border border-accent/20 bg-bg-deep/25 px-4 ${row.count === 0 ? "opacity-25" : ""}`}
+                  >
+                    <b className="num w-12 text-2xl text-accent">{row.label}</b>
+                    <span className="mr-3 font-black text-text-soft">×</span>
+                    <span className="font-mono text-base font-bold text-text">{row.count} kali muncul</span>
+                  </div>
+                ))}
               </div>
-
-              <p className="break-all rounded-2xl bg-black/15 px-3 py-2 font-mono text-[10px] leading-relaxed text-text-soft">{item.code}</p>
-
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button onClick={() => copyItem(item)} className="pressable flex h-11 items-center justify-center gap-2 rounded-2xl border border-border-soft bg-white/[0.035] text-xs font-black uppercase tracking-wide text-text-muted hover:text-text">
-                  {copiedCode === item.code ? <Check size={16} /> : <Clipboard size={16} />}
-                  {copiedCode === item.code ? "Tersalin" : "Salin"}
-                </button>
-                <button onClick={() => saveTrek(item)} className="pressable flex h-11 items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 text-xs font-black uppercase tracking-wide text-primary-soft">
-                  <Save size={16} /> Simpan Trek
-                </button>
-              </div>
-            </article>
-          )) : (
-            <div className="rounded-3xl border border-dashed border-border-soft p-8 text-center text-sm font-bold text-text-muted">Tidak ada trek yang cocok dengan konfigurasi ini.</div>
-          )}
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -338,34 +557,203 @@ export default function ScanPage() {
           <p className="rounded-2xl border border-dashed border-border-soft p-5 text-center text-xs font-bold text-text-soft">Belum ada trek tersimpan pada domain Analisa Angka.</p>
         )}
       </section>
+
+      {viewItem ? (
+        <TrekDetailModal
+          item={viewItem}
+          marketName={String(marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran")}
+          digitCount={result?.config.digitCount ?? digitCount}
+          copied={copiedCode === viewItem.code}
+          onCopy={() => copyTrek(viewItem)}
+          onClose={() => setViewItem(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function SelectField({ label, value, onChange, disabled, children }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; children: React.ReactNode }) {
+function TrekDetailModal({ item, marketName, digitCount, copied, onCopy, onClose }: {
+  item: AutoScanItem;
+  marketName: string;
+  digitCount: number;
+  copied: boolean;
+  onCopy: () => void;
+  onClose: () => void;
+}) {
+  const prediction = predictionValues(item);
+
   return (
-    <label>
-      <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-3 text-sm font-bold text-text outline-none focus:border-primary/50 disabled:opacity-60">
-        {children}
-      </select>
+    <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-5">
+      <button type="button" aria-label="Tutup detail trek" onClick={onClose} className="absolute inset-0 bg-black/75 backdrop-blur-[2px]" />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Detail trek ${marketName}`}
+        className="relative flex max-h-[90svh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[1.75rem] border border-border-soft bg-bg-deep shadow-2xl sm:rounded-[1.75rem]"
+      >
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border-soft bg-surface/95 p-5">
+          <div className="min-w-0 flex-1">
+            <h2 className="display truncate text-2xl text-text">{marketName.toUpperCase()}</h2>
+            <p className="mt-2 font-mono text-base font-black tracking-[0.08em] text-secondary">
+              {scanDescription(item, digitCount)}
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={onCopy}
+              className="pressable flex h-12 items-center gap-2 rounded-xl border border-border-soft bg-white/[0.05] px-3 text-xs font-black text-text-muted"
+            >
+              {copied ? <Check size={16} /> : <Clipboard size={16} />}
+              {copied ? "Tersalin" : "Salin Trek"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="pressable flex h-12 w-12 items-center justify-center rounded-xl border border-border-soft bg-white/[0.05] text-text"
+              aria-label="Tutup"
+            >
+              <X size={22} />
+            </button>
+          </div>
+        </header>
+
+        <div className="overflow-y-auto px-4 py-5 sm:px-5">
+          {item.result.rows.length ? (
+            <div>
+              {item.result.rows.map((row, index) => (
+                <div
+                  key={`${row.displayDraw}-${index}`}
+                  className="grid min-h-15 grid-cols-[4.5rem_1.75rem_minmax(0,1fr)_2rem] items-center gap-2 border-b border-border-soft/70 px-1 py-2"
+                >
+                  <span className="num text-lg font-black text-text">{row.displayDraw}</span>
+                  <span className="text-xl font-black text-secondary">➜</span>
+                  <div className="num flex min-w-0 flex-wrap items-center gap-2 text-lg font-black text-text">
+                    {rowValues(item, row).map(({ digit, hit }, digitIndex) => (
+                      <span
+                        key={`${digit}-${digitIndex}`}
+                        className={hit ? "rounded-lg border border-accent/60 bg-accent px-2 py-1 text-bg-deep shadow-[0_0_0_1px_rgba(255,193,59,0.18)]" : "px-0.5 py-1"}
+                      >
+                        {labelValue(digit, item.scanMode)}
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-right text-base">{rowStatus(item, row)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mb-3 rounded-2xl border border-dashed border-border-soft p-4 text-center text-xs font-bold text-text-soft">
+              Mode ini tidak memiliki baris backtest terperinci.
+            </p>
+          )}
+
+          <div className="mt-4 grid min-h-17 grid-cols-[4.5rem_1.75rem_minmax(0,1fr)_2rem] items-center gap-2 rounded-2xl border border-accent/35 bg-accent/[0.045] px-3 py-2">
+            <span className="num text-lg font-black text-accent">{item.result.latestDraw}</span>
+            <span className="text-xl font-black text-secondary">➜</span>
+            <div className="num flex min-w-0 flex-wrap items-center gap-3 text-lg font-black text-accent">
+              {prediction.map((digit, index) => <span key={`${digit}-${index}`}>{labelValue(digit, item.scanMode)}</span>)}
+            </div>
+            <span className="text-right font-black text-accent">??</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.12em] text-text-muted">{children}</span>;
+}
+
+function MarketSelectField({ markets, value, selectedMarket, disabled, onChange }: {
+  markets: Market[];
+  value: string;
+  selectedMarket: Market | null;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <FieldLabel>Pasaran</FieldLabel>
+      <div className="relative">
+        <div className="flex h-[4.5rem] items-center gap-3 rounded-2xl border border-border-soft bg-surface px-4 shadow-inner shadow-black/10">
+          <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_6px_rgba(105,151,255,0.12)]" />
+          <span className="min-w-0 flex-1 truncate text-base font-black text-text">
+            {selectedMarket ? marketLabel(selectedMarket) : disabled ? "MEMUAT PASARAN…" : "PILIH PASARAN"}
+          </span>
+          <span className="num shrink-0 rounded-xl border border-accent/30 bg-accent/10 px-3 py-1.5 text-base font-black tracking-[0.08em] text-accent">
+            {selectedMarket?.lastResult || "----"}
+          </span>
+          <ChevronDown size={18} className="shrink-0 text-text-soft" />
+        </div>
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          aria-label="Pilih pasaran"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+        >
+          <option value="">Pilih pasaran</option>
+          {markets.map((market) => (
+            <option key={market.id} value={market.id}>{marketLabel(market)} · {market.lastResult || "----"}</option>
+          ))}
+        </select>
+      </div>
     </label>
   );
 }
 
-function NumberField({ label, value, min, max, disabled, onChange }: { label: string; value: number; min: number; max: number; disabled?: boolean; onChange: (value: number) => void }) {
+function SelectField({ label, value, onChange, disabled, children }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <label>
-      <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-text-muted">{label}</span>
-      <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        disabled={disabled}
-        onChange={(event) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))}
-        className="h-12 w-full rounded-2xl border border-border-soft bg-surface px-3 text-sm font-bold text-text outline-none focus:border-primary/50 disabled:opacity-60"
-      />
+    <label className="block min-w-0">
+      <FieldLabel>{label}</FieldLabel>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          className="h-[4.5rem] w-full appearance-none rounded-2xl border border-border-soft bg-surface px-4 pr-10 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55"
+        >
+          {children}
+        </select>
+        <ChevronDown size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-soft" />
+      </div>
+    </label>
+  );
+}
+
+function NumberField({ label, value, min, max, hint, disabled, onChange }: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  hint?: string;
+  disabled?: boolean;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <FieldLabel>{label}</FieldLabel>
+      <div className="relative">
+        <input
+          type="number"
+          inputMode="numeric"
+          value={value}
+          min={min}
+          max={max}
+          disabled={disabled}
+          onChange={(event) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))}
+          className="h-[4.5rem] w-full rounded-2xl border border-border-soft bg-surface px-4 pr-20 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55"
+        />
+        {hint ? <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-text-soft/55">{hint}</span> : null}
+      </div>
     </label>
   );
 }
