@@ -1,4 +1,4 @@
-import { KOLOM, SHIO_KOLOM, type AutoScanConfig, type AutoScanItem, type AutoScanResult, type BacktestRow, type Draw, type EngineConfig, type EngineResult, type Kolom, type KolomStat, type Posisi, type ScanMode, type Target2D, type Target3D } from "./types";
+import { KOLOM, SHIO_KOLOM, type AutoScanConfig, type AutoScanResult, type BacktestRow, type Draw, type EngineConfig, type EngineResult, type Kolom, type KolomStat, type Posisi, type ScanMode, type Target2D, type Target3D } from "./types";
 import { DEFAULT_DIGIT_COUNT, POSISI } from "./constants";
 import { ALL_FORMULA_SPECS, computeFormula, type FormulaSpec } from "./formulas";
 import { buildDeret, buildDeretShio, clamp, digitOf, isJumlah2DMode, isShioMode, parseHistory, scanCode, scanModeOrDefault, target2DOrDefault, target3DOrDefault, targetDigitsOf, uniqueDigits } from "./helpers";
