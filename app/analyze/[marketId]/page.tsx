@@ -55,6 +55,7 @@ function AnalysisMenuCard({ item, marketId, index }: { item: MenuItem; marketId:
   return (
     <Link
       href={`/analyze/${encodeURIComponent(safeDecode(marketId))}/${item.mode}`}
+      prefetch={false}
       data-mode={item.mode}
       className={cn(
         "pressable animate-soft-pop depth-1 group relative flex items-center gap-3 overflow-hidden rounded-3xl border p-3.5 text-left hover:border-border",
@@ -91,6 +92,7 @@ function SecondaryMenuCard({ mode, subtitle, marketId, index }: { mode: ModeKey;
   return (
     <Link
       href={`/analyze/${encodeURIComponent(safeDecode(marketId))}/${mode}`}
+      prefetch={false}
       data-mode={mode}
       className="pressable animate-soft-pop depth-1 group flex min-h-[78px] items-center gap-3 rounded-3xl border p-3.5 text-left hover:border-border"
       style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
@@ -111,6 +113,7 @@ function ShareMenuCard({ index = 0 }: { index?: number }) {
   return (
     <Link
       href="/share-prediksi"
+      prefetch={false}
       data-mode="share-prediksi"
       className="pressable animate-soft-pop depth-3 group flex min-h-[72px] items-center gap-3 rounded-3xl border p-3.5 text-left hover:border-border hover:bg-white/[0.055]"
       style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
