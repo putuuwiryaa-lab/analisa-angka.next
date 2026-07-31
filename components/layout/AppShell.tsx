@@ -65,6 +65,7 @@ function BottomNav() {
         <Link
           data-mode="statistics"
           href="/pantauan-rekap"
+          prefetch={false}
           className={pill}
           style={{ boxShadow: softGlow }}
           aria-label="Statistik Pasaran"
@@ -76,6 +77,7 @@ function BottomNav() {
         <Link
           data-mode="scan"
           href="/scan"
+          prefetch={false}
           className={pill}
           style={{ boxShadow: softGlow }}
           aria-label="Scan Angka"
@@ -87,6 +89,7 @@ function BottomNav() {
         <Link
           data-mode="invest"
           href="/rekomendasi"
+          prefetch={false}
           className={pill}
           style={{ boxShadow: softGlow }}
           aria-label="Rekomendasi 2D"
