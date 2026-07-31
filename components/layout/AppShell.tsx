@@ -3,7 +3,7 @@
 import { type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Coins } from "lucide-react";
+import { BarChart3, Coins, ScanSearch } from "lucide-react";
 import { AccessGuard } from "@/components/access/AccessGuard";
 import { InstallAppBanner } from "@/components/install/InstallAppBanner";
 import { Logo } from "@/components/ui/Logo";
@@ -14,8 +14,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap" || pathname === "/share-prediksi" || pathname === "/invest";
   const isAccessRoute = pathname === "/pin" || pathname.startsWith("/admin");
   const isAdminRoute = pathname.startsWith("/admin");
+  const isScanRoute = pathname === "/scan" || pathname.startsWith("/scan/");
 
-  const hideHeader = isAccessRoute || pathname.startsWith("/analyze/") || isStandaloneMenu;
+  const hideHeader = isAccessRoute || pathname.startsWith("/analyze/") || isStandaloneMenu || isScanRoute;
   const showBottomNav = isHome && !isAccessRoute;
 
   return (
@@ -55,12 +56,12 @@ function HeroHeader() {
 }
 
 function BottomNav() {
-  const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border px-3 hover:border-border hover:bg-white/[0.075]";
+  const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl border px-2 hover:border-border hover:bg-white/[0.075]";
   const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
 
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
-      <div className="mx-auto grid max-w-3xl grid-cols-2 items-end gap-3 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3">
+      <div className="mx-auto grid max-w-3xl grid-cols-3 items-end gap-2 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3 sm:gap-3">
         <Link
           data-mode="statistics"
           href="/pantauan-rekap"
@@ -68,8 +69,19 @@ function BottomNav() {
           style={{ boxShadow: softGlow }}
           aria-label="Statistik Pasaran"
         >
-          <BarChart3 size={20} />
-          <span className="text-sm font-black uppercase tracking-wide">Statistik</span>
+          <BarChart3 size={19} />
+          <span className="text-[11px] font-black uppercase tracking-wide sm:text-sm">Statistik</span>
+        </Link>
+
+        <Link
+          data-mode="scan"
+          href="/scan"
+          className={pill}
+          style={{ boxShadow: softGlow }}
+          aria-label="Scan Angka"
+        >
+          <ScanSearch size={19} />
+          <span className="text-[11px] font-black uppercase tracking-wide sm:text-sm">Scan</span>
         </Link>
 
         <Link
@@ -79,8 +91,8 @@ function BottomNav() {
           style={{ boxShadow: softGlow }}
           aria-label="Rekomendasi 2D"
         >
-          <Coins size={20} />
-          <span className="text-sm font-black uppercase tracking-wide">Invest</span>
+          <Coins size={19} />
+          <span className="text-[11px] font-black uppercase tracking-wide sm:text-sm">Invest</span>
         </Link>
       </div>
     </nav>
