@@ -1,3 +1,4 @@
+import { Bookmark, Eye } from "lucide-react";
 import type { AutoScanItem, AutoScanResult } from "@/lib/engine/types";
 import { isShioMode } from "@/lib/shared/scan-mode";
 import { analysisTitle, buildFrequencyRows, labelsFromValues } from "../_lib";
@@ -44,22 +45,34 @@ export default function ScanResultSection({ result, marketTitle, marketId, saved
           const labels = labelsFromValues(item.angkaHidup, item.scanMode);
 
           return (
-            <article key={`${item.code}-${index}`} className={`rounded-xl border p-2.5 ${style.row}`}>
-              <div className="flex items-center justify-between gap-2">
-                <span className={`max-w-[11rem] truncate rounded-lg border px-2.5 py-1.5 text-[11px] font-black ${style.badge}`}>{item.formula}</span>
-                <span className="text-[10px] font-black uppercase tracking-wide text-text-muted">Hasil {index + 1}</span>
-              </div>
+            <article key={`${item.code}-${index}`} className={`rounded-xl border px-2.5 py-2 ${style.row}`}>
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-1.5">
+                <span className={`max-w-[5.2rem] truncate rounded-md border px-1.5 py-1 text-[9px] font-black ${style.badge}`} title={item.formula}>
+                  {item.formula}
+                </span>
 
-              <div className="num mt-3 flex min-h-10 w-full flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xl font-black tracking-[0.05em] text-accent">
-                {labels.map((digit, digitIndex) => <span key={`${digit}-${digitIndex}`}>{digit}</span>)}
-              </div>
+                <div className="num min-w-0 truncate text-center text-[0.95rem] font-black tracking-[0.16em] text-accent sm:text-lg">
+                  {labels.join(" ")}
+                </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => onSave(item)} className="pressable h-10 rounded-lg border border-primary/40 bg-primary/10 px-3 text-[11px] font-black text-primary-soft">
-                  {savedId === id ? "Tersimpan" : "Simpan"}
+                <button
+                  type="button"
+                  onClick={() => onView(item)}
+                  className="pressable flex h-7 w-7 items-center justify-center rounded-md border border-primary/35 bg-primary/10 text-primary-soft"
+                  aria-label={`Lihat detail hasil ${index + 1}`}
+                  title="Lihat"
+                >
+                  <Eye size={14} />
                 </button>
-                <button type="button" onClick={() => onView(item)} className="pressable h-10 rounded-lg border border-primary/40 bg-primary/10 px-3 text-[11px] font-black text-primary-soft">
-                  Lihat
+
+                <button
+                  type="button"
+                  onClick={() => onSave(item)}
+                  className="pressable flex h-7 w-7 items-center justify-center rounded-md border border-primary/35 bg-primary/10 text-primary-soft"
+                  aria-label={savedId === id ? `Hasil ${index + 1} sudah tersimpan` : `Simpan hasil ${index + 1}`}
+                  title={savedId === id ? "Tersimpan" : "Simpan"}
+                >
+                  <Bookmark size={14} className={savedId === id ? "fill-current" : ""} />
                 </button>
               </div>
             </article>
