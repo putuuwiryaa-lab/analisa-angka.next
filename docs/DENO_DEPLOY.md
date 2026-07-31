@@ -1,28 +1,20 @@
-# Deployment ke Deno Deploy
+# Deployment Deno Deploy
 
-Aplikasi ini memakai Next.js App Router, Route Handlers, middleware akses PIN, Supabase, dan runtime Node compatibility dari Deno.
+Repository ini menggunakan Deno Deploy sebagai satu-satunya target deployment.
 
-## 1. Buat aplikasi
+## Konfigurasi aplikasi
 
-1. Buka `console.deno.com`.
-2. Buat organization dan application baru.
-3. Hubungkan repository `putuuwiryaa-lab/analisa-angka.next`.
-4. Pilih production branch `main`.
-5. Gunakan application directory `/`.
+- Framework preset: `nextjs`
+- Production branch: `main`
+- Application directory: `/`
+- Install command: `deno install --allow-scripts`
+- Build command: `deno task build`
 
-Konfigurasi build dibaca dari `deno.json`:
+Konfigurasi tersebut dibaca langsung dari `deno.json`. Next.js dibangun dengan Webpack dan dependency utama dipin ke versi exact agar hasil instalasi Deno tidak berubah antar-build.
 
-- framework: `nextjs`
-- install: `deno install --allow-scripts`
-- build: `deno task build`
-
-Installer native Deno dipakai karena `pnpm` pada builder Deno berjalan melalui compatibility shim dan pada dependency tree aplikasi ini dapat melewati batas memory saat tahap install.
-
-## 2. Environment variables
+## Environment variables
 
 ### Build, Production, dan Development
-
-Variabel public berikut harus tersedia pada konteks Build karena dapat dimasukkan ke bundle browser:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
@@ -31,8 +23,6 @@ NEXT_PUBLIC_ADMIN_CONTACT_URL=
 ```
 
 ### Production dan Development
-
-Variabel server berikut tidak boleh diekspos ke browser:
 
 ```env
 SUPABASE_URL=
@@ -44,63 +34,43 @@ INTERNAL_API_SECRET=
 
 `INTERNAL_API_SECRET` opsional jika tidak ada service eksternal yang memanggil `/api/analyze`.
 
-Pertahankan nilai `ACCESS_SECRET` lama agar hash PIN dan session yang sudah ada tetap valid. Pertahankan `INTERNAL_API_SECRET` yang sama jika service Render masih memanggil API internal.
+Jangan menaruh `SUPABASE_SERVICE_ROLE_KEY`, `ACCESS_SECRET`, `ADMIN_PASSWORD`, atau `INTERNAL_API_SECRET` pada Build context karena nilainya tidak dibutuhkan oleh bundle browser.
 
-Jangan aktifkan bypass Render pada Deno:
+## PIN sementara
 
-```env
-TEMPORARY_DISABLE_PIN=false
+Proteksi PIN tetap tersedia. Untuk masa pengenalan URL Deno, bypass sementara aktif hanya ketika `DENO_DEPLOY=true` dan sebelum:
+
+```text
+7 Agustus 2026, 17.08 WITA
 ```
 
-Variabel itu sebaiknya tidak dibuat sama sekali pada Deno.
+Setelah waktu tersebut, proteksi PIN aktif kembali otomatis. Halaman dan API admin tetap memerlukan login admin selama masa bypass.
 
-## 3. Deployment pertama
+## Validasi deployment
 
-1. Jalankan deployment dari branch atau preview terlebih dahulu.
-2. Pastikan tahap Install menjalankan `deno install --allow-scripts`.
-3. Pastikan tahap Build menjalankan `deno task build`.
-4. Jangan pindahkan domain sebelum pengujian selesai.
+Setelah build berhasil, uji:
 
-## 4. Troubleshooting install memory
+1. Halaman utama, pencarian market, dan histori.
+2. Analyze untuk seluruh mode.
+3. Scan dan Batch Scan.
+4. Statistik dan Evaluasi.
+5. Rekomendasi Invest dan Angka Jadi.
+6. Login admin, generate PIN, revoke PIN, dan revoke session.
+7. Service worker serta instalasi PWA.
+8. Aktivasi PIN setelah masa bypass selesai.
 
-Jika log berhenti pada `pnpm install` dengan pesan memory limit 3072 MiB, berarti revision masih memakai konfigurasi lama. Pastikan commit terbaru sudah terambil dan Config source menunjukkan `deno.json deploy section`, lalu jalankan ulang deployment.
+## Domain
 
-Build Free menyediakan 3 GB RAM. Mengganti installer ke Deno lebih tepat daripada mencoba menambah memory, karena 4 GB hanya tersedia pada plan yang mendukungnya.
+Tambahkan domain pada Settings Deno Deploy, ikuti record DNS yang diberikan, lalu tunggu verifikasi TLS. Tidak ada konfigurasi Vercel atau Render di repository.
 
-## 5. Checklist pengujian
+## Pengembangan lokal
 
-- `/pin` terbuka untuk user tanpa cookie.
-- Aktivasi PIN menghasilkan cookie akses dan device.
-- Refresh tidak menghapus login.
-- `/admin/login` dan `/admin` bekerja.
-- Generate dan revoke PIN bekerja.
-- Revoke session langsung menutup akses user.
-- `/api/markets` dan histori market bekerja.
-- Analyze, Scan, dan Batch Scan selesai tanpa timeout.
-- Statistik, Evaluasi, Invest, dan Angka Jadi memuat data.
-- Logout menghapus cookie.
-- Service worker tidak menyajikan cache deployment lama.
-- Rate limit PIN mencatat IP secara benar.
+```bash
+deno install --allow-scripts
+deno task dev
+deno task typecheck
+deno task lint
+deno task build
+```
 
-## 6. Domain
-
-Setelah preview stabil:
-
-1. Tambahkan `analisa-angka.site` dan `www.analisa-angka.site` pada Deno Deploy.
-2. Ikuti record DNS yang diberikan Deno.
-3. Tunggu verifikasi DNS dan sertifikat TLS aktif.
-4. Pindahkan traffic ke Deno.
-5. Pertahankan Render sebagai fallback sampai deployment Deno stabil.
-
-## 7. Catatan kompatibilitas
-
-- `deno.json` mengaktifkan opsi kompatibilitas yang direkomendasikan untuk Next.js.
-- `nodeModulesDir` diset ke `auto` agar dependency npm tersedia melalui `node_modules`.
-- Modul server memakai import eksplisit `node:crypto` dan `node:buffer`.
-- Komponen Vercel Analytics tidak dirender lagi karena aplikasi tidak berjalan di Vercel.
-- Dependency `@vercel/analytics` masih tercatat pada pnpm lockfile dan dapat dibersihkan saat lockfile diregenerasi secara lokal.
-- Bypass PIN tetap hanya berlaku untuk hostname `.onrender.com` dan hanya jika `TEMPORARY_DISABLE_PIN=true`.
-
-## 8. Rollback
-
-Jika deployment Deno gagal setelah domain dipindahkan, kembalikan DNS ke endpoint Render. Database Supabase tidak perlu dimigrasikan karena tetap menjadi sumber data utama.
+Deno Deploy menjalankan Next.js melalui compatibility layer Node/npm. Jangan mengganti dependency exact menjadi rentang `^` tanpa menguji build pada Deno Deploy terlebih dahulu.
