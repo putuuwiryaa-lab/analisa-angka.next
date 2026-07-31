@@ -3,6 +3,8 @@ import { isTemporaryPinBypassActive } from "@/lib/access-bypass";
 
 const ACCESS_COOKIE = "analisa_access_token";
 const ADMIN_COOKIE = "analisa_admin_session";
+const APEX_HOSTNAME = "analisa-angka.site";
+const PRIMARY_HOSTNAME = "www.analisa-angka.site";
 
 const PUBLIC_PATHS = new Set([
   "/pin",
@@ -24,6 +26,22 @@ function isPublicPath(pathname: string) {
   if (pathname.startsWith("/_next/")) return true;
   if (pathname.startsWith("/assets/")) return true;
   return /\.(?:png|jpg|jpeg|webp|gif|svg|ico|css|js|txt|xml|json)$/i.test(pathname);
+}
+
+function requestHostname(req: NextRequest) {
+  const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost || req.headers.get("host") || req.nextUrl.hostname;
+  return host.replace(/^\[|\]$/g, "").replace(/:\d+$/, "").toLowerCase();
+}
+
+function redirectApexToWww(req: NextRequest) {
+  if (requestHostname(req) !== APEX_HOSTNAME) return null;
+
+  const url = req.nextUrl.clone();
+  url.protocol = "https:";
+  url.hostname = PRIMARY_HOSTNAME;
+  url.port = "";
+  return NextResponse.redirect(url, 308);
 }
 
 function safeNextPath(value: string | null) {
@@ -50,6 +68,9 @@ function redirectWithNext(req: NextRequest, target: string) {
 }
 
 export function proxy(req: NextRequest) {
+  const canonicalRedirect = redirectApexToWww(req);
+  if (canonicalRedirect) return canonicalRedirect;
+
   const { pathname } = req.nextUrl;
   const hasAccess = Boolean(req.cookies.get(ACCESS_COOKIE)?.value);
   const hasAdmin = Boolean(req.cookies.get(ADMIN_COOKIE)?.value);
