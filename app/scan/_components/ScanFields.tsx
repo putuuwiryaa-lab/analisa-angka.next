@@ -38,8 +38,8 @@ export default function ScanFields(props: Props) {
       <div className="space-y-4">
         <MarketSelectField markets={props.markets} value={props.marketId} selectedMarket={props.selectedMarket} disabled={props.marketsLoading} onChange={props.onMarketChange} />
         <div className="grid grid-cols-2 gap-3">
-          <NumberField label="Data uji" value={props.rounds} min={1} max={100} hint="maks. 100" disabled={props.scanMode === "experiment_x7"} onChange={props.onRoundsChange} />
-          <NumberField label="Patah" value={props.patah} min={0} max={props.rounds} hint={`maks. ${props.rounds}`} disabled={props.scanMode === "experiment_x7"} onChange={props.onPatahChange} />
+          <NumberField label="Data uji" value={props.rounds} min={1} max={100} hint="maks. 100" onChange={props.onRoundsChange} />
+          <NumberField label="Patah" value={props.patah} min={0} max={props.rounds} hint={`maks. ${props.rounds}`} onChange={props.onPatahChange} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <SelectField label="Jenis" value={props.scanMode} onChange={(value) => props.onModeChange(value as ScanMode)}>
@@ -53,19 +53,17 @@ export default function ScanFields(props: Props) {
             <SelectField label="Target" value={props.target3D} onChange={(value) => props.onTarget3DChange(value as Target3D)}>
               <option value="depan">Depan</option><option value="belakang">Belakang</option>
             </SelectField>
-          ) : props.scanMode !== "experiment_x7" ? (
+          ) : (
             <SelectField label="Target" value={props.target2D} onChange={(value) => props.onTarget2DChange(value as Target2D)}>
               <option value="depan">Depan</option><option value="tengah">Tengah</option><option value="belakang">Belakang</option>
             </SelectField>
-          ) : (
-            <SelectField label="Target" value="otomatis" disabled onChange={() => undefined}><option value="otomatis">Otomatis</option></SelectField>
           )}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <SelectField label="Jumlah digit" value={String(props.digitCount)} disabled={props.scanMode === "experiment_x7"} onChange={(value) => props.onDigitCountChange(Number(value))}>
+          <SelectField label="Jumlah digit" value={String(props.digitCount)} onChange={(value) => props.onDigitCountChange(Number(value))}>
             {Array.from({ length: digitMaximum }, (_, index) => index + 1).map((digit) => <option key={digit} value={digit}>{digit} digit</option>)}
           </SelectField>
-          <NumberField label="Batas hasil" value={props.stopScan} min={1} max={5} disabled={props.scanMode === "experiment_x7"} onChange={props.onStopScanChange} />
+          <NumberField label="Batas hasil" value={props.stopScan} min={1} max={5} onChange={props.onStopScanChange} />
         </div>
       </div>
       <button type="button" onClick={props.onScan} disabled={props.loading || props.marketsLoading || !props.marketId} className="pressable mt-5 flex h-16 w-full items-center justify-center rounded-2xl border border-primary/70 bg-primary px-4 text-base font-black text-bg-deep shadow-[0_12px_30px_rgba(105,151,255,0.18)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50">
