@@ -7,9 +7,9 @@
   ],
   "nodeModulesDir": "auto",
   "tasks": {
-    "dev": "next dev",
-    "build": "next build --webpack",
-    "start": "next start",
+    "dev": "deno run -A npm:next@16.2.7 dev",
+    "build": "deno run -A npm:next@16.2.7 build --webpack",
+    "start": "deno run -A npm:next@16.2.7 start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write ."
