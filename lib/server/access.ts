@@ -18,6 +18,7 @@ export const ADMIN_ACCESS_SESSIONS_VIEW = "admin_analisa_access_sessions_view";
 const USER_MAX_AGE = 60 * 60 * 24 * 365 * 10;
 const ADMIN_MAX_AGE = 60 * 60 * 24 * 7;
 const LAST_SEEN_UPDATE_INTERVAL_MS = 10 * 60 * 1000;
+const TEMPORARY_DENO_PIN_BYPASS_UNTIL = Date.parse("2026-08-07T09:08:00.000Z");
 
 type AccessSessionRow = {
   id: string;
@@ -56,7 +57,12 @@ function normalizeHostname(value: string | null) {
   return hostname.startsWith("[") ? hostname : hostname.replace(/:\d+$/, "");
 }
 
+function isTemporaryDenoPinBypassActive() {
+  return Boolean(process.env.DENO_DEPLOY_APP_ID) && Date.now() < TEMPORARY_DENO_PIN_BYPASS_UNTIL;
+}
+
 function shouldTemporarilyBypassPin(headers: Headers) {
+  if (isTemporaryDenoPinBypassActive()) return true;
   if (process.env.TEMPORARY_DISABLE_PIN !== "true") return false;
 
   const hostname =
@@ -187,7 +193,7 @@ function shouldUpdateLastSeen(lastSeenAt: string | null, now: number) {
 
 export async function requireActiveAccess(headers: Headers): Promise<AccessResult> {
   if (shouldTemporarilyBypassPin(headers)) {
-    return { ok: true, sessionId: "temporary-render-pin-bypass", deviceId: null };
+    return { ok: true, sessionId: "temporary-pin-bypass", deviceId: null };
   }
 
   const token = parseCookie(headers, ACCESS_COOKIE);
