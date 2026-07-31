@@ -3,7 +3,6 @@ import { DEFAULT_DIGIT_COUNT, POSISI } from "./constants";
 import { ALL_FORMULA_SPECS, computeFormula, type FormulaSpec } from "./formulas";
 import { buildDeret, buildDeretShio, clamp, digitOf, isJumlah2DMode, isShioMode, parseHistory, scanCode, scanModeOrDefault, target2DOrDefault, target3DOrDefault, targetDigitsOf, uniqueDigits } from "./helpers";
 import { applyConsensusScores, compressionProfile, dedupeTrekCandidates, digitsFromColumns, selectRankedDisplayItems, type RankedItem } from "./ranking";
-import { EXPERIMENT_X7_HISTORY, runExperimentX7 } from "../experiment-x7/engine";
 
 export { parseHistory } from "./helpers";
 
@@ -76,72 +75,6 @@ export function runEngineFromHistory(historyData: string, config: EngineConfig):
   return runEngine(parseHistory(historyData), config);
 }
 
-function runExperimentX7AutoScan(draws: Draw[], config: AutoScanResult["config"]): AutoScanResult {
-  const experiment = runExperimentX7(draws);
-  const latestDraw = experiment.history[experiment.history.length - 1];
-  const patokanLiveDraw = experiment.history[0];
-  const rankingDigits = experiment.ranking.map((item) => item.digit);
-  const itemLimit = Math.min(config.stopScan, experiment.candidates.length);
-
-  const items: AutoScanItem[] = experiment.candidates.slice(0, itemLimit).map((digits, index) => {
-    const included = new Set(digits);
-    const angkaMati = rankingDigits.filter((digit) => !included.has(digit));
-    const result: EngineResult = {
-      config: {
-        patokanPos: "K",
-        patokanN: EXPERIMENT_X7_HISTORY,
-        targetPos: "K",
-        target2D: "belakang",
-        target3D: "belakang",
-        L: EXPERIMENT_X7_HISTORY,
-        scanMode: "experiment_x7",
-      },
-      jumlahData: draws.length,
-      jumlahBacktest: 0,
-      kolom: [],
-      deretLive: rankingDigits,
-      patokanLiveDraw,
-      latestDraw,
-      angkaKuat: digits,
-      angkaMati,
-      rows: [],
-    };
-
-    return {
-      targetPos: "K",
-      target2D: "belakang",
-      target3D: "belakang",
-      scanMode: "experiment_x7",
-      patokanPos: "K",
-      patokanN: EXPERIMENT_X7_HISTORY,
-      formula: `Experiment X7 Top ${index + 1}`,
-      code: `X7-T${index + 1}`,
-      angkaHidup: digits,
-      kolomHidup: [],
-      angkaMati,
-      kolomMati: [],
-      activeColumns: "",
-      jumlahHidup: digits.length,
-      result,
-    };
-  });
-
-  return {
-    config: {
-      ...config,
-      L: EXPERIMENT_X7_HISTORY,
-      patah: 0,
-      targetPos: "K",
-      target2D: "belakang",
-      digitCount: 7,
-      scanMode: "experiment_x7",
-    },
-    totalChecked: experiment.candidates.length,
-    totalMatched: items.length,
-    items,
-  };
-}
-
 export function runAutoScan(draws: Draw[], config: AutoScanConfig): AutoScanResult {
   const safeL = clamp(config.L, 14, 1, 100);
   const safeConfig = {
@@ -154,7 +87,6 @@ export function runAutoScan(draws: Draw[], config: AutoScanConfig): AutoScanResu
     stopScan: clamp(config.stopScan, 3, 1, 200),
     scanMode: scanModeOrDefault(config.scanMode),
   };
-  if (safeConfig.scanMode === "experiment_x7") return runExperimentX7AutoScan(draws, safeConfig);
 
   const isPositionScan = safeConfig.scanMode === "posisi" || safeConfig.scanMode === "off_posisi";
   const targets = isPositionScan ? (config.targetPos ? [config.targetPos] : POSISI) : ["K" as Posisi];
