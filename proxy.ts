@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isTemporaryPinBypassActive } from "@/lib/access-bypass";
 
 const ACCESS_COOKIE = "analisa_access_token";
 const ADMIN_COOKIE = "analisa_admin_session";
-const TEMPORARY_DENO_PIN_BYPASS_UNTIL = Date.parse("2026-08-07T09:08:00.000Z");
 
 const PUBLIC_PATHS = new Set([
   "/pin",
@@ -24,28 +24,6 @@ function isPublicPath(pathname: string) {
   if (pathname.startsWith("/_next/")) return true;
   if (pathname.startsWith("/assets/")) return true;
   return /\.(?:png|jpg|jpeg|webp|gif|svg|ico|css|js|txt|xml|json)$/i.test(pathname);
-}
-
-function normalizeHostname(value: string | null) {
-  const hostname = (value || "").split(",")[0].trim().toLowerCase();
-  if (!hostname) return "";
-  return hostname.startsWith("[") ? hostname : hostname.replace(/:\d+$/, "");
-}
-
-function isTemporaryDenoPinBypassActive() {
-  return Boolean(process.env.DENO_DEPLOY_APP_ID) && Date.now() < TEMPORARY_DENO_PIN_BYPASS_UNTIL;
-}
-
-function shouldTemporarilyBypassPin(req: NextRequest) {
-  if (isTemporaryDenoPinBypassActive()) return true;
-  if (process.env.TEMPORARY_DISABLE_PIN !== "true") return false;
-
-  const hostname =
-    normalizeHostname(req.headers.get("x-forwarded-host")) ||
-    normalizeHostname(req.headers.get("host")) ||
-    req.nextUrl.hostname.toLowerCase();
-
-  return hostname.endsWith(".onrender.com");
 }
 
 function safeNextPath(value: string | null) {
@@ -75,7 +53,7 @@ export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const hasAccess = Boolean(req.cookies.get(ACCESS_COOKIE)?.value);
   const hasAdmin = Boolean(req.cookies.get(ADMIN_COOKIE)?.value);
-  const bypassPin = shouldTemporarilyBypassPin(req);
+  const bypassPin = isTemporaryPinBypassActive();
 
   if (bypassPin && pathname === "/pin") {
     return NextResponse.redirect(
