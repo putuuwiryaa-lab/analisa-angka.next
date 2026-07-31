@@ -2,6 +2,7 @@ import "server-only";
 import { Buffer } from "node:buffer";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
+import { isTemporaryPinBypassActive } from "@/lib/access-bypass";
 import { createAdminClient } from "./supabase-admin";
 import { requireEnv } from "./env";
 import { getClientIp } from "./http";
@@ -18,7 +19,6 @@ export const ADMIN_ACCESS_SESSIONS_VIEW = "admin_analisa_access_sessions_view";
 const USER_MAX_AGE = 60 * 60 * 24 * 365 * 10;
 const ADMIN_MAX_AGE = 60 * 60 * 24 * 7;
 const LAST_SEEN_UPDATE_INTERVAL_MS = 10 * 60 * 1000;
-const TEMPORARY_DENO_PIN_BYPASS_UNTIL = Date.parse("2026-08-07T09:08:00.000Z");
 
 type AccessSessionRow = {
   id: string;
@@ -49,27 +49,6 @@ function safeCompareText(left: string, right: string) {
 
 function hmac(value: string, purpose: string) {
   return crypto.createHmac("sha256", secret()).update(`${purpose}:${value}`).digest("hex");
-}
-
-function normalizeHostname(value: string | null) {
-  const hostname = (value || "").split(",")[0].trim().toLowerCase();
-  if (!hostname) return "";
-  return hostname.startsWith("[") ? hostname : hostname.replace(/:\d+$/, "");
-}
-
-function isTemporaryDenoPinBypassActive() {
-  return Boolean(process.env.DENO_DEPLOY_APP_ID) && Date.now() < TEMPORARY_DENO_PIN_BYPASS_UNTIL;
-}
-
-function shouldTemporarilyBypassPin(headers: Headers) {
-  if (isTemporaryDenoPinBypassActive()) return true;
-  if (process.env.TEMPORARY_DISABLE_PIN !== "true") return false;
-
-  const hostname =
-    normalizeHostname(headers.get("x-forwarded-host")) ||
-    normalizeHostname(headers.get("host"));
-
-  return hostname.endsWith(".onrender.com");
 }
 
 export function normalizePin(value: unknown) {
@@ -192,8 +171,8 @@ function shouldUpdateLastSeen(lastSeenAt: string | null, now: number) {
 }
 
 export async function requireActiveAccess(headers: Headers): Promise<AccessResult> {
-  if (shouldTemporarilyBypassPin(headers)) {
-    return { ok: true, sessionId: "temporary-pin-bypass", deviceId: null };
+  if (isTemporaryPinBypassActive()) {
+    return { ok: true, sessionId: "temporary-deno-pin-bypass", deviceId: null };
   }
 
   const token = parseCookie(headers, ACCESS_COOKIE);
