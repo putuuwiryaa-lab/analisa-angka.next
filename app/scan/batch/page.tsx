@@ -7,10 +7,8 @@ import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
 
 type Market = { id: string; name: string; lastResult?: string };
 type BatchResult = {
-  title: string;
   results: { id: string; name: string; digits: string }[];
-  copyText: string;
-  limit: number;
+  lineSeparator?: string;
 };
 
 const MAX_MARKETS = 35;
@@ -81,6 +79,14 @@ export default function BatchScanPage() {
     return markets.filter((market) => `${market.id} ${market.name}`.toLowerCase().includes(normalized));
   }, [markets, query]);
 
+  const outputText = useMemo(() => {
+    if (!result) return "";
+    const activeSeparator = result.lineSeparator || separator;
+    return result.results
+      .map((row) => `${row.name} ${activeSeparator} ${row.digits}`)
+      .join("\n");
+  }, [result, separator]);
+
   function changeMode(mode: ScanMode) {
     setScanMode(mode);
     setDigitCount(MODES.find((item) => item.value === mode)?.digits ?? 7);
@@ -144,8 +150,8 @@ export default function BatchScanPage() {
   }
 
   async function copyOutput() {
-    if (!result) return;
-    await writeClipboard(result.copyText);
+    if (!outputText) return;
+    await writeClipboard(outputText);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
   }
@@ -247,23 +253,21 @@ export default function BatchScanPage() {
 
       {result ? (
         <section className="depth-1 rounded-3xl border p-4 sm:p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-text-soft">Output siap salin</p>
-              <h2 className="display text-xl text-text">{result.title}</h2>
-            </div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <FieldLabel>Hasil siap copy</FieldLabel>
             <button type="button" onClick={copyOutput} className="pressable flex h-10 items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-[10px] font-black uppercase tracking-wide text-primary-soft">
-              {copied ? <Check size={15} /> : <Clipboard size={15} />}{copied ? "Tersalin" : "Salin"}
+              {copied ? <Check size={15} /> : <Clipboard size={15} />}
+              {copied ? "Tersalin" : "Copy"}
             </button>
           </div>
-          <div className="space-y-2">
-            {result.results.map((row) => (
-              <div key={row.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border-soft bg-white/[0.025] p-3">
-                <span className="min-w-0 truncate text-xs font-black uppercase text-text-muted">{row.name}</span>
-                <span className="num shrink-0 text-lg font-black tracking-wider text-accent">{row.digits}</span>
-              </div>
-            ))}
-          </div>
+          <textarea
+            readOnly
+            value={outputText}
+            rows={Math.min(Math.max(result.results.length, 4), 14)}
+            onFocus={(event) => event.currentTarget.select()}
+            className="num w-full resize-none rounded-2xl border border-border-soft bg-surface p-4 text-sm font-black leading-7 text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50"
+            aria-label="Hasil Batch Scan siap disalin"
+          />
         </section>
       ) : null}
     </div>
