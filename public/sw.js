@@ -1,31 +1,16 @@
-const CACHE_NAME = "analisa-angka-v1";
-const urlsToCache = ["/"];
-
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache)));
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((names) =>
-        Promise.all(names.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))),
-      ),
+      .then((names) => Promise.all(names.map((name) => caches.delete(name))))
+      .then(() => self.clients.claim()),
   );
-  self.clients.claim();
 });
 
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-
-  // Jangan cache API.
-  if (request.url.includes("/api/")) return;
-
-  // Navigasi (HTML): network-first, fallback cache saat offline.
-  if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match("/")));
-    return;
-  }
-});
+// Service worker ini sengaja tidak menangani fetch.
+// Semua navigasi dan aset selalu memakai jaringan agar cache aplikasi lama
+// dari sebelum migrasi tidak pernah ditampilkan kembali.
