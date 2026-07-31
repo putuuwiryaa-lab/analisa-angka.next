@@ -1,5 +1,6 @@
 import "server-only";
-import crypto from "crypto";
+import { Buffer } from "node:buffer";
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "./supabase-admin";
 import { requireEnv } from "./env";
