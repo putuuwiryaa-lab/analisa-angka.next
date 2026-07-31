@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { cn } from "@/lib/cn";
 
-/** Logo mark Analisa Angka — hexagon + "A", gradien purple. */
+/** Logo mark Analisa Angka — hexagon + "A", gradien indigo-cyan modern. */
 export function Logo({ className = "h-9 w-9" }: { className?: string }) {
   const id = useId().replace(/:/g, "");
   const gradId = `aaLogo-${id}`;
@@ -10,9 +10,9 @@ export function Logo({ className = "h-9 w-9" }: { className?: string }) {
     <svg className={cn(className)} viewBox="0 0 64 64" fill="none" aria-hidden="true">
       <defs>
         <linearGradient id={gradId} x1="12" y1="52" x2="52" y2="10" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#a98cff" />
-          <stop offset="0.55" stopColor="#7c4dff" />
-          <stop offset="1" stopColor="#28d7ff" />
+          <stop stopColor="#0891b2" />
+          <stop offset="0.52" stopColor="#5657d9" />
+          <stop offset="1" stopColor="#7c3aed" />
         </linearGradient>
       </defs>
       <path
