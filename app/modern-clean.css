@@ -1,0 +1,133 @@
+/* ============================================================
+   MODERN CLEAN THEME OVERRIDES
+   Light, neutral, data-product oriented visual system.
+   Imported after globals.css so the existing semantic classes
+   keep working across every route without changing app logic.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  --color-bg: #f6f8fc;
+  --color-bg-deep: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8fafc;
+  --color-surface-pressed: #e2e8f0;
+
+  --color-text: #172033;
+  --color-text-muted: #475569;
+  --color-text-soft: #64748b;
+  --color-text-faint: #94a3b8;
+
+  --color-primary: #5657d9;
+  --color-primary-soft: #6d6ee8;
+  --color-accent: #0891b2;
+  --color-success: #059669;
+  --color-danger: #dc2626;
+
+  --color-border: rgba(15, 23, 42, 0.1);
+  --color-border-soft: rgba(15, 23, 42, 0.06);
+  --color-border-strong: rgba(15, 23, 42, 0.16);
+
+  --color-mode-ai: #b7791f;
+  --color-mode-bbfs: #c2410c;
+  --color-mode-mati: #e11d48;
+  --color-mode-jumlah: #0f766e;
+  --color-mode-shio: #0891b2;
+  --color-mode-rekap: #2563eb;
+  --color-mode-invest: #7c3aed;
+  --color-mode-statistics: #059669;
+  --color-mode-scan: #0e7490;
+}
+
+body {
+  background:
+    radial-gradient(circle at 88% 2%, rgba(86, 87, 217, 0.08), transparent 28%),
+    radial-gradient(circle at 5% 22%, rgba(8, 145, 178, 0.055), transparent 25%),
+    linear-gradient(180deg, #f9fbff 0%, var(--color-bg) 52%, #f2f5fa 100%);
+  color: var(--color-text);
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--color-primary) 82%, white 18%);
+  color: #ffffff;
+}
+
+input,
+textarea,
+select {
+  color-scheme: light;
+}
+
+.depth-1 {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: var(--color-border-soft);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.035),
+    0 10px 30px rgba(15, 23, 42, 0.055);
+}
+
+.depth-2 {
+  background: linear-gradient(180deg, #fbfcfe 0%, #f5f7fb 100%);
+  border-color: var(--color-border-soft);
+}
+
+.depth-3 {
+  background: rgba(241, 245, 249, 0.9);
+  border-color: rgba(15, 23, 42, 0.075);
+}
+
+.depth-accent {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent, var(--color-primary)) 8%, white),
+      color-mix(in srgb, var(--accent, var(--color-primary)) 3%, #f8fafc)
+    );
+  border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 22%, transparent);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--accent, var(--color-primary)) 8%, transparent);
+}
+
+.depth-glow-soft {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 12px 30px rgba(15, 23, 42, 0.055);
+}
+
+.pressable:active,
+.pressable:hover:active {
+  filter: brightness(0.985);
+}
+
+.tap-glow::after {
+  background: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.055), transparent 64%);
+}
+
+[data-mode="scan"] {
+  --accent: var(--color-mode-scan);
+}
+
+/* Replace dark-theme-only translucent white fills with light-theme neutrals. */
+[class~="bg-white/10"] {
+  background-color: rgba(15, 23, 42, 0.055) !important;
+}
+
+[class~="bg-white/[0.035]"] {
+  background-color: rgba(255, 255, 255, 0.76) !important;
+}
+
+[class~="hover:bg-white/[0.04]"]:hover,
+[class~="hover:bg-white/[0.055]"]:hover,
+[class~="hover:bg-white/[0.07]"]:hover,
+[class~="hover:bg-white/[0.075]"]:hover {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+.group:hover [class~="group-hover:bg-white/[0.04]"] {
+  background-color: rgba(15, 23, 42, 0.035) !important;
+}
+
+/* Fixed bottom navigation should read as a clean floating system bar. */
+nav[class*="fixed"][class*="bottom-0"] {
+  box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.06);
+}
