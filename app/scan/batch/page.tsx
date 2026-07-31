@@ -243,7 +243,7 @@ export default function BatchScanPage() {
           Pilih semua hasil pencarian
         </button>
 
-        <div className="grid max-h-[22rem] grid-cols-2 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-3">
+        <div className="grid max-h-[22rem] grid-cols-3 gap-1.5 overflow-y-auto pr-1">
           {filteredMarkets.map((market) => {
             const active = selected.includes(market.id);
             return (
@@ -251,10 +251,10 @@ export default function BatchScanPage() {
                 key={market.id}
                 type="button"
                 onClick={() => toggleMarket(market.id)}
-                className={`pressable flex min-h-12 items-center justify-between gap-1.5 rounded-xl border px-2.5 py-2 text-left shadow-inner shadow-black/10 ${active ? "border-primary/45 bg-primary/15" : "border-border-soft bg-surface"}`}
+                className={`pressable flex min-h-12 items-center justify-between gap-1 rounded-xl border px-2 py-2 text-left shadow-inner shadow-black/10 ${active ? "border-primary/45 bg-primary/15" : "border-border-soft bg-surface"}`}
               >
-                <span className={`line-clamp-2 text-[10px] font-black uppercase leading-snug ${active ? "text-primary-soft" : "text-text"}`}>{market.name || market.id}</span>
-                {active ? <Check size={14} className="shrink-0 text-primary-soft" /> : null}
+                <span className={`line-clamp-2 text-[9px] font-black uppercase leading-snug ${active ? "text-primary-soft" : "text-text"}`}>{market.name || market.id}</span>
+                {active ? <Check size={13} className="shrink-0 text-primary-soft" /> : null}
               </button>
             );
           })}
