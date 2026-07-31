@@ -44,6 +44,15 @@ function redirectApexToWww(req: NextRequest) {
   return NextResponse.redirect(url, 308);
 }
 
+function redirectLegacyPath(req: NextRequest) {
+  if (req.nextUrl.pathname !== "/kode-login") return null;
+
+  const url = req.nextUrl.clone();
+  url.pathname = "/";
+  url.search = "";
+  return NextResponse.redirect(url, 308);
+}
+
 function safeNextPath(value: string | null) {
   return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
@@ -70,6 +79,9 @@ function redirectWithNext(req: NextRequest, target: string) {
 export function proxy(req: NextRequest) {
   const canonicalRedirect = redirectApexToWww(req);
   if (canonicalRedirect) return canonicalRedirect;
+
+  const legacyRedirect = redirectLegacyPath(req);
+  if (legacyRedirect) return legacyRedirect;
 
   const { pathname } = req.nextUrl;
   const hasAccess = Boolean(req.cookies.get(ACCESS_COOKIE)?.value);
