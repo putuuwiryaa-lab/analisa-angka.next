@@ -34,14 +34,14 @@ type Props = {
 export default function ScanFields(props: Props) {
   const digitMaximum = props.scanMode === "shio" || props.scanMode === "off_shio" ? 12 : 10;
   return (
-    <section className="depth-1 rounded-3xl border p-4 sm:p-5">
-      <div className="space-y-4">
+    <section className="depth-1 rounded-2xl border p-3 sm:p-4">
+      <div className="space-y-3">
         <MarketSelectField markets={props.markets} value={props.marketId} selectedMarket={props.selectedMarket} disabled={props.marketsLoading} onChange={props.onMarketChange} />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <NumberField label="Data uji" value={props.rounds} min={1} max={100} hint="maks. 100" onChange={props.onRoundsChange} />
           <NumberField label="Patah" value={props.patah} min={0} max={props.rounds} hint={`maks. ${props.rounds}`} onChange={props.onPatahChange} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <SelectField label="Jenis" value={props.scanMode} onChange={(value) => props.onModeChange(value as ScanMode)}>
             {MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </SelectField>
@@ -59,14 +59,14 @@ export default function ScanFields(props: Props) {
             </SelectField>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <SelectField label="Jumlah digit" value={String(props.digitCount)} onChange={(value) => props.onDigitCountChange(Number(value))}>
             {Array.from({ length: digitMaximum }, (_, index) => index + 1).map((digit) => <option key={digit} value={digit}>{digit} digit</option>)}
           </SelectField>
           <NumberField label="Batas hasil" value={props.stopScan} min={1} max={5} onChange={props.onStopScanChange} />
         </div>
       </div>
-      <button type="button" onClick={props.onScan} disabled={props.loading || props.marketsLoading || !props.marketId} className="pressable mt-5 flex h-16 w-full items-center justify-center rounded-2xl border border-primary/70 bg-primary px-4 text-base font-black text-bg-deep shadow-[0_12px_30px_rgba(105,151,255,0.18)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50">
+      <button type="button" onClick={props.onScan} disabled={props.loading || props.marketsLoading || !props.marketId} className="pressable mt-4 flex h-[3.25rem] w-full items-center justify-center rounded-xl border border-primary/70 bg-primary px-4 text-sm font-black text-bg-deep shadow-[0_10px_24px_rgba(105,151,255,0.16)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50">
         {props.loading ? "Memproses Scan…" : "Scan Sekarang"}
       </button>
     </section>
@@ -74,7 +74,7 @@ export default function ScanFields(props: Props) {
 }
 
 function FieldLabel({ children }: { children: ReactNode }) {
-  return <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.12em] text-text-muted">{children}</span>;
+  return <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted">{children}</span>;
 }
 
 function MarketSelectField({ markets, value, selectedMarket, disabled, onChange }: { markets: Market[]; value: string; selectedMarket: Market | null; disabled?: boolean; onChange: (value: string) => void }) {
@@ -82,11 +82,11 @@ function MarketSelectField({ markets, value, selectedMarket, disabled, onChange 
     <label className="block">
       <FieldLabel>Pasaran</FieldLabel>
       <div className="relative">
-        <div className="flex h-[4.5rem] items-center gap-3 rounded-2xl border border-border-soft bg-surface px-4 shadow-inner shadow-black/10">
-          <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_6px_rgba(105,151,255,0.12)]" />
-          <span className="min-w-0 flex-1 truncate text-base font-black text-text">{selectedMarket ? marketLabel(selectedMarket) : disabled ? "MEMUAT PASARAN…" : "PILIH PASARAN"}</span>
-          <span className="num shrink-0 rounded-xl border border-accent/30 bg-accent/10 px-3 py-1.5 text-base font-black tracking-[0.08em] text-accent">{selectedMarket?.lastResult || "----"}</span>
-          <ChevronDown size={18} className="shrink-0 text-text-soft" />
+        <div className="flex h-12 items-center gap-2.5 rounded-xl border border-border-soft bg-surface px-3 shadow-inner shadow-black/10">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_4px_rgba(105,151,255,0.12)]" />
+          <span className="min-w-0 flex-1 truncate text-sm font-black text-text">{selectedMarket ? marketLabel(selectedMarket) : disabled ? "MEMUAT PASARAN…" : "PILIH PASARAN"}</span>
+          <span className="num shrink-0 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-sm font-black tracking-[0.06em] text-accent">{selectedMarket?.lastResult || "----"}</span>
+          <ChevronDown size={16} className="shrink-0 text-text-soft" />
         </div>
         <select value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)} disabled={disabled} aria-label="Pilih pasaran" className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
           <option value="">Pilih pasaran</option>
@@ -102,8 +102,8 @@ function SelectField({ label, value, onChange, disabled, children }: { label: st
     <label className="block min-w-0">
       <FieldLabel>{label}</FieldLabel>
       <div className="relative">
-        <select value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)} disabled={disabled} className="h-[4.5rem] w-full appearance-none rounded-2xl border border-border-soft bg-surface px-4 pr-10 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55">{children}</select>
-        <ChevronDown size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-soft" />
+        <select value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)} disabled={disabled} className="h-12 w-full appearance-none rounded-xl border border-border-soft bg-surface px-3 pr-8 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55">{children}</select>
+        <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-soft" />
       </div>
     </label>
   );
@@ -114,8 +114,8 @@ function NumberField({ label, value, min, max, hint, disabled, onChange }: { lab
     <label className="block min-w-0">
       <FieldLabel>{label}</FieldLabel>
       <div className="relative">
-        <input type="number" inputMode="numeric" value={value} min={min} max={max} disabled={disabled} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))} className="h-[4.5rem] w-full rounded-2xl border border-border-soft bg-surface px-4 pr-20 text-base font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55" />
-        {hint ? <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-text-soft/55">{hint}</span> : null}
+        <input type="number" inputMode="numeric" value={value} min={min} max={max} disabled={disabled} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))} className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55" />
+        {hint ? <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">{hint}</span> : null}
       </div>
     </label>
   );
