@@ -13,7 +13,7 @@ Arah baru memakai sistem **modern clean light**: canvas off-white, kartu putih, 
 
 1. `app/globals.css` menetapkan background `#0b0d16` dan `#080914`, dengan surface `#171329` dan `#172033`. Jarak luminansi antarlevel terlalu sempit sehingga banyak kartu terlihat menyatu.
 2. Background halaman memakai tiga radial gradient dan satu linear gradient. Dikombinasikan dengan glow pada logo, kartu, dan tombol, hasilnya terasa berat.
-3. Beberapa komponen memakai tint putih transparan seperti `bg-white/[0.035]`, `hover:bg-white/[0.07]`, dan `bg-white/10`. Kelas ini khusus untuk dark theme dan perlu dinetralkan ketika tema menjadi terang.
+3. Beberapa komponen memakai tint putih transparan seperti `bg-white/[0.035]`, `hover:bg-white/[0.07]`, dan `bg-white/10`. Kelas ini khusus untuk dark theme dan perlu diaudit bertahap setelah perubahan token global.
 4. Navigasi bawah memakai canvas gelap transparan dan glow per-mode. Pada aplikasi data, navigasi lebih mudah dibaca bila menggunakan bar putih, border tipis, dan shadow ringan.
 5. `data-mode="scan"` sudah digunakan pada navigasi, tetapi token warna Scan belum didefinisikan di theme utama. Akibatnya Scan jatuh ke warna primary umum.
 6. Warna mode analisa cukup membantu orientasi, tetapi versi lama terlalu neon di atas permukaan gelap. Warna tersebut dipertahankan dengan saturasi dan luminansi yang lebih sesuai untuk background terang.
@@ -66,14 +66,19 @@ Arah baru memakai sistem **modern clean light**: canvas off-white, kartu putih, 
 
 Branch: `agent/modern-clean-color-system`
 
-- `app/modern-clean.css`: override token global, surface depth, background, hard-coded dark-theme tint, dan token Scan.
-- `app/layout.tsx`: mengaktifkan stylesheet baru serta menyesuaikan browser/PWA theme color.
-- `components/layout/AppShell.tsx`: membersihkan hero header dan bottom navigation.
+- `components/layout/ModernCleanTheme.tsx`: menyuntikkan override token global, background, surface depth, dan token Scan melalui elemen `<style>` app-wide. Jalur ini dipilih karena Deno gagal ketika stylesheet global tambahan diimpor dari `app/layout.tsx`.
+- `components/layout/AppShell.tsx`: memasang theme override, membersihkan hero header, dan merapikan bottom navigation.
 - `components/ui/Logo.tsx`: mengganti gradient logo ke indigo-cyan yang lebih modern.
+- `docs/UI_COLOR_AUDIT_2026-07-31.md`: mendokumentasikan temuan, palette, dan batas scope.
+
+## Validasi
+
+- Deno Deploy berhasil setelah theme override dipindahkan dari global CSS import ke `ModernCleanTheme.tsx`.
+- Perubahan hanya menyentuh lapisan visual dan dokumentasi; engine, API, Supabase, dan alur menu tidak diubah.
 
 ## Tahap lanjutan setelah review visual
 
 1. Uji route utama pada mobile: `/`, `/analyze/[marketId]`, `/scan`, `/scan/batch`, `/pantauan-rekap`, dan `/rekomendasi`.
-2. Periksa elemen yang masih memakai shadow atau gradient hard-coded.
+2. Periksa elemen yang masih memakai shadow, gradient, atau tint putih hard-coded.
 3. Jalankan pemeriksaan kontras teks kecil dan state disabled.
-4. Setelah visual disetujui, pindahkan token final dari override file ke `app/globals.css` agar theme kembali memiliki satu sumber utama.
+4. Setelah visual disetujui, satukan token final ke `app/globals.css` agar theme kembali memiliki satu sumber utama.
