@@ -45,7 +45,7 @@ export default function ScanPageClient() {
   const [rounds, setRounds] = useState(14);
   const [patah, setPatah] = useState(0);
   const [digitCount, setDigitCount] = useState(4);
-  const [stopScan, setStopScan] = useState(3);
+  const [stopScan, setStopScan] = useState(1);
   const [marketName, setMarketName] = useState("");
   const [result, setResult] = useState<AutoScanResult | null>(null);
   const [viewItem, setViewItem] = useState<AutoScanItem | null>(null);
