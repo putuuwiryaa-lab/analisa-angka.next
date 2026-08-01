@@ -357,11 +357,28 @@ function NumberField({
   disabled?: boolean;
   onChange: (value: number) => void;
 }) {
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const parsed = Number(event.target.value);
-    if (!Number.isFinite(parsed)) return;
-    const normalized = Math.max(min, Math.trunc(parsed));
-    onChange(max === undefined ? normalized : Math.min(max, normalized));
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    if (draft.trim() === "") {
+      setDraft(String(value));
+      return;
+    }
+
+    const parsed = Number(draft);
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+
+    const integer = Math.trunc(parsed);
+    const normalized = Math.max(min, max === undefined ? integer : Math.min(max, integer));
+    setDraft(String(normalized));
+    if (normalized !== value) onChange(normalized);
   };
 
   return (
@@ -371,11 +388,19 @@ function NumberField({
         <input
           type="number"
           inputMode="numeric"
-          value={value}
+          value={draft}
           min={min}
           max={max}
           disabled={disabled}
-          onChange={handleChange}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+            if (event.key === "Escape") {
+              setDraft(String(value));
+              event.currentTarget.blur();
+            }
+          }}
           className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55"
         />
         {hint ? <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">{hint}</span> : null}
