@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
+    "test": "deno task test",
+    "check": "deno task check",
     "format": "prettier --write ."
   },
   "dependencies": {
