@@ -24,7 +24,17 @@
   color: var(--color-text);
 }
 
-:global(body:has([data-scan-theme])) {
+.pageBackdrop {
+  position: relative;
+  isolation: isolate;
+}
+
+.pageBackdrop::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(circle at 88% 4%, rgba(110, 155, 255, 0.18), transparent 31%),
     radial-gradient(circle at 8% 20%, rgba(81, 210, 202, 0.055), transparent 28%),
