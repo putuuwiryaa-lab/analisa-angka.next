@@ -111,6 +111,11 @@ export default function ScanPageClient() {
     setDigitCount(MODE_OPTIONS.find((item) => item.value === mode)?.digits ?? 7);
   }
 
+  function changeRounds(value: number) {
+    setRounds(value);
+    setPatah((current) => Math.min(current, value));
+  }
+
   async function runScan() {
     if (!marketId) return setError("Pilih pasaran terlebih dahulu.");
     setLoading(true);
@@ -184,7 +189,7 @@ export default function ScanPageClient() {
 
   return (
     <div className="animate-rise space-y-4">
-      <ScanFields markets={markets} marketId={marketId} selectedMarket={selectedMarket} marketsLoading={marketsLoading} rounds={rounds} patah={patah} scanMode={scanMode} targetPos={targetPos} target2D={target2D} target3D={target3D} digitCount={digitCount} stopScan={stopScan} loading={loading} onMarketChange={setMarketId} onRoundsChange={setRounds} onPatahChange={setPatah} onModeChange={changeMode} onTargetPosChange={setTargetPos} onTarget2DChange={setTarget2D} onTarget3DChange={setTarget3D} onDigitCountChange={setDigitCount} onStopScanChange={setStopScan} onScan={runScan} />
+      <ScanFields markets={markets} marketId={marketId} selectedMarket={selectedMarket} marketsLoading={marketsLoading} rounds={rounds} patah={patah} scanMode={scanMode} targetPos={targetPos} target2D={target2D} target3D={target3D} digitCount={digitCount} stopScan={stopScan} loading={loading} onMarketChange={setMarketId} onRoundsChange={changeRounds} onPatahChange={setPatah} onModeChange={changeMode} onTargetPosChange={setTargetPos} onTarget2DChange={setTarget2D} onTarget3DChange={setTarget3D} onDigitCountChange={setDigitCount} onStopScanChange={setStopScan} onScan={runScan} />
       {error ? <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">{error}</div> : null}
       {result ? <ScanResultSection result={result} marketTitle={title} marketId={marketId} savedId={savedId} onSave={saveTrek} onView={(item) => { setViewSaved(null); setViewItem(item); }} /> : null}
       <SavedTreksSection total={savedTreks.length} groups={savedGroups} onView={(item) => { setViewItem(null); setViewSaved(item); }} onDelete={deleteTrek} />
