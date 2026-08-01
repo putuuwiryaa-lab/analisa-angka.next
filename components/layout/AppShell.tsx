@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { BarChart3, Coins, ScanSearch } from "lucide-react";
@@ -58,6 +58,7 @@ function HeroHeader() {
 function BottomNav() {
   const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl border px-2 hover:border-border hover:bg-white/[0.075]";
   const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
+  const scanStyle = { "--accent": "#6e9bff", boxShadow: softGlow } as CSSProperties;
 
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
@@ -79,7 +80,7 @@ function BottomNav() {
           href="/scan"
           prefetch={false}
           className={pill}
-          style={{ boxShadow: softGlow }}
+          style={scanStyle}
           aria-label="Scan Angka"
         >
           <ScanSearch size={19} />
