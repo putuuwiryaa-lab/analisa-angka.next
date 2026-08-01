@@ -19,8 +19,8 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div
-      className={`${scanActive ? `${styles.theme} ${styles.pageBackdrop}` : ""} mx-auto min-h-[calc(100svh-2rem)] w-full max-w-3xl pb-24`}
-      data-scan-theme={scanActive ? true : undefined}
+      className={`${styles.theme} ${styles.pageBackdrop} mx-auto min-h-[calc(100svh-2rem)] w-full max-w-3xl pb-24`}
+      data-scan-theme
     >
       <header className="animate-fade-in mb-3 flex items-center justify-between gap-2.5 rounded-2xl border border-border-soft bg-surface/75 p-2.5 backdrop-blur-xl">
         <Link
