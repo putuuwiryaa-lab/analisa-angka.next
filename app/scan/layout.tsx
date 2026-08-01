@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, Layers3, ScanSearch } from "lucide-react";
+import styles from "./ScanTheme.module.css";
 
 export default function ScanLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -17,7 +18,10 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
   ].join(" ");
 
   return (
-    <div className="mx-auto min-h-[calc(100svh-2rem)] w-full max-w-3xl pb-24">
+    <div
+      className={`${scanActive ? styles.theme : ""} mx-auto min-h-[calc(100svh-2rem)] w-full max-w-3xl pb-24`}
+      data-scan-theme={scanActive ? true : undefined}
+    >
       <header className="animate-fade-in mb-3 flex items-center justify-between gap-2.5 rounded-2xl border border-border-soft bg-surface/75 p-2.5 backdrop-blur-xl">
         <Link
           href="/"
