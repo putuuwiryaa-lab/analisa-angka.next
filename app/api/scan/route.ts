@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 const DEFAULT_DIGIT_COUNT = 4;
 const DEFAULT_SCAN_MODE: ScanMode = "ai_2d_belakang";
 const DEFAULT_STOP_SCAN = 1;
+const MAX_STOP_SCAN = 200;
 
 function isPosisi(value: unknown): value is Posisi {
   return value === "A" || value === "C" || value === "K" || value === "E";
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
       target2D: body?.target2D as Target2D | undefined,
       target3D: body?.target3D as Target3D | undefined,
       digitCount: clamp(body?.digitCount ?? body?.minHidup, DEFAULT_DIGIT_COUNT, 1, 12),
-      stopScan: clamp(body?.stopScan, DEFAULT_STOP_SCAN, 1, 20),
+      stopScan: clamp(body?.stopScan, DEFAULT_STOP_SCAN, 1, MAX_STOP_SCAN),
       scanMode,
     };
 
