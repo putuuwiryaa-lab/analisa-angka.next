@@ -1,0 +1,64 @@
+.theme {
+  --color-bg: #0d1117;
+  --color-bg-deep: #0a0e16;
+  --color-surface: #161b22;
+  --color-surface-2: #111823;
+  --color-surface-pressed: #1c2330;
+
+  --color-text: #e9eef5;
+  --color-text-muted: #8b97a8;
+  --color-text-soft: #aeb9c9;
+  --color-text-faint: #5f6e82;
+
+  --color-primary: #6e9bff;
+  --color-primary-soft: #cfe0ff;
+  --color-accent: #e0b341;
+  --color-success: #79e6b0;
+  --color-danger: #ff5d5d;
+
+  --color-border: #283040;
+  --color-border-soft: rgba(40, 48, 64, 0.78);
+  --color-border-strong: rgba(110, 155, 255, 0.34);
+
+  --scan-process: #65e2d6;
+  color: var(--color-text);
+}
+
+.pageBackdrop {
+  position: relative;
+  isolation: isolate;
+}
+
+.pageBackdrop::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 88% 4%, rgba(110, 155, 255, 0.18), transparent 31%),
+    radial-gradient(circle at 8% 20%, rgba(81, 210, 202, 0.055), transparent 28%),
+    linear-gradient(180deg, #0d1117 0%, #0a0e16 100%);
+}
+
+.theme :global(.depth-1) {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+}
+
+.theme :global(button.bg-surface),
+.theme :global(input.bg-surface),
+.theme :global(select.bg-surface),
+.theme :global(textarea.bg-surface) {
+  background-color: var(--color-surface-pressed);
+  border-color: var(--color-border);
+}
+
+.theme :global(.bg-surface-2) {
+  background-color: var(--color-surface-2);
+}
+
+.theme :global(.text-accent) {
+  text-shadow: 0 0 22px rgba(224, 179, 65, 0.08);
+}
