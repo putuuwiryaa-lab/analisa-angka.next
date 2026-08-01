@@ -48,7 +48,9 @@
 }
 
 .theme :global(button.bg-surface),
-.theme :global(input.bg-surface) {
+.theme :global(input.bg-surface),
+.theme :global(select.bg-surface),
+.theme :global(textarea.bg-surface) {
   background-color: var(--color-surface-pressed);
   border-color: var(--color-border);
 }
