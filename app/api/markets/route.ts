@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { NO_STORE_HEADERS, PRIVATE_SHORT_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
+import { tokenizeHistory } from "@/lib/shared/history";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,9 +27,7 @@ function normalizeHistoryData(market: unknown) {
 }
 
 function getLastResult(historyData: string) {
-  const tokens = historyData
-    .trim()
-    .split(/[\s\n\r\t,;|]+/);
+  const tokens = tokenizeHistory(historyData);
 
   for (let i = tokens.length - 1; i >= 0; i--) {
     if (/^\d{4}$/.test(tokens[i])) return tokens[i];
