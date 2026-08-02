@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AutoScanItem, AutoScanResult, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import ScanFields from "./_components/ScanFields";
 import ScanResultSection, { trekId } from "./_components/ScanResultSection";
@@ -18,6 +18,12 @@ import {
   STORAGE_KEY,
 } from "./_lib";
 import type { DetailData, Market, SavedTrek } from "./_lib";
+
+type CompletedScan = {
+  marketId: string;
+  marketName: string;
+  result: AutoScanResult;
+};
 
 async function copyText(text: string) {
   try {
@@ -46,8 +52,7 @@ export default function ScanPageClient() {
   const [patah, setPatah] = useState(0);
   const [digitCount, setDigitCount] = useState(4);
   const [stopScan, setStopScan] = useState(1);
-  const [marketName, setMarketName] = useState("");
-  const [result, setResult] = useState<AutoScanResult | null>(null);
+  const [completedScan, setCompletedScan] = useState<CompletedScan | null>(null);
   const [viewItem, setViewItem] = useState<AutoScanItem | null>(null);
   const [viewSaved, setViewSaved] = useState<SavedTrek | null>(null);
   const [savedTreks, setSavedTreks] = useState<SavedTrek[]>([]);
@@ -56,6 +61,7 @@ export default function ScanPageClient() {
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState("");
   const [savedId, setSavedId] = useState("");
+  const scanVersionRef = useRef(0);
 
   useEffect(() => {
     fetch("/api/markets")
@@ -103,59 +109,155 @@ export default function ScanPageClient() {
   }, [viewItem, viewSaved]);
 
   const selectedMarket = markets.find((market) => market.id === marketId) ?? null;
-  const title = String(marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran").toUpperCase();
+  const result = completedScan?.result ?? null;
+  const title = String(
+    completedScan?.marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran",
+  ).toUpperCase();
   const savedGroups = useMemo(() => buildSavedGroups(savedTreks), [savedTreks]);
 
+  function invalidateScanOutput() {
+    scanVersionRef.current += 1;
+    setCompletedScan(null);
+    setViewItem(null);
+    setViewSaved(null);
+    setSavedId("");
+    setError("");
+    setLoading(false);
+  }
+
+  function changeMarket(value: string) {
+    if (value === marketId) return;
+    invalidateScanOutput();
+    setMarketId(value);
+  }
+
   function changeMode(mode: ScanMode) {
+    if (mode === scanMode) return;
+    invalidateScanOutput();
     setScanMode(mode);
     setDigitCount(MODE_OPTIONS.find((item) => item.value === mode)?.digits ?? 7);
   }
 
   function changeRounds(value: number) {
+    if (value === rounds) return;
+    invalidateScanOutput();
     setRounds(value);
     setPatah((current) => Math.min(current, value));
   }
 
+  function changePatah(value: number) {
+    if (value === patah) return;
+    invalidateScanOutput();
+    setPatah(value);
+  }
+
+  function changeTargetPos(value: Posisi) {
+    if (value === targetPos) return;
+    invalidateScanOutput();
+    setTargetPos(value);
+  }
+
+  function changeTarget2D(value: Target2D) {
+    if (value === target2D) return;
+    invalidateScanOutput();
+    setTarget2D(value);
+  }
+
+  function changeTarget3D(value: Target3D) {
+    if (value === target3D) return;
+    invalidateScanOutput();
+    setTarget3D(value);
+  }
+
+  function changeDigitCount(value: number) {
+    if (value === digitCount) return;
+    invalidateScanOutput();
+    setDigitCount(value);
+  }
+
+  function changeStopScan(value: number) {
+    if (value === stopScan) return;
+    invalidateScanOutput();
+    setStopScan(value);
+  }
+
   async function runScan() {
     if (!marketId) return setError("Pilih pasaran terlebih dahulu.");
+
+    const requestVersion = scanVersionRef.current + 1;
+    scanVersionRef.current = requestVersion;
+    const request = {
+      marketId,
+      scanMode,
+      targetPos,
+      target2D,
+      target3D,
+      rounds,
+      patah,
+      digitCount,
+      stopScan,
+    };
+    const requestMarket = selectedMarket;
+
     setLoading(true);
     setError("");
-    setResult(null);
+    setCompletedScan(null);
     setViewItem(null);
     setViewSaved(null);
+
     try {
       const response = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ marketId, scanMode, targetPos, target2D, target3D, L: rounds, patah, digitCount, stopScan }),
+        body: JSON.stringify({
+          marketId: request.marketId,
+          scanMode: request.scanMode,
+          targetPos: request.targetPos,
+          target2D: request.target2D,
+          target3D: request.target3D,
+          L: request.rounds,
+          patah: request.patah,
+          digitCount: request.digitCount,
+          stopScan: request.stopScan,
+        }),
       });
       const data = await response.json();
       if (!response.ok || data?.error) throw new Error(data?.error || "Scan gagal.");
-      setMarketName(String(data.market || selectedMarket?.name || selectedMarket?.id || "Pasaran"));
-      setResult(data.result);
+      if (requestVersion !== scanVersionRef.current) return;
+
+      setCompletedScan({
+        marketId: request.marketId,
+        marketName: String(data.market || requestMarket?.name || requestMarket?.id || "Pasaran"),
+        result: data.result,
+      });
     } catch (reason) {
+      if (requestVersion !== scanVersionRef.current) return;
       setError(reason instanceof Error ? reason.message : "Scan gagal.");
     } finally {
-      setLoading(false);
+      if (requestVersion === scanVersionRef.current) setLoading(false);
     }
   }
 
   function saveTrek(item: AutoScanItem) {
-    if (!result || !marketId) return;
-    const id = trekId(marketId, item);
+    if (!completedScan) return;
+
+    const completedMarketId = completedScan.marketId;
+    const completedMarketName = completedScan.marketName.toUpperCase();
+    const completedResult = completedScan.result;
+    const id = trekId(completedMarketId, item);
     const saved: SavedTrek = {
       version: 2,
       id,
       savedAt: new Date().toISOString(),
-      marketId,
-      marketName: title,
+      marketId: completedMarketId,
+      marketName: completedMarketName,
       scanMode: item.scanMode,
       targetPos: item.targetPos,
       target2D: item.target2D,
       target3D: item.target3D,
-      digitCount: result.config.digitCount,
-      L: result.config.L,
-      patah: result.config.patah,
+      digitCount: completedResult.config.digitCount,
+      L: completedResult.config.L,
+      patah: completedResult.config.patah,
       formula: item.formula,
       code: item.code,
       kolomHidup: [...item.kolomHidup],
@@ -189,10 +291,54 @@ export default function ScanPageClient() {
 
   return (
     <div className="animate-rise space-y-4">
-      <ScanFields markets={markets} marketId={marketId} selectedMarket={selectedMarket} marketsLoading={marketsLoading} rounds={rounds} patah={patah} scanMode={scanMode} targetPos={targetPos} target2D={target2D} target3D={target3D} digitCount={digitCount} stopScan={stopScan} loading={loading} onMarketChange={setMarketId} onRoundsChange={changeRounds} onPatahChange={setPatah} onModeChange={changeMode} onTargetPosChange={setTargetPos} onTarget2DChange={setTarget2D} onTarget3DChange={setTarget3D} onDigitCountChange={setDigitCount} onStopScanChange={setStopScan} onScan={runScan} />
+      <ScanFields
+        markets={markets}
+        marketId={marketId}
+        selectedMarket={selectedMarket}
+        marketsLoading={marketsLoading}
+        rounds={rounds}
+        patah={patah}
+        scanMode={scanMode}
+        targetPos={targetPos}
+        target2D={target2D}
+        target3D={target3D}
+        digitCount={digitCount}
+        stopScan={stopScan}
+        loading={loading}
+        onMarketChange={changeMarket}
+        onRoundsChange={changeRounds}
+        onPatahChange={changePatah}
+        onModeChange={changeMode}
+        onTargetPosChange={changeTargetPos}
+        onTarget2DChange={changeTarget2D}
+        onTarget3DChange={changeTarget3D}
+        onDigitCountChange={changeDigitCount}
+        onStopScanChange={changeStopScan}
+        onScan={runScan}
+      />
       {error ? <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">{error}</div> : null}
-      {result ? <ScanResultSection result={result} marketTitle={title} marketId={marketId} savedId={savedId} onSave={saveTrek} onView={(item) => { setViewSaved(null); setViewItem(item); }} /> : null}
-      <SavedTreksSection total={savedTreks.length} groups={savedGroups} onView={(item) => { setViewItem(null); setViewSaved(item); }} onDelete={deleteTrek} />
+      {completedScan ? (
+        <ScanResultSection
+          result={completedScan.result}
+          marketTitle={title}
+          marketId={completedScan.marketId}
+          savedId={savedId}
+          onSave={saveTrek}
+          onView={(item) => {
+            setViewSaved(null);
+            setViewItem(item);
+          }}
+        />
+      ) : null}
+      <SavedTreksSection
+        total={savedTreks.length}
+        groups={savedGroups}
+        onView={(item) => {
+          setViewItem(null);
+          setViewSaved(item);
+        }}
+        onDelete={deleteTrek}
+      />
       {live ? <TrekDetailModal data={live} copied={copiedId === viewItem?.code} onCopy={() => copyDetail(live, viewItem?.code ?? "live")} onClose={() => setViewItem(null)} /> : null}
       {saved && viewSaved ? <TrekDetailModal data={saved} copied={copiedId === viewSaved.id} onCopy={() => copyDetail(saved, viewSaved.id)} onClose={() => setViewSaved(null)} /> : null}
     </div>
