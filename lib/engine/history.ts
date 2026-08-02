@@ -1,3 +1,4 @@
+import { tokenizeHistory } from "../shared/history";
 import type { Draw } from "./types";
 
 export class HistoryDataFormatError extends Error {
@@ -13,10 +14,9 @@ export class HistoryDataFormatError extends Error {
 }
 
 export function parseStrictHistory(historyData: string): Draw[] {
-  const raw = historyData.trim();
-  if (!raw) return [];
+  const tokens = tokenizeHistory(historyData);
+  if (tokens.length === 0) return [];
 
-  const tokens = raw.split(/\s+/);
   const invalidTokens = tokens
     .map((token, index) => ({ token, index: index + 1 }))
     .filter(({ token }) => !/^\d{4}$/.test(token))
