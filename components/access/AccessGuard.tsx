@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 
 const ACCESS_CHECK_INTERVAL_MS = 8 * 60 * 60 * 1000;
+const ACCESS_RETRY_INITIAL_MS = 30 * 1000;
+const ACCESS_RETRY_MAX_MS = 15 * 60 * 1000;
 const ACCESS_CHECK_STORAGE_KEY = "analisa_access_checked_at";
 
 function loginUrl() {
@@ -21,11 +23,15 @@ function lastCheckedAt() {
 }
 
 function markCheckedNow() {
+  const checkedAt = Date.now();
+
   try {
-    window.localStorage.setItem(ACCESS_CHECK_STORAGE_KEY, String(Date.now()));
+    window.localStorage.setItem(ACCESS_CHECK_STORAGE_KEY, String(checkedAt));
   } catch {
     // Local storage dapat diblokir pada mode privasi tertentu.
   }
+
+  return checkedAt;
 }
 
 function clearCheckedAt() {
@@ -36,27 +42,50 @@ function clearCheckedAt() {
   }
 }
 
-function checkIsDue() {
-  return Date.now() - lastCheckedAt() >= ACCESS_CHECK_INTERVAL_MS;
-}
-
 export function AccessGuard() {
   useEffect(() => {
     let disposed = false;
     let redirecting = false;
     let requestInFlight = false;
     let timeoutId: number | null = null;
+    let checkedAt = lastCheckedAt();
+    let retryDelayMs = ACCESS_RETRY_INITIAL_MS;
 
-    function scheduleNextCheck() {
-      if (disposed) return;
-      if (timeoutId !== null) window.clearTimeout(timeoutId);
+    function latestCheckedAt() {
+      checkedAt = Math.max(checkedAt, lastCheckedAt());
+      return checkedAt;
+    }
 
-      const elapsed = Date.now() - lastCheckedAt();
-      const remaining = Math.max(1_000, ACCESS_CHECK_INTERVAL_MS - elapsed);
+    function checkIsDue() {
+      return Date.now() - latestCheckedAt() >= ACCESS_CHECK_INTERVAL_MS;
+    }
+
+    function clearScheduledCheck() {
+      if (timeoutId === null) return;
+      window.clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+
+    function scheduleCheck(delayMs: number) {
+      if (disposed || redirecting) return;
+      clearScheduledCheck();
 
       timeoutId = window.setTimeout(() => {
+        timeoutId = null;
         void checkAccess();
-      }, remaining);
+      }, delayMs);
+    }
+
+    function scheduleNextCheck() {
+      const elapsed = Date.now() - latestCheckedAt();
+      const remaining = Math.max(1_000, ACCESS_CHECK_INTERVAL_MS - elapsed);
+      scheduleCheck(remaining);
+    }
+
+    function scheduleRetryCheck() {
+      const delayMs = retryDelayMs;
+      retryDelayMs = Math.min(ACCESS_RETRY_MAX_MS, retryDelayMs * 2);
+      scheduleCheck(delayMs);
     }
 
     async function checkAccess() {
@@ -67,7 +96,9 @@ export function AccessGuard() {
         return;
       }
 
+      clearScheduledCheck();
       requestInFlight = true;
+      let nextSchedule: "normal" | "retry" | null = null;
 
       try {
         const response = await fetch("/api/access/status", {
@@ -82,18 +113,30 @@ export function AccessGuard() {
         if (disposed) return;
 
         if (response.status === 401 || response.status === 403) {
+          checkedAt = 0;
           clearCheckedAt();
           redirecting = true;
           window.location.replace(loginUrl());
           return;
         }
 
-        if (response.ok) markCheckedNow();
+        if (!response.ok) {
+          nextSchedule = "retry";
+          return;
+        }
+
+        checkedAt = markCheckedNow();
+        retryDelayMs = ACCESS_RETRY_INITIAL_MS;
+        nextSchedule = "normal";
       } catch {
         // Gangguan jaringan sementara tidak boleh mengeluarkan user dari aplikasi.
+        if (!disposed) nextSchedule = "retry";
       } finally {
         requestInFlight = false;
-        if (!redirecting) scheduleNextCheck();
+        if (disposed || redirecting) return;
+
+        if (nextSchedule === "normal") scheduleNextCheck();
+        if (nextSchedule === "retry") scheduleRetryCheck();
       }
     }
 
@@ -108,7 +151,7 @@ export function AccessGuard() {
 
     return () => {
       disposed = true;
-      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      clearScheduledCheck();
       window.removeEventListener("focus", checkAccess);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
