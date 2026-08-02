@@ -358,6 +358,7 @@ function NumberField({
   onChange: (value: number) => void;
 }) {
   const [draft, setDraft] = useState(String(value));
+  const cancelBlurRef = useRef(false);
 
   useEffect(() => {
     setDraft(String(value));
@@ -393,10 +394,18 @@ function NumberField({
           max={max}
           disabled={disabled}
           onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
-          onBlur={commit}
+          onBlur={() => {
+            if (cancelBlurRef.current) {
+              cancelBlurRef.current = false;
+              setDraft(String(value));
+              return;
+            }
+            commit();
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") event.currentTarget.blur();
             if (event.key === "Escape") {
+              cancelBlurRef.current = true;
               setDraft(String(value));
               event.currentTarget.blur();
             }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Check, ChevronDown, Clipboard, Search, Square, SquareCheckBig, X } from "lucide-react";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
@@ -313,6 +313,7 @@ function SelectField({ label, value, onChange, children }: { label: string; valu
 
 function NumberField({ label, value, min, max, hint, onChange }: { label: string; value: number; min: number; max: number; hint?: string; onChange: (value: number) => void }) {
   const [draft, setDraft] = useState(String(value));
+  const cancelBlurRef = useRef(false);
 
   useEffect(() => {
     setDraft(String(value));
@@ -347,10 +348,18 @@ function NumberField({ label, value, min, max, hint, onChange }: { label: string
           min={min}
           max={max}
           onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
-          onBlur={commit}
+          onBlur={() => {
+            if (cancelBlurRef.current) {
+              cancelBlurRef.current = false;
+              setDraft(String(value));
+              return;
+            }
+            commit();
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") event.currentTarget.blur();
             if (event.key === "Escape") {
+              cancelBlurRef.current = true;
               setDraft(String(value));
               event.currentTarget.blur();
             }
