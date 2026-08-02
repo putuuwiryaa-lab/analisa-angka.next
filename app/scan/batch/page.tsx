@@ -90,6 +90,11 @@ export default function BatchScanPage() {
     setDigitCount(MODES.find((item) => item.value === mode)?.digits ?? 7);
   }
 
+  function changeRounds(value: number) {
+    setRounds(value);
+    setPatah((current) => Math.min(current, value));
+  }
+
   function toggleMarket(id: string) {
     setSelected((current) =>
       current.includes(id)
@@ -164,7 +169,7 @@ export default function BatchScanPage() {
       <section className="depth-1 rounded-2xl border p-3 sm:p-4">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2.5">
-            <NumberField label="Data uji" value={rounds} min={1} max={100} hint="maks. 100" onChange={setRounds} />
+            <NumberField label="Data uji" value={rounds} min={1} max={100} hint="maks. 100" onChange={changeRounds} />
             <NumberField label="Patah" value={patah} min={0} max={rounds} hint={`maks. ${rounds}`} onChange={setPatah} />
           </div>
 
@@ -307,11 +312,51 @@ function SelectField({ label, value, onChange, children }: { label: string; valu
 }
 
 function NumberField({ label, value, min, max, hint, onChange }: { label: string; value: number; min: number; max: number; hint?: string; onChange: (value: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    if (draft.trim() === "") {
+      setDraft(String(value));
+      return;
+    }
+
+    const parsed = Number(draft);
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+
+    const integer = Math.trunc(parsed);
+    const normalized = Math.max(min, Math.min(max, integer));
+    setDraft(String(normalized));
+    if (normalized !== value) onChange(normalized);
+  };
+
   return (
     <label className="block min-w-0">
       <FieldLabel>{label}</FieldLabel>
       <div className="relative">
-        <input type="number" inputMode="numeric" value={value} min={min} max={max} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))} className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50" />
+        <input
+          type="number"
+          inputMode="numeric"
+          value={draft}
+          min={min}
+          max={max}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+            if (event.key === "Escape") {
+              setDraft(String(value));
+              event.currentTarget.blur();
+            }
+          }}
+          className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50"
+        />
         {hint ? <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">{hint}</span> : null}
       </div>
     </label>
