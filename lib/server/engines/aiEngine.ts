@@ -18,6 +18,13 @@ const AI_EKOR_MAIN: Record<number, number[]> = {
 };
 
 const AI_RANKING_WINDOW = 17;
+const RECENT_VALIDATION_WINDOW = 5;
+const EXPANSION_TIER_WEIGHTS = [0.70, 0.40, 0.20] as const;
+
+const OVERALL_QUALITY_WEIGHT = 0.65;
+const RECENT_QUALITY_WEIGHT = 0.35;
+const HISTORY_DECAY = 0.90;
+const RANKING_BY_VOTE = new WeakMap<object, AiRankingContext>();
 
 type AiEngineOptions = {
   targetIndexes?: number[];
@@ -26,7 +33,47 @@ type AiEngineOptions = {
 
 type AiVote = Record<number, number>;
 type AiRumusStat = { name: string; dg: number; hits: number; valid: number; thresh: number; lolos: boolean };
-export type AiValidation = { sr: AiRumusStat[]; vote: AiVote; elitCount: number; fallback: boolean };
+
+export type AiFormulaRanking = {
+  index: number;
+  name: string;
+  dg: number;
+  hits: number;
+  valid: number;
+  thresh: number;
+  lolos: boolean;
+  gap: number;
+  recentHits: number;
+  recentValid: number;
+  digits: number[];
+};
+
+export type AiRankingContext = {
+  formulas: AiFormulaRanking[];
+  primaryIndexes: number[];
+  primaryGap: number;
+};
+
+export type AiValidation = {
+  sr: AiRumusStat[];
+  vote: AiVote;
+  elitCount: number;
+  fallback: boolean;
+  ranking: AiRankingContext;
+};
+
+type WeightedFormula = {
+  formula: AiFormulaRanking;
+  score: number;
+  recentScore: number;
+};
+
+type DigitSupport = {
+  digit: number;
+  vote: number;
+  score: number;
+  recentScore: number;
+};
 
 function thresholdForDigitCount(dg: number, thresholds?: Record<number, number>) {
   return thresholds?.[dg] ?? _0xe57f0c[dg] ?? 11;
@@ -72,157 +119,306 @@ export const _0x9a025f = [
   ...LEGACY_AI_FORMULAS,
 ];
 
-function _0xSeedRank(seed: string, digit: number) {
-  let h = 2166136261;
-  const s = `${seed}:${digit}`;
+function normalizeDigits(value: number[] | null): number[] {
+  if (!value) return [];
+  return [...new Set(value.filter((digit) => Number.isInteger(digit) && digit >= 0 && digit <= 9))];
+}
 
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+function rate(hits: number, valid: number) {
+  return valid > 0 ? hits / valid : 0;
+}
+
+function formulaQuality(formula: AiFormulaRanking) {
+  return (
+    OVERALL_QUALITY_WEIGHT * rate(formula.hits, formula.valid)
+    + RECENT_QUALITY_WEIGHT * rate(formula.recentHits, formula.recentValid)
+  );
+}
+
+function formulaSpecificity(formula: AiFormulaRanking) {
+  if (formula.digits.length === 0) return 0;
+  return Math.min(1, 3 / formula.digits.length);
+}
+
+function jaccardSimilarity(a: number[], b: number[]) {
+  if (a.length === 0 || b.length === 0) return 0;
+  const aSet = new Set(a);
+  const bSet = new Set(b);
+  let intersection = 0;
+  aSet.forEach((digit) => {
+    if (bSet.has(digit)) intersection++;
+  });
+  const union = new Set([...a, ...b]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+function similarityFactor(similarity: number) {
+  if (similarity >= 0.90) return 0.40;
+  if (similarity >= 0.75) return 0.60;
+  if (similarity >= 0.50) return 0.80;
+  return 1.00;
+}
+
+function buildFormulaWeights(
+  formulas: AiFormulaRanking[],
+  tierWeight: number,
+  referenceDigits: number[][] = [],
+): WeightedFormula[] {
+  const sorted = [...formulas].sort((a, b) => {
+    const aBase = formulaQuality(a) * formulaSpecificity(a);
+    const bBase = formulaQuality(b) * formulaSpecificity(b);
+    if (bBase !== aBase) return bBase - aBase;
+    if (b.hits !== a.hits) return b.hits - a.hits;
+    if (b.recentHits !== a.recentHits) return b.recentHits - a.recentHits;
+    return a.index - b.index;
+  });
+
+  const strongerPredictions = referenceDigits.filter((digits) => digits.length > 0).map((digits) => [...digits]);
+
+  return sorted.map((formula) => {
+    const maxSimilarity = strongerPredictions.reduce(
+      (max, digits) => Math.max(max, jaccardSimilarity(formula.digits, digits)),
+      0,
+    );
+    const duplicateFactor = similarityFactor(maxSimilarity);
+    const specificity = formulaSpecificity(formula);
+    const score = formulaQuality(formula) * specificity * tierWeight * duplicateFactor;
+    const recentScore = rate(formula.recentHits, formula.recentValid) * specificity * tierWeight * duplicateFactor;
+
+    strongerPredictions.push(formula.digits);
+    return { formula, score, recentScore };
+  });
+}
+
+function aggregateDigitSupport(weightedFormulas: WeightedFormula[], allowed?: Set<number>): DigitSupport[] {
+  const support = new Map<number, DigitSupport>();
+
+  weightedFormulas.forEach(({ formula, score, recentScore }) => {
+    formula.digits.forEach((digit) => {
+      if (allowed && !allowed.has(digit)) return;
+      const current = support.get(digit) ?? { digit, vote: 0, score: 0, recentScore: 0 };
+      current.vote += 1;
+      current.score += score;
+      current.recentScore += recentScore;
+      support.set(digit, current);
+    });
+  });
+
+  return [...support.values()];
+}
+
+function buildHistoryScores(D: string[], targetIndexes: number[]) {
+  const scores: Record<number, number> = {};
+  for (let digit = 0; digit <= 9; digit++) scores[digit] = 0;
+
+  const recent = D.slice(-AI_RANKING_WINDOW);
+  for (let offset = 0; offset < recent.length; offset++) {
+    const result = recent[recent.length - 1 - offset];
+    const weight = Math.pow(HISTORY_DECAY, offset);
+    targetIndexes.forEach((index) => {
+      const digit = parseInt(result[index]);
+      if (Number.isInteger(digit)) scores[digit] += weight;
+    });
   }
 
-  return h >>> 0;
+  return scores;
+}
+
+function sortPrimaryDigits(a: DigitSupport, b: DigitSupport, history: Record<number, number>) {
+  if (b.vote !== a.vote) return b.vote - a.vote;
+  if (b.score !== a.score) return b.score - a.score;
+  if (b.recentScore !== a.recentScore) return b.recentScore - a.recentScore;
+  if (history[b.digit] !== history[a.digit]) return history[b.digit] - history[a.digit];
+  return a.digit - b.digit;
+}
+
+function sortExpansionDigits(a: DigitSupport, b: DigitSupport, history: Record<number, number>) {
+  if (b.score !== a.score) return b.score - a.score;
+  if (b.vote !== a.vote) return b.vote - a.vote;
+  if (b.recentScore !== a.recentScore) return b.recentScore - a.recentScore;
+  if (history[b.digit] !== history[a.digit]) return history[b.digit] - history[a.digit];
+  return a.digit - b.digit;
 }
 
 /**
- * Bagian BERAT — DIJALANKAN SEKALI.
- * Walk-forward 45 rumus × 14 langkah. Menghasilkan:
- *  - vote   : tally suara per digit 0-9 dari rumus elite (dipakai seleksi digit,
- *             ganjil/genap, dan besar/kecil — sumber tunggal)
- *  - sr     : statistik per-rumus untuk panel "Detail Validasi"
- *  - elitCount, fallback : status validasi
+ * Walk-forward seluruh rumus dan simpan konteks ranking.
+ * Vote publik tetap integer dan hanya berasal dari rumus utama:
+ * elite, atau gap terbaik saat tidak ada elite.
  */
 export function runAiValidation(
   D: string[],
   targetIndexes: number[] = [2, 3],
   thresholds?: Record<number, number>,
 ): AiValidation {
-  const U = D.slice(-17);
+  const U = D.slice(-AI_RANKING_WINDOW);
   const vote: AiVote = {};
   for (let d = 0; d <= 9; d++) vote[d] = 0;
 
   const sr: AiRumusStat[] = [];
-  let elitCount = 0;
+  const formulas: AiFormulaRanking[] = [];
 
   for (let r = 0; r < _0x9a025f.length; r++) {
     const rm = _0x9a025f[r];
-    let hits = 0, valid = 0;
+    let hits = 0;
+    let valid = 0;
+    const outcomes: boolean[] = [];
+
     for (let i = 0; i < 14; i++) {
       const prev2 = U[i], prev = U[i + 1], curr = U[i + 2], tgt = U[i + 3];
-      const ai = rm.f(curr, prev, prev2);
-      if (ai === null) continue;
+      const ai = normalizeDigits(rm.f(curr, prev, prev2));
+      if (ai.length === 0) continue;
+
       valid++;
-      if (targetIndexes.some((index) => ai.includes(parseInt(tgt[index])))) hits++;
+      const hit = targetIndexes.some((index) => ai.includes(parseInt(tgt[index])));
+      outcomes.push(hit);
+      if (hit) hits++;
     }
+
     const thr = thresholdForDigitCount(rm.dg, thresholds);
     const lolos = hits >= thr;
+    const recentOutcomes = outcomes.slice(-RECENT_VALIDATION_WINDOW);
+    const recentHits = recentOutcomes.filter(Boolean).length;
+    const digits = normalizeDigits(rm.f(D[D.length - 1], D[D.length - 2], D[D.length - 3]));
+
     sr.push({ name: rm.n, dg: rm.dg, hits, valid, thresh: thr, lolos });
-
-    if (lolos) {
-      const fp = rm.f(D[D.length - 1], D[D.length - 2], D[D.length - 3]);
-      if (fp !== null) {
-        elitCount++;
-        for (let j = 0; j < fp.length; j++) vote[fp[j] as number]++;
-      }
-    }
+    formulas.push({
+      index: r,
+      name: rm.n,
+      dg: rm.dg,
+      hits,
+      valid,
+      thresh: thr,
+      lolos,
+      gap: Math.max(0, thr - hits),
+      recentHits,
+      recentValid: recentOutcomes.length,
+      digits,
+    });
   }
 
-  let fallback = false;
-  if (elitCount === 0) {
-    fallback = true;
-    for (let r = 0; r < _0x9a025f.length; r++) {
-      const fp = _0x9a025f[r].f(D[D.length - 1], D[D.length - 2], D[D.length - 3]);
-      if (fp !== null) {
-        elitCount++;
-        for (let j = 0; j < fp.length; j++) vote[fp[j] as number]++;
-      }
-    }
+  const elite = formulas.filter((formula) => formula.lolos && formula.digits.length > 0);
+  const fallback = elite.length === 0;
+
+  let primary = elite;
+  let primaryGap = 0;
+
+  if (fallback) {
+    const available = formulas.filter((formula) => formula.digits.length > 0);
+    primaryGap = available.length > 0 ? Math.min(...available.map((formula) => formula.gap)) : 0;
+    primary = available.filter((formula) => formula.gap === primaryGap);
   }
 
-  return { sr, vote, elitCount, fallback };
+  primary.forEach((formula) => {
+    formula.digits.forEach((digit) => {
+      vote[digit] += 1;
+    });
+  });
+
+  const ranking: AiRankingContext = {
+    formulas,
+    primaryIndexes: primary.map((formula) => formula.index),
+    primaryGap,
+  };
+  RANKING_BY_VOTE.set(vote, ranking);
+
+  return {
+    sr,
+    vote,
+    elitCount: primary.length,
+    fallback,
+    ranking,
+  };
 }
 
 /**
- * Bagian RINGAN — seleksi N digit dari vote yang SUDAH dihitung.
- * Semua jumlah output memakai window ranking 17 result yang sama agar
- * AI 2D, 4D, dan 6D mengikuti satu urutan seleksi yang konsisten.
+ * Seleksi digit memakai dua mekanisme:
+ *  - tie-breaker berbobot ketika kandidat utama berlebih;
+ *  - expansion bertingkat ketika kandidat utama kurang.
  */
 export function selectAiDigits(
   D: string[],
   vote: AiVote,
   param: number = 6,
   targetIndexes: number[] = [2, 3],
+  ranking?: AiRankingContext,
 ): number[] {
-  const U = D.slice(-AI_RANKING_WINDOW);
-  const recentWindow = U;
+  const targetCount = Math.max(0, Math.min(10, param));
+  if (targetCount === 0) return [];
 
-  const freq: Record<number, number> = {};
-  const latest: Record<number, number> = {};
+  const history = buildHistoryScores(D, targetIndexes);
+  const activeRanking = ranking ?? RANKING_BY_VOTE.get(vote);
 
-  for (let d = 0; d <= 9; d++) {
-    freq[d] = 0;
-    latest[d] = 0;
+  if (!activeRanking || activeRanking.primaryIndexes.length === 0) {
+    return Object.keys(vote)
+      .map(Number)
+      .sort((a, b) => {
+        if (vote[b] !== vote[a]) return vote[b] - vote[a];
+        if (history[b] !== history[a]) return history[b] - history[a];
+        return a - b;
+      })
+      .slice(0, targetCount)
+      .sort((a, b) => a - b);
   }
 
-  recentWindow.forEach((r) => {
-    targetIndexes.forEach((index) => {
-      freq[parseInt(r[index])] += 1;
-    });
-  });
+  const primaryIndexSet = new Set(activeRanking.primaryIndexes);
+  const primaryFormulas = activeRanking.formulas.filter((formula) => primaryIndexSet.has(formula.index));
+  const primaryWeights = buildFormulaWeights(primaryFormulas, 1);
+  const primaryDigits = [...new Set(primaryFormulas.flatMap((formula) => formula.digits))];
+  const primaryAllowed = new Set(primaryDigits);
+  const primarySupport = aggregateDigitSupport(primaryWeights, primaryAllowed)
+    .sort((a, b) => sortPrimaryDigits(a, b, history));
 
-  const latestResult = recentWindow[recentWindow.length - 1] || "0000";
-  targetIndexes.forEach((index) => {
-    latest[parseInt(latestResult[index])] = 1;
-  });
-
-  const seed = U.join("|");
-
-  const remaining = Object.keys(vote).map((k) => {
-    const d = parseInt(k);
-
-    return {
-      d,
-      v: vote[d],
-      f: freq[d],
-      recent: latest[d],
-      seed: _0xSeedRank(seed, d),
-    };
-  });
-
-  const selected: number[] = [];
-
-  while (selected.length < param && remaining.length > 0) {
-    const oddCount = selected.filter((d) => d % 2 === 1).length;
-    const evenCount = selected.length - oddCount;
-
-    const bigCount = selected.filter((d) => d >= 5).length;
-    const smallCount = selected.length - bigCount;
-
-    remaining.sort((a, b) => {
-      if (b.v !== a.v) return b.v - a.v;
-      if (b.f !== a.f) return b.f - a.f;
-      if (b.recent !== a.recent) return b.recent - a.recent;
-
-      const aParityNeed = a.d % 2 === 1 ? evenCount - oddCount : oddCount - evenCount;
-      const bParityNeed = b.d % 2 === 1 ? evenCount - oddCount : oddCount - evenCount;
-
-      if (bParityNeed !== aParityNeed) return bParityNeed - aParityNeed;
-
-      const aSizeNeed = a.d >= 5 ? smallCount - bigCount : bigCount - smallCount;
-      const bSizeNeed = b.d >= 5 ? smallCount - bigCount : bigCount - smallCount;
-
-      if (bSizeNeed !== aSizeNeed) return bSizeNeed - aSizeNeed;
-
-      return b.seed - a.seed;
-    });
-
-    const picked = remaining.shift();
-    if (!picked) break;
-
-    selected.push(picked.d);
+  if (primaryDigits.length >= targetCount) {
+    return primarySupport
+      .slice(0, targetCount)
+      .map((item) => item.digit)
+      .sort((a, b) => a - b);
   }
 
-  return selected.sort((a, b) => a - b);
+  const selected = new Set(primaryDigits);
+  const strongerPredictions = primaryFormulas.map((formula) => formula.digits);
+
+  for (let tier = 1; tier <= EXPANSION_TIER_WEIGHTS.length && selected.size < targetCount; tier++) {
+    const gap = activeRanking.primaryGap + tier;
+    const tierFormulas = activeRanking.formulas.filter(
+      (formula) => !primaryIndexSet.has(formula.index) && formula.gap === gap && formula.digits.length > 0,
+    );
+    if (tierFormulas.length === 0) continue;
+
+    const availableDigits = new Set(
+      tierFormulas
+        .flatMap((formula) => formula.digits)
+        .filter((digit) => !selected.has(digit)),
+    );
+
+    const tierWeights = buildFormulaWeights(
+      tierFormulas,
+      EXPANSION_TIER_WEIGHTS[tier - 1],
+      strongerPredictions,
+    );
+    strongerPredictions.push(...tierFormulas.map((formula) => formula.digits));
+
+    const candidates = aggregateDigitSupport(tierWeights, availableDigits)
+      .filter((item) => !selected.has(item.digit))
+      .sort((a, b) => sortExpansionDigits(a, b, history));
+
+    const slots = targetCount - selected.size;
+    candidates.slice(0, slots).forEach((item) => selected.add(item.digit));
+  }
+
+  if (selected.size < targetCount) {
+    const fallbackDigits = Array.from({ length: 10 }, (_, digit) => digit)
+      .filter((digit) => !selected.has(digit))
+      .sort((a, b) => {
+        if (history[b] !== history[a]) return history[b] - history[a];
+        return a - b;
+      });
+
+    const slots = targetCount - selected.size;
+    fallbackDigits.slice(0, slots).forEach((digit) => selected.add(digit));
+  }
+
+  return [...selected].sort((a, b) => a - b);
 }
 
 /**
@@ -230,6 +426,6 @@ export function selectAiDigits(
  */
 export function _0xEngineAI(D: string[], param: number = 6, options: AiEngineOptions = {}) {
   const targetIndexes = options.targetIndexes?.length ? options.targetIndexes : [2, 3];
-  const { vote } = runAiValidation(D, targetIndexes, options.thresholds);
-  return selectAiDigits(D, vote, param, targetIndexes);
+  const validation = runAiValidation(D, targetIndexes, options.thresholds);
+  return selectAiDigits(D, validation.vote, param, targetIndexes, validation.ranking);
 }
