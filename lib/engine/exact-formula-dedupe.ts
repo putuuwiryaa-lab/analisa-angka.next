@@ -1,3 +1,5 @@
+import "./fresh-formulas-v1";
+
 import { ALL_FORMULA_SPECS } from "./formulas";
 import type { FormulaSpec } from "./formulas";
 import { POS_INDEX } from "./types";
