@@ -4,6 +4,10 @@ import {
   runAiValidation,
   selectAiDigits,
 } from "../lib/server/engines/aiEngine.ts";
+import type {
+  AiFormulaRanking,
+  AiRankingContext,
+} from "../lib/server/engines/aiEngine.ts";
 import { runAnalysis } from "../lib/server/engines/predictionEngine.ts";
 
 const HISTORY = [
@@ -58,12 +62,115 @@ function assertDigitList(value: unknown, expectedLength: number) {
   assert.deepEqual(digits, [...new Set(digits)].sort((a, b) => a - b));
 }
 
+function formula(overrides: Partial<AiFormulaRanking>): AiFormulaRanking {
+  return {
+    index: 0,
+    name: "R",
+    dg: 3,
+    hits: 10,
+    valid: 14,
+    thresh: 11,
+    lolos: false,
+    gap: 1,
+    recentHits: 3,
+    recentValid: 5,
+    digits: [],
+    ...overrides,
+  };
+}
+
 Deno.test("selectAiDigits menghasilkan digit unik, terurut, dan deterministik", () => {
   const first = selectAiDigits(HISTORY, FIXED_VOTE, 6, [2, 3]);
   const second = selectAiDigits(HISTORY, FIXED_VOTE, 6, [2, 3]);
 
   assertDigitList(first, 6);
   assert.deepEqual(first, second);
+});
+
+Deno.test("tie-breaker memilih dukungan rumus elite yang lebih berkualitas", () => {
+  const ranking: AiRankingContext = {
+    primaryGap: 0,
+    primaryIndexes: [0, 1],
+    formulas: [
+      formula({
+        index: 0,
+        name: "Elite kuat",
+        hits: 14,
+        lolos: true,
+        gap: 0,
+        recentHits: 5,
+        digits: [1, 2, 3],
+      }),
+      formula({
+        index: 1,
+        name: "Elite lemah",
+        hits: 11,
+        lolos: true,
+        gap: 0,
+        recentHits: 2,
+        digits: [1, 4, 5],
+      }),
+    ],
+  };
+  const vote = { 0: 0, 1: 2, 2: 1, 3: 1, 4: 1, 5: 1, 6: 0, 7: 0, 8: 0, 9: 0 };
+
+  assert.deepEqual(selectAiDigits(HISTORY, vote, 3, [2, 3], ranking), [1, 2, 3]);
+});
+
+Deno.test("digit elite dikunci dan kekurangan diisi dari near-elite", () => {
+  const ranking: AiRankingContext = {
+    primaryGap: 0,
+    primaryIndexes: [0, 1],
+    formulas: [
+      formula({
+        index: 0,
+        name: "Elite 1",
+        hits: 13,
+        lolos: true,
+        gap: 0,
+        recentHits: 5,
+        digits: [1, 3, 5],
+      }),
+      formula({
+        index: 1,
+        name: "Elite 2",
+        hits: 12,
+        lolos: true,
+        gap: 0,
+        recentHits: 4,
+        digits: [1, 3, 8],
+      }),
+      formula({
+        index: 2,
+        name: "Near 1",
+        hits: 10,
+        gap: 1,
+        recentHits: 5,
+        digits: [0, 2, 5, 7],
+      }),
+      formula({
+        index: 3,
+        name: "Near 2",
+        hits: 10,
+        gap: 1,
+        recentHits: 3,
+        digits: [2, 6, 8, 9],
+      }),
+    ],
+  };
+  const vote = { 0: 0, 1: 2, 2: 0, 3: 2, 4: 0, 5: 1, 6: 0, 7: 0, 8: 1, 9: 0 };
+  const result = selectAiDigits(HISTORY, vote, 6, [2, 3], ranking);
+  const core = [1, 3, 5, 8];
+  const additions = result.filter((digit) => !core.includes(digit));
+
+  assertDigitList(result, 6);
+  assert.ok(core.every((digit) => result.includes(digit)), "seluruh digit elite harus tetap terkunci");
+  assert.equal(additions.length, 2);
+  assert.ok(result.includes(2), "digit dengan dukungan near-elite ganda harus diprioritaskan");
+  assert.ok(
+    additions.every((digit) => [0, 2, 6, 7, 9].includes(digit)),
+    "digit tambahan harus berasal dari kandidat near-elite",
+  );
 });
 
 Deno.test("runAiValidation menjaga statistik dan vote tetap konsisten", () => {
@@ -77,6 +184,8 @@ Deno.test("runAiValidation menjaga statistik dan vote tetap konsisten", () => {
     ),
   );
   assert.ok(validation.elitCount > 0);
+  assert.equal(validation.ranking.formulas.length, _0x9a025f.length);
+  assert.equal(validation.ranking.primaryIndexes.length, validation.elitCount);
 });
 
 Deno.test("runAnalysis menghasilkan BBFS GGBK delapan digit", () => {
