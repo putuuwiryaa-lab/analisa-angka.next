@@ -1,7 +1,7 @@
 import type { Posisi } from "./types";
 
 export const POSISI: Posisi[] = ["A", "C", "K", "E"];
-export const OFFSET_LIST = [0, 1, 2, -1, -2, 3, 4, 5, -3, -4, -5];
+export const OFFSET_LIST = [0, 1, 2, -1, -2, 3, 4, 5, -3, -4];
 export const EXTENDED_OFFSET_LIST = [1, 2, -1, -2];
 export const CROSS_N_LIST = [1, 2, 3];
 export const COMBO_PAIRS: [Posisi, Posisi][] = [["A", "C"], ["A", "K"], ["A", "E"], ["C", "K"], ["C", "E"], ["K", "E"]];
