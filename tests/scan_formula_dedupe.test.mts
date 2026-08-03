@@ -9,7 +9,7 @@ const nameSet = new Set(names);
 
 Deno.test("scan formula registry removes all 207 proven duplicates", () => {
   assert.equal(REMOVED_EXACT_DUPLICATE_FORMULA_COUNT, 171);
-  assert.equal(ALL_FORMULA_SPECS.length, 3359);
+  assert.equal(ALL_FORMULA_SPECS.length, 3687);
   assert.equal(nameSet.size, names.length);
 
   // The other 36 duplicates are removed at generation time by dropping -5,
