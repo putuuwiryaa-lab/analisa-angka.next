@@ -1,4 +1,5 @@
 import "./fresh-formulas-v1";
+import "./fresh-formulas-v2";
 
 import { ALL_FORMULA_SPECS } from "./formulas";
 import type { FormulaSpec } from "./formulas";
