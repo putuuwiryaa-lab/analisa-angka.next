@@ -25,7 +25,7 @@ function assertDigit(value: number, label: string): void {
 Deno.test("fresh formula pack registers exactly 328 unique formulas", () => {
   assert.equal(FRESH_FORMULA_V1_SPECS.length, FRESH_FORMULA_V1_COUNT);
   assert.equal(new Set(FRESH_FORMULA_V1_SPECS.map((spec) => spec.formula)).size, FRESH_FORMULA_V1_COUNT);
-  assert.equal(ALL_FORMULA_SPECS.length, 3687);
+  assert.equal(ALL_FORMULA_SPECS.length, 4087);
 
   for (const prefix of PAIR_PREFIXES) {
     assert.equal(FRESH_FORMULA_V1_SPECS.filter((spec) => spec.formula.startsWith(`${prefix}-`)).length, 54);
