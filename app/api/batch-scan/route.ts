@@ -30,7 +30,7 @@ type AdaptiveSnapshot = {
   market_id: unknown;
   market_name: unknown;
   latest_draw: unknown;
-  pair_probabilities: unknown;
+  digits: unknown;
 };
 
 type Body = {
@@ -145,86 +145,12 @@ function selectedDigits(draws: Draw[], request: ScanRequest): string {
     .join(" | ");
 }
 
-function combinations(size: number): number[][] {
-  const output: number[][] = [];
-  function visit(start: number, current: number[]) {
-    if (current.length === size) {
-      output.push([...current]);
-      return;
-    }
-    const remaining = size - current.length;
-    for (let digit = start; digit <= 10 - remaining; digit++) {
-      current.push(digit);
-      visit(digit + 1, current);
-      current.pop();
-    }
-  }
-  visit(0, []);
-  return output;
-}
-
-function probabilityMatrix(value: unknown): number[] | null {
-  if (!Array.isArray(value) || value.length !== 100) return null;
-  const matrix = value.map(Number);
-  if (!matrix.every((item) => Number.isFinite(item) && item >= 0)) return null;
-  const total = matrix.reduce((sum, item) => sum + item, 0);
-  return total > 0 ? matrix.map((item) => item / total) : null;
-}
-
-function subsetScore(
-  matrix: readonly number[],
-  digits: readonly number[],
-  method: AdaptiveMethod,
-): number {
-  const selected = new Set(digits);
-  let score = 0;
-  for (let left = 0; left < 10; left++) {
-    for (let right = 0; right < 10; right++) {
-      const hit = method === "bbfs"
-        ? selected.has(left) && selected.has(right)
-        : selected.has(left) || selected.has(right);
-      if (hit) score += matrix[left * 10 + right];
-    }
-  }
-  return score;
-}
-
-function orderedDigits(
-  matrix: readonly number[],
-  digits: readonly number[],
-  method: AdaptiveMethod,
-): number[] {
-  const fullScore = subsetScore(matrix, digits, method);
-  return [...digits].sort((left, right) => {
-    const leftContribution = fullScore - subsetScore(
-      matrix,
-      digits.filter((digit) => digit !== left),
-      method,
-    );
-    const rightContribution = fullScore - subsetScore(
-      matrix,
-      digits.filter((digit) => digit !== right),
-      method,
-    );
-    return Math.abs(rightContribution - leftContribution) > 1e-12
-      ? rightContribution - leftContribution
-      : left - right;
-  });
-}
-
-function adaptiveDigits(
-  matrix: readonly number[],
-  digitCount: number,
-  method: AdaptiveMethod,
-): string {
-  const best = combinations(digitCount)
-    .map((digits) => ({ digits, score: subsetScore(matrix, digits, method) }))
-    .sort((left, right) => {
-      if (Math.abs(right.score - left.score) > 1e-12) return right.score - left.score;
-      return left.digits.join("").localeCompare(right.digits.join(""));
-    })[0];
-
-  return best ? orderedDigits(matrix, best.digits, method).join("") : "-";
+function storedSelectionDigits(value: unknown, digitCount: number): string | null {
+  if (!Array.isArray(value) || value.length !== digitCount) return null;
+  const digits = value.map(Number);
+  if (!digits.every((digit) => Number.isInteger(digit) && digit >= 0 && digit <= 9)) return null;
+  if (new Set(digits).size !== digits.length) return null;
+  return digits.join("");
 }
 
 function latestResult(historyData: string | null | undefined): string | null {
@@ -235,7 +161,12 @@ function latestResult(historyData: string | null | undefined): string | null {
   return null;
 }
 
-async function loadAdaptiveSnapshots(marketIds: string[], target2D: Target2D): Promise<AdaptiveSnapshot[]> {
+async function loadAdaptiveSelections(
+  marketIds: string[],
+  target2D: Target2D,
+  method: AdaptiveMethod,
+  digitCount: number,
+): Promise<AdaptiveSnapshot[]> {
   const serviceUrl = process.env.ADAPTIVE_SERVICE_URL?.trim().replace(/\/$/, "");
   const serviceSecret = process.env.ADAPTIVE_SERVICE_SECRET?.trim();
   if (!serviceUrl || !serviceSecret) throw new Error("Adaptive service belum dikonfigurasi.");
@@ -246,13 +177,13 @@ async function loadAdaptiveSnapshots(marketIds: string[], target2D: Target2D): P
       "Content-Type": "application/json",
       Authorization: `Bearer ${serviceSecret}`,
     },
-    body: JSON.stringify({ marketIds, target2D }),
+    body: JSON.stringify({ marketIds, target2D, method, digitCount }),
     cache: "no-store",
     signal: AbortSignal.timeout(30_000),
   });
   const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (!response.ok) {
-    throw new Error(typeof payload.error === "string" ? payload.error : "Gagal membaca snapshot Adaptive.");
+    throw new Error(typeof payload.error === "string" ? payload.error : "Gagal membaca selection Adaptive.");
   }
   return Array.isArray(payload.snapshots) ? payload.snapshots as AdaptiveSnapshot[] : [];
 }
@@ -290,7 +221,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Target Adaptive tidak valid." }, { status: 400 });
       }
       const digitCount = clamp(body.digitCount, method === "ai" ? 4 : 7, 1, 9);
-      const snapshots = await loadAdaptiveSnapshots(marketIds, body.target2D);
+      const snapshots = await loadAdaptiveSelections(marketIds, body.target2D, method, digitCount);
       const snapshotById = new Map(snapshots.map((snapshot) => [String(snapshot.market_id), snapshot]));
       const results: BatchLine[] = marketIds.map((id) => {
         const market = byId.get(id);
@@ -304,12 +235,8 @@ export async function POST(req: Request) {
           return { id, name, digits: "SNAPSHOT BELUM TERBARU" };
         }
 
-        const matrix = probabilityMatrix(snapshot.pair_probabilities);
-        return {
-          id,
-          name,
-          digits: matrix ? adaptiveDigits(matrix, digitCount, method) : "SNAPSHOT BELUM TERSEDIA",
-        };
+        const digits = storedSelectionDigits(snapshot.digits, digitCount);
+        return { id, name, digits: digits ?? "SELECTION BELUM TERSEDIA" };
       });
       const methodLabel = method === "ai" ? "AI" : "BBFS";
       const title = typeof body.outputTitle === "string" && body.outputTitle.trim()
