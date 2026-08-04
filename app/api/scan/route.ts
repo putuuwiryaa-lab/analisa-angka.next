@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runAdaptiveOnline } from "@/lib/adaptive/engine";
 import {
   loadAdaptiveContext,
+  loadAdaptiveEvaluationDashboard,
   persistAdaptiveRun,
   reconcileAdaptiveMarkets,
 } from "@/lib/adaptive/persistence";
@@ -21,7 +22,7 @@ const DEFAULT_SCAN_MODE: ScanMode = "ai_2d_belakang";
 const DEFAULT_STOP_SCAN = 1;
 const MAX_STOP_SCAN = 200;
 
-type RequestAction = "scan" | "adaptive" | "adaptive-reconcile";
+type RequestAction = "scan" | "adaptive" | "adaptive-evaluation" | "adaptive-reconcile";
 
 function isPosisi(value: unknown): value is Posisi {
   return value === "A" || value === "C" || value === "K" || value === "E";
@@ -35,6 +36,7 @@ function clamp(value: unknown, fallback: number, min: number, max: number): numb
 
 function requestAction(value: unknown): RequestAction {
   if (value === "adaptive") return "adaptive";
+  if (value === "adaptive-evaluation") return "adaptive-evaluation";
   if (value === "adaptive-reconcile") return "adaptive-reconcile";
   return "scan";
 }
@@ -64,6 +66,28 @@ export async function POST(req: Request) {
     const marketId = String(body?.marketId || "").trim();
     if (!marketId) {
       return NextResponse.json({ error: "Pilih pasaran dulu." }, { status: 400 });
+    }
+
+    if (action === "adaptive-evaluation") {
+      if (!isAdaptiveMethod(body?.method)) {
+        return NextResponse.json({ error: "Metode evaluasi Adaptive tidak valid." }, { status: 400 });
+      }
+      if (!isAdaptiveTarget(body?.target2D)) {
+        return NextResponse.json({ error: "Target evaluasi Adaptive tidak valid." }, { status: 400 });
+      }
+      const digitCount = Number(body?.digitCount);
+      if (!Number.isInteger(digitCount) || digitCount < 1 || digitCount > 9) {
+        return NextResponse.json({ error: "Jumlah digit evaluasi harus antara 1 dan 9." }, { status: 400 });
+      }
+
+      const dashboard = await loadAdaptiveEvaluationDashboard({
+        marketId,
+        target2D: body.target2D,
+        method: body.method,
+        digitCount,
+        window: clamp(body?.window, 100, 10, 200),
+      });
+      return NextResponse.json({ dashboard });
     }
 
     if (action === "adaptive") {
@@ -190,7 +214,7 @@ export async function POST(req: Request) {
     }
 
     console.error(`[api/scan:${action}] Request error`, error);
-    if (action === "adaptive" || action === "adaptive-reconcile") {
+    if (action === "adaptive" || action === "adaptive-evaluation" || action === "adaptive-reconcile") {
       const message = error instanceof Error ? error.message : "Adaptive gagal.";
       return NextResponse.json({ error: message }, { status: 500 });
     }
