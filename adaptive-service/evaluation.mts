@@ -10,7 +10,7 @@ import {
 import {
   ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_ENGINE_VERSION,
-} from "./core/types.ts";
+} from "./core/types.mts";
 
 type SqlClient = (
   strings: TemplateStringsArray,
