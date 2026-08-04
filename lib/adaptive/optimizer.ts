@@ -27,7 +27,7 @@ function combinations(size: number): number[][] {
   return output;
 }
 
-function scoreDigitSubset(matrix: readonly number[], method: AdaptiveMethod, digits: readonly number[]): number {
+export function scoreDigitSubset(matrix: readonly number[], method: AdaptiveMethod, digits: readonly number[]): number {
   const probabilities = normalizePairMatrix(matrix);
   const selected = new Set(digits);
   let score = 0;
