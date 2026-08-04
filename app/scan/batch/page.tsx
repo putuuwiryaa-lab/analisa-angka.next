@@ -6,7 +6,8 @@ import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
 
 type Market = { id: string; name: string; lastResult?: string };
-type BatchMode = ScanMode | "adaptive";
+type AdaptiveBatchMode = "adaptive_bbfs" | "adaptive_ai";
+type BatchMode = ScanMode | AdaptiveBatchMode;
 type BatchResult = {
   results: { id: string; name: string; digits: string }[];
   lineSeparator?: string;
@@ -17,7 +18,8 @@ const MODES: { value: BatchMode; label: string; digits: number }[] = [
   { value: "posisi", label: "Posisi", digits: 7 },
   { value: "ai_2d_belakang", label: "AI 2D", digits: 4 },
   { value: "bbfs_2d_belakang", label: "BBFS 2D", digits: 7 },
-  { value: "adaptive", label: "Adaptive", digits: 7 },
+  { value: "adaptive_bbfs", label: "Adaptive BBFS", digits: 7 },
+  { value: "adaptive_ai", label: "Adaptive Angka Ikut (AI)", digits: 4 },
   { value: "jumlah_2d_belakang", label: "Jumlah 2D", digits: 4 },
   { value: "ai_3d", label: "AI 3D", digits: 8 },
   { value: "bbfs_3d", label: "BBFS 3D", digits: 8 },
@@ -28,6 +30,10 @@ const MODES: { value: BatchMode; label: string; digits: number }[] = [
   { value: "shio", label: "Shio", digits: 6 },
   { value: "off_shio", label: "OFF Shio", digits: 6 },
 ];
+
+function isAdaptiveMode(mode: BatchMode): mode is AdaptiveBatchMode {
+  return mode === "adaptive_bbfs" || mode === "adaptive_ai";
+}
 
 async function writeClipboard(value: string) {
   try {
@@ -62,7 +68,7 @@ export default function BatchScanPage() {
   const [marketsLoading, setMarketsLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const adaptive = scanMode === "adaptive";
+  const adaptive = isAdaptiveMode(scanMode);
 
   useEffect(() => {
     fetch("/api/markets")
@@ -91,7 +97,7 @@ export default function BatchScanPage() {
   function changeMode(mode: BatchMode) {
     setScanMode(mode);
     setDigitCount(MODES.find((item) => item.value === mode)?.digits ?? 7);
-    if (mode === "adaptive") setTopRanks([1]);
+    if (isAdaptiveMode(mode)) setTopRanks([1]);
     setResult(null);
     setError("");
   }
