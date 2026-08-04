@@ -19,27 +19,27 @@ export async function persistAdaptivePrediction(
   const selection = prediction.selection;
   const rows = await sql`
     select adaptive.store_prediction(
-      ${marketId},
-      ${marketName},
-      ${targetDrawKey},
-      ${prediction.target2D},
-      ${prediction.engineVersion},
-      ${prediction.configVersion},
-      ${prediction.historyCutoffKey},
-      ${prediction.historyLength},
-      ${prediction.latestDraw},
+      ${marketId}::text,
+      ${marketName}::text,
+      ${targetDrawKey}::text,
+      ${prediction.target2D}::text,
+      ${prediction.engineVersion}::text,
+      ${prediction.configVersion}::text,
+      ${prediction.historyCutoffKey}::text,
+      ${prediction.historyLength}::integer,
+      ${prediction.latestDraw}::text,
       ${JSON.stringify(prediction.pairProbabilities)}::jsonb,
       ${JSON.stringify(prediction.leftProbabilities)}::jsonb,
       ${JSON.stringify(prediction.rightProbabilities)}::jsonb,
       ${JSON.stringify(prediction.expertWeights)}::jsonb,
-      ${prediction.signalStrength},
-      ${selection.method},
-      ${selection.digitCount},
+      ${prediction.signalStrength}::text,
+      ${selection.method}::text,
+      ${selection.digitCount}::smallint,
       ${JSON.stringify(selection.digits)}::jsonb,
-      ${selection.estimatedSuccess},
-      ${selection.baselineSuccess},
-      ${selection.lift},
-      ${selection.selectionMargin}
+      ${selection.estimatedSuccess}::real,
+      ${selection.baselineSuccess}::real,
+      ${selection.lift}::real,
+      ${selection.selectionMargin}::real
     ) as prediction_id
   `;
 
