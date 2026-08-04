@@ -17,7 +17,7 @@ export async function persistAdaptivePrediction(
   const sql = getAdaptiveSql();
   const targetDrawKey = `next:${prediction.historyCutoffKey}`;
   const selection = prediction.selection;
-  const rows = await sql`
+  const rawRows = await sql`
     select adaptive.store_prediction(
       ${marketId}::text,
       ${marketName}::text,
@@ -42,8 +42,9 @@ export async function persistAdaptivePrediction(
       ${selection.selectionMargin}::real
     ) as prediction_id
   `;
+  const rows = rawRows as unknown as Array<{ prediction_id?: unknown }>;
 
-  const predictionId = String((rows[0] as { prediction_id?: unknown } | undefined)?.prediction_id ?? "");
+  const predictionId = String(rows[0]?.prediction_id ?? "");
   if (!predictionId) throw new Error("Neon tidak mengembalikan prediction id.");
   return { status: "stored", predictionId };
 }
