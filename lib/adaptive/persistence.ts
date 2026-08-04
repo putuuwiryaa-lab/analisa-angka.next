@@ -14,7 +14,7 @@ export async function persistAdaptivePrediction(
 ): Promise<AdaptivePersistenceStatus> {
   if (!isAdaptiveDatabaseConfigured()) return { status: "not_configured" };
 
-  const sql = getAdaptiveSql();
+  const sql = await getAdaptiveSql();
   const targetDrawKey = `next:${prediction.historyCutoffKey}`;
   const selection = prediction.selection;
   const rawRows = await sql`
