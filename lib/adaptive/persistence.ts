@@ -78,6 +78,7 @@ async function callAdaptiveService(
 export async function loadAdaptiveContext(
   marketId: string,
   target2D: Target2D,
+  historyDraws?: readonly string[],
 ): Promise<AdaptivePersistenceContext> {
   if (!serviceConfiguration()) {
     return { configured: false, state: null, pendingPrediction: null };
@@ -88,6 +89,7 @@ export async function loadAdaptiveContext(
     target2D,
     engineVersion: ADAPTIVE_ENGINE_VERSION,
     configVersion: ADAPTIVE_CONFIG_VERSION,
+    historyDraws: historyDraws ? [...historyDraws] : undefined,
   });
 
   return {
@@ -160,6 +162,7 @@ export async function reconcileAdaptiveMarkets(options?: {
   const payload = await callAdaptiveService(
     "/reconcile",
     {
+      trigger: "manual",
       marketId: options?.marketId || undefined,
       marketLimit: options?.marketLimit ?? 4,
       force: Boolean(options?.force),
