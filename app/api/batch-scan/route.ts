@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 const MAX_BATCH_MARKETS = 35;
 const TOP_RANKS = [1, 2, 3] as const;
 
+type AdaptiveMethod = "ai" | "bbfs";
 type MarketRow = { id: string; name: string | null; history_data: string | null };
 type BatchLine = { id: string; name: string; digits: string };
 type ScanRequest = {
@@ -49,6 +50,12 @@ type Body = {
 
 function isPosisi(value: unknown): value is Posisi {
   return value === "A" || value === "C" || value === "K" || value === "E";
+}
+
+function adaptiveMethod(value: unknown): AdaptiveMethod | null {
+  if (value === "adaptive_ai") return "ai";
+  if (value === "adaptive_bbfs" || value === "adaptive") return "bbfs";
+  return null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -164,41 +171,60 @@ function probabilityMatrix(value: unknown): number[] | null {
   return total > 0 ? matrix.map((item) => item / total) : null;
 }
 
-function subsetScore(matrix: readonly number[], digits: readonly number[]): number {
+function subsetScore(
+  matrix: readonly number[],
+  digits: readonly number[],
+  method: AdaptiveMethod,
+): number {
   const selected = new Set(digits);
   let score = 0;
   for (let left = 0; left < 10; left++) {
     for (let right = 0; right < 10; right++) {
-      if (selected.has(left) && selected.has(right)) score += matrix[left * 10 + right];
+      const hit = method === "bbfs"
+        ? selected.has(left) && selected.has(right)
+        : selected.has(left) || selected.has(right);
+      if (hit) score += matrix[left * 10 + right];
     }
   }
   return score;
 }
 
-function orderedDigits(matrix: readonly number[], digits: readonly number[]): number[] {
-  const fullScore = subsetScore(matrix, digits);
+function orderedDigits(
+  matrix: readonly number[],
+  digits: readonly number[],
+  method: AdaptiveMethod,
+): number[] {
+  const fullScore = subsetScore(matrix, digits, method);
   return [...digits].sort((left, right) => {
-    const leftContribution = fullScore - subsetScore(matrix, digits.filter((digit) => digit !== left));
-    const rightContribution = fullScore - subsetScore(matrix, digits.filter((digit) => digit !== right));
+    const leftContribution = fullScore - subsetScore(
+      matrix,
+      digits.filter((digit) => digit !== left),
+      method,
+    );
+    const rightContribution = fullScore - subsetScore(
+      matrix,
+      digits.filter((digit) => digit !== right),
+      method,
+    );
     return Math.abs(rightContribution - leftContribution) > 1e-12
       ? rightContribution - leftContribution
       : left - right;
   });
 }
 
-function adaptiveDigits(matrix: readonly number[], digitCount: number, topRanks: readonly number[]): string {
-  const ranked = combinations(digitCount)
-    .map((digits) => ({ digits, score: subsetScore(matrix, digits) }))
+function adaptiveDigits(
+  matrix: readonly number[],
+  digitCount: number,
+  method: AdaptiveMethod,
+): string {
+  const best = combinations(digitCount)
+    .map((digits) => ({ digits, score: subsetScore(matrix, digits, method) }))
     .sort((left, right) => {
       if (Math.abs(right.score - left.score) > 1e-12) return right.score - left.score;
       return left.digits.join("").localeCompare(right.digits.join(""));
-    });
+    })[0];
 
-  return topRanks
-    .map((rank) => ranked[rank - 1])
-    .filter(Boolean)
-    .map((entry) => orderedDigits(matrix, entry.digits).join(""))
-    .join(" | ");
+  return best ? orderedDigits(matrix, best.digits, method).join("") : "-";
 }
 
 function latestResult(historyData: string | null | undefined): string | null {
@@ -257,13 +283,13 @@ export async function POST(req: Request) {
 
     const rows = (data ?? []) as MarketRow[];
     const byId = new Map<string, MarketRow>(rows.map((row): [string, MarketRow] => [row.id, row]));
+    const method = adaptiveMethod(body.scanMode);
 
-    if (body.scanMode === "adaptive") {
+    if (method) {
       if (!isTarget2D(body.target2D)) {
         return NextResponse.json({ error: "Target Adaptive tidak valid." }, { status: 400 });
       }
-      const digitCount = clamp(body.digitCount, 7, 1, 9);
-      const topRanks = normalizeRanks(body.topRanks);
+      const digitCount = clamp(body.digitCount, method === "ai" ? 4 : 7, 1, 9);
       const snapshots = await loadAdaptiveSnapshots(marketIds, body.target2D);
       const snapshotById = new Map(snapshots.map((snapshot) => [String(snapshot.market_id), snapshot]));
       const results: BatchLine[] = marketIds.map((id) => {
@@ -282,12 +308,13 @@ export async function POST(req: Request) {
         return {
           id,
           name,
-          digits: matrix ? adaptiveDigits(matrix, digitCount, topRanks) : "SNAPSHOT BELUM TERSEDIA",
+          digits: matrix ? adaptiveDigits(matrix, digitCount, method) : "SNAPSHOT BELUM TERSEDIA",
         };
       });
+      const methodLabel = method === "ai" ? "AI" : "BBFS";
       const title = typeof body.outputTitle === "string" && body.outputTitle.trim()
         ? body.outputTitle.trim().slice(0, 80)
-        : `Batch Adaptive ${digitCount} Digit`;
+        : `Batch Adaptive ${methodLabel} ${digitCount} Digit`;
       const lines = results.map((row) => `${row.name} ${separator} ${row.digits}`);
       return NextResponse.json({
         title,
@@ -296,9 +323,10 @@ export async function POST(req: Request) {
         copyText: [title, "", ...lines].join("\n"),
         lineSeparator: separator,
         limit: MAX_BATCH_MARKETS,
-        topRanks,
+        topRanks: [1],
         secondary: false,
         adaptive: true,
+        adaptiveMethod: method,
       });
     }
 
