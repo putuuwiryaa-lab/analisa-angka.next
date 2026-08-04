@@ -5,6 +5,7 @@ import { isScanMode, isShioMode, isTarget2D, isTarget3D } from "@/lib/engine/hel
 import type { Draw, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
+import { tokenizeHistory } from "@/lib/shared/history";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,12 @@ export const dynamic = "force-dynamic";
 const MAX_BATCH_MARKETS = 35;
 const TOP_RANKS = [1, 2, 3] as const;
 
-type MarketRow = { id: string; name: string | null; history_data: string | null };
+type MarketRow = {
+  id: string;
+  name: string | null;
+  history_data: string | null;
+  last_result: string | null;
+};
 type BatchLine = { id: string; name: string; digits: string };
 type ScanRequest = {
   scanMode: ScanMode;
@@ -23,6 +29,13 @@ type ScanRequest = {
   topRanks: number[];
   L: number;
   patah: number;
+};
+type SnapshotSelection = { rank: number; digits: number[] };
+type SnapshotResult = {
+  marketId: string;
+  marketName: string;
+  status: "fresh" | "stale" | "missing";
+  selections: SnapshotSelection[];
 };
 
 type Body = {
@@ -131,6 +144,53 @@ function selectedDigits(draws: Draw[], request: ScanRequest): string {
     .join(" | ");
 }
 
+function latestResult(market: MarketRow | undefined): string | null {
+  const direct = String(market?.last_result ?? "").trim();
+  if (/^\d{4}$/.test(direct)) return direct;
+
+  const tokens = tokenizeHistory(String(market?.history_data ?? ""));
+  for (let index = tokens.length - 1; index >= 0; index--) {
+    if (/^\d{4}$/.test(tokens[index])) return tokens[index];
+  }
+  return null;
+}
+
+async function loadAdaptiveSnapshots(options: {
+  marketIds: string[];
+  target2D: Target2D;
+  digitCount: number;
+  topRanks: number[];
+  latestResults: Record<string, string>;
+}): Promise<SnapshotResult[]> {
+  const serviceUrl = process.env.ADAPTIVE_SERVICE_URL?.trim().replace(/\/$/, "");
+  const serviceSecret = process.env.ADAPTIVE_SERVICE_SECRET?.trim();
+  if (!serviceUrl) throw new Error("Adaptive service belum dikonfigurasi.");
+  if (!serviceSecret) throw new Error("ADAPTIVE_SERVICE_SECRET belum dikonfigurasi.");
+
+  const response = await fetch(`${serviceUrl}/snapshots/batch`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceSecret}`,
+    },
+    body: JSON.stringify(options),
+    cache: "no-store",
+    signal: AbortSignal.timeout(30_000),
+  });
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(
+      typeof payload.error === "string"
+        ? payload.error
+        : `Adaptive service gagal (${response.status}).`,
+    );
+  }
+  if (!Array.isArray(payload.results)) {
+    throw new Error("Adaptive service tidak mengembalikan snapshot batch.");
+  }
+  return payload.results as SnapshotResult[];
+}
+
 export async function POST(req: Request) {
   const access = await requireActiveAccess(req.headers);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
@@ -143,23 +203,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Maksimal ${MAX_BATCH_MARKETS} pasaran.` }, { status: 413 });
     }
 
-    const primarySource = asRecord(body) ?? {};
-    const primary = readRequest(primarySource);
-    if (typeof primary === "string") return NextResponse.json({ error: primary }, { status: 400 });
-
-    const secondarySource = asRecord(body.secondary);
-    const secondary = secondarySource ? readRequest(secondarySource, primary) : null;
-    if (typeof secondary === "string") return NextResponse.json({ error: secondary }, { status: 400 });
-
+    const adaptive = body.scanMode === "adaptive";
     const separator = normalizeSeparator(body.lineSeparator);
-    const title = typeof body.outputTitle === "string" && body.outputTitle.trim()
-      ? body.outputTitle.trim().slice(0, 80)
-      : `Batch Scan ${primary.digitCount} Digit`;
-
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("markets")
-      .select("id, name, history_data")
+      .select("id, name, history_data, last_result")
       .in("id", marketIds);
 
     if (error) {
@@ -169,6 +218,70 @@ export async function POST(req: Request) {
 
     const rows = (data ?? []) as MarketRow[];
     const byId = new Map<string, MarketRow>(rows.map((row): [string, MarketRow] => [row.id, row]));
+
+    if (adaptive) {
+      if (!isTarget2D(body.target2D)) {
+        return NextResponse.json({ error: "Target Adaptive tidak valid." }, { status: 400 });
+      }
+      const digitCount = clamp(body.digitCount, 7, 1, 9);
+      const topRanks = normalizeRanks(body.topRanks);
+      const latestResults: Record<string, string> = {};
+      for (const marketId of marketIds) {
+        const result = latestResult(byId.get(marketId));
+        if (result) latestResults[marketId] = result;
+      }
+
+      const snapshots = await loadAdaptiveSnapshots({
+        marketIds,
+        target2D: body.target2D,
+        digitCount,
+        topRanks,
+        latestResults,
+      });
+      const snapshotById = new Map(snapshots.map((snapshot) => [snapshot.marketId, snapshot]));
+      const results: BatchLine[] = marketIds.map((id) => {
+        const market = byId.get(id);
+        const snapshot = snapshotById.get(id);
+        const name = titleCase(market?.name ?? snapshot?.marketName ?? id);
+        if (!snapshot || snapshot.status === "missing") {
+          return { id, name, digits: "SNAPSHOT BELUM TERSEDIA" };
+        }
+        if (snapshot.status === "stale") {
+          return { id, name, digits: "SNAPSHOT BELUM TERBARU" };
+        }
+        const digits = snapshot.selections
+          .map((selection) => selection.digits.join(""))
+          .join(" | ");
+        return { id, name, digits: digits || "SNAPSHOT BELUM TERSEDIA" };
+      });
+      const title = typeof body.outputTitle === "string" && body.outputTitle.trim()
+        ? body.outputTitle.trim().slice(0, 80)
+        : `Batch Adaptive ${digitCount} Digit`;
+      const lines = results.map((row) => `${row.name} ${separator} ${row.digits}`);
+      return NextResponse.json({
+        title,
+        results,
+        lines,
+        copyText: [title, "", ...lines].join("\n"),
+        lineSeparator: separator,
+        limit: MAX_BATCH_MARKETS,
+        topRanks,
+        secondary: false,
+        adaptive: true,
+      });
+    }
+
+    const primarySource = asRecord(body) ?? {};
+    const primary = readRequest(primarySource);
+    if (typeof primary === "string") return NextResponse.json({ error: primary }, { status: 400 });
+
+    const secondarySource = asRecord(body.secondary);
+    const secondary = secondarySource ? readRequest(secondarySource, primary) : null;
+    if (typeof secondary === "string") return NextResponse.json({ error: secondary }, { status: 400 });
+
+    const title = typeof body.outputTitle === "string" && body.outputTitle.trim()
+      ? body.outputTitle.trim().slice(0, 80)
+      : `Batch Scan ${primary.digitCount} Digit`;
     const results: BatchLine[] = [];
 
     for (const id of marketIds) {
@@ -206,6 +319,8 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("[api/batch-scan] Request error", error);
-    return NextResponse.json({ error: "Batch scan gagal." }, { status: 400 });
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : "Batch scan gagal.",
+    }, { status: 400 });
   }
 }
