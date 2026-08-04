@@ -1,4 +1,4 @@
-import { neon } from "jsr:@neon/serverless@1.1.0";
+import { neon } from "jsr:@neon/serverless@1.0.1";
 
 interface StorePredictionRequest {
   marketId: string;
