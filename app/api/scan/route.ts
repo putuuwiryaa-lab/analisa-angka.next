@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { runAdaptiveOnline } from "@/lib/adaptive/engine";
-import { loadAdaptiveContext, persistAdaptiveRun } from "@/lib/adaptive/persistence";
+import {
+  loadAdaptiveContext,
+  persistAdaptiveRun,
+  reconcileAdaptiveMarkets,
+} from "@/lib/adaptive/persistence";
 import { isAdaptiveMethod, isAdaptiveTarget } from "@/lib/adaptive/types";
 import { runAutoScan } from "@/lib/engine/acke-engine";
 import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
 import { isScanMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
-import { requireActiveAccess } from "@/lib/server/access";
+import { requireActiveAccess, requireAdminSession } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 
 export const runtime = "nodejs";
@@ -16,6 +20,8 @@ const DEFAULT_DIGIT_COUNT = 4;
 const DEFAULT_SCAN_MODE: ScanMode = "ai_2d_belakang";
 const DEFAULT_STOP_SCAN = 1;
 const MAX_STOP_SCAN = 200;
+
+type RequestAction = "scan" | "adaptive" | "adaptive-reconcile";
 
 function isPosisi(value: unknown): value is Posisi {
   return value === "A" || value === "C" || value === "K" || value === "E";
@@ -27,22 +33,40 @@ function clamp(value: unknown, fallback: number, min: number, max: number): numb
   return Math.max(min, Math.min(max, Math.trunc(parsed)));
 }
 
+function requestAction(value: unknown): RequestAction {
+  if (value === "adaptive") return "adaptive";
+  if (value === "adaptive-reconcile") return "adaptive-reconcile";
+  return "scan";
+}
+
 export async function POST(req: Request) {
   const access = await requireActiveAccess(req.headers);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  let requestAction: "scan" | "adaptive" = "scan";
+  let action: RequestAction = "scan";
 
   try {
     const body = await req.json().catch(() => ({}));
-    requestAction = body?.action === "adaptive" ? "adaptive" : "scan";
-    const marketId = String(body?.marketId || "").trim();
+    action = requestAction(body?.action);
 
+    if (action === "adaptive-reconcile") {
+      const admin = requireAdminSession(req.headers);
+      if (!admin.ok) return NextResponse.json({ error: admin.error }, { status: admin.status });
+
+      const summary = await reconcileAdaptiveMarkets({
+        marketId: String(body?.marketId || "").trim() || null,
+        marketLimit: clamp(body?.marketLimit, 6, 1, 20),
+        force: Boolean(body?.force),
+      });
+      return NextResponse.json({ summary });
+    }
+
+    const marketId = String(body?.marketId || "").trim();
     if (!marketId) {
       return NextResponse.json({ error: "Pilih pasaran dulu." }, { status: 400 });
     }
 
-    if (requestAction === "adaptive") {
+    if (action === "adaptive") {
       if (!isAdaptiveMethod(body?.method)) {
         return NextResponse.json({ error: "Metode Adaptive tidak valid." }, { status: 400 });
       }
@@ -165,8 +189,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 422 });
     }
 
-    console.error(`[api/scan:${requestAction}] Request error`, error);
-    if (requestAction === "adaptive") {
+    console.error(`[api/scan:${action}] Request error`, error);
+    if (action === "adaptive" || action === "adaptive-reconcile") {
       const message = error instanceof Error ? error.message : "Adaptive gagal.";
       return NextResponse.json({ error: message }, { status: 500 });
     }
