@@ -13,6 +13,7 @@ export interface ReconciliationStateSnapshot {
   target2D: ReconciliationTarget;
   processedHistoryLength: number;
   lastProcessedDraw: string | null;
+  pendingHistoryLength?: number | null;
   updatedAt?: string | null;
 }
 
@@ -62,10 +63,13 @@ export function planAdaptiveReconciliation(
 
     for (const target2D of RECONCILIATION_TARGETS) {
       const state = stateMap.get(stateKey(market.id, target2D));
+      const pendingNeedsSettlement = Number.isInteger(state?.pendingHistoryLength) &&
+        Number(state?.pendingHistoryLength) < market.historyLength;
       const stale = options.force ||
         !state ||
         state.processedHistoryLength !== market.historyLength ||
-        state.lastProcessedDraw !== market.lastDraw;
+        state.lastProcessedDraw !== market.lastDraw ||
+        pendingNeedsSettlement;
 
       if (!stale) continue;
       targets.push(target2D);
