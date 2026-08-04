@@ -1,14 +1,15 @@
 import "server-only";
 
-import { neon } from "@neondatabase/serverless";
+type NeonModule = typeof import("@neondatabase/serverless");
+type AdaptiveSql = ReturnType<NeonModule["neon"]>;
 
-let cachedSql: ReturnType<typeof neon> | null = null;
+let cachedSql: AdaptiveSql | null = null;
 
 export function isAdaptiveDatabaseConfigured(): boolean {
   return Boolean(process.env.NEON_DATABASE_URL?.trim());
 }
 
-export function getAdaptiveSql(): ReturnType<typeof neon> {
+export async function getAdaptiveSql(): Promise<AdaptiveSql> {
   if (cachedSql) return cachedSql;
 
   const databaseUrl = process.env.NEON_DATABASE_URL?.trim();
@@ -16,6 +17,7 @@ export function getAdaptiveSql(): ReturnType<typeof neon> {
     throw new Error("NEON_DATABASE_URL belum dikonfigurasi.");
   }
 
+  const { neon } = await import("@neondatabase/serverless");
   cachedSql = neon(databaseUrl);
   return cachedSql;
 }
