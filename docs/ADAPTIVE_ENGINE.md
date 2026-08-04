@@ -1,6 +1,6 @@
 # HF-APIE Adaptive Engine
 
-Status: foundation implementation.
+Status: online-learning V1.
 
 Adaptive berada di halaman Scan sebagai tab ketiga, tetapi tidak memakai formula atau state milik Scan/Batch.
 
@@ -26,8 +26,6 @@ Deno Adaptive service
 Neon PostgreSQL
 ```
 
-Pemisahan ini menjaga driver dan kredensial Neon keluar dari bundle aplikasi serta menyediakan tempat khusus untuk replay, settlement, reconciliation, dan drift worker berikutnya.
-
 ## Environment aplikasi Next.js
 
 ```env
@@ -35,7 +33,7 @@ ADAPTIVE_SERVICE_URL=https://YOUR-DENO-SERVICE.example
 ADAPTIVE_SERVICE_SECRET=generate-a-long-random-secret
 ```
 
-Tanpa `ADAPTIVE_SERVICE_URL`, Adaptive tetap menghasilkan preview tetapi tidak menyimpan prediction.
+Tanpa `ADAPTIVE_SERVICE_URL`, Adaptive tetap menghasilkan preview, tetapi full replay dijalankan ulang setiap request dan state tidak disimpan.
 
 ## Environment service Deno
 
@@ -44,7 +42,7 @@ NEON_DATABASE_URL=postgresql://USER:PASSWORD@HOST-pooler.REGION.aws.neon.tech/DB
 ADAPTIVE_SERVICE_SECRET=same-secret-as-next-app
 ```
 
-Koneksi direct hanya digunakan untuk migration atau administrasi replay:
+Koneksi direct hanya digunakan untuk migration atau administrasi:
 
 ```env
 NEON_DIRECT_URL=postgresql://USER:PASSWORD@HOST.REGION.aws.neon.tech/DB?sslmode=require
@@ -52,14 +50,19 @@ NEON_DIRECT_URL=postgresql://USER:PASSWORD@HOST.REGION.aws.neon.tech/DB?sslmode=
 
 ## Migration
 
-1. Buat project/database Neon.
-2. Buka Neon SQL Editor.
-3. Jalankan seluruh isi `sql/neon/001_adaptive_engine.sql`.
-4. Deploy `adaptive-service/main.mts` pada runtime Deno dengan `NEON_DATABASE_URL` dan `ADAPTIVE_SERVICE_SECRET`.
-5. Tambahkan URL service dan secret yang sama ke environment Next.js/Vercel.
-6. Deploy ulang aplikasi.
+Jalankan migration secara berurutan pada Neon SQL Editor:
 
-Migration membuat schema terisolasi `adaptive` dan tidak menyentuh tabel Supabase atau tabel aplikasi lain.
+1. `sql/neon/001_adaptive_engine.sql`
+2. `sql/neon/002_adaptive_online_learning.sql`
+
+Migration kedua:
+
+- menambah state histori dan revision;
+- menambah tabel `adaptive.replay_runs`;
+- membatalkan pending prediction foundation lama;
+- membuat fungsi atomik `adaptive.store_online_run(jsonb)`;
+- menyinkronkan snapshot histori;
+- menyimpan state, prediction, selection, settlement, dan replay summary dalam satu transaksi.
 
 ## Request aplikasi
 
@@ -79,52 +82,95 @@ Request dikirim ke `POST /api/scan`. Request Scan lama tanpa `action: "adaptive"
 
 ```text
 GET  /health
-POST /predictions/store
+POST /context/load
+POST /runs/store
+POST /predictions/store  # kompatibilitas foundation
 ```
 
-`POST /predictions/store` hanya menerima request dengan header:
+Seluruh endpoint POST membutuhkan:
 
 ```text
 Authorization: Bearer <ADAPTIVE_SERVICE_SECRET>
 ```
 
-## Data flow foundation
+## Alur online learning
 
 ```text
 Supabase markets.history_data
         ↓
-POST /api/scan action=adaptive
+load state + pending prediction dari Neon
         ↓
-family-balanced baseline experts
+full replay jika state belum ada/tidak kompatibel
+atau incremental replay dari processed_history_length
         ↓
-100 pair probabilities
+predict setiap langkah sebelum membaca actual result
         ↓
-AI/BBFS exhaustive subset optimizer
+Brier loss per expert
         ↓
-Deno /predictions/store
+multiplicative weight update + fixed-share
         ↓
-adaptive.store_prediction(...)
+settle pending prediction bila result berikutnya tersedia
         ↓
-Neon adaptive.predictions + adaptive.published_selections
+buat prediction selanjutnya
+        ↓
+adaptive.store_online_run(...)
 ```
 
-## Expert foundation
+State dipisahkan berdasarkan:
+
+```text
+market + target2D + engineVersion + configVersion
+```
+
+Tidak ada transfer bobot antar-market atau antar-target.
+
+## Loss dan update bobot
+
+Loss expert:
+
+```text
+70% pair Brier
+15% left-position Brier
+15% right-position Brier
+```
+
+Update:
+
+```text
+w' = w × exp(-1.0 × loss)
+fixed-share = 2% ke prior family-balanced
+normalisasi total bobot = 1
+```
+
+Fixed-share memberi kesempatan expert yang sebelumnya turun untuk pulih ketika pola market berubah.
+
+## Replay mode
+
+- `full`: state tidak ada, versi berbeda, histori dipangkas, atau histori tidak append-only.
+- `incremental`: hanya result setelah `processed_history_length` yang diproses.
+- `noop`: tidak ada result baru; state lama langsung digunakan.
+
+Full replay dimulai setelah warmup 14 result. Histori sebelum warmup digunakan sebagai konteks awal, bukan sebagai langkah evaluasi.
+
+## Expert V1
 
 - Positional frequency
 - Direct 2D frequency
 - Decayed 2D frequency
 - Pair transition dengan direct-frequency backoff
 - Horizon 14, 28, 56, dan 112
-- Equal family weight untuk mencegah keluarga dengan banyak horizon mendominasi
+- Prior family-balanced agar keluarga dengan banyak horizon tidak mendominasi
 
-Foundation belum mengubah bobot berdasarkan settlement. Versi berikutnya menambahkan:
+## Settlement
 
-1. replay `predict → settle → update`;
-2. pair/positional Brier loss;
-3. hierarchical online weights;
-4. fixed-share dan guardrail;
-5. automatic result reconciliation;
-6. drift warning/recovery.
+Prediction tersimpan dengan `history_length = N` menargetkan result pada index berikutnya. Ketika histori menjadi lebih panjang dari `N`:
+
+- actual pair diambil dari result ke-`N + 1`;
+- pair/left/right Brier dihitung;
+- output AI atau BBFS yang diterbitkan dievaluasi;
+- expert loss direkonstruksi dari prefix histori yang sama;
+- prediction ditandai `settled`;
+- evaluation disimpan idempotent.
 
 ## Storage policy
 
@@ -134,6 +180,22 @@ Setiap prediction menyimpan:
 - marginal kiri dan kanan;
 - bobot expert yang digunakan;
 - selection yang benar-benar diminta user;
-- versi engine/config dan cutoff histori.
+- versi engine/config, state revision, dan cutoff histori.
 
-Intermediate matrix dan debug payload setiap expert tidak disimpan permanen pada tahap normal agar Neon tidak cepat penuh.
+Neon juga menyimpan:
+
+- snapshot result minimal per market dan urutan;
+- state aktif per market/target;
+- ringkasan replay;
+- evaluation settlement.
+
+Intermediate matrix setiap expert tidak disimpan permanen. Expert loss direkonstruksi dari histori dan versi engine ketika settlement, sehingga storage tetap terkendali.
+
+## Batas versi ini
+
+Online learning aktif ketika Adaptive dipanggil. Trigger background setelah ingestion result dan reconciliation semua market secara terjadwal belum diaktifkan pada versi ini. Tahap berikutnya:
+
+1. ingestion hook atau cron reconciliation semua market;
+2. manual retry admin;
+3. drift warning/recovery;
+4. calibration dan guardrail berdasarkan hasil shadow mode.
