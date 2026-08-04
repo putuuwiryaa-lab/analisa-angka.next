@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { runAdaptiveFoundation } from "@/lib/adaptive/engine";
+import { persistAdaptivePrediction } from "@/lib/adaptive/persistence";
+import { isAdaptiveMethod, isAdaptiveTarget } from "@/lib/adaptive/types";
 import { runAutoScan } from "@/lib/engine/acke-engine";
 import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
 import { isScanMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
@@ -28,12 +31,68 @@ export async function POST(req: Request) {
   const access = await requireActiveAccess(req.headers);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
+  let requestAction = "scan";
+
   try {
     const body = await req.json().catch(() => ({}));
+    requestAction = body?.action === "adaptive" ? "adaptive" : "scan";
     const marketId = String(body?.marketId || "").trim();
 
     if (!marketId) {
       return NextResponse.json({ error: "Pilih pasaran dulu." }, { status: 400 });
+    }
+
+    if (requestAction === "adaptive") {
+      if (!isAdaptiveMethod(body?.method)) {
+        return NextResponse.json({ error: "Metode Adaptive tidak valid." }, { status: 400 });
+      }
+      if (!isAdaptiveTarget(body?.target2D)) {
+        return NextResponse.json({ error: "Target 2D Adaptive tidak valid." }, { status: 400 });
+      }
+
+      const digitCount = Number(body?.digitCount);
+      if (!Number.isInteger(digitCount) || digitCount < 1 || digitCount > 9) {
+        return NextResponse.json({ error: "Jumlah digit harus antara 1 dan 9." }, { status: 400 });
+      }
+
+      const supabase = createAdminClient();
+      const { data, error } = await supabase
+        .from("markets")
+        .select("id, history_data, name")
+        .eq("id", marketId)
+        .single();
+
+      if (error) {
+        console.error("[api/scan:adaptive] Supabase error", error);
+        return NextResponse.json({ error: "Gagal mengambil data pasaran." }, { status: 500 });
+      }
+      if (!data?.history_data) {
+        return NextResponse.json({ error: "Pasaran ini belum punya data keluaran." }, { status: 404 });
+      }
+
+      const draws = parseStrictHistory(data.history_data);
+      const prediction = runAdaptiveFoundation(draws, body.target2D, body.method, digitCount);
+      const persistence = await persistAdaptivePrediction(String(data.id), String(data.name), prediction);
+
+      return NextResponse.json({
+        market: String(data.name),
+        result: {
+          engineVersion: prediction.engineVersion,
+          configVersion: prediction.configVersion,
+          target2D: prediction.target2D,
+          historyLength: prediction.historyLength,
+          latestDraw: prediction.latestDraw,
+          digits: prediction.selection.digits,
+          method: prediction.selection.method,
+          digitCount: prediction.selection.digitCount,
+          estimatedSuccess: prediction.selection.estimatedSuccess,
+          baselineSuccess: prediction.selection.baselineSuccess,
+          lift: prediction.selection.lift,
+          selectionMargin: prediction.selection.selectionMargin,
+          signalStrength: prediction.signalStrength,
+          persistence,
+        },
+      });
     }
 
     if (body?.scanMode !== undefined && !isScanMode(body.scanMode)) {
@@ -88,7 +147,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 422 });
     }
 
-    console.error("[api/scan] Request error", error);
-    return NextResponse.json({ error: "Scan gagal." }, { status: 400 });
+    console.error(`[api/scan:${requestAction}] Request error`, error);
+    const fallback = requestAction === "adaptive" ? "Adaptive gagal." : "Scan gagal.";
+    const message = requestAction === "adaptive" && error instanceof Error ? error.message : fallback;
+    return NextResponse.json({ error: message }, { status: requestAction === "adaptive" ? 500 : 400 });
   }
 }
