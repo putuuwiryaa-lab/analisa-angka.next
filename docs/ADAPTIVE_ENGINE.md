@@ -14,12 +14,34 @@ Adaptive berada di halaman Scan sebagai tab ketiga, tetapi tidak memakai formula
 
 Engine membentuk matriks probabilitas 100 pasangan. Optimizer menguji seluruh subset digit yang mungkin dan memilih subset dengan expected coverage tertinggi.
 
-## Environment
+## Runtime boundary
 
-Runtime aplikasi menggunakan pooled connection string Neon:
+Aplikasi Next.js tidak membuka koneksi database Adaptive. Persistence dijalankan oleh service Deno terpisah pada `adaptive-service/main.mts`.
+
+```text
+Next.js /api/adaptive
+        ↓ HTTPS + bearer secret
+Deno Adaptive service
+        ↓ Neon serverless HTTP driver
+Neon PostgreSQL
+```
+
+Pemisahan ini menjaga driver dan kredensial Neon keluar dari bundle aplikasi serta menyediakan tempat khusus untuk replay, settlement, reconciliation, dan drift worker berikutnya.
+
+## Environment aplikasi Next.js
+
+```env
+ADAPTIVE_SERVICE_URL=https://YOUR-DENO-SERVICE.example
+ADAPTIVE_SERVICE_SECRET=generate-a-long-random-secret
+```
+
+Tanpa `ADAPTIVE_SERVICE_URL`, API Adaptive tetap menghasilkan preview tetapi tidak menyimpan prediction.
+
+## Environment service Deno
 
 ```env
 NEON_DATABASE_URL=postgresql://USER:PASSWORD@HOST-pooler.REGION.aws.neon.tech/DB?sslmode=require
+ADAPTIVE_SERVICE_SECRET=same-secret-as-next-app
 ```
 
 Koneksi direct hanya digunakan untuk migration atau administrasi replay:
@@ -28,17 +50,29 @@ Koneksi direct hanya digunakan untuk migration atau administrasi replay:
 NEON_DIRECT_URL=postgresql://USER:PASSWORD@HOST.REGION.aws.neon.tech/DB?sslmode=require
 ```
 
-`NEON_DATABASE_URL` bersifat opsional pada build. Tanpa variable tersebut, API Adaptive tetap menghasilkan preview tetapi tidak menyimpan prediction.
-
 ## Migration
 
 1. Buat project/database Neon.
 2. Buka Neon SQL Editor.
 3. Jalankan seluruh isi `sql/neon/001_adaptive_engine.sql`.
-4. Tambahkan `NEON_DATABASE_URL` ke environment Development dan Production di Vercel.
-5. Deploy ulang aplikasi.
+4. Deploy `adaptive-service/main.mts` pada runtime Deno dengan `NEON_DATABASE_URL` dan `ADAPTIVE_SERVICE_SECRET`.
+5. Tambahkan URL service dan secret yang sama ke environment Next.js/Vercel.
+6. Deploy ulang aplikasi.
 
 Migration membuat schema terisolasi `adaptive` dan tidak menyentuh tabel Supabase atau tabel aplikasi lain.
+
+## Endpoint service
+
+```text
+GET  /health
+POST /predictions/store
+```
+
+`POST /predictions/store` hanya menerima request dengan header:
+
+```text
+Authorization: Bearer <ADAPTIVE_SERVICE_SECRET>
+```
 
 ## Data flow foundation
 
@@ -52,6 +86,8 @@ family-balanced baseline experts
 100 pair probabilities
         ↓
 AI/BBFS exhaustive subset optimizer
+        ↓
+Deno /predictions/store
         ↓
 adaptive.store_prediction(...)
         ↓
