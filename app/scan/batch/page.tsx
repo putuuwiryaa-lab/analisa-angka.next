@@ -6,16 +6,18 @@ import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
 
 type Market = { id: string; name: string; lastResult?: string };
+type BatchMode = ScanMode | "adaptive";
 type BatchResult = {
   results: { id: string; name: string; digits: string }[];
   lineSeparator?: string;
 };
 
 const MAX_MARKETS = 35;
-const MODES: { value: ScanMode; label: string; digits: number }[] = [
+const MODES: { value: BatchMode; label: string; digits: number }[] = [
   { value: "posisi", label: "Posisi", digits: 7 },
   { value: "ai_2d_belakang", label: "AI 2D", digits: 4 },
   { value: "bbfs_2d_belakang", label: "BBFS 2D", digits: 7 },
+  { value: "adaptive", label: "Adaptive", digits: 7 },
   { value: "jumlah_2d_belakang", label: "Jumlah 2D", digits: 4 },
   { value: "ai_3d", label: "AI 3D", digits: 8 },
   { value: "bbfs_3d", label: "BBFS 3D", digits: 8 },
@@ -46,7 +48,7 @@ export default function BatchScanPage() {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const [scanMode, setScanMode] = useState<ScanMode>("bbfs_2d_belakang");
+  const [scanMode, setScanMode] = useState<BatchMode>("bbfs_2d_belakang");
   const [targetPos, setTargetPos] = useState<Posisi>("K");
   const [target2D, setTarget2D] = useState<Target2D>("belakang");
   const [target3D, setTarget3D] = useState<Target3D>("belakang");
@@ -60,6 +62,7 @@ export default function BatchScanPage() {
   const [marketsLoading, setMarketsLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const adaptive = scanMode === "adaptive";
 
   useEffect(() => {
     fetch("/api/markets")
@@ -85,9 +88,11 @@ export default function BatchScanPage() {
     return result.results.map((row) => `${row.name} ${activeSeparator} ${row.digits}`).join("\n");
   }, [result, separator]);
 
-  function changeMode(mode: ScanMode) {
+  function changeMode(mode: BatchMode) {
     setScanMode(mode);
     setDigitCount(MODES.find((item) => item.value === mode)?.digits ?? 7);
+    setResult(null);
+    setError("");
   }
 
   function changeRounds(value: number) {
@@ -162,27 +167,31 @@ export default function BatchScanPage() {
     window.setTimeout(() => setCopied(false), 1400);
   }
 
-  const digitMaximum = isShioMode(scanMode) ? 12 : 10;
+  const digitMaximum = adaptive
+    ? 9
+    : isShioMode(scanMode as ScanMode)
+      ? 12
+      : 10;
 
   return (
     <div className="animate-rise space-y-3">
       <section className="depth-1 rounded-2xl border p-3 sm:p-4">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2.5">
-            <NumberField label="Data uji" value={rounds} min={1} max={100} hint="maks. 100" onChange={changeRounds} />
-            <NumberField label="Patah" value={patah} min={0} max={rounds} hint={`maks. ${rounds}`} onChange={setPatah} />
+            <NumberField label="Data uji" value={rounds} min={1} max={100} hint="maks. 100" onChange={changeRounds} disabled={adaptive} />
+            <NumberField label="Patah" value={patah} min={0} max={rounds} hint={`maks. ${rounds}`} onChange={setPatah} disabled={adaptive} />
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
-            <SelectField label="Jenis" value={scanMode} onChange={(value) => changeMode(value as ScanMode)}>
+            <SelectField label="Jenis" value={scanMode} onChange={(value) => changeMode(value as BatchMode)}>
               {MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
             </SelectField>
 
-            {isPositionMode(scanMode) ? (
+            {!adaptive && isPositionMode(scanMode) ? (
               <SelectField label="Target" value={targetPos} onChange={(value) => setTargetPos(value as Posisi)}>
                 <option value="A">AS</option><option value="C">COP</option><option value="K">KPL</option><option value="E">EKR</option>
               </SelectField>
-            ) : is3DMode(scanMode) ? (
+            ) : !adaptive && is3DMode(scanMode) ? (
               <SelectField label="Target" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
                 <option value="depan">Depan</option><option value="belakang">Belakang</option>
               </SelectField>
@@ -311,7 +320,23 @@ function SelectField({ label, value, onChange, children }: { label: string; valu
   );
 }
 
-function NumberField({ label, value, min, max, hint, onChange }: { label: string; value: number; min: number; max: number; hint?: string; onChange: (value: number) => void }) {
+function NumberField({
+  label,
+  value,
+  min,
+  max,
+  hint,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  hint?: string;
+  onChange: (value: number) => void;
+  disabled?: boolean;
+}) {
   const [draft, setDraft] = useState(String(value));
   const cancelBlurRef = useRef(false);
 
@@ -320,6 +345,7 @@ function NumberField({ label, value, min, max, hint, onChange }: { label: string
   }, [value]);
 
   const commit = () => {
+    if (disabled) return;
     if (draft.trim() === "") {
       setDraft(String(value));
       return;
@@ -338,7 +364,7 @@ function NumberField({ label, value, min, max, hint, onChange }: { label: string
   };
 
   return (
-    <label className="block min-w-0">
+    <label className={`block min-w-0 ${disabled ? "opacity-45" : ""}`}>
       <FieldLabel>{label}</FieldLabel>
       <div className="relative">
         <input
@@ -347,6 +373,7 @@ function NumberField({ label, value, min, max, hint, onChange }: { label: string
           value={draft}
           min={min}
           max={max}
+          disabled={disabled}
           onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
           onBlur={() => {
             if (cancelBlurRef.current) {
@@ -364,7 +391,7 @@ function NumberField({ label, value, min, max, hint, onChange }: { label: string
               event.currentTarget.blur();
             }
           }}
-          className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50"
+          className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:cursor-not-allowed disabled:text-text-soft"
         />
         {hint ? <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">{hint}</span> : null}
       </div>
