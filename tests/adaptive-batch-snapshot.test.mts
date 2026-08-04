@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { rankDigitSelections } from "../lib/adaptive/optimizer.ts";
+import { rankDigitSelections } from "../adaptive-service/core/optimizer.mts";
 
 Deno.test("Adaptive batch ranks BBFS selections from one snapshot matrix", () => {
   const matrix = Array.from({ length: 100 }, () => 0);
