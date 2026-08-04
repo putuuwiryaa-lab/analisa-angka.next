@@ -67,30 +67,47 @@ function orderSelectedDigits(matrix: readonly number[], method: AdaptiveMethod, 
   });
 }
 
-export function optimizeDigitSelection(
+function validateDigitCount(digitCount: number): void {
+  if (!Number.isInteger(digitCount) || digitCount < 1 || digitCount > 9) {
+    throw new Error("Jumlah digit Adaptive harus antara 1 dan 9.");
+  }
+}
+
+export function rankDigitSelections(
   matrix: readonly number[],
   method: AdaptiveMethod,
   digitCount: number,
-): AdaptiveSelection {
-  if (!Number.isInteger(digitCount) || digitCount < 1 || digitCount > 9) {
-    throw new Error("Jumlah digit Adaptive harus antara 1 dan 9.");
+  limit = 3,
+): AdaptiveSelection[] {
+  validateDigitCount(digitCount);
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("Jumlah peringkat Adaptive harus minimal 1.");
   }
 
   const ranked = combinations(digitCount)
     .map((digits) => ({ digits, score: scoreDigitSubset(matrix, method, digits) }))
     .sort(compareRankedSubset);
+  const baselineSuccess = scoreDigitSubset(createUniformPairMatrix(), method, ranked[0].digits);
 
-  const best = ranked[0];
-  const runnerUp = ranked[1];
-  const baselineSuccess = scoreDigitSubset(createUniformPairMatrix(), method, best.digits);
+  return ranked.slice(0, limit).map((entry, index) => {
+    const next = ranked[index + 1];
+    return {
+      method,
+      digitCount,
+      digits: orderSelectedDigits(matrix, method, entry.digits),
+      estimatedSuccess: entry.score,
+      baselineSuccess,
+      lift: entry.score - baselineSuccess,
+      selectionMargin: next ? Math.max(0, entry.score - next.score) : 0,
+    };
+  });
+}
 
-  return {
-    method,
-    digitCount,
-    digits: orderSelectedDigits(matrix, method, best.digits),
-    estimatedSuccess: best.score,
-    baselineSuccess,
-    lift: best.score - baselineSuccess,
-    selectionMargin: runnerUp ? Math.max(0, best.score - runnerUp.score) : 0,
-  };
+export function optimizeDigitSelection(
+  matrix: readonly number[],
+  method: AdaptiveMethod,
+  digitCount: number,
+): AdaptiveSelection {
+  const [best] = rankDigitSelections(matrix, method, digitCount, 1);
+  return best;
 }
