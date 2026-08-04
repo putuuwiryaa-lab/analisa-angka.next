@@ -3,6 +3,10 @@ import {
   latestReconciliationRun,
   runAdaptiveReconciliation,
 } from "./reconcile.mts";
+import {
+  loadAdaptiveEvaluationDashboard,
+  type EvaluationDashboardRequest,
+} from "./evaluation.mts";
 
 type AdaptiveTarget = "depan" | "tengah" | "belakang";
 type AdaptiveMethod = "ai" | "bbfs";
@@ -297,6 +301,25 @@ export async function adaptiveServiceHandler(request: Request): Promise<Response
     }
     if (request.method === "POST" && url.pathname === "/predictions/store") {
       return await storeLegacyPrediction(await request.json() as StorePredictionRequest);
+    }
+    if (request.method === "POST" && url.pathname === "/evaluation/dashboard") {
+      const body = await request.json().catch(() => ({})) as Partial<EvaluationDashboardRequest>;
+      const marketId = String(body.marketId ?? "").trim();
+      const digitCount = Number(body.digitCount);
+      if (!marketId || !isTarget(body.target2D) || !isMethod(body.method)) {
+        return json({ error: "Parameter dashboard evaluasi tidak lengkap." }, 400);
+      }
+      if (!Number.isInteger(digitCount) || digitCount < 1 || digitCount > 9) {
+        return json({ error: "Jumlah digit dashboard harus antara 1 dan 9." }, 400);
+      }
+      const dashboard = await loadAdaptiveEvaluationDashboard({
+        marketId,
+        target2D: body.target2D,
+        method: body.method,
+        digitCount,
+        window: body.window,
+      });
+      return json({ dashboard });
     }
     if (request.method === "POST" && url.pathname === "/reconcile") {
       const body = await request.json().catch(() => ({})) as ReconcileRequest;

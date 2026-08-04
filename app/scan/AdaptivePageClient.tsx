@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Database, Play, RefreshCw, ShieldCheck } from "lucide-react";
+import AdaptiveEvaluationPanel from "./AdaptiveEvaluationPanel";
 import type { AdaptiveMethod } from "@/lib/adaptive/types";
 import type { Target2D } from "@/lib/engine/types";
 
@@ -82,6 +83,7 @@ export default function AdaptivePageClient() {
   const [result, setResult] = useState<AdaptiveResult | null>(null);
   const [marketName, setMarketName] = useState("");
   const [reconciliation, setReconciliation] = useState<ReconciliationSummary | null>(null);
+  const [evaluationRefresh, setEvaluationRefresh] = useState(0);
   const [loadingMarkets, setLoadingMarkets] = useState(true);
   const [running, setRunning] = useState(false);
   const [reconciling, setReconciling] = useState(false);
@@ -133,6 +135,7 @@ export default function AdaptivePageClient() {
       if (!response.ok) throw new Error(payload?.error || "Adaptive gagal dijalankan.");
       setResult(payload.result);
       setMarketName(payload.market);
+      setEvaluationRefresh((value) => value + 1);
     } catch (runError) {
       setResult(null);
       setError(runError instanceof Error ? runError.message : "Adaptive gagal dijalankan.");
@@ -154,6 +157,7 @@ export default function AdaptivePageClient() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || "Reconciliation Adaptive gagal.");
       setReconciliation(payload.summary);
+      setEvaluationRefresh((value) => value + 1);
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : "Reconciliation Adaptive gagal.");
     } finally {
@@ -341,6 +345,14 @@ export default function AdaptivePageClient() {
           </div>
         </section>
       )}
+
+      <AdaptiveEvaluationPanel
+        marketId={marketId}
+        target2D={target2D}
+        method={method}
+        digitCount={digitCount}
+        refreshKey={evaluationRefresh}
+      />
     </main>
   );
 }
