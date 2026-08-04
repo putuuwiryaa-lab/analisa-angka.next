@@ -6,6 +6,7 @@ export interface ReconciliationMarketSnapshot {
   name: string;
   historyLength: number;
   lastDraw: string;
+  historyFingerprint?: string | null;
 }
 
 export interface ReconciliationStateSnapshot {
@@ -13,6 +14,7 @@ export interface ReconciliationStateSnapshot {
   target2D: ReconciliationTarget;
   processedHistoryLength: number;
   lastProcessedDraw: string | null;
+  historyFingerprint?: string | null;
   pendingHistoryLength?: number | null;
   updatedAt?: string | null;
 }
@@ -24,6 +26,7 @@ export interface ReconciliationMarketPlan {
   lastDraw: string;
   targets: ReconciliationTarget[];
   missingStateCount: number;
+  correctedHistoryCount: number;
   oldestProcessedHistoryLength: number;
 }
 
@@ -59,21 +62,31 @@ export function planAdaptiveReconciliation(
 
     const targets: ReconciliationTarget[] = [];
     let missingStateCount = 0;
+    let correctedHistoryCount = 0;
     let oldestProcessedHistoryLength = market.historyLength;
 
     for (const target2D of RECONCILIATION_TARGETS) {
       const state = stateMap.get(stateKey(market.id, target2D));
       const pendingNeedsSettlement = Number.isInteger(state?.pendingHistoryLength) &&
         Number(state?.pendingHistoryLength) < market.historyLength;
+      const fingerprintMismatch = Boolean(
+        state &&
+        state.processedHistoryLength === market.historyLength &&
+        state.historyFingerprint &&
+        market.historyFingerprint &&
+        state.historyFingerprint !== market.historyFingerprint
+      );
       const stale = options.force ||
         !state ||
         state.processedHistoryLength !== market.historyLength ||
         state.lastProcessedDraw !== market.lastDraw ||
+        fingerprintMismatch ||
         pendingNeedsSettlement;
 
       if (!stale) continue;
       targets.push(target2D);
       if (!state) missingStateCount += 1;
+      if (fingerprintMismatch) correctedHistoryCount += 1;
       oldestProcessedHistoryLength = Math.min(
         oldestProcessedHistoryLength,
         state?.processedHistoryLength ?? 0,
@@ -88,11 +101,15 @@ export function planAdaptiveReconciliation(
       lastDraw: market.lastDraw,
       targets,
       missingStateCount,
+      correctedHistoryCount,
       oldestProcessedHistoryLength,
     });
   }
 
   plans.sort((left, right) => {
+    if (left.correctedHistoryCount !== right.correctedHistoryCount) {
+      return right.correctedHistoryCount - left.correctedHistoryCount;
+    }
     if (left.missingStateCount !== right.missingStateCount) {
       return right.missingStateCount - left.missingStateCount;
     }
