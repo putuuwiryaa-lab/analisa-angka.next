@@ -15,26 +15,41 @@ function navClass(active: boolean) {
 
 function NavigationLinks({
   scanActive,
-  batchActive,
   adaptiveActive,
+  batchActive,
 }: {
   scanActive: boolean;
-  batchActive: boolean;
   adaptiveActive: boolean;
+  batchActive: boolean;
 }) {
   return (
     <div className="mx-auto grid max-w-3xl grid-cols-3 gap-2 px-3 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-2 sm:px-5">
-      <Link href="/scan" prefetch={false} className={navClass(scanActive)} aria-current={scanActive ? "page" : undefined}>
+      <Link
+        href="/scan"
+        prefetch={false}
+        className={navClass(scanActive)}
+        aria-current={scanActive ? "page" : undefined}
+      >
         <ScanSearch size={17} />
         Scan
       </Link>
-      <Link href="/scan/batch" prefetch={false} className={navClass(batchActive)} aria-current={batchActive ? "page" : undefined}>
-        <Layers3 size={17} />
-        Batch
-      </Link>
-      <Link href="/scan?view=adaptive" prefetch={false} className={navClass(adaptiveActive)} aria-current={adaptiveActive ? "page" : undefined}>
+      <Link
+        href="/scan?view=adaptive"
+        prefetch={false}
+        className={navClass(adaptiveActive)}
+        aria-current={adaptiveActive ? "page" : undefined}
+      >
         <Activity size={17} />
         Adaptive
+      </Link>
+      <Link
+        href="/scan/batch"
+        prefetch={false}
+        className={navClass(batchActive)}
+        aria-current={batchActive ? "page" : undefined}
+      >
+        <Layers3 size={17} />
+        Batch
       </Link>
     </div>
   );
@@ -48,12 +63,12 @@ export function ScanNavigation() {
   return (
     <NavigationLinks
       scanActive={pathname === "/scan" && !adaptiveView}
-      batchActive={pathname.startsWith("/scan/batch")}
       adaptiveActive={pathname === "/scan" && adaptiveView}
+      batchActive={pathname.startsWith("/scan/batch")}
     />
   );
 }
 
 export function ScanNavigationFallback() {
-  return <NavigationLinks scanActive={false} batchActive={false} adaptiveActive={false} />;
+  return <NavigationLinks scanActive={false} adaptiveActive={false} batchActive={false} />;
 }
