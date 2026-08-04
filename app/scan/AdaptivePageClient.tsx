@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Database, Play, RefreshCw, ShieldCheck } from "lucide-react";
+import { Activity, Database, Play, RefreshCw } from "lucide-react";
 import AdaptiveEvaluationPanel from "./AdaptiveEvaluationPanel";
 import type { AdaptiveMethod } from "@/lib/adaptive/types";
 import type { Target2D } from "@/lib/engine/types";
@@ -41,18 +41,6 @@ interface AdaptiveResult {
     | { status: "not_configured" };
 }
 
-interface ReconciliationSummary {
-  status: "success" | "partial" | "failed";
-  marketsProcessed: number;
-  targetsProcessed: number;
-  fullReplayTargets: number;
-  incrementalTargets: number;
-  noopTargets: number;
-  settledPredictions: number;
-  errorCount: number;
-  remainingMarkets: number;
-}
-
 const TARGET_LABELS: Record<Target2D, string> = {
   depan: "2D Depan",
   tengah: "2D Tengah",
@@ -82,11 +70,9 @@ export default function AdaptivePageClient() {
   const [target2D, setTarget2D] = useState<Target2D>("belakang");
   const [result, setResult] = useState<AdaptiveResult | null>(null);
   const [marketName, setMarketName] = useState("");
-  const [reconciliation, setReconciliation] = useState<ReconciliationSummary | null>(null);
   const [evaluationRefresh, setEvaluationRefresh] = useState(0);
   const [loadingMarkets, setLoadingMarkets] = useState(true);
   const [running, setRunning] = useState(false);
-  const [reconciling, setReconciling] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -144,28 +130,7 @@ export default function AdaptivePageClient() {
     }
   }
 
-  async function runReconciliation() {
-    setReconciling(true);
-    setError("");
-
-    try {
-      const response = await fetch("/api/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "adaptive-reconcile", marketLimit: 6 }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || "Reconciliation Adaptive gagal.");
-      setReconciliation(payload.summary);
-      setEvaluationRefresh((value) => value + 1);
-    } catch (runError) {
-      setError(runError instanceof Error ? runError.message : "Reconciliation Adaptive gagal.");
-    } finally {
-      setReconciling(false);
-    }
-  }
-
-  const busy = running || reconciling;
+  const busy = running;
 
   return (
     <main className="space-y-3 px-1 sm:px-0">
@@ -271,37 +236,12 @@ export default function AdaptivePageClient() {
             {running ? <RefreshCw className="animate-spin" size={18} /> : <Play size={18} />}
             {running ? "Memproses" : "Proses Adaptive"}
           </button>
-
-          <button
-            type="button"
-            onClick={runReconciliation}
-            disabled={busy || loadingMarkets}
-            className="pressable flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border-soft bg-bg-deep/55 text-[10px] font-black uppercase tracking-wide text-text-muted disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {reconciling ? <RefreshCw className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
-            {reconciling ? "Reconcile berjalan" : "Reconcile 6 Market · Admin"}
-          </button>
         </div>
       </section>
 
       {error && (
         <section className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm font-semibold text-red-200">
           {error}
-        </section>
-      )}
-
-      {reconciliation && (
-        <section className="rounded-2xl border border-border-soft bg-surface/75 p-4 text-xs text-text-muted">
-          <div className="flex items-center justify-between gap-3">
-            <p className="font-black uppercase tracking-wide text-text">Reconciliation {reconciliation.status}</p>
-            <span>{reconciliation.remainingMarkets} market tersisa</span>
-          </div>
-          <p className="mt-2 leading-relaxed">
-            {reconciliation.marketsProcessed} market · {reconciliation.targetsProcessed} target · {reconciliation.settledPredictions} prediction di-settle · {reconciliation.errorCount} error.
-          </p>
-          <p className="mt-1 text-[10px]">
-            Full {reconciliation.fullReplayTargets} · incremental {reconciliation.incrementalTargets} · state terbaru {reconciliation.noopTargets}.
-          </p>
         </section>
       )}
 
