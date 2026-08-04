@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { runAdaptiveFoundation } from "../lib/adaptive/engine.ts";
-import { optimizeDigitSelection, scoreDigitSubset } from "../lib/adaptive/optimizer.ts";
-import { createUniformPairMatrix, pairIndex } from "../lib/adaptive/pair-probability.ts";
+import { runAdaptiveFoundation } from "../lib/adaptive/engine";
+import { optimizeDigitSelection, scoreDigitSubset } from "../lib/adaptive/optimizer";
+import { createUniformPairMatrix, pairIndex } from "../lib/adaptive/pair-probability";
 
 Deno.test("uniform baseline membedakan objective AI dan BBFS", () => {
   const uniform = createUniformPairMatrix();
