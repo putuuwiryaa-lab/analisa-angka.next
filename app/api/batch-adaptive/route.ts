@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { loadAdaptiveBatchSnapshots } from "@/lib/adaptive/batch-snapshot-client";
 import { isTarget2D } from "@/lib/engine/helpers";
 import type { Target2D } from "@/lib/engine/types";
 import { requireActiveAccess } from "@/lib/server/access";
@@ -17,6 +16,18 @@ type MarketRow = {
   name: string | null;
   history_data: string | null;
   last_result: string | null;
+};
+
+type SnapshotSelection = {
+  rank: number;
+  digits: number[];
+};
+
+type SnapshotResult = {
+  marketId: string;
+  marketName: string;
+  status: "fresh" | "stale" | "missing";
+  selections: SnapshotSelection[];
 };
 
 type Body = {
@@ -66,6 +77,42 @@ function latestResult(market: MarketRow | undefined): string | null {
     if (/^\d{4}$/.test(tokens[index])) return tokens[index];
   }
   return null;
+}
+
+async function loadSnapshots(options: {
+  marketIds: string[];
+  target2D: Target2D;
+  digitCount: number;
+  topRanks: number[];
+  latestResults: Record<string, string>;
+}): Promise<SnapshotResult[]> {
+  const serviceUrl = process.env.ADAPTIVE_SERVICE_URL?.trim().replace(/\/$/, "");
+  const serviceSecret = process.env.ADAPTIVE_SERVICE_SECRET?.trim();
+  if (!serviceUrl) throw new Error("Adaptive service belum dikonfigurasi.");
+  if (!serviceSecret) throw new Error("ADAPTIVE_SERVICE_SECRET belum dikonfigurasi.");
+
+  const response = await fetch(`${serviceUrl}/snapshots/batch`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceSecret}`,
+    },
+    body: JSON.stringify(options),
+    cache: "no-store",
+    signal: AbortSignal.timeout(30_000),
+  });
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(
+      typeof payload.error === "string"
+        ? payload.error
+        : `Adaptive service gagal (${response.status}).`,
+    );
+  }
+  if (!Array.isArray(payload.results)) {
+    throw new Error("Adaptive service tidak mengembalikan snapshot batch.");
+  }
+  return payload.results as SnapshotResult[];
 }
 
 export async function POST(request: Request) {
@@ -120,7 +167,7 @@ export async function POST(request: Request) {
       if (result) latestResults[marketId] = result;
     }
 
-    const snapshots = await loadAdaptiveBatchSnapshots({
+    const snapshots = await loadSnapshots({
       marketIds,
       target2D,
       digitCount,
