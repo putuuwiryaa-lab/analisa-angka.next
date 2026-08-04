@@ -12,6 +12,10 @@ import {
   isStoredHistoryCompatible,
   type GuardrailRunPayload,
 } from "./guardrail.mts";
+import {
+  loadAdaptiveGuardrailHealth,
+  type GuardrailHealthRequest,
+} from "./guardrail-health.mts";
 
 type AdaptiveTarget = "depan" | "tengah" | "belakang";
 type AdaptiveMethod = "ai" | "bbfs";
@@ -367,6 +371,18 @@ export async function adaptiveServiceHandler(request: Request): Promise<Response
         window: body.window,
       });
       return json({ dashboard });
+    }
+    if (request.method === "POST" && url.pathname === "/guardrail/health") {
+      const body = await request.json().catch(() => ({})) as Partial<GuardrailHealthRequest>;
+      const marketId = String(body.marketId ?? "").trim();
+      if (!marketId || !isTarget(body.target2D)) {
+        return json({ error: "Parameter health guardrail tidak lengkap." }, 400);
+      }
+      const health = await loadAdaptiveGuardrailHealth({
+        marketId,
+        target2D: body.target2D,
+      });
+      return json({ health });
     }
     if (request.method === "POST" && url.pathname === "/reconcile") {
       const body = await request.json().catch(() => ({})) as ReconcileRequest;
