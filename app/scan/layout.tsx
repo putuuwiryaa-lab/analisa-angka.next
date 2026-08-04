@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ArrowLeft, Layers3, ScanSearch } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Activity, ArrowLeft, Layers3, ScanSearch } from "lucide-react";
 import styles from "./ScanTheme.module.css";
 
 export default function ScanLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const scanActive = pathname === "/scan";
+  const searchParams = useSearchParams();
+  const adaptiveView = searchParams.get("view") === "adaptive";
+  const scanActive = pathname === "/scan" && !adaptiveView;
   const batchActive = pathname.startsWith("/scan/batch");
+  const adaptiveActive = pathname === "/scan" && adaptiveView;
 
   const navClass = (active: boolean) => [
     "pressable flex h-12 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-black uppercase tracking-wide transition-colors",
@@ -43,7 +46,7 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
       {children}
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/92 backdrop-blur-xl" aria-label="Navigasi Scan Angka">
-        <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2 px-3 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-2 sm:px-5">
+        <div className="mx-auto grid max-w-3xl grid-cols-3 gap-2 px-3 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-2 sm:px-5">
           <Link href="/scan" prefetch={false} className={navClass(scanActive)} aria-current={scanActive ? "page" : undefined}>
             <ScanSearch size={17} />
             Scan
@@ -51,6 +54,10 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
           <Link href="/scan/batch" prefetch={false} className={navClass(batchActive)} aria-current={batchActive ? "page" : undefined}>
             <Layers3 size={17} />
             Batch
+          </Link>
+          <Link href="/scan?view=adaptive" prefetch={false} className={navClass(adaptiveActive)} aria-current={adaptiveActive ? "page" : undefined}>
+            <Activity size={17} />
+            Adaptive
           </Link>
         </div>
       </nav>
