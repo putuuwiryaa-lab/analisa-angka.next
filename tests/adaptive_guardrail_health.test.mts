@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {
   buildAdaptiveGuardrailHealth,
   type GuardrailHealthInput,
-} from "../adaptive-service/guardrail-health.mts";
+} from "../adaptive-service/guardrail-health-analytics.mts";
 
 function input(overrides?: Partial<GuardrailHealthInput>): GuardrailHealthInput {
   return {
