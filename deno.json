@@ -12,8 +12,9 @@
     "start": "deno run -A npm:next@16.2.7 start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "adaptive:check": "deno check adaptive-service/main.mts",
     "test": "deno test --conditions=react-server --parallel tests",
-    "check": "deno task lint && deno task typecheck && deno task test && deno task build",
+    "check": "deno task lint && deno task typecheck && deno task adaptive:check && deno task test && deno task build",
     "format": "prettier --write ."
   },
   "deploy": {
