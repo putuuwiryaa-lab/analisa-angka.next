@@ -7,6 +7,11 @@ import {
   loadAdaptiveEvaluationDashboard,
   type EvaluationDashboardRequest,
 } from "./evaluation.mts";
+import {
+  applyAdaptiveGuardrail,
+  isStoredHistoryCompatible,
+  type GuardrailRunPayload,
+} from "./guardrail.mts";
 
 type AdaptiveTarget = "depan" | "tengah" | "belakang";
 type AdaptiveMethod = "ai" | "bbfs";
@@ -49,6 +54,7 @@ interface LoadContextRequest {
   target2D: AdaptiveTarget;
   engineVersion: string;
   configVersion: string;
+  historyDraws?: string[];
 }
 
 interface StoreOnlineRunRequest extends StorePredictionRequest {
@@ -63,11 +69,15 @@ interface StoreOnlineRunRequest extends StorePredictionRequest {
     horizonWeights: Record<string, number>;
     stateRevision: number;
   };
-  settlement: Record<string, unknown> | null;
+  settlement: null | (Record<string, unknown> & {
+    predictionId?: string;
+    combinedLoss?: number;
+  });
   historyDraws: string[];
 }
 
 interface ReconcileRequest {
+  trigger?: "manual" | "api";
   marketId?: string;
   marketLimit?: number;
   force?: boolean;
@@ -100,6 +110,10 @@ function isMethod(value: unknown): value is AdaptiveMethod {
   return typeof value === "string" && METHODS.has(value as AdaptiveMethod);
 }
 
+function validDraws(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((draw) => typeof draw === "string" && /^\d{4}$/.test(draw));
+}
+
 function validatePrediction(prediction: AdaptivePredictionPayload | undefined): string | null {
   const selection = prediction?.selection;
   if (!prediction || !isTarget(prediction.target2D)) return "Target 2D tidak valid.";
@@ -128,16 +142,18 @@ function validateOnlineRun(body: StoreOnlineRunRequest): string | null {
   if (!Number.isInteger(body.state.processedHistoryLength) || body.state.processedHistoryLength < 2) {
     return "Panjang histori state tidak valid.";
   }
-  if (!Array.isArray(body.historyDraws) || body.historyDraws.length !== body.state.processedHistoryLength) {
+  if (!validDraws(body.historyDraws) || body.historyDraws.length !== body.state.processedHistoryLength) {
     return "Snapshot histori tidak konsisten dengan state.";
   }
-  if (body.historyDraws.some((draw) => !/^\d{4}$/.test(draw))) return "Snapshot histori mengandung result tidak valid.";
   return null;
 }
 
 async function loadContext(body: LoadContextRequest): Promise<Response> {
   if (!body?.marketId || !isTarget(body?.target2D) || !body?.engineVersion || !body?.configVersion) {
     return json({ error: "Parameter context tidak lengkap." }, 400);
+  }
+  if (body.historyDraws !== undefined && !validDraws(body.historyDraws)) {
+    return json({ error: "Snapshot histori context tidak valid." }, 400);
   }
 
   const stateRows = await sql`
@@ -150,8 +166,9 @@ async function loadContext(body: LoadContextRequest): Promise<Response> {
       expert_weights,
       family_weights,
       horizon_weights,
-      state_revision
-    from adaptive.engine_states
+      state_revision,
+      to_jsonb(s)->>'history_fingerprint' as history_fingerprint
+    from adaptive.engine_states s
     where market_id = ${body.marketId}
       and target_2d = ${body.target2D}
       and engine_version = ${body.engineVersion}
@@ -198,9 +215,20 @@ async function loadContext(body: LoadContextRequest): Promise<Response> {
 
   const stateRow = stateRows[0] as Record<string, unknown> | undefined;
   const pendingRow = pendingRows[0] as Record<string, unknown> | undefined;
+  const compatibility = stateRow && body.historyDraws
+    ? await isStoredHistoryCompatible({
+      draws: body.historyDraws,
+      processedHistoryLength: Number(stateRow.processed_history_length),
+      lastProcessedDraw: stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
+      storedFingerprint: stateRow.history_fingerprint ? String(stateRow.history_fingerprint) : null,
+    })
+    : { compatible: true, correctionDetected: false, currentFingerprint: null };
+  const useStoredContext = Boolean(stateRow && compatibility.compatible);
 
   return json({
-    state: stateRow ? {
+    historyCorrectionDetected: compatibility.correctionDetected,
+    historyFingerprint: compatibility.currentFingerprint,
+    state: useStoredContext && stateRow ? {
       engineVersion: String(stateRow.engine_version),
       configVersion: String(stateRow.config_version),
       target2D: String(stateRow.target_2d),
@@ -211,7 +239,7 @@ async function loadContext(body: LoadContextRequest): Promise<Response> {
       horizonWeights: stateRow.horizon_weights ?? {},
       stateRevision: Number(stateRow.state_revision ?? 0),
     } : null,
-    pendingPrediction: pendingRow ? {
+    pendingPrediction: useStoredContext && pendingRow ? {
       predictionId: String(pendingRow.prediction_id),
       engineVersion: String(pendingRow.engine_version),
       configVersion: String(pendingRow.config_version),
@@ -272,7 +300,25 @@ async function storeOnlineRun(body: StoreOnlineRunRequest): Promise<Response> {
   `;
   const result = (rows[0] as { result?: unknown } | undefined)?.result;
   if (!result || typeof result !== "object") throw new Error("Neon tidak mengembalikan hasil online run.");
-  return json(result);
+
+  const guardrailPayload: GuardrailRunPayload = {
+    marketId: body.marketId,
+    targetDrawKey: body.targetDrawKey,
+    prediction: {
+      target2D: body.prediction.target2D,
+      engineVersion: body.prediction.engineVersion,
+      configVersion: body.prediction.configVersion,
+    },
+    settlement: body.settlement?.predictionId
+      ? {
+        predictionId: String(body.settlement.predictionId),
+        combinedLoss: Number(body.settlement.combinedLoss ?? 0),
+      }
+      : null,
+    historyDraws: body.historyDraws,
+  };
+  const guardrail = await applyAdaptiveGuardrail(sql, guardrailPayload);
+  return json({ ...(result as Record<string, unknown>), guardrail });
 }
 
 export async function adaptiveServiceHandler(request: Request): Promise<Response> {
@@ -283,6 +329,7 @@ export async function adaptiveServiceHandler(request: Request): Promise<Response
       ok: true,
       service: "hf-apie-adaptive-persistence",
       mode: "online-learning",
+      guardrail: "ewma-ph-v1-observe-only",
       reconciliationConfigured: Boolean(
         Deno.env.get("SUPABASE_URL")?.trim() &&
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim()
@@ -324,7 +371,7 @@ export async function adaptiveServiceHandler(request: Request): Promise<Response
     if (request.method === "POST" && url.pathname === "/reconcile") {
       const body = await request.json().catch(() => ({})) as ReconcileRequest;
       const summary = await runAdaptiveReconciliation({
-        trigger: "manual",
+        trigger: body.trigger === "api" ? "api" : "manual",
         marketLimit: body.marketLimit,
         requestedMarketId: body.marketId,
         force: Boolean(body.force),
