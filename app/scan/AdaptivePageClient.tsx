@@ -3,14 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Database, Play, RefreshCw } from "lucide-react";
 import AdaptiveEvaluationPanel from "./AdaptiveEvaluationPanel";
+import AdaptiveMarketSelect, {
+  type AdaptiveMarketOption,
+} from "./_components/AdaptiveMarketSelect";
 import type { AdaptiveMethod } from "@/lib/adaptive/types";
 import type { Target2D } from "@/lib/engine/types";
-
-interface MarketOption {
-  id: string;
-  name: string;
-  lastResult?: string;
-}
 
 interface AdaptiveResult {
   engineVersion: string;
@@ -63,7 +60,7 @@ function percentage(value: number) {
 }
 
 export default function AdaptivePageClient() {
-  const [markets, setMarkets] = useState<MarketOption[]>([]);
+  const [markets, setMarkets] = useState<AdaptiveMarketOption[]>([]);
   const [marketId, setMarketId] = useState("");
   const [method, setMethod] = useState<AdaptiveMethod>("bbfs");
   const [digitCount, setDigitCount] = useState(7);
@@ -84,12 +81,16 @@ export default function AdaptivePageClient() {
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || "Gagal memuat pasaran.");
         if (cancelled) return;
-        const rows = Array.isArray(payload) ? payload : [];
+        const rows: AdaptiveMarketOption[] = Array.isArray(payload) ? payload : [];
         setMarkets(rows);
-        const defaultMarket = rows.find((market: MarketOption) => market.name.toUpperCase() === "SGP") ?? rows[0];
+        const defaultMarket = rows.find((market) =>
+          /singapore|sgp/i.test(`${market.id} ${market.name}`)
+        ) ?? rows[0];
         if (defaultMarket) setMarketId(defaultMarket.id);
       } catch (loadError) {
-        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Gagal memuat pasaran.");
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : "Gagal memuat pasaran.");
+        }
       } finally {
         if (!cancelled) setLoadingMarkets(false);
       }
@@ -105,6 +106,14 @@ export default function AdaptivePageClient() {
     () => markets.find((market) => market.id === marketId),
     [marketId, markets],
   );
+
+  function changeMarket(value: string) {
+    if (value === marketId) return;
+    setMarketId(value);
+    setResult(null);
+    setMarketName("");
+    setError("");
+  }
 
   async function runAdaptive() {
     if (!marketId) return;
@@ -140,7 +149,9 @@ export default function AdaptivePageClient() {
             <Activity size={21} />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary-soft">HF-APIE</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary-soft">
+              HF-APIE
+            </p>
             <h2 className="display text-xl text-text">Adaptive Engine</h2>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
               Probabilitas 2D dengan replay histori dan bobot online terpisah untuk setiap market serta target.
@@ -149,26 +160,19 @@ export default function AdaptivePageClient() {
         </div>
 
         <div className="space-y-4">
-          <label className="block">
-            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">Pasaran</span>
-            <select
-              value={marketId}
-              onChange={(event) => setMarketId(event.target.value)}
-              disabled={loadingMarkets || busy}
-              className="h-12 w-full rounded-xl border border-border-soft bg-bg-deep/70 px-3 text-sm font-bold text-text outline-none focus:border-primary/60"
-            >
-              {loadingMarkets && <option value="">Memuat pasaran...</option>}
-              {!loadingMarkets && markets.length === 0 && <option value="">Tidak ada pasaran</option>}
-              {markets.map((market) => (
-                <option key={market.id} value={market.id}>
-                  {market.name} · {market.lastResult || "----"}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AdaptiveMarketSelect
+            markets={markets}
+            value={marketId}
+            selectedMarket={selectedMarket ?? null}
+            disabled={loadingMarkets || busy}
+            loading={loadingMarkets}
+            onChange={changeMarket}
+          />
 
           <div>
-            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">Metode</span>
+            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">
+              Metode
+            </span>
             <div className="grid grid-cols-2 gap-2">
               {(["ai", "bbfs"] as const).map((value) => (
                 <button
@@ -190,8 +194,12 @@ export default function AdaptivePageClient() {
 
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">Jumlah Digit</span>
-              <span className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary-soft">{digitCount}</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">
+                Jumlah Digit
+              </span>
+              <span className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary-soft">
+                {digitCount}
+              </span>
             </div>
             <input
               type="range"
@@ -203,11 +211,16 @@ export default function AdaptivePageClient() {
               disabled={busy}
               className="w-full accent-[var(--color-primary)]"
             />
-            <div className="mt-1 flex justify-between text-[9px] font-bold text-text-muted"><span>1</span><span>9</span></div>
+            <div className="mt-1 flex justify-between text-[9px] font-bold text-text-muted">
+              <span>1</span>
+              <span>9</span>
+            </div>
           </div>
 
           <div>
-            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">Target Analisa</span>
+            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">
+              Target Analisa
+            </span>
             <div className="grid grid-cols-3 gap-2">
               {(["depan", "tengah", "belakang"] as const).map((value) => (
                 <button
@@ -252,7 +265,9 @@ export default function AdaptivePageClient() {
               <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary-soft">
                 {METHOD_LABELS[result.method]} {result.digitCount} Digit · {TARGET_LABELS[result.target2D]}
               </p>
-              <h3 className="display mt-1 text-xl text-text">{marketName || selectedMarket?.name}</h3>
+              <h3 className="display mt-1 text-xl text-text">
+                {marketName || selectedMarket?.name}
+              </h3>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-bg-deep/60 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wide text-text-muted">
               <Database size={13} />
@@ -260,11 +275,14 @@ export default function AdaptivePageClient() {
             </div>
           </div>
 
-          <div className="my-5 flex flex-wrap justify-center gap-2">
+          <div
+            className="my-5 flex w-full flex-nowrap justify-center gap-1.5 sm:gap-2"
+            aria-label={`${result.digitCount} digit hasil Adaptive`}
+          >
             {result.digits.map((digit, index) => (
               <div
                 key={`${digit}-${index}`}
-                className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/45 bg-primary/20 text-xl font-black text-primary-soft shadow-lg shadow-black/10"
+                className="flex aspect-square min-w-0 max-w-12 flex-1 items-center justify-center rounded-lg border border-primary/45 bg-primary/20 text-base font-black text-primary-soft shadow-lg shadow-black/10 sm:rounded-xl sm:text-xl"
               >
                 {digit}
               </div>
@@ -272,16 +290,26 @@ export default function AdaptivePageClient() {
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Metric label={result.method === "ai" ? "Minimal 1 Hit" : "Full Cover"} value={percentage(result.estimatedSuccess)} />
+            <Metric
+              label={result.method === "ai" ? "Minimal 1 Hit" : "Full Cover"}
+              value={percentage(result.estimatedSuccess)}
+            />
             <Metric label="Baseline" value={percentage(result.baselineSuccess)} />
-            <Metric label="Lift" value={`${result.lift >= 0 ? "+" : ""}${percentage(result.lift)}`} />
+            <Metric
+              label="Lift"
+              value={`${result.lift >= 0 ? "+" : ""}${percentage(result.lift)}`}
+            />
             <Metric label="Signal" value={result.signalStrength.toUpperCase()} />
           </div>
 
           <div className="mt-3 rounded-xl border border-border-soft bg-bg-deep/45 p-3 text-[10px] leading-relaxed text-text-muted">
             Engine {result.engineVersion} · histori {result.historyLength} result · cutoff {result.latestDraw} · bobot revision {result.stateRevision} · {REPLAY_LABELS[result.replayMode]}
-            {result.processedSteps > 0 ? ` (${result.processedSteps} settlement replay)` : ""}
-            {result.settledPredictionId ? " · prediction sebelumnya sudah di-settle" : ""}.
+            {result.processedSteps > 0
+              ? ` (${result.processedSteps} settlement replay)`
+              : ""}
+            {result.settledPredictionId
+              ? " · prediction sebelumnya sudah di-settle"
+              : ""}.
           </div>
         </section>
       )}
