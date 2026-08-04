@@ -10,6 +10,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import AdaptiveGuardrailHealthCard from "./AdaptiveGuardrailHealthCard";
 import type { AdaptiveEvaluationDashboard, AdaptiveEvaluationStage } from "@/lib/adaptive/evaluation-types";
 import type { AdaptiveMethod } from "@/lib/adaptive/types";
 import type { Target2D } from "@/lib/engine/types";
@@ -165,8 +166,18 @@ export default function AdaptiveEvaluationPanel({
         </div>
       )}
 
+      {marketId && (
+        <div className="mt-4">
+          <AdaptiveGuardrailHealthCard
+            marketId={marketId}
+            target2D={target2D}
+            refreshKey={refreshKey + manualRefresh}
+          />
+        </div>
+      )}
+
       {dashboard && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-3 space-y-3">
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>

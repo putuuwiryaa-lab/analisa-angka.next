@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AdaptiveEvaluationDashboard } from "./evaluation-types";
+import type { AdaptiveGuardrailHealth } from "./guardrail-health-types";
 import type {
   AdaptiveMethod,
   AdaptivePersistenceContext,
@@ -152,6 +153,25 @@ export async function loadAdaptiveEvaluationDashboard(options: {
     throw new Error("Adaptive service tidak mengembalikan dashboard evaluasi.");
   }
   return payload.dashboard as unknown as AdaptiveEvaluationDashboard;
+}
+
+export async function loadAdaptiveGuardrailHealth(options: {
+  marketId: string;
+  target2D: Target2D;
+}): Promise<AdaptiveGuardrailHealth> {
+  const payload = await callAdaptiveService(
+    "/guardrail/health",
+    {
+      marketId: options.marketId,
+      target2D: options.target2D,
+    },
+    20_000,
+  );
+
+  if (!payload.health || typeof payload.health !== "object") {
+    throw new Error("Adaptive service tidak mengembalikan health guardrail.");
+  }
+  return payload.health as unknown as AdaptiveGuardrailHealth;
 }
 
 export async function reconcileAdaptiveMarkets(options?: {
