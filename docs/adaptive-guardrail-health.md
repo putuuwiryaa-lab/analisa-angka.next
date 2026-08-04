@@ -17,3 +17,5 @@ Objek migration yang diperiksa:
 3. tabel `adaptive.drift_events`.
 
 Health tetap bersifat observe-only. Status ini tidak mengubah formula, bobot, konfigurasi, atau melakukan rollback otomatis.
+
+Deployment health ini tidak memerlukan migration atau environment tambahan setelah migration 004 selesai.
