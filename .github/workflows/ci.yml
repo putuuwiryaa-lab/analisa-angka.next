@@ -51,6 +51,9 @@ jobs:
       - name: Typecheck
         run: deno task typecheck
 
+      - name: Adaptive service check
+        run: deno task adaptive:check
+
       - name: Unit tests
         run: deno task test
 
