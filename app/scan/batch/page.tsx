@@ -91,6 +91,7 @@ export default function BatchScanPage() {
   function changeMode(mode: BatchMode) {
     setScanMode(mode);
     setDigitCount(MODES.find((item) => item.value === mode)?.digits ?? 7);
+    if (mode === "adaptive") setTopRanks([1]);
     setResult(null);
     setError("");
   }
@@ -144,7 +145,7 @@ export default function BatchScanPage() {
           target2D,
           target3D,
           digitCount,
-          topRanks,
+          topRanks: adaptive ? [1] : topRanks,
           L: rounds,
           patah,
           lineSeparator: separator,
@@ -209,24 +210,26 @@ export default function BatchScanPage() {
             <TextField label="Pemisah output" value={separator} onChange={(value) => setSeparator(value.slice(0, 16))} />
           </div>
 
-          <div>
-            <FieldLabel>Peringkat yang dipakai</FieldLabel>
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3].map((rank) => {
-                const active = topRanks.includes(rank);
-                return (
-                  <button
-                    key={rank}
-                    type="button"
-                    onClick={() => toggleRank(rank)}
-                    className={`pressable flex h-12 items-center justify-center gap-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wide shadow-inner shadow-black/10 ${active ? "border-primary/40 bg-primary/15 text-primary-soft" : "border-border-soft bg-surface text-text-muted"}`}
-                  >
-                    {active ? <SquareCheckBig size={15} /> : <Square size={15} />} Top {rank}
-                  </button>
-                );
-              })}
+          {!adaptive ? (
+            <div>
+              <FieldLabel>Peringkat yang dipakai</FieldLabel>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((rank) => {
+                  const active = topRanks.includes(rank);
+                  return (
+                    <button
+                      key={rank}
+                      type="button"
+                      onClick={() => toggleRank(rank)}
+                      className={`pressable flex h-12 items-center justify-center gap-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wide shadow-inner shadow-black/10 ${active ? "border-primary/40 bg-primary/15 text-primary-soft" : "border-border-soft bg-surface text-text-muted"}`}
+                    >
+                      {active ? <SquareCheckBig size={15} /> : <Square size={15} />} Top {rank}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </section>
 
