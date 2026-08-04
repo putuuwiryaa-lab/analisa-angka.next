@@ -1,0 +1,485 @@
+import { neon } from "jsr:@neon/serverless@1.0.1";
+import { runAdaptiveOnline } from "../lib/adaptive/engine.ts";
+import {
+  ADAPTIVE_CONFIG_VERSION,
+  ADAPTIVE_ENGINE_VERSION,
+} from "../lib/adaptive/types.ts";
+import type {
+  AdaptiveLearningState,
+  AdaptivePendingPrediction,
+} from "../lib/adaptive/types.ts";
+import { parseStrictHistory } from "../lib/engine/history.ts";
+import {
+  planAdaptiveReconciliation,
+  type ReconciliationMarketSnapshot,
+  type ReconciliationStateSnapshot,
+  type ReconciliationTarget,
+} from "./reconcile-plan.mts";
+
+type SqlClient = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<Record<string, unknown>[]>;
+
+export type ReconciliationTrigger = "cron" | "manual" | "api";
+
+export interface ReconciliationOptions {
+  trigger: ReconciliationTrigger;
+  marketLimit?: number;
+  requestedMarketId?: string | null;
+  force?: boolean;
+}
+
+export interface ReconciliationSummary {
+  runId: string;
+  trigger: ReconciliationTrigger;
+  status: "success" | "partial" | "failed";
+  marketsAvailable: number;
+  marketsPlanned: number;
+  marketsProcessed: number;
+  targetsProcessed: number;
+  fullReplayTargets: number;
+  incrementalTargets: number;
+  noopTargets: number;
+  settledPredictions: number;
+  errorCount: number;
+  remainingMarkets: number;
+  details: Array<Record<string, unknown>>;
+  startedAt: string;
+  finishedAt: string;
+}
+
+interface SupabaseMarketRow {
+  id?: unknown;
+  name?: unknown;
+  history_data?: unknown;
+}
+
+interface ParsedMarket extends ReconciliationMarketSnapshot {
+  draws: string[];
+}
+
+const DEFAULT_MARKET_LIMIT = 4;
+const MAX_MARKET_LIMIT = 50;
+const BACKGROUND_METHOD = "bbfs" as const;
+const BACKGROUND_DIGIT_COUNT = 7;
+
+function requiredEnv(name: string): string {
+  const value = Deno.env.get(name)?.trim();
+  if (!value) throw new Error(`${name} belum dikonfigurasi pada adaptive-engine-service.`);
+  return value;
+}
+
+function marketLimit(value: number | undefined): number {
+  if (!Number.isFinite(value)) return DEFAULT_MARKET_LIMIT;
+  return Math.max(1, Math.min(MAX_MARKET_LIMIT, Math.trunc(Number(value))));
+}
+
+function databaseClient(): SqlClient {
+  return neon(requiredEnv("NEON_DATABASE_URL")) as unknown as SqlClient;
+}
+
+async function fetchSupabaseMarkets(): Promise<{ markets: ParsedMarket[]; errors: Array<Record<string, unknown>> }> {
+  const supabaseUrl = requiredEnv("SUPABASE_URL");
+  const serviceRoleKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const endpoint = new URL("/rest/v1/markets", supabaseUrl);
+  endpoint.searchParams.set("select", "id,name,history_data");
+  endpoint.searchParams.set("order", "order.asc");
+
+  const response = await fetch(endpoint, {
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      Accept: "application/json",
+    },
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(`Supabase markets gagal (${response.status}): ${message.slice(0, 240)}`);
+  }
+
+  const rows = await response.json() as SupabaseMarketRow[];
+  const markets: ParsedMarket[] = [];
+  const errors: Array<Record<string, unknown>> = [];
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const id = String(row.id ?? "").trim();
+    const name = String(row.name ?? id).trim();
+    const historyData = typeof row.history_data === "string" ? row.history_data : "";
+    if (!id || !historyData) continue;
+
+    try {
+      const draws = parseStrictHistory(historyData);
+      if (draws.length < 2) continue;
+      markets.push({
+        id,
+        name,
+        historyLength: draws.length,
+        lastDraw: draws[draws.length - 1],
+        draws,
+      });
+    } catch (error) {
+      errors.push({
+        marketId: id,
+        marketName: name,
+        stage: "parse-history",
+        error: error instanceof Error ? error.message : "Histori tidak valid.",
+      });
+    }
+  }
+
+  return { markets, errors };
+}
+
+async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateSnapshot[]> {
+  const rows = await sql`
+    select
+      s.market_id,
+      s.target_2d,
+      s.processed_history_length,
+      s.last_processed_draw,
+      s.updated_at,
+      (
+        select p.history_length
+        from adaptive.predictions p
+        where p.market_id = s.market_id
+          and p.target_2d = s.target_2d
+          and p.engine_version = s.engine_version
+          and p.config_version = s.config_version
+          and p.status = 'pending'
+        order by p.history_length desc, p.created_at desc
+        limit 1
+      ) as pending_history_length
+    from adaptive.engine_states s
+    where s.engine_version = ${ADAPTIVE_ENGINE_VERSION}
+      and s.config_version = ${ADAPTIVE_CONFIG_VERSION}
+  `;
+
+  return rows.flatMap((row: Record<string, unknown>) => {
+    const target2D = String(row.target_2d);
+    if (target2D !== "depan" && target2D !== "tengah" && target2D !== "belakang") return [];
+    return [{
+      marketId: String(row.market_id),
+      target2D,
+      processedHistoryLength: Number(row.processed_history_length ?? 0),
+      lastProcessedDraw: row.last_processed_draw ? String(row.last_processed_draw) : null,
+      pendingHistoryLength: row.pending_history_length === null || row.pending_history_length === undefined
+        ? null
+        : Number(row.pending_history_length),
+      updatedAt: row.updated_at ? String(row.updated_at) : null,
+    } satisfies ReconciliationStateSnapshot];
+  });
+}
+
+async function loadContext(
+  sql: SqlClient,
+  marketId: string,
+  target2D: ReconciliationTarget,
+): Promise<{
+  state: AdaptiveLearningState | null;
+  pendingPrediction: AdaptivePendingPrediction | null;
+}> {
+  const stateRows = await sql`
+    select
+      target_2d,
+      engine_version,
+      config_version,
+      processed_history_length,
+      last_processed_draw,
+      expert_weights,
+      family_weights,
+      horizon_weights,
+      state_revision
+    from adaptive.engine_states
+    where market_id = ${marketId}
+      and target_2d = ${target2D}
+      and engine_version = ${ADAPTIVE_ENGINE_VERSION}
+      and config_version = ${ADAPTIVE_CONFIG_VERSION}
+    limit 1
+  `;
+
+  const pendingRows = await sql`
+    select
+      p.id::text as prediction_id,
+      p.engine_version,
+      p.config_version,
+      p.target_2d,
+      p.history_length,
+      p.pair_probabilities,
+      p.left_probabilities,
+      p.right_probabilities,
+      p.expert_weights,
+      coalesce((
+        select jsonb_agg(
+          jsonb_build_object(
+            'method', s.method,
+            'digitCount', s.digit_count,
+            'digits', to_jsonb(s.digits),
+            'estimatedSuccess', s.estimated_success,
+            'baselineSuccess', s.baseline_success,
+            'lift', s.lift,
+            'selectionMargin', s.selection_margin
+          )
+          order by s.method, s.digit_count
+        )
+        from adaptive.published_selections s
+        where s.prediction_id = p.id
+      ), '[]'::jsonb) as selections
+    from adaptive.predictions p
+    where p.market_id = ${marketId}
+      and p.target_2d = ${target2D}
+      and p.engine_version = ${ADAPTIVE_ENGINE_VERSION}
+      and p.config_version = ${ADAPTIVE_CONFIG_VERSION}
+      and p.status = 'pending'
+    order by p.history_length desc, p.created_at desc
+    limit 1
+  `;
+
+  const stateRow = stateRows[0];
+  const pendingRow = pendingRows[0];
+
+  return {
+    state: stateRow ? {
+      engineVersion: String(stateRow.engine_version),
+      configVersion: String(stateRow.config_version),
+      target2D,
+      processedHistoryLength: Number(stateRow.processed_history_length),
+      lastProcessedDraw: stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
+      expertWeights: (stateRow.expert_weights ?? {}) as Record<string, number>,
+      familyWeights: (stateRow.family_weights ?? {}) as Record<string, number>,
+      horizonWeights: (stateRow.horizon_weights ?? {}) as Record<string, number>,
+      stateRevision: Number(stateRow.state_revision ?? 0),
+    } : null,
+    pendingPrediction: pendingRow ? {
+      predictionId: String(pendingRow.prediction_id),
+      engineVersion: String(pendingRow.engine_version),
+      configVersion: String(pendingRow.config_version),
+      target2D,
+      historyLength: Number(pendingRow.history_length),
+      pairProbabilities: pendingRow.pair_probabilities as number[],
+      leftProbabilities: pendingRow.left_probabilities as number[],
+      rightProbabilities: pendingRow.right_probabilities as number[],
+      expertWeights: (pendingRow.expert_weights ?? {}) as Record<string, number>,
+      selections: (pendingRow.selections ?? []) as AdaptivePendingPrediction["selections"],
+    } : null,
+  };
+}
+
+async function createRunRow(
+  sql: SqlClient,
+  options: Required<Pick<ReconciliationOptions, "trigger">> & ReconciliationOptions,
+  startedAt: string,
+): Promise<string> {
+  const rows = await sql`
+    insert into adaptive.reconciliation_runs (
+      trigger,
+      status,
+      requested_market_id,
+      market_limit,
+      started_at
+    ) values (
+      ${options.trigger},
+      'running',
+      ${options.requestedMarketId?.trim() || null},
+      ${marketLimit(options.marketLimit)},
+      ${startedAt}::timestamptz
+    )
+    returning id::text
+  `;
+  return String(rows[0]?.id ?? "");
+}
+
+async function finishRunRow(sql: SqlClient, summary: ReconciliationSummary): Promise<void> {
+  await sql`
+    update adaptive.reconciliation_runs
+    set
+      status = ${summary.status},
+      markets_available = ${summary.marketsAvailable},
+      markets_planned = ${summary.marketsPlanned},
+      markets_processed = ${summary.marketsProcessed},
+      targets_processed = ${summary.targetsProcessed},
+      full_replay_targets = ${summary.fullReplayTargets},
+      incremental_targets = ${summary.incrementalTargets},
+      noop_targets = ${summary.noopTargets},
+      settled_predictions = ${summary.settledPredictions},
+      error_count = ${summary.errorCount},
+      remaining_markets = ${summary.remainingMarkets},
+      details = ${JSON.stringify(summary.details)}::jsonb,
+      finished_at = ${summary.finishedAt}::timestamptz
+    where id = ${summary.runId}::uuid
+  `;
+}
+
+export async function latestReconciliationRun(): Promise<Record<string, unknown> | null> {
+  const sql = databaseClient();
+  const rows = await sql`
+    select
+      id::text,
+      trigger,
+      status,
+      requested_market_id,
+      market_limit,
+      markets_available,
+      markets_planned,
+      markets_processed,
+      targets_processed,
+      full_replay_targets,
+      incremental_targets,
+      noop_targets,
+      settled_predictions,
+      error_count,
+      remaining_markets,
+      details,
+      started_at,
+      finished_at
+    from adaptive.reconciliation_runs
+    order by started_at desc
+    limit 1
+  `;
+  return rows[0] ?? null;
+}
+
+export async function runAdaptiveReconciliation(
+  options: ReconciliationOptions,
+): Promise<ReconciliationSummary> {
+  const sql = databaseClient();
+  const startedAt = new Date().toISOString();
+  let runId = "";
+
+  try {
+    runId = await createRunRow(sql, options, startedAt);
+    if (!runId) throw new Error("Neon tidak mengembalikan reconciliation run id.");
+
+    const [{ markets, errors: parseErrors }, states] = await Promise.all([
+      fetchSupabaseMarkets(),
+      fetchStateSnapshots(sql),
+    ]);
+    const plans = planAdaptiveReconciliation(markets, states, {
+      marketLimit: marketLimit(options.marketLimit),
+      requestedMarketId: options.requestedMarketId,
+      force: Boolean(options.force),
+    });
+    const marketMap = new Map(markets.map((market) => [market.id, market]));
+    const details: Array<Record<string, unknown>> = [...parseErrors];
+    let marketsProcessed = 0;
+    let targetsProcessed = 0;
+    let fullReplayTargets = 0;
+    let incrementalTargets = 0;
+    let noopTargets = 0;
+    let settledPredictions = 0;
+
+    for (const plan of plans) {
+      const market = marketMap.get(plan.marketId);
+      if (!market) continue;
+      let marketSucceeded = false;
+
+      for (const target2D of plan.targets) {
+        try {
+          const context = await loadContext(sql, market.id, target2D);
+          const run = runAdaptiveOnline(
+            market.draws,
+            target2D,
+            BACKGROUND_METHOD,
+            BACKGROUND_DIGIT_COUNT,
+            context.state,
+            context.pendingPrediction,
+          );
+          const payload = {
+            marketId: market.id,
+            marketName: market.name,
+            targetDrawKey: `next:${run.prediction.historyCutoffKey}`,
+            prediction: run.prediction,
+            state: run.state,
+            settlement: run.settlement,
+            historyDraws: run.historyDraws,
+          };
+          await sql`
+            select adaptive.store_online_run(${JSON.stringify(payload)}::jsonb)
+          `;
+
+          targetsProcessed += 1;
+          marketSucceeded = true;
+          if (run.prediction.replay.mode === "full") fullReplayTargets += 1;
+          else if (run.prediction.replay.mode === "incremental") incrementalTargets += 1;
+          else noopTargets += 1;
+          if (run.settlement) settledPredictions += 1;
+          details.push({
+            marketId: market.id,
+            marketName: market.name,
+            target2D,
+            replayMode: run.prediction.replay.mode,
+            processedSteps: run.prediction.replay.processedSteps,
+            settled: Boolean(run.settlement),
+          });
+        } catch (error) {
+          details.push({
+            marketId: market.id,
+            marketName: market.name,
+            target2D,
+            stage: "reconcile-target",
+            error: error instanceof Error ? error.message : "Reconciliation target gagal.",
+          });
+        }
+      }
+
+      if (marketSucceeded) marketsProcessed += 1;
+    }
+
+    const errorCount = details.filter((detail) => "error" in detail).length;
+    const remainingMarkets = Math.max(0, plans.length < marketLimit(options.marketLimit)
+      ? 0
+      : planAdaptiveReconciliation(markets, await fetchStateSnapshots(sql), {
+        marketLimit: MAX_MARKET_LIMIT,
+        requestedMarketId: options.requestedMarketId,
+        force: false,
+      }).length);
+    const finishedAt = new Date().toISOString();
+    const summary: ReconciliationSummary = {
+      runId,
+      trigger: options.trigger,
+      status: errorCount === 0 ? "success" : targetsProcessed > 0 ? "partial" : "failed",
+      marketsAvailable: markets.length,
+      marketsPlanned: plans.length,
+      marketsProcessed,
+      targetsProcessed,
+      fullReplayTargets,
+      incrementalTargets,
+      noopTargets,
+      settledPredictions,
+      errorCount,
+      remainingMarkets,
+      details,
+      startedAt,
+      finishedAt,
+    };
+    await finishRunRow(sql, summary);
+    return summary;
+  } catch (error) {
+    const finishedAt = new Date().toISOString();
+    const message = error instanceof Error ? error.message : "Reconciliation gagal.";
+    if (runId) {
+      const failed: ReconciliationSummary = {
+        runId,
+        trigger: options.trigger,
+        status: "failed",
+        marketsAvailable: 0,
+        marketsPlanned: 0,
+        marketsProcessed: 0,
+        targetsProcessed: 0,
+        fullReplayTargets: 0,
+        incrementalTargets: 0,
+        noopTargets: 0,
+        settledPredictions: 0,
+        errorCount: 1,
+        remainingMarkets: 0,
+        details: [{ stage: "reconciliation", error: message }],
+        startedAt,
+        finishedAt,
+      };
+      await finishRunRow(sql, failed).catch(() => undefined);
+    }
+    throw error;
+  }
+}
