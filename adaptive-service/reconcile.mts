@@ -16,7 +16,11 @@ import {
   type ReconciliationTarget,
 } from "./reconcile-plan.mts";
 
-type SqlClient = ReturnType<typeof neon>;
+type SqlClient = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<Record<string, unknown>[]>;
+
 export type ReconciliationTrigger = "cron" | "manual" | "api";
 
 export interface ReconciliationOptions {
@@ -72,7 +76,7 @@ function marketLimit(value: number | undefined): number {
 }
 
 function databaseClient(): SqlClient {
-  return neon(requiredEnv("NEON_DATABASE_URL"));
+  return neon(requiredEnv("NEON_DATABASE_URL")) as unknown as SqlClient;
 }
 
 async function fetchSupabaseMarkets(): Promise<{ markets: ParsedMarket[]; errors: Array<Record<string, unknown>> }> {
@@ -153,7 +157,7 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
       and s.config_version = ${ADAPTIVE_CONFIG_VERSION}
   `;
 
-  return rows.flatMap((row) => {
+  return rows.flatMap((row: Record<string, unknown>) => {
     const target2D = String(row.target_2d);
     if (target2D !== "depan" && target2D !== "tengah" && target2D !== "belakang") return [];
     return [{
@@ -233,8 +237,8 @@ async function loadContext(
     limit 1
   `;
 
-  const stateRow = stateRows[0] as Record<string, unknown> | undefined;
-  const pendingRow = pendingRows[0] as Record<string, unknown> | undefined;
+  const stateRow = stateRows[0];
+  const pendingRow = pendingRows[0];
 
   return {
     state: stateRow ? {
@@ -334,7 +338,7 @@ export async function latestReconciliationRun(): Promise<Record<string, unknown>
     order by started_at desc
     limit 1
   `;
-  return (rows[0] as Record<string, unknown> | undefined) ?? null;
+  return rows[0] ?? null;
 }
 
 export async function runAdaptiveReconciliation(
@@ -429,7 +433,7 @@ export async function runAdaptiveReconciliation(
       : planAdaptiveReconciliation(markets, await fetchStateSnapshots(sql), {
         marketLimit: MAX_MARKET_LIMIT,
         requestedMarketId: options.requestedMarketId,
-        force: Boolean(options.force),
+        force: false,
       }).length);
     const finishedAt = new Date().toISOString();
     const summary: ReconciliationSummary = {
