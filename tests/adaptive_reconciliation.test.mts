@@ -6,9 +6,9 @@ import {
 } from "../adaptive-service/reconcile-plan.mts";
 
 const MARKETS: ReconciliationMarketSnapshot[] = [
-  { id: "sgp", name: "SGP", historyLength: 170, lastDraw: "4353" },
-  { id: "hk", name: "HK", historyLength: 140, lastDraw: "7812" },
-  { id: "sdy", name: "Sydney", historyLength: 120, lastDraw: "9021" },
+  { id: "sgp", name: "SGP", historyLength: 170, lastDraw: "4353", historyFingerprint: "sgp-new" },
+  { id: "hk", name: "HK", historyLength: 140, lastDraw: "7812", historyFingerprint: "hk-new" },
+  { id: "sdy", name: "Sydney", historyLength: 120, lastDraw: "9021", historyFingerprint: "sdy-new" },
 ];
 
 function completeStates(market: ReconciliationMarketSnapshot): ReconciliationStateSnapshot[] {
@@ -17,6 +17,7 @@ function completeStates(market: ReconciliationMarketSnapshot): ReconciliationSta
     target2D,
     processedHistoryLength: market.historyLength,
     lastProcessedDraw: market.lastDraw,
+    historyFingerprint: market.historyFingerprint,
     pendingHistoryLength: market.historyLength,
   }));
 }
@@ -44,6 +45,7 @@ Deno.test("market dengan state kosong diprioritaskan sebelum incremental", () =>
       target2D,
       processedHistoryLength: 169,
       lastProcessedDraw: "1111",
+      historyFingerprint: "old",
       pendingHistoryLength: 169,
     }),
   );
@@ -52,6 +54,28 @@ Deno.test("market dengan state kosong diprioritaskan sebelum incremental", () =>
   assert.equal(plans.length, 1);
   assert.equal(plans[0].marketId, "hk");
   assert.equal(plans[0].missingStateCount, 3);
+});
+
+Deno.test("koreksi fingerprint dengan panjang dan cutoff sama tetap dijadwalkan", () => {
+  const states = completeStates(MARKETS[0]).map((state) => ({
+    ...state,
+    historyFingerprint: "sgp-old",
+  }));
+
+  const plans = planAdaptiveReconciliation([MARKETS[0]], states, { marketLimit: 4 });
+  assert.equal(plans.length, 1);
+  assert.deepEqual(plans[0].targets, ["depan", "tengah", "belakang"]);
+  assert.equal(plans[0].correctedHistoryCount, 3);
+});
+
+Deno.test("market dengan koreksi histori diprioritaskan", () => {
+  const correctedStates = completeStates(MARKETS[0]).map((state) => ({
+    ...state,
+    historyFingerprint: "sgp-old",
+  }));
+  const plans = planAdaptiveReconciliation(MARKETS, correctedStates, { marketLimit: 1 });
+  assert.equal(plans[0].marketId, "sgp");
+  assert.equal(plans[0].correctedHistoryCount, 3);
 });
 
 Deno.test("requested market hanya memproses market yang diminta", () => {
