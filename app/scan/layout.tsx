@@ -1,22 +1,10 @@
-"use client";
-
+import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ArrowLeft, Layers3, ScanSearch } from "lucide-react";
+import { ArrowLeft, ScanSearch } from "lucide-react";
+import { ScanNavigation, ScanNavigationFallback } from "./ScanNavigation";
 import styles from "./ScanTheme.module.css";
 
 export default function ScanLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const scanActive = pathname === "/scan";
-  const batchActive = pathname.startsWith("/scan/batch");
-
-  const navClass = (active: boolean) => [
-    "pressable flex h-12 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-black uppercase tracking-wide transition-colors",
-    active
-      ? "border-primary/45 bg-primary/20 text-primary-soft"
-      : "border-border-soft bg-surface/85 text-text-muted hover:border-border hover:text-text",
-  ].join(" ");
-
   return (
     <div
       className={`${styles.theme} ${styles.pageBackdrop} mx-auto min-h-[calc(100svh-2rem)] w-full max-w-3xl pb-24`}
@@ -43,16 +31,9 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
       {children}
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/92 backdrop-blur-xl" aria-label="Navigasi Scan Angka">
-        <div className="mx-auto grid max-w-3xl grid-cols-2 gap-2 px-3 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-2 sm:px-5">
-          <Link href="/scan" prefetch={false} className={navClass(scanActive)} aria-current={scanActive ? "page" : undefined}>
-            <ScanSearch size={17} />
-            Scan
-          </Link>
-          <Link href="/scan/batch" prefetch={false} className={navClass(batchActive)} aria-current={batchActive ? "page" : undefined}>
-            <Layers3 size={17} />
-            Batch
-          </Link>
-        </div>
+        <Suspense fallback={<ScanNavigationFallback />}>
+          <ScanNavigation />
+        </Suspense>
       </nav>
     </div>
   );
