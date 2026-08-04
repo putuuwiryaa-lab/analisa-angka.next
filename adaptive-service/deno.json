@@ -1,4 +1,7 @@
 {
+  "imports": {
+    "@/": "../"
+  },
   "deploy": {
     "runtime": {
       "type": "dynamic",
