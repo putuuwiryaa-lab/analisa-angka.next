@@ -52,24 +52,25 @@ Deno.test("replay tanpa result baru menjadi noop dan mempertahankan bobot", () =
   assert.deepEqual(second.state.expertWeights, first.state.expertWeights);
 });
 
-Deno.test("pending prediction di-settle pada result berikutnya", () => {
+Deno.test("semua selection pending di-settle pada result berikutnya", () => {
   const history = DRAWS.slice(0, 25);
-  const run = runAdaptiveOnline(history, "tengah", "ai", 4);
+  const aiRun = runAdaptiveOnline(history, "tengah", "ai", 4);
+  const bbfsRun = runAdaptiveOnline(history, "tengah", "bbfs", 7, aiRun.state);
   const pending: AdaptivePendingPrediction = {
     predictionId: "00000000-0000-0000-0000-000000000001",
-    engineVersion: run.prediction.engineVersion,
-    configVersion: run.prediction.configVersion,
-    target2D: run.prediction.target2D,
-    historyLength: run.prediction.historyLength,
-    pairProbabilities: run.prediction.pairProbabilities,
-    leftProbabilities: run.prediction.leftProbabilities,
-    rightProbabilities: run.prediction.rightProbabilities,
-    expertWeights: run.prediction.expertWeights,
-    selection: run.prediction.selection,
+    engineVersion: aiRun.prediction.engineVersion,
+    configVersion: aiRun.prediction.configVersion,
+    target2D: aiRun.prediction.target2D,
+    historyLength: aiRun.prediction.historyLength,
+    pairProbabilities: aiRun.prediction.pairProbabilities,
+    leftProbabilities: aiRun.prediction.leftProbabilities,
+    rightProbabilities: aiRun.prediction.rightProbabilities,
+    expertWeights: aiRun.prediction.expertWeights,
+    selections: [aiRun.prediction.selection, bbfsRun.prediction.selection],
   };
 
   const nextHistory = DRAWS.slice(0, 26);
-  const nextState = replayAdaptiveHistory(nextHistory, "tengah", run.state).state;
+  const nextState = replayAdaptiveHistory(nextHistory, "tengah", aiRun.state).state;
   const settlement = settlePendingPrediction(pending, nextHistory, "tengah", nextState.expertWeights);
 
   assert.ok(settlement);
@@ -77,7 +78,7 @@ Deno.test("pending prediction di-settle pada result berikutnya", () => {
   assert.ok(settlement.actualPair >= 0 && settlement.actualPair <= 99);
   assert.ok(settlement.combinedLoss >= 0);
   assert.equal(typeof settlement.aiResults["4"], "boolean");
-  assert.deepEqual(settlement.bbfsResults, {});
+  assert.equal(typeof settlement.bbfsResults["7"], "boolean");
   assertWeightMap(settlement.weightsBefore);
   assertWeightMap(settlement.weightsAfter);
 });
