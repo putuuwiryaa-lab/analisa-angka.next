@@ -25,7 +25,19 @@ interface AdaptiveResult {
   lift: number;
   selectionMargin: number;
   signalStrength: "low" | "medium" | "high";
-  persistence: { status: "stored"; predictionId: string } | { status: "not_configured" };
+  replayMode: "full" | "incremental" | "noop";
+  processedSteps: number;
+  meanEnsembleLoss: number;
+  stateRevision: number;
+  settledPredictionId: string | null;
+  persistence:
+    | {
+      status: "stored";
+      predictionId: string;
+      stateRevision: number;
+      settledPredictionId: string | null;
+    }
+    | { status: "not_configured" };
 }
 
 const TARGET_LABELS: Record<Target2D, string> = {
@@ -37,6 +49,12 @@ const TARGET_LABELS: Record<Target2D, string> = {
 const METHOD_LABELS: Record<AdaptiveMethod, string> = {
   ai: "AI",
   bbfs: "BBFS",
+};
+
+const REPLAY_LABELS: Record<AdaptiveResult["replayMode"], string> = {
+  full: "Full replay",
+  incremental: "Incremental",
+  noop: "State terbaru",
 };
 
 function percentage(value: number) {
@@ -120,7 +138,7 @@ export default function AdaptivePageClient() {
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary-soft">HF-APIE</p>
             <h2 className="display text-xl text-text">Adaptive Engine</h2>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
-              Probabilitas 2D terpisah dari Scan. Output mengikuti metode, jumlah digit, dan target yang dipilih.
+              Probabilitas 2D dengan replay histori dan bobot online terpisah untuk setiap market serta target.
             </p>
           </div>
         </div>
@@ -256,7 +274,9 @@ export default function AdaptivePageClient() {
           </div>
 
           <div className="mt-3 rounded-xl border border-border-soft bg-bg-deep/45 p-3 text-[10px] leading-relaxed text-text-muted">
-            Engine {result.engineVersion} · histori {result.historyLength} result · cutoff {result.latestDraw}. Nilai masih tahap foundation dan belum memakai bobot online hasil settlement.
+            Engine {result.engineVersion} · histori {result.historyLength} result · cutoff {result.latestDraw} · bobot revision {result.stateRevision} · {REPLAY_LABELS[result.replayMode]}
+            {result.processedSteps > 0 ? ` (${result.processedSteps} settlement replay)` : ""}
+            {result.settledPredictionId ? " · prediction sebelumnya sudah di-settle" : ""}.
           </div>
         </section>
       )}
