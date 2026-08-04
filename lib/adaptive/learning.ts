@@ -31,6 +31,22 @@ interface ReplayResult {
   experts: AdaptiveExpertOutput[];
 }
 
+function fnv1a32(text: string, seed: number): number {
+  let hash = seed >>> 0;
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+export function adaptiveHistoryFingerprint(draws: readonly string[]): string {
+  const serialized = draws.join("|");
+  const first = fnv1a32(serialized, 0x811c9dc5).toString(16).padStart(8, "0");
+  const second = fnv1a32(serialized, 0x9e3779b9).toString(16).padStart(8, "0");
+  return `${draws.length}:${first}${second}`;
+}
+
 function normalizeWeights(weights: Record<string, number>): Record<string, number> {
   const safeEntries = Object.entries(weights)
     .map(([id, value]) => [id, Number.isFinite(value) && value > 0 ? value : 0] as const)
@@ -151,7 +167,8 @@ function isCompatibleState(
   if (state.target2D !== target2D) return false;
   if (!Number.isInteger(state.processedHistoryLength) || state.processedHistoryLength < 2) return false;
   if (state.processedHistoryLength > draws.length) return false;
-  return draws[state.processedHistoryLength - 1] === state.lastProcessedDraw;
+  if (draws[state.processedHistoryLength - 1] !== state.lastProcessedDraw) return false;
+  return state.historyFingerprint === adaptiveHistoryFingerprint(draws.slice(0, state.processedHistoryLength));
 }
 
 export function replayAdaptiveHistory(
@@ -216,6 +233,7 @@ export function replayAdaptiveHistory(
       target2D,
       processedHistoryLength: draws.length,
       lastProcessedDraw: draws[draws.length - 1],
+      historyFingerprint: adaptiveHistoryFingerprint(draws),
       expertWeights: finalWeights,
       familyWeights: aggregates.familyWeights,
       horizonWeights: aggregates.horizonWeights,
