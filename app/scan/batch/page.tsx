@@ -1,3 +1,7 @@
 "use client";
 
-export { default } from "./BatchScanPage";
+import BatchScanPage from "./BatchScanPage";
+
+export default function BatchScanRoute() {
+  return <BatchScanPage />;
+}
