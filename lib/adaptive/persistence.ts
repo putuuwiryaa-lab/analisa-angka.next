@@ -16,6 +16,25 @@ export type AdaptivePersistenceStatus =
   }
   | { status: "not_configured" };
 
+export interface AdaptiveReconciliationSummary {
+  runId: string;
+  trigger: "cron" | "manual" | "api";
+  status: "success" | "partial" | "failed";
+  marketsAvailable: number;
+  marketsPlanned: number;
+  marketsProcessed: number;
+  targetsProcessed: number;
+  fullReplayTargets: number;
+  incrementalTargets: number;
+  noopTargets: number;
+  settledPredictions: number;
+  errorCount: number;
+  remainingMarkets: number;
+  details: Array<Record<string, unknown>>;
+  startedAt: string;
+  finishedAt: string;
+}
+
 function serviceConfiguration(): { serviceUrl: string; serviceSecret: string } | null {
   const serviceUrl = process.env.ADAPTIVE_SERVICE_URL?.trim();
   if (!serviceUrl) return null;
@@ -28,6 +47,7 @@ function serviceConfiguration(): { serviceUrl: string; serviceSecret: string } |
 async function callAdaptiveService(
   path: string,
   body: unknown,
+  timeoutMs = 30_000,
 ): Promise<Record<string, unknown>> {
   const configuration = serviceConfiguration();
   if (!configuration) throw new Error("Adaptive service belum dikonfigurasi.");
@@ -40,7 +60,7 @@ async function callAdaptiveService(
     },
     body: JSON.stringify(body),
     cache: "no-store",
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
@@ -103,4 +123,28 @@ export async function persistAdaptiveRun(
       ? String(payload.settledPredictionId)
       : null,
   };
+}
+
+export async function reconcileAdaptiveMarkets(options?: {
+  marketId?: string | null;
+  marketLimit?: number;
+  force?: boolean;
+}): Promise<AdaptiveReconciliationSummary> {
+  const payload = await callAdaptiveService(
+    "/reconcile",
+    {
+      marketId: options?.marketId || undefined,
+      marketLimit: options?.marketLimit ?? 4,
+      force: Boolean(options?.force),
+    },
+    120_000,
+  );
+  return payload as unknown as AdaptiveReconciliationSummary;
+}
+
+export async function loadLatestAdaptiveReconciliation(): Promise<Record<string, unknown> | null> {
+  const payload = await callAdaptiveService("/reconciliation/latest", {}, 15_000);
+  return payload.run && typeof payload.run === "object"
+    ? payload.run as Record<string, unknown>
+    : null;
 }
