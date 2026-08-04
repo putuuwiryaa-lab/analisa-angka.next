@@ -16,10 +16,10 @@ Engine membentuk matriks probabilitas 100 pasangan. Optimizer menguji seluruh su
 
 ## Runtime boundary
 
-Aplikasi Next.js tidak membuka koneksi database Adaptive. Persistence dijalankan oleh service Deno terpisah pada `adaptive-service/main.mts`.
+Aplikasi Next.js tidak membuka koneksi database Adaptive. UI memakai route Scan yang sudah ada dengan payload `action: "adaptive"`; persistence dijalankan oleh service Deno terpisah pada `adaptive-service/main.mts`.
 
 ```text
-Next.js /api/adaptive
+Next.js POST /api/scan { action: "adaptive" }
         ↓ HTTPS + bearer secret
 Deno Adaptive service
         ↓ Neon serverless HTTP driver
@@ -35,7 +35,7 @@ ADAPTIVE_SERVICE_URL=https://YOUR-DENO-SERVICE.example
 ADAPTIVE_SERVICE_SECRET=generate-a-long-random-secret
 ```
 
-Tanpa `ADAPTIVE_SERVICE_URL`, API Adaptive tetap menghasilkan preview tetapi tidak menyimpan prediction.
+Tanpa `ADAPTIVE_SERVICE_URL`, Adaptive tetap menghasilkan preview tetapi tidak menyimpan prediction.
 
 ## Environment service Deno
 
@@ -61,6 +61,20 @@ NEON_DIRECT_URL=postgresql://USER:PASSWORD@HOST.REGION.aws.neon.tech/DB?sslmode=
 
 Migration membuat schema terisolasi `adaptive` dan tidak menyentuh tabel Supabase atau tabel aplikasi lain.
 
+## Request aplikasi
+
+```json
+{
+  "action": "adaptive",
+  "marketId": "...",
+  "method": "bbfs",
+  "digitCount": 7,
+  "target2D": "belakang"
+}
+```
+
+Request dikirim ke `POST /api/scan`. Request Scan lama tanpa `action: "adaptive"` tetap diproses oleh engine Scan seperti sebelumnya.
+
 ## Endpoint service
 
 ```text
@@ -79,7 +93,7 @@ Authorization: Bearer <ADAPTIVE_SERVICE_SECRET>
 ```text
 Supabase markets.history_data
         ↓
-/api/adaptive
+POST /api/scan action=adaptive
         ↓
 family-balanced baseline experts
         ↓
