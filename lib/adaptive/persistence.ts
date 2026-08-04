@@ -1,6 +1,8 @@
 import "server-only";
 
+import type { AdaptiveEvaluationDashboard } from "./evaluation-types";
 import type {
+  AdaptiveMethod,
   AdaptivePersistenceContext,
   AdaptiveRun,
 } from "./types";
@@ -123,6 +125,31 @@ export async function persistAdaptiveRun(
       ? String(payload.settledPredictionId)
       : null,
   };
+}
+
+export async function loadAdaptiveEvaluationDashboard(options: {
+  marketId: string;
+  target2D: Target2D;
+  method: AdaptiveMethod;
+  digitCount: number;
+  window?: number;
+}): Promise<AdaptiveEvaluationDashboard> {
+  const payload = await callAdaptiveService(
+    "/evaluation/dashboard",
+    {
+      marketId: options.marketId,
+      target2D: options.target2D,
+      method: options.method,
+      digitCount: options.digitCount,
+      window: options.window ?? 100,
+    },
+    30_000,
+  );
+
+  if (!payload.dashboard || typeof payload.dashboard !== "object") {
+    throw new Error("Adaptive service tidak mengembalikan dashboard evaluasi.");
+  }
+  return payload.dashboard as unknown as AdaptiveEvaluationDashboard;
 }
 
 export async function reconcileAdaptiveMarkets(options?: {
