@@ -255,10 +255,18 @@ export function settlePendingPrediction(
   const historicalExperts = buildBaselineExperts(draws.slice(0, pending.historyLength), target2D);
   const pendingWeights = resolveExpertWeights(historicalExperts, pending.expertWeights);
   const expertLosses = evaluateExpertLosses(historicalExperts, actualLeft, actualRight);
-  const selected = new Set(pending.selection.digits);
-  const aiHit = selected.has(actualLeft) || selected.has(actualRight);
-  const bbfsHit = selected.has(actualLeft) && selected.has(actualRight);
-  const key = String(pending.selection.digitCount);
+  const aiResults: Record<string, boolean> = {};
+  const bbfsResults: Record<string, boolean> = {};
+
+  for (const selection of pending.selections) {
+    const selected = new Set(selection.digits);
+    const key = String(selection.digitCount);
+    if (selection.method === "ai") {
+      aiResults[key] = selected.has(actualLeft) || selected.has(actualRight);
+    } else {
+      bbfsResults[key] = selected.has(actualLeft) && selected.has(actualRight);
+    }
+  }
 
   return {
     predictionId: pending.predictionId,
@@ -269,8 +277,8 @@ export function settlePendingPrediction(
     leftBrier: leftLoss,
     rightBrier: rightLoss,
     combinedLoss: combinedLoss(pairLoss, leftLoss, rightLoss),
-    aiResults: pending.selection.method === "ai" ? { [key]: aiHit } : {},
-    bbfsResults: pending.selection.method === "bbfs" ? { [key]: bbfsHit } : {},
+    aiResults,
+    bbfsResults,
     expertLosses,
     weightsBefore: pendingWeights,
     weightsAfter: { ...weightsAfter },
