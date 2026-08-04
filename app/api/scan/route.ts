@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { runAdaptiveFoundation } from "@/lib/adaptive/engine";
-import { persistAdaptivePrediction } from "@/lib/adaptive/persistence";
+import { runAdaptiveOnline } from "@/lib/adaptive/engine";
+import { loadAdaptiveContext, persistAdaptiveRun } from "@/lib/adaptive/persistence";
 import { isAdaptiveMethod, isAdaptiveTarget } from "@/lib/adaptive/types";
 import { runAutoScan } from "@/lib/engine/acke-engine";
 import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
@@ -71,8 +71,17 @@ export async function POST(req: Request) {
       }
 
       const draws = parseStrictHistory(data.history_data);
-      const prediction = runAdaptiveFoundation(draws, body.target2D, body.method, digitCount);
-      const persistence = await persistAdaptivePrediction(String(data.id), String(data.name), prediction);
+      const context = await loadAdaptiveContext(String(data.id), body.target2D);
+      const run = runAdaptiveOnline(
+        draws,
+        body.target2D,
+        body.method,
+        digitCount,
+        context.state,
+        context.pendingPrediction,
+      );
+      const persistence = await persistAdaptiveRun(String(data.id), String(data.name), run);
+      const prediction = run.prediction;
 
       return NextResponse.json({
         market: String(data.name),
@@ -90,6 +99,15 @@ export async function POST(req: Request) {
           lift: prediction.selection.lift,
           selectionMargin: prediction.selection.selectionMargin,
           signalStrength: prediction.signalStrength,
+          replayMode: prediction.replay.mode,
+          processedSteps: prediction.replay.processedSteps,
+          meanEnsembleLoss: prediction.replay.meanEnsembleLoss,
+          stateRevision: persistence.status === "stored"
+            ? persistence.stateRevision
+            : run.state.stateRevision,
+          settledPredictionId: persistence.status === "stored"
+            ? persistence.settledPredictionId
+            : null,
           persistence,
         },
       });
