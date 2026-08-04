@@ -10,6 +10,12 @@ import type {
 } from "./core/types.mts";
 import { parseStrictHistory } from "./core/history.mts";
 import {
+  applyAdaptiveGuardrail,
+  historyFingerprint,
+  isStoredHistoryCompatible,
+  type GuardrailRunPayload,
+} from "./guardrail.mts";
+import {
   planAdaptiveReconciliation,
   type ReconciliationMarketSnapshot,
   type ReconciliationStateSnapshot,
@@ -57,6 +63,7 @@ interface SupabaseMarketRow {
 
 interface ParsedMarket extends ReconciliationMarketSnapshot {
   draws: string[];
+  historyFingerprint: string;
 }
 
 const DEFAULT_MARKET_LIMIT = 4;
@@ -118,6 +125,7 @@ async function fetchSupabaseMarkets(): Promise<{ markets: ParsedMarket[]; errors
         name,
         historyLength: draws.length,
         lastDraw: draws[draws.length - 1],
+        historyFingerprint: await historyFingerprint(draws),
         draws,
       });
     } catch (error) {
@@ -141,6 +149,7 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
       s.processed_history_length,
       s.last_processed_draw,
       s.updated_at,
+      to_jsonb(s)->>'history_fingerprint' as history_fingerprint,
       (
         select p.history_length
         from adaptive.predictions p
@@ -165,6 +174,7 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
       target2D,
       processedHistoryLength: Number(row.processed_history_length ?? 0),
       lastProcessedDraw: row.last_processed_draw ? String(row.last_processed_draw) : null,
+      historyFingerprint: row.history_fingerprint ? String(row.history_fingerprint) : null,
       pendingHistoryLength: row.pending_history_length === null || row.pending_history_length === undefined
         ? null
         : Number(row.pending_history_length),
@@ -177,9 +187,11 @@ async function loadContext(
   sql: SqlClient,
   marketId: string,
   target2D: ReconciliationTarget,
+  draws: readonly string[],
 ): Promise<{
   state: AdaptiveLearningState | null;
   pendingPrediction: AdaptivePendingPrediction | null;
+  correctionDetected: boolean;
 }> {
   const stateRows = await sql`
     select
@@ -191,8 +203,9 @@ async function loadContext(
       expert_weights,
       family_weights,
       horizon_weights,
-      state_revision
-    from adaptive.engine_states
+      state_revision,
+      to_jsonb(s)->>'history_fingerprint' as history_fingerprint
+    from adaptive.engine_states s
     where market_id = ${marketId}
       and target_2d = ${target2D}
       and engine_version = ${ADAPTIVE_ENGINE_VERSION}
@@ -239,9 +252,19 @@ async function loadContext(
 
   const stateRow = stateRows[0];
   const pendingRow = pendingRows[0];
+  const compatibility = stateRow
+    ? await isStoredHistoryCompatible({
+      draws,
+      processedHistoryLength: Number(stateRow.processed_history_length),
+      lastProcessedDraw: stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
+      storedFingerprint: stateRow.history_fingerprint ? String(stateRow.history_fingerprint) : null,
+    })
+    : { compatible: false, correctionDetected: false, currentFingerprint: null };
+  const useStoredContext = Boolean(stateRow && compatibility.compatible);
 
   return {
-    state: stateRow ? {
+    correctionDetected: compatibility.correctionDetected,
+    state: useStoredContext && stateRow ? {
       engineVersion: String(stateRow.engine_version),
       configVersion: String(stateRow.config_version),
       target2D,
@@ -252,7 +275,7 @@ async function loadContext(
       horizonWeights: (stateRow.horizon_weights ?? {}) as Record<string, number>,
       stateRevision: Number(stateRow.state_revision ?? 0),
     } : null,
-    pendingPrediction: pendingRow ? {
+    pendingPrediction: useStoredContext && pendingRow ? {
       predictionId: String(pendingRow.prediction_id),
       engineVersion: String(pendingRow.engine_version),
       configVersion: String(pendingRow.config_version),
@@ -377,7 +400,7 @@ export async function runAdaptiveReconciliation(
 
       for (const target2D of plan.targets) {
         try {
-          const context = await loadContext(sql, market.id, target2D);
+          const context = await loadContext(sql, market.id, target2D, market.draws);
           const run = runAdaptiveOnline(
             market.draws,
             target2D,
@@ -399,6 +422,24 @@ export async function runAdaptiveReconciliation(
             select adaptive.store_online_run(${JSON.stringify(payload)}::jsonb)
           `;
 
+          const guardrailPayload: GuardrailRunPayload = {
+            marketId: payload.marketId,
+            targetDrawKey: payload.targetDrawKey,
+            prediction: {
+              target2D: run.prediction.target2D,
+              engineVersion: run.prediction.engineVersion,
+              configVersion: run.prediction.configVersion,
+            },
+            settlement: run.settlement
+              ? {
+                predictionId: run.settlement.predictionId,
+                combinedLoss: run.settlement.combinedLoss,
+              }
+              : null,
+            historyDraws: run.historyDraws,
+          };
+          const guardrail = await applyAdaptiveGuardrail(sql, guardrailPayload);
+
           targetsProcessed += 1;
           marketSucceeded = true;
           if (run.prediction.replay.mode === "full") fullReplayTargets += 1;
@@ -412,6 +453,10 @@ export async function runAdaptiveReconciliation(
             replayMode: run.prediction.replay.mode,
             processedSteps: run.prediction.replay.processedSteps,
             settled: Boolean(run.settlement),
+            historyCorrectionDetected: context.correctionDetected,
+            guardrailStatus: guardrail.status,
+            driftState: guardrail.nextState,
+            driftEvent: guardrail.eventType,
           });
         } catch (error) {
           details.push({
