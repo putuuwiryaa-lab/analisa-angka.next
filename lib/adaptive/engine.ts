@@ -1,8 +1,14 @@
 import type { Target2D } from "@/lib/engine/types";
-import { buildBaselineExperts } from "./experts";
+import { replayAdaptiveHistory, settlePendingPrediction } from "./learning";
 import { optimizeDigitSelection } from "./optimizer";
 import { calculateMarginals, combinePairMatrices } from "./pair-probability";
-import type { AdaptiveMethod, AdaptivePrediction } from "./types";
+import type {
+  AdaptiveLearningState,
+  AdaptiveMethod,
+  AdaptivePendingPrediction,
+  AdaptivePrediction,
+  AdaptiveRun,
+} from "./types";
 import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types";
 
 function signalStrength(lift: number, margin: number): AdaptivePrediction["signalStrength"] {
@@ -11,22 +17,21 @@ function signalStrength(lift: number, margin: number): AdaptivePrediction["signa
   return "low";
 }
 
-export function runAdaptiveFoundation(
+export function runAdaptiveOnline(
   draws: readonly string[],
   target2D: Target2D,
   method: AdaptiveMethod,
   digitCount: number,
-): AdaptivePrediction {
-  if (draws.length < 2) throw new Error("Adaptive membutuhkan minimal 2 result 4D.");
-  if (draws.some((draw) => !/^\d{4}$/.test(draw))) throw new Error("Histori Adaptive harus berupa result 4D.");
-
-  const experts = buildBaselineExperts(draws, target2D);
-  const pairProbabilities = combinePairMatrices(experts);
+  initialState?: AdaptiveLearningState | null,
+  pendingPrediction?: AdaptivePendingPrediction | null,
+): AdaptiveRun {
+  const replay = replayAdaptiveHistory(draws, target2D, initialState);
+  const pairProbabilities = combinePairMatrices(replay.experts);
   const marginals = calculateMarginals(pairProbabilities);
   const selection = optimizeDigitSelection(pairProbabilities, method, digitCount);
   const latestDraw = draws[draws.length - 1];
 
-  return {
+  const prediction: AdaptivePrediction = {
     engineVersion: ADAPTIVE_ENGINE_VERSION,
     configVersion: ADAPTIVE_CONFIG_VERSION,
     target2D,
@@ -36,8 +41,30 @@ export function runAdaptiveFoundation(
     pairProbabilities,
     leftProbabilities: marginals.left,
     rightProbabilities: marginals.right,
-    expertWeights: Object.fromEntries(experts.map((expert) => [expert.id, expert.weight])),
+    expertWeights: replay.state.expertWeights,
     selection,
     signalStrength: signalStrength(selection.lift, selection.selectionMargin),
+    replay: replay.summary,
   };
+
+  return {
+    prediction,
+    state: replay.state,
+    settlement: settlePendingPrediction(
+      pendingPrediction,
+      draws,
+      target2D,
+      replay.state.expertWeights,
+    ),
+    historyDraws: [...draws],
+  };
+}
+
+export function runAdaptiveFoundation(
+  draws: readonly string[],
+  target2D: Target2D,
+  method: AdaptiveMethod,
+  digitCount: number,
+): AdaptivePrediction {
+  return runAdaptiveOnline(draws, target2D, method, digitCount).prediction;
 }
