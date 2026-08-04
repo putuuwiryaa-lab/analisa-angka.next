@@ -1,14 +1,14 @@
 import { neon } from "jsr:@neon/serverless@1.0.1";
-import { runAdaptiveOnline } from "../lib/adaptive/engine.ts";
+import { runAdaptiveOnline } from "./core/engine.mts";
 import {
   ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_ENGINE_VERSION,
-} from "../lib/adaptive/types.ts";
+} from "./core/types.mts";
 import type {
   AdaptiveLearningState,
   AdaptivePendingPrediction,
-} from "../lib/adaptive/types.ts";
-import { parseStrictHistory } from "../lib/engine/history.ts";
+} from "./core/types.mts";
+import { parseStrictHistory } from "./core/history.mts";
 import {
   planAdaptiveReconciliation,
   type ReconciliationMarketSnapshot,
