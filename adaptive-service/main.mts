@@ -156,28 +156,23 @@ async function loadContext(body: LoadContextRequest): Promise<Response> {
       p.left_probabilities,
       p.right_probabilities,
       p.expert_weights,
-      s.method,
-      s.digit_count,
-      s.digits,
-      s.estimated_success,
-      s.baseline_success,
-      s.lift,
-      s.selection_margin
+      coalesce((
+        select jsonb_agg(
+          jsonb_build_object(
+            'method', s.method,
+            'digitCount', s.digit_count,
+            'digits', to_jsonb(s.digits),
+            'estimatedSuccess', s.estimated_success,
+            'baselineSuccess', s.baseline_success,
+            'lift', s.lift,
+            'selectionMargin', s.selection_margin
+          )
+          order by s.method, s.digit_count
+        )
+        from adaptive.published_selections s
+        where s.prediction_id = p.id
+      ), '[]'::jsonb) as selections
     from adaptive.predictions p
-    join lateral (
-      select
-        method,
-        digit_count,
-        digits,
-        estimated_success,
-        baseline_success,
-        lift,
-        selection_margin
-      from adaptive.published_selections
-      where prediction_id = p.id
-      order by created_at desc
-      limit 1
-    ) s on true
     where p.market_id = ${body.marketId}
       and p.target_2d = ${body.target2D}
       and p.engine_version = ${body.engineVersion}
@@ -212,15 +207,7 @@ async function loadContext(body: LoadContextRequest): Promise<Response> {
       leftProbabilities: pendingRow.left_probabilities,
       rightProbabilities: pendingRow.right_probabilities,
       expertWeights: pendingRow.expert_weights ?? {},
-      selection: {
-        method: String(pendingRow.method),
-        digitCount: Number(pendingRow.digit_count),
-        digits: pendingRow.digits,
-        estimatedSuccess: Number(pendingRow.estimated_success),
-        baselineSuccess: Number(pendingRow.baseline_success),
-        lift: Number(pendingRow.lift),
-        selectionMargin: Number(pendingRow.selection_margin),
-      },
+      selections: pendingRow.selections ?? [],
     } : null,
   });
 }
