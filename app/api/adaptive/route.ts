@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { runAdaptiveFoundation } from "@/lib/adaptive/engine";
-import { persistAdaptivePrediction } from "@/lib/adaptive/persistence";
 import { isAdaptiveMethod, isAdaptiveTarget } from "@/lib/adaptive/types";
 import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
 import { requireActiveAccess } from "@/lib/server/access";
@@ -44,7 +43,6 @@ export async function POST(request: Request) {
 
     const draws = parseStrictHistory(data.history_data);
     const prediction = runAdaptiveFoundation(draws, target2D, method, digitCount);
-    const persistence = await persistAdaptivePrediction(String(data.id), String(data.name), prediction);
 
     return NextResponse.json(
       {
@@ -63,7 +61,7 @@ export async function POST(request: Request) {
           lift: prediction.selection.lift,
           selectionMargin: prediction.selection.selectionMargin,
           signalStrength: prediction.signalStrength,
-          persistence,
+          persistence: { status: "not_configured" as const },
         },
       },
       { headers: NO_STORE_HEADERS },
