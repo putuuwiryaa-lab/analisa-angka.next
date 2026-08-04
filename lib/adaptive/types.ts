@@ -44,6 +44,7 @@ export interface AdaptiveLearningState {
   target2D: Target2D;
   processedHistoryLength: number;
   lastProcessedDraw: string | null;
+  historyFingerprint: string;
   expertWeights: Record<string, number>;
   familyWeights: Record<string, number>;
   horizonWeights: Record<string, number>;
