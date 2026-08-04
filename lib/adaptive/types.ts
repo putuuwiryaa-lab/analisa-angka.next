@@ -76,7 +76,7 @@ export interface AdaptivePendingPrediction {
   leftProbabilities: DigitVector;
   rightProbabilities: DigitVector;
   expertWeights: Record<string, number>;
-  selection: AdaptiveSelection;
+  selections: AdaptiveSelection[];
 }
 
 export interface AdaptiveSettlement {
