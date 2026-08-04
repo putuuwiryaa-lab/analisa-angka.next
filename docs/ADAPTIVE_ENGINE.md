@@ -1,6 +1,6 @@
 # HF-APIE Adaptive Engine
 
-Status: online-learning V1.
+Status: online-learning V1 dengan background reconciliation.
 
 Adaptive berada di halaman Scan sebagai tab ketiga, tetapi tidak memakai formula atau state milik Scan/Batch.
 
@@ -16,7 +16,7 @@ Engine membentuk matriks probabilitas 100 pasangan. Optimizer menguji seluruh su
 
 ## Runtime boundary
 
-Aplikasi Next.js tidak membuka koneksi database Adaptive. UI memakai route Scan yang sudah ada dengan payload `action: "adaptive"`; persistence dijalankan oleh service Deno terpisah pada `adaptive-service/main.mts`.
+Aplikasi Next.js tidak membuka koneksi database Adaptive. UI memakai route Scan yang sudah ada dengan payload `action: "adaptive"`; persistence dan reconciliation dijalankan oleh service Deno terpisah pada `adaptive-service/main.mts`.
 
 ```text
 Next.js POST /api/scan { action: "adaptive" }
@@ -24,6 +24,14 @@ Next.js POST /api/scan { action: "adaptive" }
 Deno Adaptive service
         ↓ Neon serverless HTTP driver
 Neon PostgreSQL
+
+Deno.cron setiap 15 menit
+        ↓
+Supabase markets.history_data
+        ↓
+replay / settlement market tertinggal
+        ↓
+Neon state + audit reconciliation
 ```
 
 ## Environment aplikasi Next.js
@@ -40,9 +48,13 @@ Tanpa `ADAPTIVE_SERVICE_URL`, Adaptive tetap menghasilkan preview, tetapi full r
 ```env
 NEON_DATABASE_URL=postgresql://USER:PASSWORD@HOST-pooler.REGION.aws.neon.tech/DB?sslmode=require
 ADAPTIVE_SERVICE_SECRET=same-secret-as-next-app
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=server-only-service-role-key
 ```
 
-Koneksi direct hanya digunakan untuk migration atau administrasi:
+`SUPABASE_SERVICE_ROLE_KEY` hanya dipasang pada service Deno. Nilai ini tidak boleh dikirim ke browser atau dimasukkan ke environment publik.
+
+Koneksi Neon direct hanya digunakan untuk migration atau administrasi:
 
 ```env
 NEON_DIRECT_URL=postgresql://USER:PASSWORD@HOST.REGION.aws.neon.tech/DB?sslmode=require
@@ -54,6 +66,7 @@ Jalankan migration secara berurutan pada Neon SQL Editor:
 
 1. `sql/neon/001_adaptive_engine.sql`
 2. `sql/neon/002_adaptive_online_learning.sql`
+3. `sql/neon/003_adaptive_reconciliation.sql`
 
 Migration kedua:
 
@@ -63,6 +76,8 @@ Migration kedua:
 - membuat fungsi atomik `adaptive.store_online_run(jsonb)`;
 - menyinkronkan snapshot histori;
 - menyimpan state, prediction, selection, settlement, dan replay summary dalam satu transaksi.
+
+Migration ketiga membuat `adaptive.reconciliation_runs` untuk audit cron dan retry manual.
 
 ## Request aplikasi
 
@@ -78,13 +93,26 @@ Migration kedua:
 
 Request dikirim ke `POST /api/scan`. Request Scan lama tanpa `action: "adaptive"` tetap diproses oleh engine Scan seperti sebelumnya.
 
+Retry admin menggunakan route yang sama:
+
+```json
+{
+  "action": "adaptive-reconcile",
+  "marketLimit": 6
+}
+```
+
+Aksi reconciliation manual memerlukan session admin.
+
 ## Endpoint service
 
 ```text
 GET  /health
 POST /context/load
 POST /runs/store
-POST /predictions/store  # kompatibilitas foundation
+POST /predictions/store       # kompatibilitas foundation
+POST /reconcile               # retry manual/internal
+POST /reconciliation/latest   # audit terbaru
 ```
 
 Seluruh endpoint POST membutuhkan:
@@ -167,10 +195,34 @@ Prediction tersimpan dengan `history_length = N` menargetkan result pada index b
 
 - actual pair diambil dari result ke-`N + 1`;
 - pair/left/right Brier dihitung;
-- output AI atau BBFS yang diterbitkan dievaluasi;
+- seluruh output AI atau BBFS yang diterbitkan pada prediction tersebut dievaluasi;
 - expert loss direkonstruksi dari prefix histori yang sama;
 - prediction ditandai `settled`;
 - evaluation disimpan idempotent.
+
+## Background reconciliation
+
+Service Deno mendaftarkan cron `adaptive-market-reconciliation` setiap 15 menit dengan batch empat market.
+
+Planner hanya menjadwalkan market/target yang:
+
+- belum memiliki state;
+- panjang histori berubah;
+- result terakhir berubah; atau
+- mempunyai pending prediction yang sudah mendapat actual result.
+
+Market tanpa state diprioritaskan sebelum market incremental. Worker menggunakan output kanonik `BBFS 7` untuk memastikan setiap market dan target selalu memiliki pending prediction, sementara pilihan user lain ditambahkan ke prediction cutoff yang sama.
+
+Semua write tetap idempotent melalui `adaptive.store_online_run(jsonb)`. Cron dan retry manual dapat berjalan berdekatan tanpa menggandakan settlement karena state target dilindungi PostgreSQL advisory transaction lock.
+
+Setiap run mencatat:
+
+- trigger cron/manual/API;
+- jumlah market tersedia dan diproses;
+- jumlah target full/incremental/noop;
+- prediction yang di-settle;
+- error dan sisa antrean;
+- detail per market/target.
 
 ## Storage policy
 
@@ -187,15 +239,16 @@ Neon juga menyimpan:
 - snapshot result minimal per market dan urutan;
 - state aktif per market/target;
 - ringkasan replay;
-- evaluation settlement.
+- evaluation settlement;
+- audit reconciliation.
 
 Intermediate matrix setiap expert tidak disimpan permanen. Expert loss direkonstruksi dari histori dan versi engine ketika settlement, sehingga storage tetap terkendali.
 
 ## Batas versi ini
 
-Online learning aktif ketika Adaptive dipanggil. Trigger background setelah ingestion result dan reconciliation semua market secara terjadwal belum diaktifkan pada versi ini. Tahap berikutnya:
+Replay, online weighting, settlement, cron reconciliation, dan retry admin sudah aktif. Fase berikutnya berfokus pada:
 
-1. ingestion hook atau cron reconciliation semua market;
-2. manual retry admin;
-3. drift warning/recovery;
-4. calibration dan guardrail berdasarkan hasil shadow mode.
+1. drift warning/recovery;
+2. calibration dan guardrail berdasarkan hasil shadow mode;
+3. fingerprint koreksi histori internal;
+4. dashboard evaluasi lift dan Brier per market/target.
