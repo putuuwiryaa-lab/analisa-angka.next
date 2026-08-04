@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Database, Play, RefreshCw } from "lucide-react";
+import { Activity, Database, Play, RefreshCw, ShieldCheck } from "lucide-react";
 import type { AdaptiveMethod } from "@/lib/adaptive/types";
 import type { Target2D } from "@/lib/engine/types";
 
@@ -40,6 +40,18 @@ interface AdaptiveResult {
     | { status: "not_configured" };
 }
 
+interface ReconciliationSummary {
+  status: "success" | "partial" | "failed";
+  marketsProcessed: number;
+  targetsProcessed: number;
+  fullReplayTargets: number;
+  incrementalTargets: number;
+  noopTargets: number;
+  settledPredictions: number;
+  errorCount: number;
+  remainingMarkets: number;
+}
+
 const TARGET_LABELS: Record<Target2D, string> = {
   depan: "2D Depan",
   tengah: "2D Tengah",
@@ -69,8 +81,10 @@ export default function AdaptivePageClient() {
   const [target2D, setTarget2D] = useState<Target2D>("belakang");
   const [result, setResult] = useState<AdaptiveResult | null>(null);
   const [marketName, setMarketName] = useState("");
+  const [reconciliation, setReconciliation] = useState<ReconciliationSummary | null>(null);
   const [loadingMarkets, setLoadingMarkets] = useState(true);
   const [running, setRunning] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -127,6 +141,28 @@ export default function AdaptivePageClient() {
     }
   }
 
+  async function runReconciliation() {
+    setReconciling(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "adaptive-reconcile", marketLimit: 6 }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || "Reconciliation Adaptive gagal.");
+      setReconciliation(payload.summary);
+    } catch (runError) {
+      setError(runError instanceof Error ? runError.message : "Reconciliation Adaptive gagal.");
+    } finally {
+      setReconciling(false);
+    }
+  }
+
+  const busy = running || reconciling;
+
   return (
     <main className="space-y-3 px-1 sm:px-0">
       <section className="animate-fade-in rounded-2xl border border-border-soft bg-surface/75 p-4 backdrop-blur-xl">
@@ -149,7 +185,7 @@ export default function AdaptivePageClient() {
             <select
               value={marketId}
               onChange={(event) => setMarketId(event.target.value)}
-              disabled={loadingMarkets || running}
+              disabled={loadingMarkets || busy}
               className="h-12 w-full rounded-xl border border-border-soft bg-bg-deep/70 px-3 text-sm font-bold text-text outline-none focus:border-primary/60"
             >
               {loadingMarkets && <option value="">Memuat pasaran...</option>}
@@ -170,7 +206,7 @@ export default function AdaptivePageClient() {
                   key={value}
                   type="button"
                   onClick={() => setMethod(value)}
-                  disabled={running}
+                  disabled={busy}
                   className={`pressable h-11 rounded-xl border text-xs font-black uppercase tracking-wide transition-colors ${
                     method === value
                       ? "border-primary/50 bg-primary/20 text-primary-soft"
@@ -195,7 +231,7 @@ export default function AdaptivePageClient() {
               step={1}
               value={digitCount}
               onChange={(event) => setDigitCount(Number(event.target.value))}
-              disabled={running}
+              disabled={busy}
               className="w-full accent-[var(--color-primary)]"
             />
             <div className="mt-1 flex justify-between text-[9px] font-bold text-text-muted"><span>1</span><span>9</span></div>
@@ -209,7 +245,7 @@ export default function AdaptivePageClient() {
                   key={value}
                   type="button"
                   onClick={() => setTarget2D(value)}
-                  disabled={running}
+                  disabled={busy}
                   className={`pressable min-h-11 rounded-xl border px-2 text-[10px] font-black uppercase tracking-wide transition-colors ${
                     target2D === value
                       ? "border-primary/50 bg-primary/20 text-primary-soft"
@@ -225,11 +261,21 @@ export default function AdaptivePageClient() {
           <button
             type="button"
             onClick={runAdaptive}
-            disabled={!marketId || running || loadingMarkets}
+            disabled={!marketId || busy || loadingMarkets}
             className="pressable flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-primary/55 bg-primary/25 text-sm font-black uppercase tracking-wide text-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
           >
             {running ? <RefreshCw className="animate-spin" size={18} /> : <Play size={18} />}
             {running ? "Memproses" : "Proses Adaptive"}
+          </button>
+
+          <button
+            type="button"
+            onClick={runReconciliation}
+            disabled={busy || loadingMarkets}
+            className="pressable flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border-soft bg-bg-deep/55 text-[10px] font-black uppercase tracking-wide text-text-muted disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {reconciling ? <RefreshCw className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
+            {reconciling ? "Reconcile berjalan" : "Reconcile 6 Market · Admin"}
           </button>
         </div>
       </section>
@@ -237,6 +283,21 @@ export default function AdaptivePageClient() {
       {error && (
         <section className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm font-semibold text-red-200">
           {error}
+        </section>
+      )}
+
+      {reconciliation && (
+        <section className="rounded-2xl border border-border-soft bg-surface/75 p-4 text-xs text-text-muted">
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-black uppercase tracking-wide text-text">Reconciliation {reconciliation.status}</p>
+            <span>{reconciliation.remainingMarkets} market tersisa</span>
+          </div>
+          <p className="mt-2 leading-relaxed">
+            {reconciliation.marketsProcessed} market · {reconciliation.targetsProcessed} target · {reconciliation.settledPredictions} prediction di-settle · {reconciliation.errorCount} error.
+          </p>
+          <p className="mt-1 text-[10px]">
+            Full {reconciliation.fullReplayTargets} · incremental {reconciliation.incrementalTargets} · state terbaru {reconciliation.noopTargets}.
+          </p>
         </section>
       )}
 
