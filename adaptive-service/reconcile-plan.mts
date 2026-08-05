@@ -16,6 +16,8 @@ export interface ReconciliationStateSnapshot {
   lastProcessedDraw: string | null;
   historyFingerprint?: string | null;
   pendingHistoryLength?: number | null;
+  pendingSelectionCount?: number | null;
+  pendingSnapshotComplete?: boolean | null;
   updatedAt?: string | null;
 }
 
@@ -27,6 +29,7 @@ export interface ReconciliationMarketPlan {
   targets: ReconciliationTarget[];
   missingStateCount: number;
   correctedHistoryCount: number;
+  incompleteSnapshotCount: number;
   oldestProcessedHistoryLength: number;
 }
 
@@ -63,12 +66,21 @@ export function planAdaptiveReconciliation(
     const targets: ReconciliationTarget[] = [];
     let missingStateCount = 0;
     let correctedHistoryCount = 0;
+    let incompleteSnapshotCount = 0;
     let oldestProcessedHistoryLength = market.historyLength;
 
     for (const target2D of RECONCILIATION_TARGETS) {
       const state = stateMap.get(stateKey(market.id, target2D));
-      const pendingNeedsSettlement = Number.isInteger(state?.pendingHistoryLength) &&
+      const hasPendingPrediction = Number.isInteger(state?.pendingHistoryLength);
+      const pendingNeedsSettlement = hasPendingPrediction &&
         Number(state?.pendingHistoryLength) < market.historyLength;
+      const missingPendingSnapshot = Boolean(state && !hasPendingPrediction);
+      const incompletePendingSnapshot = Boolean(
+        state &&
+        hasPendingPrediction &&
+        Number(state.pendingHistoryLength) === market.historyLength &&
+        (Number(state.pendingSelectionCount) !== 18 || state.pendingSnapshotComplete !== true)
+      );
       const fingerprintMismatch = Boolean(
         state &&
         state.processedHistoryLength === market.historyLength &&
@@ -81,12 +93,15 @@ export function planAdaptiveReconciliation(
         state.processedHistoryLength !== market.historyLength ||
         state.lastProcessedDraw !== market.lastDraw ||
         fingerprintMismatch ||
-        pendingNeedsSettlement;
+        pendingNeedsSettlement ||
+        missingPendingSnapshot ||
+        incompletePendingSnapshot;
 
       if (!stale) continue;
       targets.push(target2D);
       if (!state) missingStateCount += 1;
       if (fingerprintMismatch) correctedHistoryCount += 1;
+      if (missingPendingSnapshot || incompletePendingSnapshot) incompleteSnapshotCount += 1;
       oldestProcessedHistoryLength = Math.min(
         oldestProcessedHistoryLength,
         state?.processedHistoryLength ?? 0,
@@ -102,6 +117,7 @@ export function planAdaptiveReconciliation(
       targets,
       missingStateCount,
       correctedHistoryCount,
+      incompleteSnapshotCount,
       oldestProcessedHistoryLength,
     });
   }
@@ -109,6 +125,9 @@ export function planAdaptiveReconciliation(
   plans.sort((left, right) => {
     if (left.correctedHistoryCount !== right.correctedHistoryCount) {
       return right.correctedHistoryCount - left.correctedHistoryCount;
+    }
+    if (left.incompleteSnapshotCount !== right.incompleteSnapshotCount) {
+      return right.incompleteSnapshotCount - left.incompleteSnapshotCount;
     }
     if (left.missingStateCount !== right.missingStateCount) {
       return right.missingStateCount - left.missingStateCount;
