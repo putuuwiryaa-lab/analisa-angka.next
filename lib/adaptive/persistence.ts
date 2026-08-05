@@ -16,6 +16,9 @@ export type AdaptivePersistenceStatus =
     predictionId: string;
     stateRevision: number;
     settledPredictionId: string | null;
+    selectionsPublished: number;
+    selectionsSettled: number;
+    snapshotComplete: boolean;
   }
   | { status: "not_configured" };
 
@@ -31,6 +34,8 @@ export interface AdaptiveReconciliationSummary {
   incrementalTargets: number;
   noopTargets: number;
   settledPredictions: number;
+  selectionsPublished: number;
+  selectionsSettled: number;
   errorCount: number;
   remainingMarkets: number;
   details: Array<Record<string, unknown>>;
@@ -120,6 +125,16 @@ export async function persistAdaptiveRun(
   const predictionId = String(payload.predictionId ?? "");
   if (!predictionId) throw new Error("Adaptive service tidak mengembalikan prediction id.");
 
+  const selectionsPublished = Number(payload.selectionsPublished ?? 0);
+  const selectionsSettled = Number(payload.selectionsSettled ?? 0);
+  const snapshotComplete = payload.snapshotComplete === true;
+  if (selectionsPublished !== 18 || !snapshotComplete) {
+    throw new Error("Adaptive service belum menyimpan snapshot lengkap 18 selection.");
+  }
+  if (run.settlement && selectionsSettled !== 18) {
+    throw new Error("Adaptive service belum menyimpan 18 evaluasi settlement.");
+  }
+
   return {
     status: "stored",
     predictionId,
@@ -127,6 +142,9 @@ export async function persistAdaptiveRun(
     settledPredictionId: payload.settledPredictionId
       ? String(payload.settledPredictionId)
       : null,
+    selectionsPublished,
+    selectionsSettled,
+    snapshotComplete,
   };
 }
 
