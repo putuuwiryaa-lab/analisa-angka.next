@@ -54,7 +54,7 @@ from (
 where counts.id = p.id;
 
 -- Snapshot V1 lama hanya mempunyai satu selection. Batalkan pending yang belum
--- lengkap agar reconciliation otomatis menerbitkan ulang 18 selection dari matrix baru.
+-- lengkap agar reconciliation otomatis menerbitkan ulang 18 selection.
 update adaptive.predictions
 set status = 'cancelled'
 where status = 'pending'
@@ -111,12 +111,12 @@ begin
       or jsonb_array_length(item->'digits') <> (item->>'digitCount')::integer
       or exists (
         select 1
-        from jsonb_array_elements_text(item->'digits') digit
-        where digit !~ '^[0-9]$'
+        from jsonb_array_elements_text(item->'digits') as digit_rows(value)
+        where digit_rows.value !~ '^[0-9]$'
       )
       or (
-        select count(distinct digit)
-        from jsonb_array_elements_text(item->'digits') digit
+        select count(distinct digit_rows.value)
+        from jsonb_array_elements_text(item->'digits') as digit_rows(value)
       ) <> (item->>'digitCount')::integer
   ) then
     raise exception 'Payload selection Adaptive tidak valid.';
