@@ -16,6 +16,11 @@ import {
   loadAdaptiveGuardrailHealth,
   type GuardrailHealthRequest,
 } from "./guardrail-health.mts";
+import {
+  requestedSelectionBelongsToPublication,
+  validateAdaptiveSelection,
+  validateFullAdaptivePublication,
+} from "./core/publication.mts";
 
 type AdaptiveTarget = "depan" | "tengah" | "belakang";
 type AdaptiveMethod = "ai" | "bbfs";
@@ -43,6 +48,7 @@ interface AdaptivePredictionPayload {
   expertWeights: Record<string, number>;
   signalStrength: "low" | "medium" | "high";
   selection: AdaptiveSelectionPayload;
+  selections: AdaptiveSelectionPayload[];
   replay?: Record<string, unknown>;
 }
 
@@ -126,12 +132,7 @@ function validatePrediction(prediction: AdaptivePredictionPayload | undefined): 
   if (prediction.leftProbabilities?.length !== 10 || prediction.rightProbabilities?.length !== 10) {
     return "Marginal probabilities harus berisi 10 nilai.";
   }
-  if (!selection || !isMethod(selection.method)) return "Metode selection tidak valid.";
-  if (!Number.isInteger(selection.digitCount) || selection.digitCount < 1 || selection.digitCount > 9) {
-    return "Jumlah digit harus antara 1 dan 9.";
-  }
-  if (selection.digits?.length !== selection.digitCount) return "Jumlah output digit tidak konsisten.";
-  return null;
+  return validateAdaptiveSelection(selection);
 }
 
 function validateStorePrediction(body: StorePredictionRequest): string | null {
@@ -142,6 +143,12 @@ function validateStorePrediction(body: StorePredictionRequest): string | null {
 function validateOnlineRun(body: StoreOnlineRunRequest): string | null {
   const predictionError = validateStorePrediction(body);
   if (predictionError) return predictionError;
+
+  const publicationError = validateFullAdaptivePublication(body.prediction.selections);
+  if (publicationError) return publicationError;
+  if (!requestedSelectionBelongsToPublication(body.prediction.selection, body.prediction.selections)) {
+    return "Selection yang diminta tidak identik dengan selection terpublikasi.";
+  }
   if (!body.state || body.state.target2D !== body.prediction.target2D) return "State Adaptive tidak valid.";
   if (!Number.isInteger(body.state.processedHistoryLength) || body.state.processedHistoryLength < 2) {
     return "Panjang histori state tidak valid.";
@@ -305,6 +312,17 @@ async function storeOnlineRun(body: StoreOnlineRunRequest): Promise<Response> {
   const result = (rows[0] as { result?: unknown } | undefined)?.result;
   if (!result || typeof result !== "object") throw new Error("Neon tidak mengembalikan hasil online run.");
 
+  const stored = result as Record<string, unknown>;
+  const selectionsPublished = Number(stored.selectionsPublished ?? 0);
+  const selectionsSettled = Number(stored.selectionsSettled ?? 0);
+  const snapshotComplete = stored.snapshotComplete === true;
+  if (selectionsPublished !== 18 || !snapshotComplete) {
+    throw new Error("Migration 005 belum aktif: snapshot Adaptive belum menyimpan 18 selection.");
+  }
+  if (body.settlement?.predictionId && selectionsSettled !== 18) {
+    throw new Error("Settlement Adaptive tidak menghasilkan 18 evaluasi selection.");
+  }
+
   const guardrailPayload: GuardrailRunPayload = {
     marketId: body.marketId,
     targetDrawKey: body.targetDrawKey,
@@ -322,7 +340,7 @@ async function storeOnlineRun(body: StoreOnlineRunRequest): Promise<Response> {
     historyDraws: body.historyDraws,
   };
   const guardrail = await applyAdaptiveGuardrail(sql, guardrailPayload);
-  return json({ ...(result as Record<string, unknown>), guardrail });
+  return json({ ...stored, guardrail });
 }
 
 export async function adaptiveServiceHandler(request: Request): Promise<Response> {
@@ -332,7 +350,8 @@ export async function adaptiveServiceHandler(request: Request): Promise<Response
     return json({
       ok: true,
       service: "hf-apie-adaptive-persistence",
-      mode: "online-learning",
+      mode: "online-learning-full-publication",
+      publicationSelectionCount: 18,
       guardrail: "ewma-ph-v1-observe-only",
       reconciliationConfigured: Boolean(
         Deno.env.get("SUPABASE_URL")?.trim() &&
