@@ -19,6 +19,8 @@ function completeStates(market: ReconciliationMarketSnapshot): ReconciliationSta
     lastProcessedDraw: market.lastDraw,
     historyFingerprint: market.historyFingerprint,
     pendingHistoryLength: market.historyLength,
+    pendingSelectionCount: 18,
+    pendingSnapshotComplete: true,
   }));
 }
 
@@ -38,6 +40,35 @@ Deno.test("state terbaru dilewati tetapi pending lama tetap dijadwalkan", () => 
   assert.deepEqual(plans[0].targets, ["tengah"]);
 });
 
+Deno.test("snapshot tanpa pending prediction dijadwalkan ulang", () => {
+  const states = completeStates(MARKETS[0]);
+  states[0] = {
+    ...states[0],
+    pendingHistoryLength: null,
+    pendingSelectionCount: null,
+    pendingSnapshotComplete: false,
+  };
+
+  const plans = planAdaptiveReconciliation([MARKETS[0]], states, { marketLimit: 4 });
+  assert.equal(plans.length, 1);
+  assert.deepEqual(plans[0].targets, ["depan"]);
+  assert.equal(plans[0].incompleteSnapshotCount, 1);
+});
+
+Deno.test("snapshot lama dengan satu selection dijadwalkan ulang", () => {
+  const states = completeStates(MARKETS[0]);
+  states[2] = {
+    ...states[2],
+    pendingSelectionCount: 1,
+    pendingSnapshotComplete: false,
+  };
+
+  const plans = planAdaptiveReconciliation([MARKETS[0]], states, { marketLimit: 4 });
+  assert.equal(plans.length, 1);
+  assert.deepEqual(plans[0].targets, ["belakang"]);
+  assert.equal(plans[0].incompleteSnapshotCount, 1);
+});
+
 Deno.test("market dengan state kosong diprioritaskan sebelum incremental", () => {
   const incrementalState: ReconciliationStateSnapshot[] = (["depan", "tengah", "belakang"] as const).map(
     (target2D) => ({
@@ -47,6 +78,8 @@ Deno.test("market dengan state kosong diprioritaskan sebelum incremental", () =>
       lastProcessedDraw: "1111",
       historyFingerprint: "old",
       pendingHistoryLength: 169,
+      pendingSelectionCount: 18,
+      pendingSnapshotComplete: true,
     }),
   );
 
