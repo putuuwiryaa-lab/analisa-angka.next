@@ -6,7 +6,12 @@ interface RankedSubset {
   score: number;
 }
 
-function combinations(size: number): number[][] {
+const COMBINATIONS_BY_SIZE = new Map<number, readonly number[][]>();
+
+function combinations(size: number): readonly number[][] {
+  const cached = COMBINATIONS_BY_SIZE.get(size);
+  if (cached) return cached;
+
   const output: number[][] = [];
 
   function visit(start: number, current: number[]) {
@@ -24,15 +29,15 @@ function combinations(size: number): number[][] {
   }
 
   visit(0, []);
+  COMBINATIONS_BY_SIZE.set(size, output);
   return output;
 }
 
-export function scoreDigitSubset(
-  matrix: readonly number[],
+function scoreNormalizedDigitSubset(
+  probabilities: readonly number[],
   method: AdaptiveMethod,
   digits: readonly number[],
 ): number {
-  const probabilities = normalizePairMatrix(matrix);
   const selected = new Set(digits);
   let score = 0;
 
@@ -48,6 +53,14 @@ export function scoreDigitSubset(
   return score;
 }
 
+export function scoreDigitSubset(
+  matrix: readonly number[],
+  method: AdaptiveMethod,
+  digits: readonly number[],
+): number {
+  return scoreNormalizedDigitSubset(normalizePairMatrix(matrix), method, digits);
+}
+
 function compareRankedSubset(a: RankedSubset, b: RankedSubset): number {
   const scoreDifference = b.score - a.score;
   if (Math.abs(scoreDifference) > 1e-12) return scoreDifference;
@@ -58,21 +71,32 @@ function compareRankedSubset(a: RankedSubset, b: RankedSubset): number {
   return 0;
 }
 
-function digitContribution(matrix: readonly number[], method: AdaptiveMethod, subset: readonly number[], digit: number) {
+function digitContribution(
+  probabilities: readonly number[],
+  method: AdaptiveMethod,
+  subset: readonly number[],
+  digit: number,
+): number {
   const withoutDigit = subset.filter((value) => value !== digit);
-  return scoreDigitSubset(matrix, method, subset) - scoreDigitSubset(matrix, method, withoutDigit);
+  return scoreNormalizedDigitSubset(probabilities, method, subset) -
+    scoreNormalizedDigitSubset(probabilities, method, withoutDigit);
 }
 
-function orderSelectedDigits(matrix: readonly number[], method: AdaptiveMethod, digits: readonly number[]) {
+function orderSelectedDigits(
+  probabilities: readonly number[],
+  method: AdaptiveMethod,
+  digits: readonly number[],
+): number[] {
   return [...digits].sort((a, b) => {
-    const difference = digitContribution(matrix, method, digits, b) - digitContribution(matrix, method, digits, a);
+    const difference = digitContribution(probabilities, method, digits, b) -
+      digitContribution(probabilities, method, digits, a);
     if (Math.abs(difference) > 1e-12) return difference;
     return a - b;
   });
 }
 
-export function optimizeDigitSelection(
-  matrix: readonly number[],
+function optimizeNormalizedSelection(
+  probabilities: readonly number[],
   method: AdaptiveMethod,
   digitCount: number,
 ): AdaptiveSelection {
@@ -81,20 +105,45 @@ export function optimizeDigitSelection(
   }
 
   const ranked = combinations(digitCount)
-    .map((digits) => ({ digits, score: scoreDigitSubset(matrix, method, digits) }))
+    .map((digits) => ({
+      digits: [...digits],
+      score: scoreNormalizedDigitSubset(probabilities, method, digits),
+    }))
     .sort(compareRankedSubset);
 
   const best = ranked[0];
   const runnerUp = ranked[1];
-  const baselineSuccess = scoreDigitSubset(createUniformPairMatrix(), method, best.digits);
+  const uniform = createUniformPairMatrix();
+  const baselineSuccess = scoreNormalizedDigitSubset(uniform, method, best.digits);
 
   return {
     method,
     digitCount,
-    digits: orderSelectedDigits(matrix, method, best.digits),
+    digits: orderSelectedDigits(probabilities, method, best.digits),
     estimatedSuccess: best.score,
     baselineSuccess,
     lift: best.score - baselineSuccess,
     selectionMargin: runnerUp ? Math.max(0, best.score - runnerUp.score) : 0,
   };
+}
+
+export function optimizeDigitSelection(
+  matrix: readonly number[],
+  method: AdaptiveMethod,
+  digitCount: number,
+): AdaptiveSelection {
+  return optimizeNormalizedSelection(normalizePairMatrix(matrix), method, digitCount);
+}
+
+export function optimizeAllSelections(matrix: readonly number[]): AdaptiveSelection[] {
+  const probabilities = normalizePairMatrix(matrix);
+  const selections: AdaptiveSelection[] = [];
+
+  for (const method of ["ai", "bbfs"] as const) {
+    for (let digitCount = 1; digitCount <= 9; digitCount++) {
+      selections.push(optimizeNormalizedSelection(probabilities, method, digitCount));
+    }
+  }
+
+  return selections;
 }

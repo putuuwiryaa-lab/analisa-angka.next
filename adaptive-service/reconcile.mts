@@ -48,6 +48,8 @@ export interface ReconciliationSummary {
   incrementalTargets: number;
   noopTargets: number;
   settledPredictions: number;
+  selectionsPublished: number;
+  selectionsSettled: number;
   errorCount: number;
   remainingMarkets: number;
   details: Array<Record<string, unknown>>;
@@ -150,18 +152,30 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
       s.last_processed_draw,
       s.updated_at,
       to_jsonb(s)->>'history_fingerprint' as history_fingerprint,
-      (
-        select p.history_length
-        from adaptive.predictions p
-        where p.market_id = s.market_id
-          and p.target_2d = s.target_2d
-          and p.engine_version = s.engine_version
-          and p.config_version = s.config_version
-          and p.status = 'pending'
-        order by p.history_length desc, p.created_at desc
-        limit 1
-      ) as pending_history_length
+      pending.history_length as pending_history_length,
+      pending.selection_count as pending_selection_count,
+      pending.snapshot_complete as pending_snapshot_complete
     from adaptive.engine_states s
+    left join lateral (
+      select
+        p.history_length,
+        count(ps.id)::integer as selection_count,
+        coalesce(
+          (to_jsonb(p)->>'snapshot_complete')::boolean,
+          count(ps.id) = 18
+        ) as snapshot_complete
+      from adaptive.predictions p
+      left join adaptive.published_selections ps
+        on ps.prediction_id = p.id
+      where p.market_id = s.market_id
+        and p.target_2d = s.target_2d
+        and p.engine_version = s.engine_version
+        and p.config_version = s.config_version
+        and p.status = 'pending'
+      group by p.id
+      order by p.history_length desc, p.created_at desc
+      limit 1
+    ) pending on true
     where s.engine_version = ${ADAPTIVE_ENGINE_VERSION}
       and s.config_version = ${ADAPTIVE_CONFIG_VERSION}
   `;
@@ -178,6 +192,10 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
       pendingHistoryLength: row.pending_history_length === null || row.pending_history_length === undefined
         ? null
         : Number(row.pending_history_length),
+      pendingSelectionCount: row.pending_selection_count === null || row.pending_selection_count === undefined
+        ? null
+        : Number(row.pending_selection_count),
+      pendingSnapshotComplete: row.pending_snapshot_complete === true || row.pending_snapshot_complete === "true",
       updatedAt: row.updated_at ? String(row.updated_at) : null,
     } satisfies ReconciliationStateSnapshot];
   });
@@ -327,6 +345,8 @@ async function finishRunRow(sql: SqlClient, summary: ReconciliationSummary): Pro
       incremental_targets = ${summary.incrementalTargets},
       noop_targets = ${summary.noopTargets},
       settled_predictions = ${summary.settledPredictions},
+      selections_published = ${summary.selectionsPublished},
+      selections_settled = ${summary.selectionsSettled},
       error_count = ${summary.errorCount},
       remaining_markets = ${summary.remainingMarkets},
       details = ${JSON.stringify(summary.details)}::jsonb,
@@ -352,6 +372,8 @@ export async function latestReconciliationRun(): Promise<Record<string, unknown>
       incremental_targets,
       noop_targets,
       settled_predictions,
+      selections_published,
+      selections_settled,
       error_count,
       remaining_markets,
       details,
@@ -392,6 +414,8 @@ export async function runAdaptiveReconciliation(
     let incrementalTargets = 0;
     let noopTargets = 0;
     let settledPredictions = 0;
+    let selectionsPublished = 0;
+    let selectionsSettled = 0;
 
     for (const plan of plans) {
       const market = marketMap.get(plan.marketId);
@@ -418,9 +442,22 @@ export async function runAdaptiveReconciliation(
             settlement: run.settlement,
             historyDraws: run.historyDraws,
           };
-          await sql`
-            select adaptive.store_online_run(${JSON.stringify(payload)}::jsonb)
+          const storeRows = await sql`
+            select adaptive.store_online_run(${JSON.stringify(payload)}::jsonb) as result
           `;
+          const storeResult = storeRows[0]?.result;
+          if (!storeResult || typeof storeResult !== "object") {
+            throw new Error("Neon tidak mengembalikan hasil full publication.");
+          }
+          const stored = storeResult as Record<string, unknown>;
+          const publishedCount = Number(stored.selectionsPublished ?? 0);
+          const settledCount = Number(stored.selectionsSettled ?? 0);
+          if (publishedCount !== 18 || stored.snapshotComplete !== true) {
+            throw new Error("Migration 005 belum aktif: snapshot Adaptive belum lengkap 18 selection.");
+          }
+          if (run.settlement && settledCount !== 18) {
+            throw new Error("Settlement Adaptive tidak menghasilkan 18 evaluasi selection.");
+          }
 
           const guardrailPayload: GuardrailRunPayload = {
             marketId: payload.marketId,
@@ -441,6 +478,8 @@ export async function runAdaptiveReconciliation(
           const guardrail = await applyAdaptiveGuardrail(sql, guardrailPayload);
 
           targetsProcessed += 1;
+          selectionsPublished += publishedCount;
+          selectionsSettled += settledCount;
           marketSucceeded = true;
           if (run.prediction.replay.mode === "full") fullReplayTargets += 1;
           else if (run.prediction.replay.mode === "incremental") incrementalTargets += 1;
@@ -453,6 +492,9 @@ export async function runAdaptiveReconciliation(
             replayMode: run.prediction.replay.mode,
             processedSteps: run.prediction.replay.processedSteps,
             settled: Boolean(run.settlement),
+            selectionsPublished: publishedCount,
+            selectionsSettled: settledCount,
+            snapshotComplete: stored.snapshotComplete === true,
             historyCorrectionDetected: context.correctionDetected,
             guardrailStatus: guardrail.status,
             driftState: guardrail.nextState,
@@ -493,6 +535,8 @@ export async function runAdaptiveReconciliation(
       incrementalTargets,
       noopTargets,
       settledPredictions,
+      selectionsPublished,
+      selectionsSettled,
       errorCount,
       remainingMarkets,
       details,
@@ -517,6 +561,8 @@ export async function runAdaptiveReconciliation(
         incrementalTargets: 0,
         noopTargets: 0,
         settledPredictions: 0,
+        selectionsPublished: 0,
+        selectionsSettled: 0,
         errorCount: 1,
         remainingMarkets: 0,
         details: [{ stage: "reconciliation", error: message }],

@@ -137,7 +137,7 @@ export async function POST(req: Request) {
       }
 
       const draws = parseStrictHistory(data.history_data);
-      const context = await loadAdaptiveContext(String(data.id), body.target2D);
+      const context = await loadAdaptiveContext(String(data.id), body.target2D, draws);
       const run = runAdaptiveOnline(
         draws,
         body.target2D,

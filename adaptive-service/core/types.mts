@@ -61,7 +61,10 @@ export interface AdaptivePrediction {
   leftProbabilities: DigitVector;
   rightProbabilities: DigitVector;
   expertWeights: Record<string, number>;
+  /** Selection yang diminta caller; dipertahankan untuk kompatibilitas service saat ini. */
   selection: AdaptiveSelection;
+  /** Seluruh optimizer pass AI 1-9 dan BBFS 1-9 dari matrix yang sama. */
+  selections: AdaptiveSelection[];
   signalStrength: "low" | "medium" | "high";
   replay: AdaptiveReplaySummary;
 }

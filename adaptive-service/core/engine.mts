@@ -1,5 +1,5 @@
 import { replayAdaptiveHistory, settlePendingPrediction } from "./learning.mts";
-import { optimizeDigitSelection } from "./optimizer.mts";
+import { optimizeAllSelections } from "./optimizer.mts";
 import { calculateMarginals, combinePairMatrices } from "./pair-probability.mts";
 import type {
   AdaptiveLearningState,
@@ -7,6 +7,7 @@ import type {
   AdaptivePendingPrediction,
   AdaptivePrediction,
   AdaptiveRun,
+  AdaptiveSelection,
   Target2D,
 } from "./types.mts";
 import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types.mts";
@@ -15,6 +16,20 @@ function signalStrength(lift: number, margin: number): AdaptivePrediction["signa
   if (lift >= 0.05 && margin >= 0.01) return "high";
   if (lift >= 0.02 || margin >= 0.004) return "medium";
   return "low";
+}
+
+function requestedSelection(
+  selections: readonly AdaptiveSelection[],
+  method: AdaptiveMethod,
+  digitCount: number,
+): AdaptiveSelection {
+  const selection = selections.find((item) =>
+    item.method === method && item.digitCount === digitCount
+  );
+  if (!selection) {
+    throw new Error(`Selection Adaptive ${method.toUpperCase()} ${digitCount} digit tidak tersedia.`);
+  }
+  return selection;
 }
 
 export function runAdaptiveOnline(
@@ -28,7 +43,8 @@ export function runAdaptiveOnline(
   const replay = replayAdaptiveHistory(draws, target2D, initialState);
   const pairProbabilities = combinePairMatrices(replay.experts);
   const marginals = calculateMarginals(pairProbabilities);
-  const selection = optimizeDigitSelection(pairProbabilities, method, digitCount);
+  const selections = optimizeAllSelections(pairProbabilities);
+  const selection = requestedSelection(selections, method, digitCount);
   const latestDraw = draws[draws.length - 1];
 
   const prediction: AdaptivePrediction = {
@@ -43,6 +59,7 @@ export function runAdaptiveOnline(
     rightProbabilities: marginals.right,
     expertWeights: replay.state.expertWeights,
     selection,
+    selections,
     signalStrength: signalStrength(selection.lift, selection.selectionMargin),
     replay: replay.summary,
   };
