@@ -31,37 +31,37 @@ Deno.test("concurrency guard mengambil lock sebelum membaca state aktif", () => 
   assert.ok(baseStoreIndex > stateReadIndex);
 });
 
-Deno.test("run incremental stale ditolak berdasarkan state revision", () => {
-  assert.match(sql, /v_payload_state_revision is distinct from v_current_state_revision/);
-  assert.match(sql, /expected revision %s, observed revision %s/);
+Deno.test("payload wajib membawa revision dan fingerprint state yang dibaca", () => {
+  assert.match(sql, /p_payload \? 'expectedStateRevision'/);
+  assert.match(sql, /p_payload \? 'expectedHistoryFingerprint'/);
+  assert.match(sql, /expectedStateRevision harus null atau integer non-negatif/);
+  assert.match(sql, /expectedHistoryFingerprint harus null atau SHA-256 hex/);
+});
+
+Deno.test("context token dibandingkan tepat setelah lock", () => {
+  assert.match(
+    sql,
+    /v_expected_state_revision is distinct from v_current_state_revision/,
+  );
+  assert.match(
+    sql,
+    /v_expected_history_fingerprint is distinct from v_current_history_fingerprint/,
+  );
   assert.match(sql, /errcode = '40001'/);
 });
 
-Deno.test("run yang menjadi tidak kompatibel saat menunggu lock tidak dianggap koreksi baru", () => {
-  assert.match(sql, /v_history_correction_at_write boolean := false/);
-  assert.match(sql, /v_current_processed_history_length > jsonb_array_length\(v_history_draws\)/);
-  assert.match(sql, /v_payload_prefix_last_draw is distinct from v_current_last_processed_draw/);
-  assert.match(sql, /v_payload_prefix_fingerprint is distinct from v_current_history_fingerprint/);
+Deno.test("run pertama hanya menerima context token null", () => {
   assert.match(
     sql,
-    /if v_history_correction_at_write then[\s\S]*if v_payload_state_revision <> 0 then[\s\S]*errcode = '40001'/,
+    /elsif v_expected_state_revision is not null[\s\S]*or v_expected_history_fingerprint is not null/,
   );
-});
-
-Deno.test("full replay koreksi sah tetap dapat memakai revision nol", () => {
-  assert.match(
-    sql,
-    /Context loader membuang state lama ketika koreksi histori terdeteksi/,
-  );
-  assert.match(
-    sql,
-    /if v_history_correction_at_write then[\s\S]*if v_payload_state_revision <> 0 then/,
-  );
+  assert.match(sql, /context mengharapkan state yang tidak lagi tersedia/);
 });
 
 Deno.test("wrapper mengembalikan audit optimistic concurrency", () => {
   assert.match(sql, /'optimisticConcurrencyChecked', true/);
-  assert.match(sql, /'payloadStateRevision', v_payload_state_revision/);
+  assert.match(sql, /'expectedStateRevision', v_expected_state_revision/);
   assert.match(sql, /'observedStateRevision', v_current_state_revision/);
-  assert.match(sql, /'historyCorrectionAtWrite', v_history_correction_at_write/);
+  assert.match(sql, /'expectedHistoryFingerprint', v_expected_history_fingerprint/);
+  assert.match(sql, /'observedHistoryFingerprint', v_current_history_fingerprint/);
 });
