@@ -222,6 +222,8 @@ async function loadContext(
   pendingPrediction: AdaptivePendingPrediction | null;
   pendingHistoryLength: number | null;
   correctionDetected: boolean;
+  expectedStateRevision: number | null;
+  expectedHistoryFingerprint: string | null;
 }> {
   const stateRows = await sql`
     select
@@ -298,6 +300,10 @@ async function loadContext(
 
   return {
     correctionDetected: compatibility.correctionDetected,
+    expectedStateRevision: stateRow ? Number(stateRow.state_revision ?? 0) : null,
+    expectedHistoryFingerprint: stateRow?.history_fingerprint
+      ? String(stateRow.history_fingerprint)
+      : null,
     pendingHistoryLength: pendingRow ? Number(pendingRow.history_length) : null,
     state: useStoredContext && stateRow ? {
       engineVersion: String(stateRow.engine_version),
@@ -454,6 +460,8 @@ export async function runAdaptiveReconciliation(
             marketId: market.id,
             marketName: market.name,
             targetDrawKey: `next:${run.prediction.historyCutoffKey}`,
+            expectedStateRevision: context.expectedStateRevision,
+            expectedHistoryFingerprint: context.expectedHistoryFingerprint,
             prediction: run.prediction,
             state: run.state,
             settlement: run.settlement,
@@ -515,6 +523,7 @@ export async function runAdaptiveReconciliation(
             selectionsSettled: settledCount,
             snapshotComplete: stored.snapshotComplete === true,
             historyCorrectionDetected: context.correctionDetected,
+            optimisticConcurrencyChecked: stored.optimisticConcurrencyChecked === true,
             guardrailStatus: guardrail.status,
             driftState: guardrail.nextState,
             driftEvent: guardrail.eventType,
