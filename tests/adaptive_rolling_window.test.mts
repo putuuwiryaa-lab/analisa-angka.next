@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { runAdaptiveOnline } from "../lib/adaptive/engine.ts";
+import { runAdaptiveOnline } from "../adaptive-service/core/engine.mts";
 import { planAdaptiveReconciliation } from "../adaptive-service/reconcile-plan.mts";
-import type { AdaptivePendingPrediction } from "../lib/adaptive/types.ts";
+import type { AdaptivePendingPrediction } from "../adaptive-service/core/types.mts";
 
 const HISTORY = [
   "1234", "5678", "9012", "3456", "7890", "1122", "3344", "5566", "7788", "9900",
