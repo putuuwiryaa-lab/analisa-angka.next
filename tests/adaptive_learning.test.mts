@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import { runAdaptiveOnline } from "../lib/adaptive/engine.ts";
+import { buildBaselineExperts } from "../lib/adaptive/experts.ts";
 import {
+  evaluateExpertLosses,
   replayAdaptiveHistory,
+  resolveExpertWeights,
   settlePendingPrediction,
+  updateExpertWeights,
 } from "../lib/adaptive/learning.ts";
+import { extractTargetPair } from "../lib/adaptive/targets.ts";
 import type { AdaptivePendingPrediction } from "../lib/adaptive/types.ts";
 
 const DRAWS = [
@@ -19,6 +24,19 @@ function assertWeightMap(weights: Record<string, number>) {
   assert.ok(Math.abs(total - 1) < 1e-10, `total bobot ${total}`);
 }
 
+function assertWeightsClose(
+  actual: Record<string, number>,
+  expected: Record<string, number>,
+) {
+  const ids = new Set([...Object.keys(actual), ...Object.keys(expected)]);
+  for (const id of ids) {
+    assert.ok(
+      Math.abs((actual[id] ?? 0) - (expected[id] ?? 0)) < 1e-10,
+      `bobot ${id} berbeda`,
+    );
+  }
+}
+
 Deno.test("incremental replay setara dengan full replay untuk histori yang sama", () => {
   const first = replayAdaptiveHistory(DRAWS.slice(0, 30), "belakang");
   const incremental = replayAdaptiveHistory(DRAWS, "belakang", first.state);
@@ -30,17 +48,7 @@ Deno.test("incremental replay setara dengan full replay untuk histori yang sama"
   assert.equal(full.summary.processedSteps, DRAWS.length - 14);
   assertWeightMap(incremental.state.expertWeights);
   assertWeightMap(full.state.expertWeights);
-
-  const ids = new Set([
-    ...Object.keys(incremental.state.expertWeights),
-    ...Object.keys(full.state.expertWeights),
-  ]);
-  for (const id of ids) {
-    assert.ok(
-      Math.abs((incremental.state.expertWeights[id] ?? 0) - (full.state.expertWeights[id] ?? 0)) < 1e-10,
-      `bobot ${id} berbeda`,
-    );
-  }
+  assertWeightsClose(incremental.state.expertWeights, full.state.expertWeights);
 });
 
 Deno.test("replay tanpa result baru menjadi noop dan mempertahankan bobot", () => {
@@ -70,8 +78,7 @@ Deno.test("semua selection pending di-settle pada result berikutnya", () => {
   };
 
   const nextHistory = DRAWS.slice(0, 26);
-  const nextState = replayAdaptiveHistory(nextHistory, "tengah", aiRun.state).state;
-  const settlement = settlePendingPrediction(pending, nextHistory, "tengah", nextState.expertWeights);
+  const settlement = settlePendingPrediction(pending, nextHistory, "tengah");
 
   assert.ok(settlement);
   assert.equal(settlement.predictionId, pending.predictionId);
@@ -81,4 +88,37 @@ Deno.test("semua selection pending di-settle pada result berikutnya", () => {
   assert.equal(typeof settlement.bbfsResults["7"], "boolean");
   assertWeightMap(settlement.weightsBefore);
   assertWeightMap(settlement.weightsAfter);
+});
+
+Deno.test("audit settlement backlog menyimpan posterior tepat satu result", () => {
+  const history = DRAWS.slice(0, 25);
+  const run = runAdaptiveOnline(history, "belakang", "bbfs", 7);
+  const pending: AdaptivePendingPrediction = {
+    predictionId: "00000000-0000-0000-0000-000000000002",
+    engineVersion: run.prediction.engineVersion,
+    configVersion: run.prediction.configVersion,
+    target2D: run.prediction.target2D,
+    historyLength: run.prediction.historyLength,
+    pairProbabilities: run.prediction.pairProbabilities,
+    leftProbabilities: run.prediction.leftProbabilities,
+    rightProbabilities: run.prediction.rightProbabilities,
+    expertWeights: run.prediction.expertWeights,
+    selections: run.prediction.selections,
+  };
+
+  const backlogHistory = DRAWS.slice(0, 30);
+  const settlement = settlePendingPrediction(pending, backlogHistory, "belakang");
+  assert.ok(settlement);
+
+  const historicalExperts = buildBaselineExperts(history, "belakang");
+  const expectedBefore = resolveExpertWeights(historicalExperts, pending.expertWeights);
+  const [actualLeft, actualRight] = extractTargetPair(
+    backlogHistory[pending.historyLength],
+    "belakang",
+  );
+  const losses = evaluateExpertLosses(historicalExperts, actualLeft, actualRight);
+  const expectedAfter = updateExpertWeights(historicalExperts, expectedBefore, losses);
+
+  assertWeightsClose(settlement.weightsBefore, expectedBefore);
+  assertWeightsClose(settlement.weightsAfter, expectedAfter);
 });
