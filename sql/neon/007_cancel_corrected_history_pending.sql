@@ -24,6 +24,7 @@ create or replace function adaptive.store_online_run(
 language plpgsql
 as $$
 declare
+  v_store_payload jsonb := p_payload;
   v_market_id text := p_payload->>'marketId';
   v_prediction jsonb := p_payload->'prediction';
   v_target_2d text := v_prediction->>'target2D';
@@ -39,6 +40,7 @@ declare
   v_current_prefix_last_draw text;
   v_current_prefix_fingerprint text;
   v_history_correction_detected boolean := false;
+  v_settlement_suppressed boolean := false;
   v_cancelled_pending_count integer := 0;
   v_result jsonb;
 begin
@@ -137,9 +139,19 @@ begin
       and status = 'pending';
 
     get diagnostics v_cancelled_pending_count = row_count;
+
+    -- Defense in depth: bila caller membawa settlement stale, jangan teruskan ke
+    -- fungsi dasar. Evaluasi untuk lineage yang dibatalkan tidak boleh tersimpan.
+    v_settlement_suppressed := jsonb_typeof(v_store_payload->'settlement') = 'object';
+    v_store_payload := jsonb_set(
+      v_store_payload,
+      '{settlement}',
+      'null'::jsonb,
+      true
+    );
   end if;
 
-  v_result := adaptive.store_online_run_base(p_payload);
+  v_result := adaptive.store_online_run_base(v_store_payload);
 
   -- Tutup celah antara atomic store dan persist_guardrail. Run paralel sesudah
   -- commit langsung melihat fingerprint lineage baru, bukan fingerprint lama.
@@ -159,6 +171,7 @@ begin
   return v_result || jsonb_build_object(
     'historyCorrectionDetected', v_history_correction_detected,
     'pendingPredictionsCancelled', v_cancelled_pending_count,
+    'settlementSuppressed', v_settlement_suppressed,
     'historyFingerprint', v_current_history_fingerprint
   );
 end;
