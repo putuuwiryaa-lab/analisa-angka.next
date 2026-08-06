@@ -76,6 +76,18 @@ Deno.test("fingerprint lineage baru disimpan dalam transaksi wrapper yang sama",
   assert.match(sql, /'historyFingerprint', v_current_history_fingerprint/);
 });
 
+Deno.test("instalasi migration membatalkan pending yang terbukti tidak kompatibel", () => {
+  assert.match(sql, /p\.history_length > s\.processed_history_length/);
+  assert.match(
+    sql,
+    /p\.history_length = s\.processed_history_length[\s\S]*p\.latest_draw is distinct from s\.last_processed_draw/,
+  );
+  assert.match(
+    sql,
+    /r\.source_sequence = p\.history_length[\s\S]*r\.result_4d is distinct from p\.latest_draw/,
+  );
+});
+
 Deno.test("wrapper mengembalikan audit koreksi dan jumlah pending yang dibatalkan", () => {
   assert.match(sql, /'historyCorrectionDetected', v_history_correction_detected/);
   assert.match(sql, /'pendingPredictionsCancelled', v_cancelled_pending_count/);
