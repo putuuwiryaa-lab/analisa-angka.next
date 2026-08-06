@@ -24,11 +24,11 @@ interface AdaptiveEvaluationPanelProps {
 }
 
 const STAGE_LABELS: Record<AdaptiveEvaluationStage, string> = {
-  empty: "Belum ada data",
-  warmup: "Warmup",
-  shadow: "Shadow",
-  monitoring: "Monitoring",
-  evidence: "Evidence",
+  empty: "Belum Terbentuk",
+  warmup: "Kalibrasi Awal",
+  shadow: "Pola Mulai Terbaca",
+  monitoring: "Pemantauan Aktif",
+  evidence: "Terkalibrasi",
 };
 
 function percentage(value: number | null, digits = 1): string {
@@ -42,12 +42,19 @@ function decimal(value: number | null, digits = 4): string {
 }
 
 function compactExpertName(value: string): string {
-  return value
-    .replaceAll("positional-frequency", "Posisi")
-    .replaceAll("direct-pair-frequency", "Pair")
-    .replaceAll("decayed-pair-frequency", "Decay")
-    .replaceAll("pair-transition", "Transisi")
-    .replaceAll("-h", " · H");
+  const family = value.split(":")[0].replace(/-h\d+$/, "");
+  if (family === "positional-frequency") return "Positional Signal";
+  if (family === "direct-pair-frequency") return "Pair Signal";
+  if (family === "decayed-pair-frequency") return "Momentum Signal";
+  if (family === "pair-transition") return "Transition Signal";
+  return "Adaptive Signal";
+}
+
+function driftLabel(value: string): string {
+  if (value === "warning") return "Dipantau";
+  if (value === "drift") return "Berubah";
+  if (value === "recovery") return "Menyesuaikan";
+  return "Stabil";
 }
 
 function formatTime(value: string): string {
@@ -99,13 +106,13 @@ export default function AdaptiveEvaluationPanel({
     })
       .then(async (response) => {
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload?.error || "Gagal memuat evaluasi Adaptive.");
+        if (!response.ok) throw new Error(payload?.error || "Performa Adaptive gagal dimuat.");
         setDashboard(payload.dashboard);
       })
       .catch((loadError) => {
         if (loadError instanceof DOMException && loadError.name === "AbortError") return;
         setDashboard(null);
-        setError(loadError instanceof Error ? loadError.message : "Gagal memuat evaluasi Adaptive.");
+        setError(loadError instanceof Error ? loadError.message : "Performa Adaptive gagal dimuat.");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -134,10 +141,10 @@ export default function AdaptiveEvaluationPanel({
             <BarChart3 size={19} />
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-primary-soft">Audit Neon</p>
-            <h3 className="display text-lg text-text">Evaluasi Produksi</h3>
+            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-primary-soft">Performance Intelligence</p>
+            <h3 className="display text-lg text-text">Adaptive Performance</h3>
             <p className="mt-1 text-[10px] leading-relaxed text-text-muted">
-              Loss, hit rate, calibration, dan perubahan bobot dari settlement nyata.
+              Membaca konsistensi hasil dan arah sistem dari data aktual.
             </p>
           </div>
         </div>
@@ -146,7 +153,7 @@ export default function AdaptiveEvaluationPanel({
           onClick={() => setManualRefresh((value) => value + 1)}
           disabled={loading || !marketId}
           className="pressable flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border-soft bg-bg-deep/55 text-text-muted disabled:opacity-50"
-          aria-label="Muat ulang evaluasi"
+          aria-label="Muat ulang performa"
         >
           <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
         </button>
@@ -162,7 +169,7 @@ export default function AdaptiveEvaluationPanel({
       {!error && loading && !dashboard && (
         <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-border-soft bg-bg-deep/45 py-8 text-xs font-bold text-text-muted">
           <RefreshCw size={15} className="animate-spin" />
-          Membaca evaluasi Neon
+          Menyelaraskan performa
         </div>
       )}
 
@@ -181,14 +188,14 @@ export default function AdaptiveEvaluationPanel({
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-wide text-text-muted">Status Bukti</p>
+                <p className="text-[9px] font-black uppercase tracking-wide text-text-muted">Maturity</p>
                 <p className="mt-0.5 text-sm font-black text-text">{STAGE_LABELS[dashboard.readiness.stage]}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm font-black text-primary-soft">
                   {dashboard.readiness.settlements}/{dashboard.readiness.targetSettlements}
                 </p>
-                <p className="text-[9px] uppercase tracking-wide text-text-muted">settlement</p>
+                <p className="text-[9px] uppercase tracking-wide text-text-muted">evaluasi</p>
               </div>
             </div>
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface">
@@ -198,22 +205,22 @@ export default function AdaptiveEvaluationPanel({
               />
             </div>
             <p className="mt-2 text-[9px] leading-relaxed text-text-muted">
-              Calibration formal dibuka setelah minimal 30 sampel untuk kombinasi {method.toUpperCase()} {digitCount} digit.
+              Indikator semakin kuat seiring bertambahnya data evaluasi.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <AuditMetric label="Combined Loss" value={decimal(dashboard.overview.meanCombinedLoss)} />
-            <AuditMetric label="Pair Brier" value={decimal(dashboard.overview.meanPairBrier)} />
-            <AuditMetric label="Recent 10" value={decimal(dashboard.overview.recent10Loss)} />
-            <AuditMetric label="Pending" value={String(dashboard.overview.pendingPredictions)} />
+            <AuditMetric label="Model Error" value={decimal(dashboard.overview.meanCombinedLoss)} />
+            <AuditMetric label="Pair Error" value={decimal(dashboard.overview.meanPairBrier)} />
+            <AuditMetric label="Recent Score" value={decimal(dashboard.overview.recent10Loss)} />
+            <AuditMetric label="Awaiting" value={String(dashboard.overview.pendingPredictions)} />
           </div>
 
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Gauge size={15} className="text-primary-soft" />
-                <p className="text-[10px] font-black uppercase tracking-wide text-text">Performa Selection</p>
+                <p className="text-[10px] font-black uppercase tracking-wide text-text">Selection Performance</p>
               </div>
               <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">
                 {method.toUpperCase()} {digitCount}
@@ -222,20 +229,20 @@ export default function AdaptiveEvaluationPanel({
 
             {selectedMetric ? (
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <AuditMetric label="Hit Rate" value={percentage(selectedMetric.hitRate)} />
-                <AuditMetric label="Estimasi" value={percentage(selectedMetric.averageEstimated)} />
-                <AuditMetric label="Baseline" value={percentage(selectedMetric.averageBaseline)} />
-                <AuditMetric label="Sampel" value={String(selectedMetric.samples)} />
+                <AuditMetric label="Coverage" value={percentage(selectedMetric.hitRate)} />
+                <AuditMetric label="Confidence" value={percentage(selectedMetric.averageEstimated)} />
+                <AuditMetric label="Reference" value={percentage(selectedMetric.averageBaseline)} />
+                <AuditMetric label="Samples" value={String(selectedMetric.samples)} />
               </div>
             ) : (
               <p className="mt-3 rounded-lg border border-border-soft bg-surface/40 p-3 text-[10px] leading-relaxed text-text-muted">
-                Belum ada selection {method.toUpperCase()} {digitCount} digit yang sudah di-settle. Prediction yang sekarang masih menjadi data pending pertama.
+                Data evaluasi {method.toUpperCase()} {digitCount} digit belum terbentuk. Sistem akan memperbaruinya setelah result berikutnya.
               </p>
             )}
 
             {selectedMetric && (
               <div className="mt-3 flex items-center justify-between gap-3 text-[10px]">
-                <span className="text-text-muted">Gap aktual − estimasi</span>
+                <span className="text-text-muted">Calibration Gap</span>
                 <span className={`font-black ${Math.abs(selectedMetric.calibrationGap) <= 0.05 ? "text-emerald-300" : "text-amber-300"}`}>
                   {selectedMetric.calibrationGap >= 0 ? "+" : ""}{percentage(selectedMetric.calibrationGap)}
                 </span>
@@ -245,22 +252,22 @@ export default function AdaptiveEvaluationPanel({
 
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-text">Trend Loss</p>
+              <p className="text-[10px] font-black uppercase tracking-wide text-text">Performance Trend</p>
               {trend === null ? (
-                <span className="text-[9px] text-text-muted">Butuh 20 settlement</span>
+                <span className="text-[9px] text-text-muted">Data belum cukup</span>
               ) : trend <= 0 ? (
-                <span className="flex items-center gap-1 text-[10px] font-black text-emerald-300"><TrendingDown size={13} /> membaik {decimal(Math.abs(trend))}</span>
+                <span className="flex items-center gap-1 text-[10px] font-black text-emerald-300"><TrendingDown size={13} /> menguat {decimal(Math.abs(trend))}</span>
               ) : (
-                <span className="flex items-center gap-1 text-[10px] font-black text-amber-300"><TrendingUp size={13} /> memburuk {decimal(trend)}</span>
+                <span className="flex items-center gap-1 text-[10px] font-black text-amber-300"><TrendingUp size={13} /> melemah {decimal(trend)}</span>
               )}
             </div>
           </div>
 
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
-            <p className="text-[10px] font-black uppercase tracking-wide text-text">Calibration Bucket</p>
+            <p className="text-[10px] font-black uppercase tracking-wide text-text">Confidence Map</p>
             {dashboard.calibration.length === 0 ? (
               <p className="mt-2 text-[10px] leading-relaxed text-text-muted">
-                Belum ada bucket untuk selection ini. Data akan muncul setelah prediction pertama di-settle.
+                Peta confidence akan terbentuk setelah data evaluasi tersedia.
               </p>
             ) : (
               <div className="mt-3 space-y-2">
@@ -268,7 +275,7 @@ export default function AdaptiveEvaluationPanel({
                   <div key={`${bucket.lower}-${bucket.upper}`}>
                     <div className="mb-1 flex items-center justify-between text-[9px] text-text-muted">
                       <span>{percentage(bucket.lower, 0)}–{percentage(bucket.upper, 0)} · n={bucket.samples}</span>
-                      <span>aktual {percentage(bucket.hitRate)}</span>
+                      <span>actual {percentage(bucket.hitRate)}</span>
                     </div>
                     <div className="relative h-2 overflow-hidden rounded-full bg-surface">
                       <div className="absolute inset-y-0 left-0 rounded-full bg-primary/40" style={{ width: `${Math.min(100, bucket.averageEstimated * 100)}%` }} />
@@ -282,7 +289,7 @@ export default function AdaptiveEvaluationPanel({
 
           {dashboard.expertPerformance.length > 0 && (
             <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-text">Expert Loss Terendah</p>
+              <p className="text-[10px] font-black uppercase tracking-wide text-text">Top Signals</p>
               <div className="mt-3 space-y-2">
                 {dashboard.expertPerformance.slice(0, 5).map((expert, index) => (
                   <div key={expert.expertId} className="flex items-center justify-between gap-3 text-[10px]">
@@ -296,7 +303,7 @@ export default function AdaptiveEvaluationPanel({
 
           {dashboard.weightChanges.length > 0 && (
             <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-text">Perubahan Bobot Terakhir</p>
+              <p className="text-[10px] font-black uppercase tracking-wide text-text">Adaptive Shift</p>
               <div className="mt-3 space-y-2">
                 {dashboard.weightChanges.slice(0, 5).map((change) => (
                   <div key={change.expertId} className="flex items-center justify-between gap-3 text-[10px]">
@@ -312,12 +319,12 @@ export default function AdaptiveEvaluationPanel({
 
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-text">Settlement Terbaru</p>
-              <span className="text-[9px] text-text-muted">maks. 20</span>
+              <p className="text-[10px] font-black uppercase tracking-wide text-text">Evaluasi Terbaru</p>
+              <span className="text-[9px] text-text-muted">20 terakhir</span>
             </div>
             {dashboard.recentSettlements.length === 0 ? (
               <p className="mt-2 text-[10px] leading-relaxed text-text-muted">
-                Belum ada settlement. Setelah result berikutnya masuk melalui scraper, baris pertama akan muncul di sini.
+                Evaluasi pertama akan muncul setelah result berikutnya diproses.
               </p>
             ) : (
               <div className="mt-3 space-y-2">
@@ -337,8 +344,8 @@ export default function AdaptiveEvaluationPanel({
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-black text-text">loss {decimal(settlement.combinedLoss)}</p>
-                      <p className="text-[9px] text-text-muted">est. {percentage(settlement.estimatedSuccess)}</p>
+                      <p className="text-[10px] font-black text-text">score {decimal(settlement.combinedLoss)}</p>
+                      <p className="text-[9px] text-text-muted">conf. {percentage(settlement.estimatedSuccess)}</p>
                     </div>
                   </div>
                 ))}
@@ -348,7 +355,7 @@ export default function AdaptiveEvaluationPanel({
 
           {dashboard.state && (
             <p className="px-1 text-[9px] leading-relaxed text-text-muted">
-              State revision {dashboard.state.stateRevision} · histori {dashboard.state.processedHistoryLength} · replay {dashboard.state.replayCount} · drift {dashboard.state.driftState}.
+              Basis {dashboard.state.processedHistoryLength} result · kondisi {driftLabel(dashboard.state.driftState)}.
             </p>
           )}
         </div>

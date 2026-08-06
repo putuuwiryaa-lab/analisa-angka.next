@@ -42,6 +42,12 @@ const METHOD_LABELS: Record<AdaptiveMethod, string> = {
   bbfs: "BBFS",
 };
 
+const SIGNAL_LABELS: Record<AdaptiveResult["signalStrength"], string> = {
+  low: "Rendah",
+  medium: "Moderat",
+  high: "Kuat",
+};
+
 function percentage(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
@@ -49,7 +55,7 @@ function percentage(value: number) {
 function publishedAtLabel(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
-    ? "waktu publikasi tidak tersedia"
+    ? "waktu pembaruan tidak tersedia"
     : date.toLocaleString("id-ID", {
       dateStyle: "short",
       timeStyle: "short",
@@ -146,13 +152,13 @@ export default function AdaptivePageClient() {
         body: JSON.stringify({ action: "adaptive", marketId, method, digitCount, target2D }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || "Snapshot Adaptive gagal dimuat.");
+      if (!response.ok) throw new Error(payload?.error || "Hasil terbaru gagal dimuat.");
       setResult(payload.result);
       setMarketName(payload.market);
       setEvaluationRefresh((value) => value + 1);
     } catch (loadError) {
       setResult(null);
-      setError(loadError instanceof Error ? loadError.message : "Snapshot Adaptive gagal dimuat.");
+      setError(loadError instanceof Error ? loadError.message : "Hasil terbaru gagal dimuat.");
     } finally {
       setRunning(false);
     }
@@ -169,11 +175,11 @@ export default function AdaptivePageClient() {
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary-soft">
-              HF-APIE
+              Adaptive Intelligence
             </p>
-            <h2 className="display text-xl text-text">Adaptive Engine</h2>
+            <h2 className="display text-xl text-text">Adaptive Intelligence</h2>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
-              Membaca snapshot probabilitas yang diterbitkan otomatis oleh background reconciliation. Halaman ini tidak menjalankan ulang engine.
+              Bukan sekadar membaca data. Sistem mengikuti perubahannya.
             </p>
           </div>
         </div>
@@ -190,7 +196,7 @@ export default function AdaptivePageClient() {
 
           <div>
             <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">
-              Metode
+              Mode Analisis
             </span>
             <div className="grid grid-cols-2 gap-2">
               {(["ai", "bbfs"] as const).map((value) => (
@@ -238,7 +244,7 @@ export default function AdaptivePageClient() {
 
           <div>
             <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">
-              Target Analisa
+              Fokus Analisis
             </span>
             <div className="grid grid-cols-3 gap-2">
               {(["depan", "tengah", "belakang"] as const).map((value) => (
@@ -266,7 +272,7 @@ export default function AdaptivePageClient() {
             className="pressable flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-primary/55 bg-primary/25 text-sm font-black uppercase tracking-wide text-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw className={running ? "animate-spin" : ""} size={18} />
-            {running ? "Memuat Snapshot" : "Muat Snapshot"}
+            {running ? "Menyelaraskan" : "Buka Analisis"}
           </button>
         </div>
       </section>
@@ -282,7 +288,7 @@ export default function AdaptivePageClient() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary-soft">
-                {METHOD_LABELS[result.method]} {result.digitCount} Digit · {TARGET_LABELS[result.target2D]}
+                Pilihan Utama · {METHOD_LABELS[result.method]} {result.digitCount} Digit · {TARGET_LABELS[result.target2D]}
               </p>
               <h3 className="display mt-1 text-xl text-text">
                 {marketName || selectedMarket?.name}
@@ -290,7 +296,7 @@ export default function AdaptivePageClient() {
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-bg-deep/60 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wide text-text-muted">
               <Database size={13} />
-              Snapshot Neon
+              Terkalibrasi
             </div>
           </div>
 
@@ -309,20 +315,22 @@ export default function AdaptivePageClient() {
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Metric label="Confidence" value={percentage(result.estimatedSuccess)} />
+            <Metric label="Reference" value={percentage(result.baselineSuccess)} />
             <Metric
-              label={result.method === "ai" ? "Minimal 1 Hit" : "Full Cover"}
-              value={percentage(result.estimatedSuccess)}
-            />
-            <Metric label="Baseline" value={percentage(result.baselineSuccess)} />
-            <Metric
-              label="Lift"
+              label="Edge"
               value={`${result.lift >= 0 ? "+" : ""}${percentage(result.lift)}`}
             />
-            <Metric label="Signal" value={result.signalStrength.toUpperCase()} />
+            <Metric label="Signal" value={SIGNAL_LABELS[result.signalStrength]} />
           </div>
 
           <div className="mt-3 rounded-xl border border-border-soft bg-bg-deep/45 p-3 text-[10px] leading-relaxed text-text-muted">
-            Engine {result.engineVersion} · histori {result.historyLength} result · cutoff {result.latestDraw} · bobot revision {result.stateRevision} · publikasi lengkap {result.selectionCount} selection · {publishedAtLabel(result.publishedAt)}.
+            <p>
+              Basis {result.historyLength} result · data terakhir {result.latestDraw} · diperbarui {publishedAtLabel(result.publishedAt)}.
+            </p>
+            <p className="mt-1 text-[9px] opacity-80">
+              Berbasis analisis data, bukan kepastian hasil.
+            </p>
           </div>
         </section>
       )}
