@@ -97,14 +97,18 @@ export async function loadAdaptiveGuardrailHealth(
     sql`
       select
         count(*)::integer as event_count,
-        (array_agg(event_type order by created_at desc))[1] as event_type,
-        (array_agg(previous_state order by created_at desc))[1] as previous_state,
-        (array_agg(next_state order by created_at desc))[1] as next_state,
-        (array_agg(detector_data order by created_at desc))[1] as detector_data,
-        max(created_at) as created_at
-      from adaptive.drift_events
-      where market_id = ${request.marketId}
-        and target_2d = ${request.target2D}
+        (array_agg(event.event_type order by event.created_at desc))[1] as event_type,
+        (array_agg(event.previous_state order by event.created_at desc))[1] as previous_state,
+        (array_agg(event.next_state order by event.created_at desc))[1] as next_state,
+        (array_agg(event.detector_data order by event.created_at desc))[1] as detector_data,
+        max(event.created_at) as created_at
+      from adaptive.drift_events event
+      join adaptive.predictions prediction
+        on prediction.id = event.prediction_id
+      where event.market_id = ${request.marketId}
+        and event.target_2d = ${request.target2D}
+        and prediction.engine_version = ${ADAPTIVE_ENGINE_VERSION}
+        and prediction.config_version = ${ADAPTIVE_CONFIG_VERSION}
     `,
   ]);
 
