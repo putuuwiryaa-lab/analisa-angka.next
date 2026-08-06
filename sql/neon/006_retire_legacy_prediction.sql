@@ -5,9 +5,7 @@ begin;
 -- tepat 18 selection. Batalkan seluruh snapshot tidak lengkap agar reconciliation
 -- dapat menerbitkan ulang snapshot lengkap.
 update adaptive.predictions p
-set
-  status = 'cancelled',
-  settled_at = coalesce(p.settled_at, now())
+set status = 'cancelled'
 where p.status = 'pending'
   and (
     p.snapshot_complete is not true
