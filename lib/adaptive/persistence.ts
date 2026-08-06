@@ -1,5 +1,6 @@
 import "server-only";
 
+import { buildAdaptiveBatchSnapshotRequest } from "./batch-snapshot";
 import type { AdaptiveEvaluationDashboard } from "./evaluation-types";
 import type { AdaptiveGuardrailHealth } from "./guardrail-health-types";
 import type {
@@ -79,6 +80,26 @@ async function callAdaptiveService(
     throw new Error(message);
   }
   return payload;
+}
+
+export async function loadAdaptivePublishedSnapshot(options: {
+  marketId: string;
+  target2D: Target2D;
+  method: AdaptiveMethod;
+  digitCount: number;
+}): Promise<unknown | null> {
+  const payload = await callAdaptiveService(
+    "/snapshots/batch",
+    buildAdaptiveBatchSnapshotRequest({
+      marketIds: [options.marketId],
+      target2D: options.target2D,
+      method: options.method,
+      digitCount: options.digitCount,
+    }),
+    20_000,
+  );
+  const snapshots = Array.isArray(payload.snapshots) ? payload.snapshots : [];
+  return snapshots[0] ?? null;
 }
 
 export async function loadAdaptiveContext(
