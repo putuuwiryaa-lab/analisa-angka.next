@@ -28,3 +28,10 @@ export function parseStrictHistory(historyData: string): Draw[] {
 
   return tokens;
 }
+
+export function latestStrictHistoryResult(
+  historyData: string | null | undefined,
+): Draw | null {
+  const draws = parseStrictHistory(String(historyData ?? ""));
+  return draws.at(-1) ?? null;
+}
