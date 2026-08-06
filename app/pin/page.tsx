@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { safeNextPath } from "@/lib/shared/safeNextPath";
 
 const DEVICE_KEY = "analisa_device_id";
 const ADMIN_CONTACT_URL = process.env.NEXT_PUBLIC_ADMIN_CONTACT_URL || "";
@@ -22,12 +23,11 @@ function deviceName() {
   return navigator.userAgent.slice(0, 150);
 }
 
-function safeNextPath() {
+function nextPathAfterLogin() {
   if (typeof window === "undefined") return "/";
 
   const params = new URLSearchParams(window.location.search);
-  const next = params.get("next") || "/";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
+  return safeNextPath(params.get("next"), "/");
 }
 
 function adminContactUrl() {
@@ -96,7 +96,7 @@ export default function PinPage() {
         return;
       }
 
-      window.location.replace(safeNextPath());
+      window.location.replace(nextPathAfterLogin());
     } catch {
       setError("Gagal memeriksa kode akses.");
     } finally {
