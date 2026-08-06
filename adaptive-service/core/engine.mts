@@ -19,10 +19,20 @@ function signalStrength(lift: number, margin: number): AdaptivePrediction["signa
   return "low";
 }
 
+function historyWindowFingerprint(draws: readonly string[]): string {
+  // FNV-1a 64-bit menjaga key ringkas dan deterministik. Seluruh window masuk
+  // ke fingerprint agar result 4D yang berulang tidak mengaktifkan row lama.
+  let hash = 0xcbf29ce484222325n;
+  const input = draws.join("|");
+  for (let index = 0; index < input.length; index++) {
+    hash ^= BigInt(input.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+  }
+  return hash.toString(16).padStart(16, "0");
+}
+
 function historyCutoffKey(draws: readonly string[]): string {
-  // Panjang histori dapat tetap sama pada rolling window. Seluruh isi window
-  // diperlukan agar result 4D yang berulang tidak mengaktifkan prediction lama.
-  return `${draws.length}:${draws.join("")}`;
+  return `${draws.length}:${draws[draws.length - 1]}:${historyWindowFingerprint(draws)}`;
 }
 
 function requestedSelection(
