@@ -14,23 +14,33 @@ Tanpa guard ini, run dengan histori atau bobot lebih lama dapat memperoleh lock 
 
 ## Perilaku baru
 
-`adaptive.store_online_run(jsonb)` memeriksa state sekali lagi setelah memperoleh advisory transaction lock:
+Sebelum menghitung, reconciliation menyimpan context token dari state yang dibaca:
 
-1. payload normal/incremental harus membawa `state.stateRevision` yang sama dengan state aktif;
-2. run pertama hanya boleh membawa revision `0` ketika state belum ada;
-3. payload yang awalnya memakai state lama tetapi menjadi tidak kompatibel saat menunggu lock ditolak dengan SQLSTATE `40001`;
-4. full replay koreksi histori yang sah tetap diperbolehkan karena context loader memang membuang state lama dan menghasilkan revision `0`;
-5. migration 007 tetap menangani pembatalan pending lineage lama dan fingerprint secara atomik.
+```text
+expectedStateRevision + expectedHistoryFingerprint
+```
+
+`adaptive.store_online_run(jsonb)` kemudian:
+
+1. mengambil advisory transaction lock untuk market-target-engine-config;
+2. membaca revision dan fingerprint state yang benar-benar aktif setelah lock diperoleh;
+3. membandingkannya secara exact dengan context token payload;
+4. menolak write menggunakan SQLSTATE `40001` bila state sudah berubah;
+5. meneruskan write ke history-lineage guard migration 007 hanya ketika token masih cocok.
+
+Token `null/null` hanya sah ketika state memang belum ada. Koreksi histori tetap aman karena context loader tetap membawa revision dan fingerprint state lama yang sengaja ditolak untuk replay, sehingga dua full replay koreksi yang tumpang tindih juga tidak dapat saling menimpa.
 
 Run yang ditolak tidak menulis sebagian data. Reconciliation berikutnya membaca state terbaru dan menghitung ulang.
 
 ## Urutan deployment
 
 1. Pastikan migrations 001–007 sudah aktif.
-2. Merge kode repository.
+2. Deploy service/repository yang mengirim context token.
 3. Jalankan migration 008 di Neon.
 4. Jalankan reconciliation manual.
 5. Pastikan snapshot tetap lengkap 18 selection.
+
+Jangan menjalankan migration 008 sebelum service yang mengirim kedua field context token tersedia, karena wrapper database sengaja menolak payload lama.
 
 Migration ini tidak mengubah rumus probabilitas, optimizer, loss, atau mekanisme pembaruan bobot. Ia hanya mencegah hasil perhitungan stale menimpa state yang lebih baru.
 
