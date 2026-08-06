@@ -1,7 +1,5 @@
 begin;
 
-create extension if not exists pgcrypto;
-
 -- Migration 007 tetap menjadi implementasi dasar history-lineage guard. Wrapper
 -- ini menambahkan optimistic concurrency sebelum write dilakukan.
 do $$
@@ -28,20 +26,13 @@ as $$
 declare
   v_market_id text := p_payload->>'marketId';
   v_prediction jsonb := p_payload->'prediction';
-  v_state jsonb := p_payload->'state';
   v_target_2d text := v_prediction->>'target2D';
   v_engine_version text := v_prediction->>'engineVersion';
   v_config_version text := v_prediction->>'configVersion';
-  v_history_draws jsonb := p_payload->'historyDraws';
-  v_payload_state_revision bigint;
+  v_expected_state_revision bigint;
+  v_expected_history_fingerprint text;
   v_current_state_revision bigint;
-  v_current_processed_history_length integer;
-  v_current_last_processed_draw text;
   v_current_history_fingerprint text;
-  v_payload_prefix text;
-  v_payload_prefix_last_draw text;
-  v_payload_prefix_fingerprint text;
-  v_history_correction_at_write boolean := false;
   v_state_found boolean := false;
   v_result jsonb;
 begin
@@ -53,17 +44,35 @@ begin
     raise exception 'Identitas online run untuk concurrency guard tidak lengkap.';
   end if;
 
-  if jsonb_typeof(v_history_draws) <> 'array' then
-    raise exception 'Online run harus membawa array historyDraws.';
+  if not (p_payload ? 'expectedStateRevision')
+    or not (p_payload ? 'expectedHistoryFingerprint')
+  then
+    raise exception 'Online run harus membawa expected state revision dan fingerprint.';
   end if;
 
-  if coalesce(v_state->>'stateRevision', '') !~ '^[0-9]+$' then
-    raise exception 'state.stateRevision wajib integer non-negatif.';
+  if jsonb_typeof(p_payload->'expectedStateRevision') = 'null' then
+    v_expected_state_revision := null;
+  elsif jsonb_typeof(p_payload->'expectedStateRevision') = 'number'
+    and (p_payload->>'expectedStateRevision') ~ '^[0-9]+$'
+  then
+    v_expected_state_revision := (p_payload->>'expectedStateRevision')::bigint;
+  else
+    raise exception 'expectedStateRevision harus null atau integer non-negatif.';
   end if;
-  v_payload_state_revision := (v_state->>'stateRevision')::bigint;
 
-  -- Lock yang sama dengan migration 005 dan 007. Setelah lock diperoleh, state
-  -- yang dibaca di sini tidak dapat berubah sampai wrapper selesai.
+  if jsonb_typeof(p_payload->'expectedHistoryFingerprint') = 'null' then
+    v_expected_history_fingerprint := null;
+  elsif jsonb_typeof(p_payload->'expectedHistoryFingerprint') = 'string'
+    and (p_payload->>'expectedHistoryFingerprint') ~ '^[0-9a-f]{64}$'
+  then
+    v_expected_history_fingerprint := p_payload->>'expectedHistoryFingerprint';
+  else
+    raise exception 'expectedHistoryFingerprint harus null atau SHA-256 hex.';
+  end if;
+
+  -- Lock yang sama dengan migration 005 dan 007. Context token dibandingkan
+  -- setelah lock diperoleh, sehingga state tidak dapat berubah di antara check
+  -- dan write.
   perform pg_advisory_xact_lock(
     hashtextextended(
       concat_ws(
@@ -79,13 +88,9 @@ begin
 
   select
     state_revision,
-    processed_history_length,
-    last_processed_draw,
     history_fingerprint
   into
     v_current_state_revision,
-    v_current_processed_history_length,
-    v_current_last_processed_draw,
     v_current_history_fingerprint
   from adaptive.engine_states
   where market_id = v_market_id
@@ -96,64 +101,26 @@ begin
 
   v_state_found := found;
 
-  if not v_state_found then
-    -- Run pertama selalu dihitung tanpa state tersimpan dan membawa revision 0.
-    if v_payload_state_revision <> 0 then
-      raise exception using
-        message = 'Adaptive state berubah sebelum write: state baru tidak ditemukan tetapi payload bukan revision 0.',
-        errcode = '40001';
-    end if;
-  else
-    if v_current_processed_history_length > jsonb_array_length(v_history_draws) then
-      v_history_correction_at_write := true;
-    else
-      select
-        string_agg(draw.value, '|' order by draw.ordinality),
-        max(draw.value) filter (
-          where draw.ordinality = v_current_processed_history_length
-        )
-      into
-        v_payload_prefix,
-        v_payload_prefix_last_draw
-      from jsonb_array_elements_text(v_history_draws)
-        with ordinality as draw(value, ordinality)
-      where draw.ordinality <= v_current_processed_history_length;
-
-      if v_payload_prefix_last_draw is distinct from v_current_last_processed_draw then
-        v_history_correction_at_write := true;
-      elsif v_current_history_fingerprint is not null then
-        v_payload_prefix_fingerprint := encode(
-          digest(convert_to(coalesce(v_payload_prefix, ''), 'UTF8'), 'sha256'),
-          'hex'
-        );
-        v_history_correction_at_write :=
-          v_payload_prefix_fingerprint is distinct from v_current_history_fingerprint;
-      end if;
-    end if;
-
-    if v_history_correction_at_write then
-      -- Context loader membuang state lama ketika koreksi histori terdeteksi;
-      -- full replay yang sah karena itu membawa revision 0. Payload non-zero
-      -- berarti perhitungan awalnya memakai state lama dan menjadi stale saat
-      -- menunggu write lock.
-      if v_payload_state_revision <> 0 then
-        raise exception using
-          message = format(
-            'Adaptive state berubah sebelum write: payload revision %s menjadi tidak kompatibel dengan lineage aktif revision %s.',
-            v_payload_state_revision,
-            v_current_state_revision
-          ),
-          errcode = '40001';
-      end if;
-    elsif v_payload_state_revision is distinct from v_current_state_revision then
+  if v_state_found then
+    if v_expected_state_revision is distinct from v_current_state_revision
+      or v_expected_history_fingerprint is distinct from v_current_history_fingerprint
+    then
       raise exception using
         message = format(
-          'Adaptive state berubah sebelum write: expected revision %s, observed revision %s.',
-          v_payload_state_revision,
-          v_current_state_revision
+          'Adaptive state berubah sebelum write: expected revision/fingerprint %s/%s, observed %s/%s.',
+          coalesce(v_expected_state_revision::text, 'null'),
+          coalesce(v_expected_history_fingerprint, 'null'),
+          coalesce(v_current_state_revision::text, 'null'),
+          coalesce(v_current_history_fingerprint, 'null')
         ),
         errcode = '40001';
     end if;
+  elsif v_expected_state_revision is not null
+    or v_expected_history_fingerprint is not null
+  then
+    raise exception using
+      message = 'Adaptive state berubah sebelum write: context mengharapkan state yang tidak lagi tersedia.',
+      errcode = '40001';
   end if;
 
   -- Migration 007 mengambil advisory lock yang sama; lock bersifat re-entrant
@@ -162,9 +129,10 @@ begin
 
   return v_result || jsonb_build_object(
     'optimisticConcurrencyChecked', true,
-    'payloadStateRevision', v_payload_state_revision,
+    'expectedStateRevision', v_expected_state_revision,
     'observedStateRevision', v_current_state_revision,
-    'historyCorrectionAtWrite', v_history_correction_at_write
+    'expectedHistoryFingerprint', v_expected_history_fingerprint,
+    'observedHistoryFingerprint', v_current_history_fingerprint
   );
 end;
 $$;
