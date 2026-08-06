@@ -104,10 +104,6 @@ export interface AdaptivePersistenceContext {
   pendingPrediction: AdaptivePendingPrediction | null;
 }
 
-export interface AdaptiveRunOptions {
-  rollingWindowAdvance?: boolean;
-}
-
 export interface AdaptiveRun {
   prediction: AdaptivePrediction;
   state: AdaptiveLearningState;
