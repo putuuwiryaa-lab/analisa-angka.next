@@ -93,6 +93,7 @@ export async function loadAdaptiveGuardrailHealth(
         and p.target_2d = ${request.target2D}
         and p.engine_version = ${ADAPTIVE_ENGINE_VERSION}
         and p.config_version = ${ADAPTIVE_CONFIG_VERSION}
+        and p.status = 'settled'
     `,
     sql`
       select
@@ -109,6 +110,7 @@ export async function loadAdaptiveGuardrailHealth(
         and event.target_2d = ${request.target2D}
         and prediction.engine_version = ${ADAPTIVE_ENGINE_VERSION}
         and prediction.config_version = ${ADAPTIVE_CONFIG_VERSION}
+        and prediction.status = 'settled'
     `,
   ]);
 
