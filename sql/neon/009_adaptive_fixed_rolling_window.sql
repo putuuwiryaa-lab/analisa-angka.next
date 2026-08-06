@@ -36,6 +36,11 @@ declare
   v_current_prefix_last_draw text;
   v_current_prefix_fingerprint text;
   v_current_last_draw text;
+  v_previous_overlap_count integer := 0;
+  v_matching_overlap_count integer := 0;
+  v_previous_snapshot_last_draw text;
+  v_rolling_overlap_valid boolean := false;
+  v_rolling_latest_fallback boolean := false;
   v_history_correction_detected boolean := false;
   v_settlement_suppressed boolean := false;
   v_cancelled_pending_count integer := 0;
@@ -108,13 +113,45 @@ begin
     if v_processed_history_length <> jsonb_array_length(v_history_draws) then
       raise exception 'Rolling window harus mempertahankan panjang histori yang sama.';
     end if;
-    if v_current_last_draw is not distinct from v_last_processed_draw then
-      raise exception 'Rolling window harus membawa result terakhir yang baru.';
+
+    -- Validasi pola [lama ke-2 ... lama terakhir] = [baru pertama ... baru
+    -- sebelum terakhir]. Ini membedakan pergeseran normal dari koreksi acak dan
+    -- tetap bekerja ketika result 4D terbaru kebetulan sama dengan sebelumnya.
+    select
+      count(*)::integer,
+      count(*) filter (
+        where previous.result_4d = current_draw.value
+      )::integer,
+      max(previous.result_4d) filter (
+        where previous.source_sequence = v_processed_history_length
+      )
+    into
+      v_previous_overlap_count,
+      v_matching_overlap_count,
+      v_previous_snapshot_last_draw
+    from jsonb_array_elements_text(v_history_draws)
+      with ordinality as current_draw(value, ordinality)
+    join adaptive.result_snapshots previous
+      on previous.market_id = v_market_id
+      and previous.source_sequence = current_draw.ordinality + 1
+    where current_draw.ordinality < jsonb_array_length(v_history_draws);
+
+    v_rolling_overlap_valid :=
+      v_previous_overlap_count = v_processed_history_length - 1
+      and v_matching_overlap_count = v_previous_overlap_count
+      and v_previous_snapshot_last_draw is not distinct from v_last_processed_draw;
+
+    -- Backward-compatible fallback untuk state lama yang belum mempunyai
+    -- result_snapshots lengkap. Setelah satu run sukses, overlap menjadi guard
+    -- utama pada run berikutnya.
+    v_rolling_latest_fallback :=
+      v_previous_overlap_count = 0
+      and v_current_last_draw is distinct from v_last_processed_draw;
+
+    if not v_rolling_overlap_valid and not v_rolling_latest_fallback then
+      raise exception 'Marker rolling window tidak cocok dengan pergeseran histori tersimpan.';
     end if;
 
-    -- Panjang tetap dan cutoff berubah adalah advance normal untuk storage window
-    -- terbatas. Pending lama tetap valid dan boleh diselesaikan terhadap result
-    -- terbaru yang dibawa caller.
     v_history_correction_detected := false;
   elsif found then
     if v_processed_history_length > jsonb_array_length(v_history_draws) then
@@ -185,6 +222,8 @@ begin
 
   return v_result || jsonb_build_object(
     'rollingWindowAdvanceAccepted', v_rolling_window_advance,
+    'rollingOverlapValidated', v_rolling_overlap_valid,
+    'rollingFallbackUsed', v_rolling_latest_fallback,
     'historyCorrectionDetected', v_history_correction_detected,
     'pendingPredictionsCancelled', v_cancelled_pending_count,
     'settlementSuppressed', v_settlement_suppressed,
