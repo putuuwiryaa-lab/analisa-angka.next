@@ -15,11 +15,11 @@ interface AdaptiveGuardrailHealthCardProps {
 }
 
 const STATUS_LABELS: Record<AdaptiveGuardrailOperationalStatus, string> = {
-  migration_required: "Migration belum lengkap",
-  waiting_for_state: "Menunggu state",
-  waiting_for_run: "Menunggu run pascamigrasi",
-  warmup: "Guardrail warmup",
-  active: "Guardrail aktif",
+  migration_required: "Konfigurasi Belum Siap",
+  waiting_for_state: "Menunggu Kalibrasi",
+  waiting_for_run: "Menunggu Sinkronisasi",
+  warmup: "Kalibrasi Aktif",
+  active: "Sistem Terkalibrasi",
 };
 
 function decimal(value: number, digits = 4): string {
@@ -33,6 +33,40 @@ function statusClasses(status: AdaptiveGuardrailOperationalStatus): string {
   }
   if (status === "migration_required") return "border-red-400/30 bg-red-500/10 text-red-200";
   return "border-border-soft bg-bg-deep/45 text-text-muted";
+}
+
+function driftLabel(value: string): string {
+  if (value === "warning") return "Dipantau";
+  if (value === "drift") return "Berubah";
+  if (value === "recovery") return "Menyesuaikan";
+  return "Stabil";
+}
+
+function reasonLabel(value: string): string {
+  const labels: Record<string, string> = {
+    uninitialized: "Menunggu inisialisasi",
+    normalized: "Status diselaraskan",
+    "no-settlement": "Menunggu evaluasi baru",
+    "duplicate-settlement": "Data terbaru sudah tercatat",
+    warmup: "Kalibrasi awal",
+    "within-control": "Dalam rentang stabil",
+    "ewma-and-page-hinkley": "Perubahan konsisten terdeteksi",
+    ewma: "Pergeseran jangka pendek",
+    "page-hinkley": "Pergeseran pola terakumulasi",
+    "persistent-loss-deterioration": "Penurunan konsistensi berlanjut",
+    "warning-persisted": "Perubahan masih dipantau",
+    "warning-cleared": "Kondisi kembali stabil",
+    "warning-observe": "Sinyal belum konklusif",
+    "recovery-started": "Pemulihan terkonfirmasi",
+    "recovery-candidate": "Pemulihan mulai terbaca",
+    "drift-persisted": "Pola baru masih dominan",
+    "drift-observe": "Pola baru dalam pemantauan",
+    "recovery-relapse": "Perubahan kembali menguat",
+    "recovery-progress": "Pemulihan berlanjut",
+    "recovery-complete": "Stabilitas pulih",
+    "recovery-observe": "Pemulihan masih dipantau",
+  };
+  return labels[value] ?? "Pemantauan aktif";
 }
 
 export default function AdaptiveGuardrailHealthCard({
@@ -65,13 +99,13 @@ export default function AdaptiveGuardrailHealthCard({
     })
       .then(async (response) => {
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload?.error || "Gagal membaca health guardrail.");
+        if (!response.ok) throw new Error(payload?.error || "Stabilitas sistem gagal dibaca.");
         setHealth(payload.health);
       })
       .catch((loadError) => {
         if (loadError instanceof DOMException && loadError.name === "AbortError") return;
         setHealth(null);
-        setError(loadError instanceof Error ? loadError.message : "Gagal membaca health guardrail.");
+        setError(loadError instanceof Error ? loadError.message : "Stabilitas sistem gagal dibaca.");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -93,7 +127,7 @@ export default function AdaptiveGuardrailHealthCard({
     return (
       <div className="flex items-center justify-center gap-2 rounded-xl border border-border-soft bg-bg-deep/45 py-5 text-[10px] font-bold text-text-muted">
         <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-        Memeriksa guardrail
+        Memeriksa stabilitas
       </div>
     );
   }
@@ -107,10 +141,10 @@ export default function AdaptiveGuardrailHealthCard({
         <div className="flex min-w-0 items-start gap-2.5">
           <HealthyIcon size={17} className="mt-0.5 shrink-0" />
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-wide opacity-75">Operational Guardrail</p>
+            <p className="text-[9px] font-black uppercase tracking-wide opacity-75">System Stability</p>
             <p className="mt-0.5 text-xs font-black">{STATUS_LABELS[health.status]}</p>
             <p className="mt-1 text-[9px] leading-relaxed opacity-80">
-              Schema {health.migration.completedObjects}/{health.migration.requiredObjects} · mode {health.mode} · drift {health.runtime.driftState}.
+              Pemantauan aktif · pola {driftLabel(health.runtime.driftState)} · {health.runtime.settlementCount} evaluasi.
             </p>
           </div>
         </div>
@@ -119,27 +153,27 @@ export default function AdaptiveGuardrailHealthCard({
           onClick={() => setManualRefresh((value) => value + 1)}
           disabled={loading}
           className="pressable flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-current/20 bg-black/10 disabled:opacity-50"
-          aria-label="Muat ulang health guardrail"
+          aria-label="Muat ulang stabilitas sistem"
         >
           <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
         </button>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <GuardrailMetric label="Fingerprint" value={health.runtime.fingerprintPrefix ?? "belum ada"} />
-        <GuardrailMetric label="Settlement" value={String(health.runtime.settlementCount)} />
-        <GuardrailMetric label="Live Sample" value={`${detector.sampleCount}/10`} />
-        <GuardrailMetric label="EWMA Loss" value={decimal(detector.ewmaLoss)} />
+        <GuardrailMetric label="Sync ID" value={health.runtime.fingerprintPrefix ?? "belum ada"} />
+        <GuardrailMetric label="Evaluasi" value={String(health.runtime.settlementCount)} />
+        <GuardrailMetric label="Live Data" value={`${detector.sampleCount}/10`} />
+        <GuardrailMetric label="Deviation" value={decimal(detector.ewmaLoss)} />
       </div>
 
       <div className="mt-2 flex items-center justify-between gap-3 text-[9px] opacity-80">
-        <span className="min-w-0 truncate">Reason: {detector.reason}</span>
-        <span className="shrink-0">PH {decimal(detector.pageHinkley)}</span>
+        <span className="min-w-0 truncate">Signal: {reasonLabel(detector.reason)}</span>
+        <span className="shrink-0">Shift {decimal(detector.pageHinkley)}</span>
       </div>
 
       {health.issues.length > 0 && (
         <p className="mt-2 text-[9px] leading-relaxed opacity-80">
-          {health.issues.join(" · ")}
+          Beberapa indikator masih diselaraskan.
         </p>
       )}
     </div>
