@@ -94,9 +94,15 @@ export function planAdaptiveReconciliation(
         Number(state.pendingHistoryLength) === market.historyLength &&
         (Number(state.pendingSelectionCount) !== 18 || state.pendingSnapshotComplete !== true)
       );
+      const rollingWindowAdvance = Boolean(
+        state &&
+        state.processedHistoryLength === market.historyLength &&
+        state.lastProcessedDraw !== market.lastDraw
+      );
       const fingerprintMismatch = Boolean(
         state &&
         state.processedHistoryLength === market.historyLength &&
+        state.lastProcessedDraw === market.lastDraw &&
         state.historyFingerprint &&
         market.historyFingerprint &&
         state.historyFingerprint !== market.historyFingerprint
@@ -104,7 +110,7 @@ export function planAdaptiveReconciliation(
       const stale = options.force ||
         !state ||
         state.processedHistoryLength !== market.historyLength ||
-        state.lastProcessedDraw !== market.lastDraw ||
+        rollingWindowAdvance ||
         fingerprintMismatch ||
         pendingNeedsSettlement ||
         missingPendingSnapshot ||
