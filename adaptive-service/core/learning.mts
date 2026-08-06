@@ -10,6 +10,7 @@ import type {
   AdaptiveLearningState,
   AdaptivePendingPrediction,
   AdaptiveReplaySummary,
+  AdaptiveRunOptions,
   AdaptiveSettlement,
   Target2D,
 } from "./types.mts";
@@ -25,6 +26,13 @@ import {
 
 export const ADAPTIVE_REPLAY_WARMUP = 14;
 
+function validateDraws(draws: readonly string[]): void {
+  if (draws.length < 2) throw new Error("Adaptive membutuhkan minimal 2 result 4D.");
+  if (draws.some((draw) => !/^\d{4}$/.test(draw))) {
+    throw new Error("Histori Adaptive harus berupa result 4D.");
+  }
+}
+
 function compatibleState(
   state: AdaptiveLearningState | null | undefined,
   draws: readonly string[],
@@ -38,13 +46,77 @@ function compatibleState(
   return draws[state.processedHistoryLength - 1] === state.lastProcessedDraw;
 }
 
+function rollingState(
+  state: AdaptiveLearningState | null | undefined,
+  draws: readonly string[],
+  target2D: Target2D,
+  options: AdaptiveRunOptions,
+): state is AdaptiveLearningState {
+  if (!options.rollingWindowAdvance || !state) return false;
+  if (state.engineVersion !== ADAPTIVE_ENGINE_VERSION || state.configVersion !== ADAPTIVE_CONFIG_VERSION) return false;
+  if (state.target2D !== target2D) return false;
+  if (state.processedHistoryLength !== draws.length || draws.length < 2) return false;
+  return state.lastProcessedDraw !== draws[draws.length - 1];
+}
+
+function replayRollingWindow(
+  draws: readonly string[],
+  target2D: Target2D,
+  initialState: AdaptiveLearningState,
+) {
+  const actualDraw = draws[draws.length - 1];
+  const historyBeforeActual = draws.slice(0, -1);
+  const expertsBefore = buildBaselineExperts(historyBeforeActual, target2D);
+  const weightsBefore = resolveExpertWeights(expertsBefore, initialState.expertWeights);
+  const weightedBefore = applyExpertWeights(expertsBefore, weightsBefore);
+  const ensemble = combinePairMatrices(weightedBefore);
+  const marginals = calculateMarginals(ensemble);
+  const [actualLeft, actualRight] = extractTargetPair(actualDraw, target2D);
+  const pairLoss = pairBrierLoss(ensemble, actualLeft, actualRight);
+  const leftLoss = positionalBrierLoss(marginals.left, actualLeft);
+  const rightLoss = positionalBrierLoss(marginals.right, actualRight);
+  const expertLosses = evaluateExpertLosses(expertsBefore, actualLeft, actualRight);
+  const updatedWeights = updateExpertWeights(expertsBefore, weightsBefore, expertLosses);
+
+  const finalExperts = buildBaselineExperts(draws, target2D);
+  const finalWeights = resolveExpertWeights(finalExperts, updatedWeights);
+  const aggregates = aggregateWeights(finalExperts, finalWeights);
+
+  return {
+    state: {
+      engineVersion: ADAPTIVE_ENGINE_VERSION,
+      configVersion: ADAPTIVE_CONFIG_VERSION,
+      target2D,
+      processedHistoryLength: draws.length,
+      lastProcessedDraw: actualDraw,
+      expertWeights: finalWeights,
+      familyWeights: aggregates.familyWeights,
+      horizonWeights: aggregates.horizonWeights,
+      stateRevision: initialState.stateRevision,
+    } satisfies AdaptiveLearningState,
+    summary: {
+      mode: "incremental",
+      startHistoryLength: draws.length,
+      endHistoryLength: draws.length,
+      processedSteps: 1,
+      meanEnsembleLoss: combinedLoss(pairLoss, leftLoss, rightLoss),
+      expertMeanLosses: expertLosses,
+    } satisfies AdaptiveReplaySummary,
+    experts: applyExpertWeights(finalExperts, finalWeights),
+  };
+}
+
 export function replayAdaptiveHistory(
   draws: readonly string[],
   target2D: Target2D,
   initialState?: AdaptiveLearningState | null,
+  options: AdaptiveRunOptions = {},
 ) {
-  if (draws.length < 2) throw new Error("Adaptive membutuhkan minimal 2 result 4D.");
-  if (draws.some((draw) => !/^\d{4}$/.test(draw))) throw new Error("Histori Adaptive harus berupa result 4D.");
+  validateDraws(draws);
+
+  if (rollingState(initialState, draws, target2D, options)) {
+    return replayRollingWindow(draws, target2D, initialState);
+  }
 
   const compatible = compatibleState(initialState, draws, target2D);
   const startHistoryLength = compatible
@@ -112,15 +184,27 @@ export function settlePendingPrediction(
   pending: AdaptivePendingPrediction | null | undefined,
   draws: readonly string[],
   target2D: Target2D,
+  options: AdaptiveRunOptions = {},
 ): AdaptiveSettlement | null {
   if (!pending) return null;
   if (pending.engineVersion !== ADAPTIVE_ENGINE_VERSION || pending.configVersion !== ADAPTIVE_CONFIG_VERSION) return null;
-  if (pending.target2D !== target2D || draws.length <= pending.historyLength) return null;
+  if (pending.target2D !== target2D) return null;
 
-  const actualDraw = draws[pending.historyLength];
+  const rollingWindowAdvance = options.rollingWindowAdvance === true &&
+    draws.length === pending.historyLength &&
+    draws.length >= 2;
+  if (!rollingWindowAdvance && draws.length <= pending.historyLength) return null;
+
+  const actualDraw = rollingWindowAdvance
+    ? draws[draws.length - 1]
+    : draws[pending.historyLength];
   if (!/^\d{4}$/.test(actualDraw)) return null;
+
+  const historicalDraws = rollingWindowAdvance
+    ? draws.slice(0, -1)
+    : draws.slice(0, pending.historyLength);
   const [actualLeft, actualRight] = extractTargetPair(actualDraw, target2D);
-  const historicalExperts = buildBaselineExperts(draws.slice(0, pending.historyLength), target2D);
+  const historicalExperts = buildBaselineExperts(historicalDraws, target2D);
   const weightsBefore = resolveExpertWeights(historicalExperts, pending.expertWeights);
   const expertLosses = evaluateExpertLosses(historicalExperts, actualLeft, actualRight);
   const weightsAfter = updateExpertWeights(historicalExperts, weightsBefore, expertLosses);
