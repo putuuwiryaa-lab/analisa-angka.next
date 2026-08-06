@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { runAdaptiveOnline } from "@/lib/adaptive/engine";
 import {
-  loadAdaptiveContext,
   loadAdaptiveEvaluationDashboard,
   loadAdaptiveGuardrailHealth,
-  persistAdaptiveRun,
+  loadAdaptivePublishedSnapshot,
   reconcileAdaptiveMarkets,
 } from "@/lib/adaptive/persistence";
+import { validateAdaptivePublishedSnapshot } from "@/lib/adaptive/published-snapshot";
 import { isAdaptiveMethod, isAdaptiveTarget } from "@/lib/adaptive/types";
 import { runAutoScan } from "@/lib/engine/acke-engine";
 import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
@@ -137,44 +136,57 @@ export async function POST(req: Request) {
       }
 
       const draws = parseStrictHistory(data.history_data);
-      const context = await loadAdaptiveContext(String(data.id), body.target2D, draws);
-      const run = runAdaptiveOnline(
-        draws,
-        body.target2D,
-        body.method,
-        digitCount,
-        context.state,
-        context.pendingPrediction,
-      );
-      const persistence = await persistAdaptiveRun(String(data.id), String(data.name), run);
-      const prediction = run.prediction;
+      if (draws.length < 2) {
+        return NextResponse.json({ error: "Adaptive membutuhkan minimal 2 result 4D." }, { status: 422 });
+      }
 
+      const rawSnapshot = await loadAdaptivePublishedSnapshot({
+        marketId: String(data.id),
+        target2D: body.target2D,
+        method: body.method,
+        digitCount,
+      });
+      const snapshot = validateAdaptivePublishedSnapshot(rawSnapshot, {
+        marketId: String(data.id),
+        target2D: body.target2D,
+        method: body.method,
+        digitCount,
+        latestDraw: draws[draws.length - 1],
+        historyLength: draws.length,
+      });
+
+      if (!snapshot.ok) {
+        const status = snapshot.issue === "missing" ? 404 : 409;
+        return NextResponse.json({
+          error: snapshot.error,
+          snapshotIssue: snapshot.issue,
+          readOnly: true,
+        }, { status });
+      }
+
+      const published = snapshot.value;
       return NextResponse.json({
-        market: String(data.name),
+        market: String(data.name ?? published.marketName),
         result: {
-          engineVersion: prediction.engineVersion,
-          configVersion: prediction.configVersion,
-          target2D: prediction.target2D,
-          historyLength: prediction.historyLength,
-          latestDraw: prediction.latestDraw,
-          digits: prediction.selection.digits,
-          method: prediction.selection.method,
-          digitCount: prediction.selection.digitCount,
-          estimatedSuccess: prediction.selection.estimatedSuccess,
-          baselineSuccess: prediction.selection.baselineSuccess,
-          lift: prediction.selection.lift,
-          selectionMargin: prediction.selection.selectionMargin,
-          signalStrength: prediction.signalStrength,
-          replayMode: prediction.replay.mode,
-          processedSteps: prediction.replay.processedSteps,
-          meanEnsembleLoss: prediction.replay.meanEnsembleLoss,
-          stateRevision: persistence.status === "stored"
-            ? persistence.stateRevision
-            : run.state.stateRevision,
-          settledPredictionId: persistence.status === "stored"
-            ? persistence.settledPredictionId
-            : null,
-          persistence,
+          source: "published",
+          predictionId: published.predictionId,
+          publishedAt: published.predictionCreatedAt,
+          engineVersion: published.engineVersion,
+          configVersion: published.configVersion,
+          target2D: published.target2D,
+          historyLength: published.historyLength,
+          latestDraw: published.latestDraw,
+          digits: published.digits,
+          method: published.method,
+          digitCount: published.digitCount,
+          estimatedSuccess: published.estimatedSuccess,
+          baselineSuccess: published.baselineSuccess,
+          lift: published.lift,
+          selectionMargin: published.selectionMargin,
+          signalStrength: published.signalStrength,
+          stateRevision: published.stateRevision,
+          snapshotComplete: true,
+          selectionCount: 18,
         },
       });
     }
