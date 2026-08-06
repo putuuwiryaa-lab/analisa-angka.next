@@ -100,6 +100,8 @@ export interface AdaptiveSettlement {
 
 export interface AdaptivePersistenceContext {
   configured: boolean;
+  expectedStateRevision: number | null;
+  expectedHistoryFingerprint: string | null;
   state: AdaptiveLearningState | null;
   pendingPrediction: AdaptivePendingPrediction | null;
 }
