@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isTemporaryPinBypassActive } from "@/lib/access-bypass";
+import { safeNextPath } from "@/lib/shared/safeNextPath";
 
 const ACCESS_COOKIE = "analisa_access_token";
 const ADMIN_COOKIE = "analisa_admin_session";
@@ -57,10 +58,6 @@ function redirectLegacyPath(req: NextRequest) {
   return NextResponse.redirect(url, 308);
 }
 
-function safeNextPath(value: string | null) {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
-}
-
 function isInternalAnalyzeRequest(req: NextRequest) {
   if (req.nextUrl.pathname !== "/api/analyze") return false;
 
@@ -94,7 +91,7 @@ export function proxy(req: NextRequest) {
 
   if (bypassPin && pathname === "/pin") {
     return NextResponse.redirect(
-      new URL(safeNextPath(req.nextUrl.searchParams.get("next")), req.url),
+      new URL(safeNextPath(req.nextUrl.searchParams.get("next"), "/"), req.url),
     );
   }
 
