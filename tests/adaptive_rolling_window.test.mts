@@ -121,8 +121,11 @@ Deno.test("migration 009 menerima rolling tanpa menekan settlement", async () =>
   );
 
   assert.match(migration, /rollingWindowAdvance/);
-  assert.match(migration, /rollingWindowAdvanceAccepted/);
+  assert.match(migration, /previousHistoryDraws/);
+  assert.match(migration, /rollingOverlapValidated/);
   assert.match(migration, /v_history_correction_detected := false/);
+  assert.match(reconciliation, /previousDraws\.slice\(1\)/);
+  assert.match(reconciliation, /previousHistoryDraws:/);
   assert.match(reconciliation, /rollingWindowAdvance: context\.rollingWindowAdvance/);
   assert.match(reconciliation, /\{ rollingWindowAdvance: context\.rollingWindowAdvance \}/);
 });
