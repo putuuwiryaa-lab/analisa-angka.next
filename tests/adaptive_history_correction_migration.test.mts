@@ -51,6 +51,20 @@ Deno.test("pending lineage lama dibatalkan sebelum full-publication store", () =
   assert.match(sql, /get diagnostics v_cancelled_pending_count = row_count/);
 });
 
+Deno.test("fingerprint lineage baru disimpan dalam transaksi wrapper yang sama", () => {
+  const baseStoreIndex = sql.indexOf("adaptive.store_online_run_base(p_payload)");
+  const fingerprintUpdateIndex = sql.indexOf("history_fingerprint = v_current_history_fingerprint");
+  const returnIndex = sql.indexOf("return v_result || jsonb_build_object");
+
+  assert.ok(fingerprintUpdateIndex > baseStoreIndex);
+  assert.ok(returnIndex > fingerprintUpdateIndex);
+  assert.match(
+    sql,
+    /digest\(convert_to\(coalesce\(v_current_history, ''\), 'UTF8'\), 'sha256'\)/,
+  );
+  assert.match(sql, /'historyFingerprint', v_current_history_fingerprint/);
+});
+
 Deno.test("wrapper mengembalikan audit koreksi dan jumlah pending yang dibatalkan", () => {
   assert.match(sql, /'historyCorrectionDetected', v_history_correction_detected/);
   assert.match(sql, /'pendingPredictionsCancelled', v_cancelled_pending_count/);
