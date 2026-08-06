@@ -21,6 +21,19 @@ Deno.test("guardrail event health hanya memakai prediction versi aktif", () => {
     eventQuery,
     /prediction\.config_version = \$\{ADAPTIVE_CONFIG_VERSION\}/,
   );
+  assert.match(eventQuery, /prediction\.status = 'settled'/);
+});
+
+Deno.test("settlement health tidak menghitung evaluasi prediction yang diaktifkan kembali", () => {
+  const settlementQueryStart = source.indexOf("from adaptive.evaluations e");
+  const eventQueryStart = source.indexOf("from adaptive.drift_events event");
+  assert.ok(settlementQueryStart >= 0);
+  assert.ok(eventQueryStart > settlementQueryStart);
+
+  const settlementQuery = source.slice(settlementQueryStart, eventQueryStart);
+  assert.match(settlementQuery, /p\.engine_version = \$\{ADAPTIVE_ENGINE_VERSION\}/);
+  assert.match(settlementQuery, /p\.config_version = \$\{ADAPTIVE_CONFIG_VERSION\}/);
+  assert.match(settlementQuery, /p\.status = 'settled'/);
 });
 
 Deno.test("agregasi latest event memakai alias drift event yang tervalidasi", () => {
