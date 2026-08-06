@@ -16,6 +16,8 @@ export interface ReconciliationStateSnapshot {
   lastProcessedDraw: string | null;
   historyFingerprint?: string | null;
   pendingHistoryLength?: number | null;
+  oldestPendingHistoryLength?: number | null;
+  pendingCount?: number | null;
   pendingSelectionCount?: number | null;
   pendingSnapshotComplete?: boolean | null;
   updatedAt?: string | null;
@@ -48,6 +50,16 @@ function clampLimit(value: number): number {
   return Math.max(1, Math.min(50, Math.trunc(value)));
 }
 
+function oldestPendingHistoryLength(state: ReconciliationStateSnapshot | undefined): number | null {
+  if (Number.isInteger(state?.oldestPendingHistoryLength)) {
+    return Number(state?.oldestPendingHistoryLength);
+  }
+  if (Number.isInteger(state?.pendingHistoryLength)) {
+    return Number(state?.pendingHistoryLength);
+  }
+  return null;
+}
+
 export function planAdaptiveReconciliation(
   markets: readonly ReconciliationMarketSnapshot[],
   states: readonly ReconciliationStateSnapshot[],
@@ -72,8 +84,9 @@ export function planAdaptiveReconciliation(
     for (const target2D of RECONCILIATION_TARGETS) {
       const state = stateMap.get(stateKey(market.id, target2D));
       const hasPendingPrediction = Number.isInteger(state?.pendingHistoryLength);
-      const pendingNeedsSettlement = hasPendingPrediction &&
-        Number(state?.pendingHistoryLength) < market.historyLength;
+      const oldestPending = oldestPendingHistoryLength(state);
+      const pendingNeedsSettlement = Number.isInteger(oldestPending) &&
+        Number(oldestPending) < market.historyLength;
       const missingPendingSnapshot = Boolean(state && !hasPendingPrediction);
       const incompletePendingSnapshot = Boolean(
         state &&
@@ -105,6 +118,7 @@ export function planAdaptiveReconciliation(
       oldestProcessedHistoryLength = Math.min(
         oldestProcessedHistoryLength,
         state?.processedHistoryLength ?? 0,
+        oldestPending ?? market.historyLength,
       );
     }
 
