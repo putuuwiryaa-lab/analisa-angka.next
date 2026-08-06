@@ -42,7 +42,7 @@ Deno.test("migration 007 mendeteksi koreksi dari panjang, cutoff, dan fingerprin
 
 Deno.test("pending lineage lama dibatalkan sebelum full-publication store", () => {
   const cancelIndex = sql.indexOf("update adaptive.predictions");
-  const baseStoreIndex = sql.indexOf("adaptive.store_online_run_base(p_payload)");
+  const baseStoreIndex = sql.indexOf("adaptive.store_online_run_base(v_store_payload)");
 
   assert.ok(cancelIndex >= 0, "statement pembatalan pending tidak ditemukan");
   assert.ok(baseStoreIndex >= 0, "pemanggilan fungsi store dasar tidak ditemukan");
@@ -51,8 +51,19 @@ Deno.test("pending lineage lama dibatalkan sebelum full-publication store", () =
   assert.match(sql, /get diagnostics v_cancelled_pending_count = row_count/);
 });
 
+Deno.test("settlement stale dihapus sebelum fungsi dasar dijalankan", () => {
+  const suppressIndex = sql.indexOf("v_store_payload := jsonb_set");
+  const baseStoreIndex = sql.indexOf("adaptive.store_online_run_base(v_store_payload)");
+
+  assert.ok(suppressIndex >= 0, "normalisasi settlement tidak ditemukan");
+  assert.ok(baseStoreIndex > suppressIndex, "settlement harus dihapus sebelum store dasar");
+  assert.match(sql, /'\{settlement\}'/);
+  assert.match(sql, /'null'::jsonb/);
+  assert.match(sql, /'settlementSuppressed', v_settlement_suppressed/);
+});
+
 Deno.test("fingerprint lineage baru disimpan dalam transaksi wrapper yang sama", () => {
-  const baseStoreIndex = sql.indexOf("adaptive.store_online_run_base(p_payload)");
+  const baseStoreIndex = sql.indexOf("adaptive.store_online_run_base(v_store_payload)");
   const fingerprintUpdateIndex = sql.indexOf("history_fingerprint = v_current_history_fingerprint");
   const returnIndex = sql.indexOf("return v_result || jsonb_build_object");
 
