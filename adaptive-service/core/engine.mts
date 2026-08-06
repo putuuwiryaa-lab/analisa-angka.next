@@ -7,6 +7,7 @@ import type {
   AdaptivePendingPrediction,
   AdaptivePrediction,
   AdaptiveRun,
+  AdaptiveRunOptions,
   AdaptiveSelection,
   Target2D,
 } from "./types.mts";
@@ -39,8 +40,9 @@ export function runAdaptiveOnline(
   digitCount: number,
   initialState?: AdaptiveLearningState | null,
   pendingPrediction?: AdaptivePendingPrediction | null,
+  options: AdaptiveRunOptions = {},
 ): AdaptiveRun {
-  const replay = replayAdaptiveHistory(draws, target2D, initialState);
+  const replay = replayAdaptiveHistory(draws, target2D, initialState, options);
   const pairProbabilities = combinePairMatrices(replay.experts);
   const marginals = calculateMarginals(pairProbabilities);
   const selections = optimizeAllSelections(pairProbabilities);
@@ -71,6 +73,7 @@ export function runAdaptiveOnline(
       pendingPrediction,
       draws,
       target2D,
+      options,
     ),
     historyDraws: [...draws],
   };
