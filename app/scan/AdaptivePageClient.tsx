@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Database, Play, RefreshCw } from "lucide-react";
+import { Activity, Database, RefreshCw } from "lucide-react";
 import AdaptiveEvaluationPanel from "./AdaptiveEvaluationPanel";
 import AdaptiveMarketSelect, {
   type AdaptiveMarketOption,
@@ -10,6 +10,9 @@ import type { AdaptiveMethod } from "@/lib/adaptive/types";
 import type { Target2D } from "@/lib/engine/types";
 
 interface AdaptiveResult {
+  source: "published";
+  predictionId: string;
+  publishedAt: string;
   engineVersion: string;
   configVersion: string;
   target2D: Target2D;
@@ -23,19 +26,9 @@ interface AdaptiveResult {
   lift: number;
   selectionMargin: number;
   signalStrength: "low" | "medium" | "high";
-  replayMode: "full" | "incremental" | "noop";
-  processedSteps: number;
-  meanEnsembleLoss: number;
   stateRevision: number;
-  settledPredictionId: string | null;
-  persistence:
-    | {
-      status: "stored";
-      predictionId: string;
-      stateRevision: number;
-      settledPredictionId: string | null;
-    }
-    | { status: "not_configured" };
+  snapshotComplete: true;
+  selectionCount: 18;
 }
 
 const TARGET_LABELS: Record<Target2D, string> = {
@@ -49,14 +42,18 @@ const METHOD_LABELS: Record<AdaptiveMethod, string> = {
   bbfs: "BBFS",
 };
 
-const REPLAY_LABELS: Record<AdaptiveResult["replayMode"], string> = {
-  full: "Full replay",
-  incremental: "Incremental",
-  noop: "State terbaru",
-};
-
 function percentage(value: number) {
   return `${(value * 100).toFixed(1)}%`;
+}
+
+function publishedAtLabel(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "waktu publikasi tidak tersedia"
+    : date.toLocaleString("id-ID", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
 }
 
 export default function AdaptivePageClient() {
@@ -107,15 +104,37 @@ export default function AdaptivePageClient() {
     [marketId, markets],
   );
 
-  function changeMarket(value: string) {
-    if (value === marketId) return;
-    setMarketId(value);
+  function resetSnapshot() {
     setResult(null);
     setMarketName("");
     setError("");
   }
 
-  async function runAdaptive() {
+  function changeMarket(value: string) {
+    if (value === marketId) return;
+    setMarketId(value);
+    resetSnapshot();
+  }
+
+  function changeMethod(value: AdaptiveMethod) {
+    if (value === method) return;
+    setMethod(value);
+    resetSnapshot();
+  }
+
+  function changeTarget(value: Target2D) {
+    if (value === target2D) return;
+    setTarget2D(value);
+    resetSnapshot();
+  }
+
+  function changeDigitCount(value: number) {
+    if (value === digitCount) return;
+    setDigitCount(value);
+    resetSnapshot();
+  }
+
+  async function loadSnapshot() {
     if (!marketId) return;
     setRunning(true);
     setError("");
@@ -127,13 +146,13 @@ export default function AdaptivePageClient() {
         body: JSON.stringify({ action: "adaptive", marketId, method, digitCount, target2D }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || "Adaptive gagal dijalankan.");
+      if (!response.ok) throw new Error(payload?.error || "Snapshot Adaptive gagal dimuat.");
       setResult(payload.result);
       setMarketName(payload.market);
       setEvaluationRefresh((value) => value + 1);
-    } catch (runError) {
+    } catch (loadError) {
       setResult(null);
-      setError(runError instanceof Error ? runError.message : "Adaptive gagal dijalankan.");
+      setError(loadError instanceof Error ? loadError.message : "Snapshot Adaptive gagal dimuat.");
     } finally {
       setRunning(false);
     }
@@ -154,7 +173,7 @@ export default function AdaptivePageClient() {
             </p>
             <h2 className="display text-xl text-text">Adaptive Engine</h2>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
-              Probabilitas 2D dengan replay histori dan bobot online terpisah untuk setiap market serta target.
+              Membaca snapshot probabilitas yang diterbitkan otomatis oleh background reconciliation. Halaman ini tidak menjalankan ulang engine.
             </p>
           </div>
         </div>
@@ -178,7 +197,7 @@ export default function AdaptivePageClient() {
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setMethod(value)}
+                  onClick={() => changeMethod(value)}
                   disabled={busy}
                   className={`pressable h-11 rounded-xl border text-xs font-black uppercase tracking-wide transition-colors ${
                     method === value
@@ -207,7 +226,7 @@ export default function AdaptivePageClient() {
               max={9}
               step={1}
               value={digitCount}
-              onChange={(event) => setDigitCount(Number(event.target.value))}
+              onChange={(event) => changeDigitCount(Number(event.target.value))}
               disabled={busy}
               className="w-full accent-[var(--color-primary)]"
             />
@@ -226,7 +245,7 @@ export default function AdaptivePageClient() {
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setTarget2D(value)}
+                  onClick={() => changeTarget(value)}
                   disabled={busy}
                   className={`pressable min-h-11 rounded-xl border px-2 text-[10px] font-black uppercase tracking-wide transition-colors ${
                     target2D === value
@@ -242,12 +261,12 @@ export default function AdaptivePageClient() {
 
           <button
             type="button"
-            onClick={runAdaptive}
+            onClick={loadSnapshot}
             disabled={!marketId || busy || loadingMarkets}
             className="pressable flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-primary/55 bg-primary/25 text-sm font-black uppercase tracking-wide text-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {running ? <RefreshCw className="animate-spin" size={18} /> : <Play size={18} />}
-            {running ? "Memproses" : "Proses Adaptive"}
+            <RefreshCw className={running ? "animate-spin" : ""} size={18} />
+            {running ? "Memuat Snapshot" : "Muat Snapshot"}
           </button>
         </div>
       </section>
@@ -271,7 +290,7 @@ export default function AdaptivePageClient() {
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-bg-deep/60 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wide text-text-muted">
               <Database size={13} />
-              {result.persistence.status === "stored" ? "Neon tersimpan" : "Preview"}
+              Snapshot Neon
             </div>
           </div>
 
@@ -303,13 +322,7 @@ export default function AdaptivePageClient() {
           </div>
 
           <div className="mt-3 rounded-xl border border-border-soft bg-bg-deep/45 p-3 text-[10px] leading-relaxed text-text-muted">
-            Engine {result.engineVersion} · histori {result.historyLength} result · cutoff {result.latestDraw} · bobot revision {result.stateRevision} · {REPLAY_LABELS[result.replayMode]}
-            {result.processedSteps > 0
-              ? ` (${result.processedSteps} settlement replay)`
-              : ""}
-            {result.settledPredictionId
-              ? " · prediction sebelumnya sudah di-settle"
-              : ""}.
+            Engine {result.engineVersion} · histori {result.historyLength} result · cutoff {result.latestDraw} · bobot revision {result.stateRevision} · publikasi lengkap {result.selectionCount} selection · {publishedAtLabel(result.publishedAt)}.
           </div>
         </section>
       )}
