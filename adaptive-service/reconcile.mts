@@ -534,13 +534,15 @@ export async function runAdaptiveReconciliation(
     }
 
     const errorCount = details.filter((detail) => "error" in detail).length;
-    const remainingMarkets = Math.max(0, plans.length < marketLimit(options.marketLimit)
-      ? 0
-      : planAdaptiveReconciliation(markets, await fetchStateSnapshots(sql), {
+    const remainingMarkets = planAdaptiveReconciliation(
+      markets,
+      await fetchStateSnapshots(sql),
+      {
         marketLimit: MAX_MARKET_LIMIT,
         requestedMarketId: options.requestedMarketId,
         force: false,
-      }).length);
+      },
+    ).length;
     const finishedAt = new Date().toISOString();
     const summary: ReconciliationSummary = {
       runId,
