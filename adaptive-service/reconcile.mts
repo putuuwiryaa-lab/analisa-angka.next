@@ -98,16 +98,16 @@ function rollingWindowDetection(
 ): RollingDetection {
   if (stateHistoryLength !== currentDraws.length || currentDraws.length < 2) return null;
 
-  const comparablePreviousWindow =
-    previousDraws.length === currentDraws.length &&
-    previousDraws[previousDraws.length - 1] === stateLastDraw;
-  if (comparablePreviousWindow) {
+  if (previousDraws.length === currentDraws.length) {
+    if (previousDraws[previousDraws.length - 1] !== stateLastDraw) return null;
     const overlap = previousDraws.slice(1).every((draw, index) => draw === currentDraws[index]);
     return overlap ? "overlap" : null;
   }
 
   const latestDraw = currentDraws[currentDraws.length - 1];
-  return stateLastDraw !== latestDraw ? "latest-fallback" : null;
+  return previousDraws.length === 0 && stateLastDraw !== latestDraw
+    ? "latest-fallback"
+    : null;
 }
 
 async function fetchSupabaseMarkets(): Promise<{ markets: ParsedMarket[]; errors: Array<Record<string, unknown>> }> {
@@ -541,7 +541,7 @@ export async function runAdaptiveReconciliation(
             expectedStateRevision: context.expectedStateRevision,
             expectedHistoryFingerprint: context.expectedHistoryFingerprint,
             rollingWindowAdvance: context.rollingWindowAdvance,
-            previousHistoryDraws: context.rollingWindowAdvance && previousDraws.length > 0
+            previousHistoryDraws: context.rollingDetection === "overlap"
               ? previousDraws
               : null,
             prediction: run.prediction,
