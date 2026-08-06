@@ -19,6 +19,12 @@ function signalStrength(lift: number, margin: number): AdaptivePrediction["signa
   return "low";
 }
 
+function historyCutoffKey(draws: readonly string[]): string {
+  // Panjang histori dapat tetap sama pada rolling window. Seluruh isi window
+  // diperlukan agar result 4D yang berulang tidak mengaktifkan prediction lama.
+  return `${draws.length}:${draws.join("")}`;
+}
+
 function requestedSelection(
   selections: readonly AdaptiveSelection[],
   method: AdaptiveMethod,
@@ -54,7 +60,7 @@ export function runAdaptiveOnline(
     configVersion: ADAPTIVE_CONFIG_VERSION,
     target2D,
     historyLength: draws.length,
-    historyCutoffKey: `${draws.length}:${latestDraw}`,
+    historyCutoffKey: historyCutoffKey(draws),
     latestDraw,
     pairProbabilities,
     leftProbabilities: marginals.left,
