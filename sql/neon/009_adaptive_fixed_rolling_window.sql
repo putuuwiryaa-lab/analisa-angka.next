@@ -56,9 +56,10 @@ begin
     raise exception 'Identitas online run untuk validasi histori tidak lengkap.';
   end if;
 
-  if jsonb_typeof(v_history_draws) <> 'array'
-    or jsonb_array_length(v_history_draws) < 2
-  then
+  if jsonb_typeof(v_history_draws) <> 'array' then
+    raise exception 'Online run harus membawa array historyDraws.';
+  end if;
+  if jsonb_array_length(v_history_draws) < 2 then
     raise exception 'Online run harus membawa minimal 2 historyDraws.';
   end if;
 
@@ -116,39 +117,39 @@ begin
       raise exception 'Rolling window harus mempertahankan panjang histori yang sama.';
     end if;
 
-    if jsonb_typeof(v_previous_history_draws) = 'array'
-      and jsonb_array_length(v_previous_history_draws) = v_processed_history_length
-    then
-      select string_agg(draw.value, '|' order by draw.ordinality)
-      into v_previous_history
-      from jsonb_array_elements_text(v_previous_history_draws)
-        with ordinality as draw(value, ordinality);
+    if jsonb_typeof(v_previous_history_draws) = 'array' then
+      if jsonb_array_length(v_previous_history_draws) = v_processed_history_length then
+        select string_agg(draw.value, '|' order by draw.ordinality)
+        into v_previous_history
+        from jsonb_array_elements_text(v_previous_history_draws)
+          with ordinality as draw(value, ordinality);
 
-      v_previous_history_fingerprint := encode(
-        digest(convert_to(coalesce(v_previous_history, ''), 'UTF8'), 'sha256'),
-        'hex'
-      );
-      v_previous_last_draw :=
-        v_previous_history_draws->>(jsonb_array_length(v_previous_history_draws) - 1);
-
-      select count(*) filter (
-        where previous_draw.value = current_draw.value
-      )::integer
-      into v_matching_overlap_count
-      from jsonb_array_elements_text(v_history_draws)
-        with ordinality as current_draw(value, ordinality)
-      join jsonb_array_elements_text(v_previous_history_draws)
-        with ordinality as previous_draw(value, ordinality)
-        on previous_draw.ordinality = current_draw.ordinality + 1
-      where current_draw.ordinality < jsonb_array_length(v_history_draws);
-
-      v_rolling_overlap_valid :=
-        v_matching_overlap_count = v_processed_history_length - 1
-        and v_previous_last_draw is not distinct from v_last_processed_draw
-        and (
-          v_stored_history_fingerprint is null
-          or v_previous_history_fingerprint = v_stored_history_fingerprint
+        v_previous_history_fingerprint := encode(
+          digest(convert_to(coalesce(v_previous_history, ''), 'UTF8'), 'sha256'),
+          'hex'
         );
+        v_previous_last_draw :=
+          v_previous_history_draws->>(jsonb_array_length(v_previous_history_draws) - 1);
+
+        select count(*) filter (
+          where previous_draw.value = current_draw.value
+        )::integer
+        into v_matching_overlap_count
+        from jsonb_array_elements_text(v_history_draws)
+          with ordinality as current_draw(value, ordinality)
+        join jsonb_array_elements_text(v_previous_history_draws)
+          with ordinality as previous_draw(value, ordinality)
+          on previous_draw.ordinality = current_draw.ordinality + 1
+        where current_draw.ordinality < jsonb_array_length(v_history_draws);
+
+        v_rolling_overlap_valid :=
+          v_matching_overlap_count = v_processed_history_length - 1
+          and v_previous_last_draw is not distinct from v_last_processed_draw
+          and (
+            v_stored_history_fingerprint is null
+            or v_previous_history_fingerprint = v_stored_history_fingerprint
+          );
+      end if;
     end if;
 
     -- Backward-compatible fallback hanya untuk lineage lama yang belum memiliki
