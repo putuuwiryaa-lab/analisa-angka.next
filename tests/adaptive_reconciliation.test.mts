@@ -19,6 +19,8 @@ function completeStates(market: ReconciliationMarketSnapshot): ReconciliationSta
     lastProcessedDraw: market.lastDraw,
     historyFingerprint: market.historyFingerprint,
     pendingHistoryLength: market.historyLength,
+    oldestPendingHistoryLength: market.historyLength,
+    pendingCount: 1,
     pendingSelectionCount: 18,
     pendingSnapshotComplete: true,
   }));
@@ -33,7 +35,25 @@ Deno.test("market tanpa state dijadwalkan untuk seluruh target", () => {
 
 Deno.test("state terbaru dilewati tetapi pending lama tetap dijadwalkan", () => {
   const states = completeStates(MARKETS[0]);
-  states[1] = { ...states[1], pendingHistoryLength: MARKETS[0].historyLength - 1 };
+  states[1] = {
+    ...states[1],
+    pendingHistoryLength: MARKETS[0].historyLength - 1,
+    oldestPendingHistoryLength: MARKETS[0].historyLength - 1,
+  };
+
+  const plans = planAdaptiveReconciliation([MARKETS[0]], states, { marketLimit: 4 });
+  assert.equal(plans.length, 1);
+  assert.deepEqual(plans[0].targets, ["tengah"]);
+});
+
+Deno.test("pending terbaru current tidak menyembunyikan backlog settlement lama", () => {
+  const states = completeStates(MARKETS[0]);
+  states[1] = {
+    ...states[1],
+    pendingHistoryLength: MARKETS[0].historyLength,
+    oldestPendingHistoryLength: MARKETS[0].historyLength - 1,
+    pendingCount: 2,
+  };
 
   const plans = planAdaptiveReconciliation([MARKETS[0]], states, { marketLimit: 4 });
   assert.equal(plans.length, 1);
@@ -45,6 +65,8 @@ Deno.test("snapshot tanpa pending prediction dijadwalkan ulang", () => {
   states[0] = {
     ...states[0],
     pendingHistoryLength: null,
+    oldestPendingHistoryLength: null,
+    pendingCount: 0,
     pendingSelectionCount: null,
     pendingSnapshotComplete: false,
   };
@@ -78,6 +100,8 @@ Deno.test("market dengan state kosong diprioritaskan sebelum incremental", () =>
       lastProcessedDraw: "1111",
       historyFingerprint: "old",
       pendingHistoryLength: 169,
+      oldestPendingHistoryLength: 169,
+      pendingCount: 1,
       pendingSelectionCount: 18,
       pendingSnapshotComplete: true,
     }),
