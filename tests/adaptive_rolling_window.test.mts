@@ -67,6 +67,16 @@ Deno.test("window panjang tetap tanpa marker tidak menyelesaikan pending", () =>
   assert.equal(next.prediction.replay.mode, "full");
 });
 
+Deno.test("cutoff key membedakan window berbeda saat result terakhir berulang", () => {
+  const first = runAdaptiveOnline(HISTORY, "belakang", "bbfs", 7);
+  const repeatedLatest = [...HISTORY.slice(1), HISTORY[HISTORY.length - 1]];
+  const second = runAdaptiveOnline(repeatedLatest, "belakang", "bbfs", 7);
+
+  assert.equal(first.prediction.latestDraw, second.prediction.latestDraw);
+  assert.equal(first.prediction.historyLength, second.prediction.historyLength);
+  assert.notEqual(first.prediction.historyCutoffKey, second.prediction.historyCutoffKey);
+});
+
 Deno.test("planner membedakan rolling advance dari koreksi histori", () => {
   const market = {
     id: "sgp",
