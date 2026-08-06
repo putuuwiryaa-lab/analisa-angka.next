@@ -153,12 +153,16 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
       s.updated_at,
       to_jsonb(s)->>'history_fingerprint' as history_fingerprint,
       pending.history_length as pending_history_length,
+      pending.oldest_history_length as oldest_pending_history_length,
+      pending.pending_count,
       pending.selection_count as pending_selection_count,
       pending.snapshot_complete as pending_snapshot_complete
     from adaptive.engine_states s
     left join lateral (
       select
         p.history_length,
+        (min(p.history_length) over ())::integer as oldest_history_length,
+        (count(*) over ())::integer as pending_count,
         count(ps.id)::integer as selection_count,
         coalesce(
           (to_jsonb(p)->>'snapshot_complete')::boolean,
@@ -192,6 +196,13 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
       pendingHistoryLength: row.pending_history_length === null || row.pending_history_length === undefined
         ? null
         : Number(row.pending_history_length),
+      oldestPendingHistoryLength:
+        row.oldest_pending_history_length === null || row.oldest_pending_history_length === undefined
+          ? null
+          : Number(row.oldest_pending_history_length),
+      pendingCount: row.pending_count === null || row.pending_count === undefined
+        ? 0
+        : Number(row.pending_count),
       pendingSelectionCount: row.pending_selection_count === null || row.pending_selection_count === undefined
         ? null
         : Number(row.pending_selection_count),
@@ -209,6 +220,7 @@ async function loadContext(
 ): Promise<{
   state: AdaptiveLearningState | null;
   pendingPrediction: AdaptivePendingPrediction | null;
+  pendingHistoryLength: number | null;
   correctionDetected: boolean;
 }> {
   const stateRows = await sql`
@@ -264,7 +276,11 @@ async function loadContext(
       and p.engine_version = ${ADAPTIVE_ENGINE_VERSION}
       and p.config_version = ${ADAPTIVE_CONFIG_VERSION}
       and p.status = 'pending'
-    order by p.history_length desc, p.created_at desc
+    order by
+      (p.history_length < ${draws.length}) desc,
+      case when p.history_length < ${draws.length} then p.history_length end asc,
+      p.history_length desc,
+      p.created_at desc
     limit 1
   `;
 
@@ -282,6 +298,7 @@ async function loadContext(
 
   return {
     correctionDetected: compatibility.correctionDetected,
+    pendingHistoryLength: pendingRow ? Number(pendingRow.history_length) : null,
     state: useStoredContext && stateRow ? {
       engineVersion: String(stateRow.engine_version),
       configVersion: String(stateRow.config_version),
@@ -492,6 +509,8 @@ export async function runAdaptiveReconciliation(
             replayMode: run.prediction.replay.mode,
             processedSteps: run.prediction.replay.processedSteps,
             settled: Boolean(run.settlement),
+            settlementCandidateHistoryLength: context.pendingHistoryLength,
+            currentHistoryLength: market.draws.length,
             selectionsPublished: publishedCount,
             selectionsSettled: settledCount,
             snapshotComplete: stored.snapshotComplete === true,
