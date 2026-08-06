@@ -71,7 +71,6 @@ export function runAdaptiveOnline(
       pendingPrediction,
       draws,
       target2D,
-      replay.state.expertWeights,
     ),
     historyDraws: [...draws],
   };
