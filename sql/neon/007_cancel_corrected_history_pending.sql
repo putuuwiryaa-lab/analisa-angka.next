@@ -142,7 +142,10 @@ begin
 
     -- Defense in depth: bila caller membawa settlement stale, jangan teruskan ke
     -- fungsi dasar. Evaluasi untuk lineage yang dibatalkan tidak boleh tersimpan.
-    v_settlement_suppressed := jsonb_typeof(v_store_payload->'settlement') = 'object';
+    v_settlement_suppressed := coalesce(
+      jsonb_typeof(v_store_payload->'settlement') = 'object',
+      false
+    );
     v_store_payload := jsonb_set(
       v_store_payload,
       '{settlement}',
@@ -176,5 +179,31 @@ begin
   );
 end;
 $$;
+
+-- Bersihkan row lama yang sudah dapat dibuktikan tidak cocok dengan lineage state
+-- saat migration dipasang. Pending yang lebih tua tetapi cutoff-nya masih cocok
+-- tetap dipertahankan sebagai backlog settlement yang valid.
+update adaptive.predictions p
+set status = 'cancelled'
+from adaptive.engine_states s
+where p.market_id = s.market_id
+  and p.target_2d = s.target_2d
+  and p.engine_version = s.engine_version
+  and p.config_version = s.config_version
+  and p.status = 'pending'
+  and (
+    p.history_length > s.processed_history_length
+    or (
+      p.history_length = s.processed_history_length
+      and p.latest_draw is distinct from s.last_processed_draw
+    )
+    or exists (
+      select 1
+      from adaptive.result_snapshots r
+      where r.market_id = p.market_id
+        and r.source_sequence = p.history_length
+        and r.result_4d is distinct from p.latest_draw
+    )
+  );
 
 commit;
