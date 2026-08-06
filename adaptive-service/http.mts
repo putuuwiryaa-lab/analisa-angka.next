@@ -68,6 +68,8 @@ interface LoadContextRequest {
 }
 
 interface StoreOnlineRunRequest extends StorePredictionRequest {
+  expectedStateRevision: number | null;
+  expectedHistoryFingerprint: string | null;
   state: {
     engineVersion: string;
     configVersion: string;
@@ -148,6 +150,21 @@ function validateOnlineRun(body: StoreOnlineRunRequest): string | null {
   if (publicationError) return publicationError;
   if (!requestedSelectionBelongsToPublication(body.prediction.selection, body.prediction.selections)) {
     return "Selection yang diminta tidak identik dengan selection terpublikasi.";
+  }
+  if (
+    body.expectedStateRevision !== null &&
+    (!Number.isInteger(body.expectedStateRevision) || body.expectedStateRevision < 0)
+  ) {
+    return "Expected state revision tidak valid.";
+  }
+  if (
+    body.expectedHistoryFingerprint !== null &&
+    (
+      typeof body.expectedHistoryFingerprint !== "string" ||
+      !/^[0-9a-f]{64}$/.test(body.expectedHistoryFingerprint)
+    )
+  ) {
+    return "Expected history fingerprint tidak valid.";
   }
   if (!body.state || body.state.target2D !== body.prediction.target2D) return "State Adaptive tidak valid.";
   if (!Number.isInteger(body.state.processedHistoryLength) || body.state.processedHistoryLength < 2) {
@@ -239,6 +256,10 @@ async function loadContext(body: LoadContextRequest): Promise<Response> {
   return json({
     historyCorrectionDetected: compatibility.correctionDetected,
     historyFingerprint: compatibility.currentFingerprint,
+    expectedStateRevision: stateRow ? Number(stateRow.state_revision ?? 0) : null,
+    expectedHistoryFingerprint: stateRow?.history_fingerprint
+      ? String(stateRow.history_fingerprint)
+      : null,
     state: useStoredContext && stateRow ? {
       engineVersion: String(stateRow.engine_version),
       configVersion: String(stateRow.config_version),
