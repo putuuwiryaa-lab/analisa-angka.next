@@ -33,6 +33,8 @@ declare
   v_processed_history_length integer;
   v_last_processed_draw text;
   v_stored_history_fingerprint text;
+  v_current_history text;
+  v_current_history_fingerprint text;
   v_current_prefix text;
   v_current_prefix_last_draw text;
   v_current_prefix_fingerprint text;
@@ -51,6 +53,16 @@ begin
   if jsonb_typeof(v_history_draws) <> 'array' then
     raise exception 'Online run harus membawa array historyDraws.';
   end if;
+
+  select string_agg(draw.value, '|' order by draw.ordinality)
+  into v_current_history
+  from jsonb_array_elements_text(v_history_draws)
+    with ordinality as draw(value, ordinality);
+
+  v_current_history_fingerprint := encode(
+    digest(convert_to(coalesce(v_current_history, ''), 'UTF8'), 'sha256'),
+    'hex'
+  );
 
   -- Serialisasikan deteksi koreksi dan write prediction pada unit state yang sama.
   -- Fungsi dasar 005 mengambil lock identik; advisory xact lock re-entrant untuk
@@ -129,9 +141,25 @@ begin
 
   v_result := adaptive.store_online_run_base(p_payload);
 
+  -- Tutup celah antara atomic store dan persist_guardrail. Run paralel sesudah
+  -- commit langsung melihat fingerprint lineage baru, bukan fingerprint lama.
+  update adaptive.engine_states
+  set
+    history_fingerprint = v_current_history_fingerprint,
+    updated_at = now()
+  where market_id = v_market_id
+    and target_2d = v_target_2d
+    and engine_version = v_engine_version
+    and config_version = v_config_version;
+
+  if not found then
+    raise exception 'Engine state hasil online run tidak ditemukan.';
+  end if;
+
   return v_result || jsonb_build_object(
     'historyCorrectionDetected', v_history_correction_detected,
-    'pendingPredictionsCancelled', v_cancelled_pending_count
+    'pendingPredictionsCancelled', v_cancelled_pending_count,
+    'historyFingerprint', v_current_history_fingerprint
   );
 end;
 $$;
