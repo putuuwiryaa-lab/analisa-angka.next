@@ -222,6 +222,7 @@ async function loadContext(
   pendingPrediction: AdaptivePendingPrediction | null;
   pendingHistoryLength: number | null;
   correctionDetected: boolean;
+  rollingWindowAdvance: boolean;
   expectedStateRevision: number | null;
   expectedHistoryFingerprint: string | null;
 }> {
@@ -288,18 +289,28 @@ async function loadContext(
 
   const stateRow = stateRows[0];
   const pendingRow = pendingRows[0];
+  const latestDraw = draws[draws.length - 1];
+  const rollingWindowAdvance = Boolean(
+    stateRow &&
+    Number(stateRow.processed_history_length) === draws.length &&
+    stateRow.last_processed_draw &&
+    String(stateRow.last_processed_draw) !== latestDraw
+  );
   const compatibility = stateRow
-    ? await isStoredHistoryCompatible({
-      draws,
-      processedHistoryLength: Number(stateRow.processed_history_length),
-      lastProcessedDraw: stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
-      storedFingerprint: stateRow.history_fingerprint ? String(stateRow.history_fingerprint) : null,
-    })
+    ? rollingWindowAdvance
+      ? { compatible: true, correctionDetected: false, currentFingerprint: null }
+      : await isStoredHistoryCompatible({
+        draws,
+        processedHistoryLength: Number(stateRow.processed_history_length),
+        lastProcessedDraw: stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
+        storedFingerprint: stateRow.history_fingerprint ? String(stateRow.history_fingerprint) : null,
+      })
     : { compatible: false, correctionDetected: false, currentFingerprint: null };
   const useStoredContext = Boolean(stateRow && compatibility.compatible);
 
   return {
-    correctionDetected: compatibility.correctionDetected,
+    correctionDetected: rollingWindowAdvance ? false : compatibility.correctionDetected,
+    rollingWindowAdvance,
     expectedStateRevision: stateRow ? Number(stateRow.state_revision ?? 0) : null,
     expectedHistoryFingerprint: stateRow?.history_fingerprint
       ? String(stateRow.history_fingerprint)
@@ -455,6 +466,7 @@ export async function runAdaptiveReconciliation(
             BACKGROUND_DIGIT_COUNT,
             context.state,
             context.pendingPrediction,
+            { rollingWindowAdvance: context.rollingWindowAdvance },
           );
           const payload = {
             marketId: market.id,
@@ -462,6 +474,7 @@ export async function runAdaptiveReconciliation(
             targetDrawKey: `next:${run.prediction.historyCutoffKey}`,
             expectedStateRevision: context.expectedStateRevision,
             expectedHistoryFingerprint: context.expectedHistoryFingerprint,
+            rollingWindowAdvance: context.rollingWindowAdvance,
             prediction: run.prediction,
             state: run.state,
             settlement: run.settlement,
@@ -517,6 +530,7 @@ export async function runAdaptiveReconciliation(
             replayMode: run.prediction.replay.mode,
             processedSteps: run.prediction.replay.processedSteps,
             settled: Boolean(run.settlement),
+            rollingWindowAdvance: context.rollingWindowAdvance,
             settlementCandidateHistoryLength: context.pendingHistoryLength,
             currentHistoryLength: market.draws.length,
             selectionsPublished: publishedCount,
