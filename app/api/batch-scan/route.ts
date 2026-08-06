@@ -4,12 +4,15 @@ import {
   buildAdaptiveBatchSnapshotRequest,
 } from "@/lib/adaptive/batch-snapshot";
 import { runAutoScan } from "@/lib/engine/acke-engine";
-import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
+import {
+  HistoryDataFormatError,
+  latestStrictHistoryResult,
+  parseStrictHistory,
+} from "@/lib/engine/history";
 import { isScanMode, isShioMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
 import type { Draw, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { tokenizeHistory } from "@/lib/shared/history";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -161,14 +164,6 @@ function storedSelectionDigits(value: unknown, digitCount: number): string | nul
   return digits.join("");
 }
 
-function latestResult(historyData: string | null | undefined): string | null {
-  const tokens = tokenizeHistory(String(historyData ?? ""));
-  for (let index = tokens.length - 1; index >= 0; index--) {
-    if (/^\d{4}$/.test(tokens[index])) return tokens[index];
-  }
-  return null;
-}
-
 async function loadAdaptiveSelections(
   marketIds: string[],
   target2D: Target2D,
@@ -234,6 +229,26 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Target Adaptive tidak valid." }, { status: 400 });
       }
       const digitCount = clamp(body.digitCount, method === "ai" ? 4 : 7, 1, 9);
+      const latestById = new Map<string, string | null>();
+
+      for (const id of marketIds) {
+        const market = byId.get(id);
+        const name = titleCase(market?.name ?? id);
+        if (!market?.history_data) {
+          latestById.set(id, null);
+          continue;
+        }
+
+        try {
+          latestById.set(id, latestStrictHistoryResult(market.history_data));
+        } catch (error) {
+          if (error instanceof HistoryDataFormatError) {
+            return NextResponse.json({ error: `Data ${name} salah. ${error.message}` }, { status: 422 });
+          }
+          throw error;
+        }
+      }
+
       const snapshots = await loadAdaptiveSelections(marketIds, body.target2D, method, digitCount);
       const snapshotById = new Map(snapshots.map((snapshot) => [String(snapshot.market_id), snapshot]));
       const results: BatchLine[] = marketIds.map((id) => {
@@ -250,7 +265,7 @@ export async function POST(req: Request) {
           return { id, name, digits: "SNAPSHOT BELUM LENGKAP" };
         }
 
-        const latest = latestResult(market?.history_data);
+        const latest = latestById.get(id) ?? null;
         const snapshotDraw = String(snapshot.latest_draw ?? "");
         if (latest && snapshotDraw !== latest) {
           return { id, name, digits: "SNAPSHOT BELUM TERBARU" };
@@ -325,6 +340,10 @@ export async function POST(req: Request) {
       adaptive: false,
     });
   } catch (error) {
+    if (error instanceof HistoryDataFormatError) {
+      return NextResponse.json({ error: error.message }, { status: 422 });
+    }
+
     console.error("[api/batch-scan] Request error", error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : "Batch scan gagal.",
