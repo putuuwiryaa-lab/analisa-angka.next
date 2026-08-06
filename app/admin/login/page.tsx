@@ -1,13 +1,13 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { safeNextPath } from "@/lib/shared/safeNextPath";
 
-function safeNextPath() {
+function nextPathAfterLogin() {
   if (typeof window === "undefined") return "/admin";
 
   const params = new URLSearchParams(window.location.search);
-  const next = params.get("next") || "/admin";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/admin";
+  return safeNextPath(params.get("next"), "/admin");
 }
 
 export default function AdminLoginPage() {
@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      window.location.replace(safeNextPath());
+      window.location.replace(nextPathAfterLogin());
     } catch {
       setError("Login admin gagal.");
     } finally {
