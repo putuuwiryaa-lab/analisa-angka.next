@@ -68,6 +68,8 @@ interface ParsedMarket extends ReconciliationMarketSnapshot {
   historyFingerprint: string;
 }
 
+type RollingDetection = "overlap" | "latest-fallback" | null;
+
 const DEFAULT_MARKET_LIMIT = 4;
 const MAX_MARKET_LIMIT = 50;
 const BACKGROUND_METHOD = "bbfs" as const;
@@ -86,6 +88,26 @@ function marketLimit(value: number | undefined): number {
 
 function databaseClient(): SqlClient {
   return neon(requiredEnv("NEON_DATABASE_URL")) as unknown as SqlClient;
+}
+
+function rollingWindowDetection(
+  previousDraws: readonly string[],
+  currentDraws: readonly string[],
+  stateHistoryLength: number,
+  stateLastDraw: string | null,
+): RollingDetection {
+  if (stateHistoryLength !== currentDraws.length || currentDraws.length < 2) return null;
+
+  if (previousDraws.length === currentDraws.length) {
+    if (previousDraws[previousDraws.length - 1] !== stateLastDraw) return null;
+    const overlap = previousDraws.slice(1).every((draw, index) => draw === currentDraws[index]);
+    return overlap ? "overlap" : null;
+  }
+
+  const latestDraw = currentDraws[currentDraws.length - 1];
+  return previousDraws.length === 0 && stateLastDraw !== latestDraw
+    ? "latest-fallback"
+    : null;
 }
 
 async function fetchSupabaseMarkets(): Promise<{ markets: ParsedMarket[]; errors: Array<Record<string, unknown>> }> {
@@ -212,16 +234,41 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
   });
 }
 
+async function loadStoredHistoryWindow(sql: SqlClient, marketId: string): Promise<string[]> {
+  const rows = await sql`
+    select
+      result_4d,
+      source_sequence
+    from adaptive.result_snapshots
+    where market_id = ${marketId}
+      and draw_key = 'seq:' || source_sequence::text
+    order by source_sequence asc
+  `;
+
+  const draws: string[] = [];
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index];
+    const sequence = Number(row.source_sequence);
+    const draw = String(row.result_4d ?? "");
+    if (sequence !== index + 1 || !/^\d{4}$/.test(draw)) return [];
+    draws.push(draw);
+  }
+  return draws;
+}
+
 async function loadContext(
   sql: SqlClient,
   marketId: string,
   target2D: ReconciliationTarget,
   draws: readonly string[],
+  previousDraws: readonly string[],
 ): Promise<{
   state: AdaptiveLearningState | null;
   pendingPrediction: AdaptivePendingPrediction | null;
   pendingHistoryLength: number | null;
   correctionDetected: boolean;
+  rollingWindowAdvance: boolean;
+  rollingDetection: RollingDetection;
   expectedStateRevision: number | null;
   expectedHistoryFingerprint: string | null;
 }> {
@@ -288,18 +335,31 @@ async function loadContext(
 
   const stateRow = stateRows[0];
   const pendingRow = pendingRows[0];
-  const compatibility = stateRow
-    ? await isStoredHistoryCompatible({
+  const rollingDetection = stateRow
+    ? rollingWindowDetection(
+      previousDraws,
       draws,
-      processedHistoryLength: Number(stateRow.processed_history_length),
-      lastProcessedDraw: stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
-      storedFingerprint: stateRow.history_fingerprint ? String(stateRow.history_fingerprint) : null,
-    })
+      Number(stateRow.processed_history_length),
+      stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
+    )
+    : null;
+  const rollingWindowAdvance = rollingDetection !== null;
+  const compatibility = stateRow
+    ? rollingWindowAdvance
+      ? { compatible: true, correctionDetected: false, currentFingerprint: null }
+      : await isStoredHistoryCompatible({
+        draws,
+        processedHistoryLength: Number(stateRow.processed_history_length),
+        lastProcessedDraw: stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
+        storedFingerprint: stateRow.history_fingerprint ? String(stateRow.history_fingerprint) : null,
+      })
     : { compatible: false, correctionDetected: false, currentFingerprint: null };
   const useStoredContext = Boolean(stateRow && compatibility.compatible);
 
   return {
-    correctionDetected: compatibility.correctionDetected,
+    correctionDetected: rollingWindowAdvance ? false : compatibility.correctionDetected,
+    rollingWindowAdvance,
+    rollingDetection,
     expectedStateRevision: stateRow ? Number(stateRow.state_revision ?? 0) : null,
     expectedHistoryFingerprint: stateRow?.history_fingerprint
       ? String(stateRow.history_fingerprint)
@@ -444,10 +504,27 @@ export async function runAdaptiveReconciliation(
       const market = marketMap.get(plan.marketId);
       if (!market) continue;
       let marketSucceeded = false;
+      let previousDraws: string[] = [];
+      try {
+        previousDraws = await loadStoredHistoryWindow(sql, market.id);
+      } catch (error) {
+        details.push({
+          marketId: market.id,
+          marketName: market.name,
+          stage: "load-stored-history",
+          warning: error instanceof Error ? error.message : "Window histori tersimpan tidak dapat dibaca.",
+        });
+      }
 
       for (const target2D of plan.targets) {
         try {
-          const context = await loadContext(sql, market.id, target2D, market.draws);
+          const context = await loadContext(
+            sql,
+            market.id,
+            target2D,
+            market.draws,
+            previousDraws,
+          );
           const run = runAdaptiveOnline(
             market.draws,
             target2D,
@@ -455,6 +532,7 @@ export async function runAdaptiveReconciliation(
             BACKGROUND_DIGIT_COUNT,
             context.state,
             context.pendingPrediction,
+            { rollingWindowAdvance: context.rollingWindowAdvance },
           );
           const payload = {
             marketId: market.id,
@@ -462,6 +540,10 @@ export async function runAdaptiveReconciliation(
             targetDrawKey: `next:${run.prediction.historyCutoffKey}`,
             expectedStateRevision: context.expectedStateRevision,
             expectedHistoryFingerprint: context.expectedHistoryFingerprint,
+            rollingWindowAdvance: context.rollingWindowAdvance,
+            previousHistoryDraws: context.rollingDetection === "overlap"
+              ? previousDraws
+              : null,
             prediction: run.prediction,
             state: run.state,
             settlement: run.settlement,
@@ -517,6 +599,10 @@ export async function runAdaptiveReconciliation(
             replayMode: run.prediction.replay.mode,
             processedSteps: run.prediction.replay.processedSteps,
             settled: Boolean(run.settlement),
+            rollingWindowAdvance: context.rollingWindowAdvance,
+            rollingDetection: context.rollingDetection,
+            rollingOverlapValidated: stored.rollingOverlapValidated === true,
+            rollingFallbackUsed: stored.rollingFallbackUsed === true,
             settlementCandidateHistoryLength: context.pendingHistoryLength,
             currentHistoryLength: market.draws.length,
             selectionsPublished: publishedCount,

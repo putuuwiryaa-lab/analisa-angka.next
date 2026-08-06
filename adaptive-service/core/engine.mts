@@ -7,6 +7,7 @@ import type {
   AdaptivePendingPrediction,
   AdaptivePrediction,
   AdaptiveRun,
+  AdaptiveRunOptions,
   AdaptiveSelection,
   Target2D,
 } from "./types.mts";
@@ -16,6 +17,22 @@ function signalStrength(lift: number, margin: number): AdaptivePrediction["signa
   if (lift >= 0.05 && margin >= 0.01) return "high";
   if (lift >= 0.02 || margin >= 0.004) return "medium";
   return "low";
+}
+
+function historyWindowFingerprint(draws: readonly string[]): string {
+  // FNV-1a 64-bit menjaga key ringkas dan deterministik. Seluruh window masuk
+  // ke fingerprint agar result 4D yang berulang tidak mengaktifkan row lama.
+  let hash = 0xcbf29ce484222325n;
+  const input = draws.join("|");
+  for (let index = 0; index < input.length; index++) {
+    hash ^= BigInt(input.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+  }
+  return hash.toString(16).padStart(16, "0");
+}
+
+function historyCutoffKey(draws: readonly string[]): string {
+  return `${draws.length}:${draws[draws.length - 1]}:${historyWindowFingerprint(draws)}`;
 }
 
 function requestedSelection(
@@ -39,8 +56,9 @@ export function runAdaptiveOnline(
   digitCount: number,
   initialState?: AdaptiveLearningState | null,
   pendingPrediction?: AdaptivePendingPrediction | null,
+  options: AdaptiveRunOptions = {},
 ): AdaptiveRun {
-  const replay = replayAdaptiveHistory(draws, target2D, initialState);
+  const replay = replayAdaptiveHistory(draws, target2D, initialState, options);
   const pairProbabilities = combinePairMatrices(replay.experts);
   const marginals = calculateMarginals(pairProbabilities);
   const selections = optimizeAllSelections(pairProbabilities);
@@ -52,7 +70,7 @@ export function runAdaptiveOnline(
     configVersion: ADAPTIVE_CONFIG_VERSION,
     target2D,
     historyLength: draws.length,
-    historyCutoffKey: `${draws.length}:${latestDraw}`,
+    historyCutoffKey: historyCutoffKey(draws),
     latestDraw,
     pairProbabilities,
     leftProbabilities: marginals.left,
@@ -71,6 +89,7 @@ export function runAdaptiveOnline(
       pendingPrediction,
       draws,
       target2D,
+      options,
     ),
     historyDraws: [...draws],
   };
