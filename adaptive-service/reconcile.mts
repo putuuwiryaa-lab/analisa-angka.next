@@ -541,6 +541,9 @@ export async function runAdaptiveReconciliation(
             expectedStateRevision: context.expectedStateRevision,
             expectedHistoryFingerprint: context.expectedHistoryFingerprint,
             rollingWindowAdvance: context.rollingWindowAdvance,
+            previousHistoryDraws: context.rollingWindowAdvance && previousDraws.length > 0
+              ? previousDraws
+              : null,
             prediction: run.prediction,
             state: run.state,
             settlement: run.settlement,
