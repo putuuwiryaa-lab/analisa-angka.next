@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  adaptiveBatchSnapshotIssue,
+  buildAdaptiveBatchSnapshotRequest,
+} from "@/lib/adaptive/batch-snapshot";
 import { runAutoScan } from "@/lib/engine/acke-engine";
 import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
 import { isScanMode, isShioMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
@@ -30,6 +34,10 @@ type AdaptiveSnapshot = {
   market_id: unknown;
   market_name: unknown;
   latest_draw: unknown;
+  engine_version: unknown;
+  config_version: unknown;
+  snapshot_complete: unknown;
+  selection_count: unknown;
   digits: unknown;
 };
 
@@ -177,7 +185,12 @@ async function loadAdaptiveSelections(
       "Content-Type": "application/json",
       Authorization: `Bearer ${serviceSecret}`,
     },
-    body: JSON.stringify({ marketIds, target2D, method, digitCount }),
+    body: JSON.stringify(buildAdaptiveBatchSnapshotRequest({
+      marketIds,
+      target2D,
+      method,
+      digitCount,
+    })),
     cache: "no-store",
     signal: AbortSignal.timeout(30_000),
   });
@@ -228,6 +241,14 @@ export async function POST(req: Request) {
         const snapshot = snapshotById.get(id);
         const name = titleCase(market?.name ?? String(snapshot?.market_name ?? id));
         if (!snapshot) return { id, name, digits: "SNAPSHOT BELUM TERSEDIA" };
+
+        const snapshotIssue = adaptiveBatchSnapshotIssue(snapshot);
+        if (snapshotIssue === "version") {
+          return { id, name, digits: "SNAPSHOT VERSI LAMA" };
+        }
+        if (snapshotIssue === "incomplete") {
+          return { id, name, digits: "SNAPSHOT BELUM LENGKAP" };
+        }
 
         const latest = latestResult(market?.history_data);
         const snapshotDraw = String(snapshot.latest_draw ?? "");
