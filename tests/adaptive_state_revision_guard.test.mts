@@ -4,7 +4,16 @@ const migrationUrl = new URL(
   "../sql/neon/008_adaptive_optimistic_concurrency.sql",
   import.meta.url,
 );
-const sql = await Deno.readTextFile(migrationUrl);
+const reconcileUrl = new URL("../adaptive-service/reconcile.mts", import.meta.url);
+const httpUrl = new URL("../adaptive-service/http.mts", import.meta.url);
+const persistenceUrl = new URL("../lib/adaptive/persistence.ts", import.meta.url);
+
+const [sql, reconcile, http, persistence] = await Promise.all([
+  Deno.readTextFile(migrationUrl),
+  Deno.readTextFile(reconcileUrl),
+  Deno.readTextFile(httpUrl),
+  Deno.readTextFile(persistenceUrl),
+]);
 
 Deno.test("migration 008 membungkus history guard migration 007", () => {
   assert.match(
@@ -56,6 +65,36 @@ Deno.test("run pertama hanya menerima context token null", () => {
     /elsif v_expected_state_revision is not null[\s\S]*or v_expected_history_fingerprint is not null/,
   );
   assert.match(sql, /context mengharapkan state yang tidak lagi tersedia/);
+});
+
+Deno.test("reconciliation membawa token state walaupun context ditolak untuk replay", () => {
+  assert.match(
+    reconcile,
+    /expectedStateRevision: stateRow \? Number\(stateRow\.state_revision \?\? 0\) : null/,
+  );
+  assert.match(
+    reconcile,
+    /expectedHistoryFingerprint: stateRow\?\.history_fingerprint/,
+  );
+  assert.match(
+    reconcile,
+    /expectedStateRevision: context\.expectedStateRevision/,
+  );
+  assert.match(
+    reconcile,
+    /expectedHistoryFingerprint: context\.expectedHistoryFingerprint/,
+  );
+});
+
+Deno.test("service context dan persistence client meneruskan token yang sama", () => {
+  assert.match(http, /expectedStateRevision: stateRow \? Number\(stateRow\.state_revision \?\? 0\) : null/);
+  assert.match(http, /expectedHistoryFingerprint: stateRow\?\.history_fingerprint/);
+  assert.match(http, /Expected state revision tidak valid/);
+  assert.match(http, /Expected history fingerprint tidak valid/);
+  assert.match(persistence, /expectedStateRevision: payload\.expectedStateRevision/);
+  assert.match(persistence, /expectedHistoryFingerprint: typeof payload\.expectedHistoryFingerprint/);
+  assert.match(persistence, /expectedStateRevision: contextToken\.expectedStateRevision/);
+  assert.match(persistence, /expectedHistoryFingerprint: contextToken\.expectedHistoryFingerprint/);
 });
 
 Deno.test("wrapper mengembalikan audit optimistic concurrency", () => {
