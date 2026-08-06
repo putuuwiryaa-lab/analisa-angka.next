@@ -237,7 +237,6 @@ export function settlePendingPrediction(
   pending: AdaptivePendingPrediction | null | undefined,
   draws: readonly string[],
   target2D: Target2D,
-  weightsAfter: Readonly<Record<string, number>>,
 ): AdaptiveSettlement | null {
   if (!pending) return null;
   if (pending.engineVersion !== ADAPTIVE_ENGINE_VERSION || pending.configVersion !== ADAPTIVE_CONFIG_VERSION) {
@@ -253,8 +252,9 @@ export function settlePendingPrediction(
   const rightLoss = positionalBrierLoss(pending.rightProbabilities, actualRight);
 
   const historicalExperts = buildBaselineExperts(draws.slice(0, pending.historyLength), target2D);
-  const pendingWeights = resolveExpertWeights(historicalExperts, pending.expertWeights);
+  const weightsBefore = resolveExpertWeights(historicalExperts, pending.expertWeights);
   const expertLosses = evaluateExpertLosses(historicalExperts, actualLeft, actualRight);
+  const weightsAfter = updateExpertWeights(historicalExperts, weightsBefore, expertLosses);
   const aiResults: Record<string, boolean> = {};
   const bbfsResults: Record<string, boolean> = {};
 
@@ -280,7 +280,7 @@ export function settlePendingPrediction(
     aiResults,
     bbfsResults,
     expertLosses,
-    weightsBefore: pendingWeights,
-    weightsAfter: { ...weightsAfter },
+    weightsBefore,
+    weightsAfter,
   };
 }
