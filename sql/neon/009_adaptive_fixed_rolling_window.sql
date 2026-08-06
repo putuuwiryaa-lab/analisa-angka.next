@@ -26,6 +26,7 @@ declare
   v_engine_version text := v_prediction->>'engineVersion';
   v_config_version text := v_prediction->>'configVersion';
   v_history_draws jsonb := p_payload->'historyDraws';
+  v_previous_history_draws jsonb := p_payload->'previousHistoryDraws';
   v_rolling_window_advance boolean := false;
   v_processed_history_length integer;
   v_last_processed_draw text;
@@ -36,9 +37,10 @@ declare
   v_current_prefix_last_draw text;
   v_current_prefix_fingerprint text;
   v_current_last_draw text;
-  v_previous_overlap_count integer := 0;
+  v_previous_history text;
+  v_previous_history_fingerprint text;
+  v_previous_last_draw text;
   v_matching_overlap_count integer := 0;
-  v_previous_snapshot_last_draw text;
   v_rolling_overlap_valid boolean := false;
   v_rolling_latest_fallback boolean := false;
   v_history_correction_detected boolean := false;
@@ -114,38 +116,47 @@ begin
       raise exception 'Rolling window harus mempertahankan panjang histori yang sama.';
     end if;
 
-    -- Validasi pola [lama ke-2 ... lama terakhir] = [baru pertama ... baru
-    -- sebelum terakhir]. Ini membedakan pergeseran normal dari koreksi acak dan
-    -- tetap bekerja ketika result 4D terbaru kebetulan sama dengan sebelumnya.
-    select
-      count(*)::integer,
-      count(*) filter (
-        where previous.result_4d = current_draw.value
-      )::integer,
-      max(previous.result_4d) filter (
-        where previous.source_sequence = v_processed_history_length
-      )
-    into
-      v_previous_overlap_count,
-      v_matching_overlap_count,
-      v_previous_snapshot_last_draw
-    from jsonb_array_elements_text(v_history_draws)
-      with ordinality as current_draw(value, ordinality)
-    join adaptive.result_snapshots previous
-      on previous.market_id = v_market_id
-      and previous.source_sequence = current_draw.ordinality + 1
-    where current_draw.ordinality < jsonb_array_length(v_history_draws);
+    if jsonb_typeof(v_previous_history_draws) = 'array'
+      and jsonb_array_length(v_previous_history_draws) = v_processed_history_length
+    then
+      select string_agg(draw.value, '|' order by draw.ordinality)
+      into v_previous_history
+      from jsonb_array_elements_text(v_previous_history_draws)
+        with ordinality as draw(value, ordinality);
 
-    v_rolling_overlap_valid :=
-      v_previous_overlap_count = v_processed_history_length - 1
-      and v_matching_overlap_count = v_previous_overlap_count
-      and v_previous_snapshot_last_draw is not distinct from v_last_processed_draw;
+      v_previous_history_fingerprint := encode(
+        digest(convert_to(coalesce(v_previous_history, ''), 'UTF8'), 'sha256'),
+        'hex'
+      );
+      v_previous_last_draw :=
+        v_previous_history_draws->>(jsonb_array_length(v_previous_history_draws) - 1);
 
-    -- Backward-compatible fallback untuk state lama yang belum mempunyai
-    -- result_snapshots lengkap. Setelah satu run sukses, overlap menjadi guard
-    -- utama pada run berikutnya.
+      select count(*) filter (
+        where previous_draw.value = current_draw.value
+      )::integer
+      into v_matching_overlap_count
+      from jsonb_array_elements_text(v_history_draws)
+        with ordinality as current_draw(value, ordinality)
+      join jsonb_array_elements_text(v_previous_history_draws)
+        with ordinality as previous_draw(value, ordinality)
+        on previous_draw.ordinality = current_draw.ordinality + 1
+      where current_draw.ordinality < jsonb_array_length(v_history_draws);
+
+      v_rolling_overlap_valid :=
+        v_matching_overlap_count = v_processed_history_length - 1
+        and v_previous_last_draw is not distinct from v_last_processed_draw
+        and (
+          v_stored_history_fingerprint is null
+          or v_previous_history_fingerprint = v_stored_history_fingerprint
+        );
+    end if;
+
+    -- Backward-compatible fallback hanya untuk lineage lama yang belum memiliki
+    -- previousHistoryDraws lengkap. Setelah satu run sukses, overlap menjadi
+    -- bukti utama dan bekerja juga saat result 4D terbaru berulang.
     v_rolling_latest_fallback :=
-      v_previous_overlap_count = 0
+      not v_rolling_overlap_valid
+      and jsonb_typeof(v_previous_history_draws) is distinct from 'array'
       and v_current_last_draw is distinct from v_last_processed_draw;
 
     if not v_rolling_overlap_valid and not v_rolling_latest_fallback then
