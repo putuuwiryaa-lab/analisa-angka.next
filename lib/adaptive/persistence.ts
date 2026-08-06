@@ -108,13 +108,7 @@ export async function loadAdaptiveContext(
   historyDraws?: readonly string[],
 ): Promise<AdaptivePersistenceContext> {
   if (!serviceConfiguration()) {
-    return {
-      configured: false,
-      expectedStateRevision: null,
-      expectedHistoryFingerprint: null,
-      state: null,
-      pendingPrediction: null,
-    };
+    return { configured: false, state: null, pendingPrediction: null };
   }
 
   const payload = await callAdaptiveService("/context/load", {
@@ -127,12 +121,6 @@ export async function loadAdaptiveContext(
 
   return {
     configured: true,
-    expectedStateRevision: payload.expectedStateRevision === null || payload.expectedStateRevision === undefined
-      ? null
-      : Number(payload.expectedStateRevision),
-    expectedHistoryFingerprint: typeof payload.expectedHistoryFingerprint === "string"
-      ? payload.expectedHistoryFingerprint
-      : null,
     state: (payload.state ?? null) as AdaptivePersistenceContext["state"],
     pendingPrediction: (payload.pendingPrediction ?? null) as AdaptivePersistenceContext["pendingPrediction"],
   };
@@ -142,13 +130,6 @@ export async function persistAdaptiveRun(
   marketId: string,
   marketName: string,
   run: AdaptiveRun,
-  contextToken: Pick<
-    AdaptivePersistenceContext,
-    "expectedStateRevision" | "expectedHistoryFingerprint"
-  > = {
-    expectedStateRevision: null,
-    expectedHistoryFingerprint: null,
-  },
 ): Promise<AdaptivePersistenceStatus> {
   if (!serviceConfiguration()) return { status: "not_configured" };
 
@@ -156,8 +137,6 @@ export async function persistAdaptiveRun(
     marketId,
     marketName,
     targetDrawKey: `next:${run.prediction.historyCutoffKey}`,
-    expectedStateRevision: contextToken.expectedStateRevision,
-    expectedHistoryFingerprint: contextToken.expectedHistoryFingerprint,
     prediction: run.prediction,
     state: run.state,
     settlement: run.settlement,
