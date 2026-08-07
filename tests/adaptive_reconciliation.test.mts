@@ -4,6 +4,7 @@ import {
   type ReconciliationMarketSnapshot,
   type ReconciliationStateSnapshot,
 } from "../adaptive-service/reconcile-plan.mts";
+import { ADAPTIVE_SELECTION_COUNT } from "../adaptive-service/core/types.mts";
 
 const MARKETS: ReconciliationMarketSnapshot[] = [
   { id: "sgp", name: "SGP", historyLength: 170, lastDraw: "4353", historyFingerprint: "sgp-new" },
@@ -12,44 +13,44 @@ const MARKETS: ReconciliationMarketSnapshot[] = [
 ];
 
 function completeStates(market: ReconciliationMarketSnapshot): ReconciliationStateSnapshot[] {
-  return (["depan", "tengah", "belakang"] as const).map((target2D) => ({
+  return [{
     marketId: market.id,
-    target2D,
+    target2D: "belakang",
     processedHistoryLength: market.historyLength,
     lastProcessedDraw: market.lastDraw,
     historyFingerprint: market.historyFingerprint,
     pendingHistoryLength: market.historyLength,
     oldestPendingHistoryLength: market.historyLength,
     pendingCount: 1,
-    pendingSelectionCount: 18,
+    pendingSelectionCount: ADAPTIVE_SELECTION_COUNT,
     pendingSnapshotComplete: true,
-  }));
+  }];
 }
 
-Deno.test("market tanpa state dijadwalkan untuk seluruh target", () => {
+Deno.test("market tanpa state dijadwalkan hanya untuk 2D belakang", () => {
   const plans = planAdaptiveReconciliation(MARKETS, [], { marketLimit: 2 });
   assert.equal(plans.length, 2);
-  assert.deepEqual(plans[0].targets, ["depan", "tengah", "belakang"]);
-  assert.equal(plans[0].missingStateCount, 3);
+  assert.deepEqual(plans[0].targets, ["belakang"]);
+  assert.equal(plans[0].missingStateCount, 1);
 });
 
 Deno.test("state terbaru dilewati tetapi pending lama tetap dijadwalkan", () => {
   const states = completeStates(MARKETS[0]);
-  states[1] = {
-    ...states[1],
+  states[0] = {
+    ...states[0],
     pendingHistoryLength: MARKETS[0].historyLength - 1,
     oldestPendingHistoryLength: MARKETS[0].historyLength - 1,
   };
 
   const plans = planAdaptiveReconciliation([MARKETS[0]], states, { marketLimit: 4 });
   assert.equal(plans.length, 1);
-  assert.deepEqual(plans[0].targets, ["tengah"]);
+  assert.deepEqual(plans[0].targets, ["belakang"]);
 });
 
 Deno.test("pending terbaru current tidak menyembunyikan backlog settlement lama", () => {
   const states = completeStates(MARKETS[0]);
-  states[1] = {
-    ...states[1],
+  states[0] = {
+    ...states[0],
     pendingHistoryLength: MARKETS[0].historyLength,
     oldestPendingHistoryLength: MARKETS[0].historyLength - 1,
     pendingCount: 2,
@@ -57,7 +58,7 @@ Deno.test("pending terbaru current tidak menyembunyikan backlog settlement lama"
 
   const plans = planAdaptiveReconciliation([MARKETS[0]], states, { marketLimit: 4 });
   assert.equal(plans.length, 1);
-  assert.deepEqual(plans[0].targets, ["tengah"]);
+  assert.deepEqual(plans[0].targets, ["belakang"]);
 });
 
 Deno.test("snapshot tanpa pending prediction dijadwalkan ulang", () => {
@@ -73,15 +74,15 @@ Deno.test("snapshot tanpa pending prediction dijadwalkan ulang", () => {
 
   const plans = planAdaptiveReconciliation([MARKETS[0]], states, { marketLimit: 4 });
   assert.equal(plans.length, 1);
-  assert.deepEqual(plans[0].targets, ["depan"]);
+  assert.deepEqual(plans[0].targets, ["belakang"]);
   assert.equal(plans[0].incompleteSnapshotCount, 1);
 });
 
-Deno.test("snapshot lama dengan satu selection dijadwalkan ulang", () => {
+Deno.test("snapshot dengan selection count bukan 11 dijadwalkan ulang", () => {
   const states = completeStates(MARKETS[0]);
-  states[2] = {
-    ...states[2],
-    pendingSelectionCount: 1,
+  states[0] = {
+    ...states[0],
+    pendingSelectionCount: 18,
     pendingSnapshotComplete: false,
   };
 
@@ -92,25 +93,23 @@ Deno.test("snapshot lama dengan satu selection dijadwalkan ulang", () => {
 });
 
 Deno.test("market dengan state kosong diprioritaskan sebelum incremental", () => {
-  const incrementalState: ReconciliationStateSnapshot[] = (["depan", "tengah", "belakang"] as const).map(
-    (target2D) => ({
-      marketId: "sgp",
-      target2D,
-      processedHistoryLength: 169,
-      lastProcessedDraw: "1111",
-      historyFingerprint: "old",
-      pendingHistoryLength: 169,
-      oldestPendingHistoryLength: 169,
-      pendingCount: 1,
-      pendingSelectionCount: 18,
-      pendingSnapshotComplete: true,
-    }),
-  );
+  const incrementalState: ReconciliationStateSnapshot[] = [{
+    marketId: "sgp",
+    target2D: "belakang",
+    processedHistoryLength: 169,
+    lastProcessedDraw: "1111",
+    historyFingerprint: "old",
+    pendingHistoryLength: 169,
+    oldestPendingHistoryLength: 169,
+    pendingCount: 1,
+    pendingSelectionCount: ADAPTIVE_SELECTION_COUNT,
+    pendingSnapshotComplete: true,
+  }];
 
   const plans = planAdaptiveReconciliation(MARKETS, incrementalState, { marketLimit: 1 });
   assert.equal(plans.length, 1);
   assert.equal(plans[0].marketId, "hk");
-  assert.equal(plans[0].missingStateCount, 3);
+  assert.equal(plans[0].missingStateCount, 1);
 });
 
 Deno.test("koreksi fingerprint dengan panjang dan cutoff sama tetap dijadwalkan", () => {
@@ -121,8 +120,8 @@ Deno.test("koreksi fingerprint dengan panjang dan cutoff sama tetap dijadwalkan"
 
   const plans = planAdaptiveReconciliation([MARKETS[0]], states, { marketLimit: 4 });
   assert.equal(plans.length, 1);
-  assert.deepEqual(plans[0].targets, ["depan", "tengah", "belakang"]);
-  assert.equal(plans[0].correctedHistoryCount, 3);
+  assert.deepEqual(plans[0].targets, ["belakang"]);
+  assert.equal(plans[0].correctedHistoryCount, 1);
 });
 
 Deno.test("market dengan koreksi histori diprioritaskan", () => {
@@ -132,7 +131,7 @@ Deno.test("market dengan koreksi histori diprioritaskan", () => {
   }));
   const plans = planAdaptiveReconciliation(MARKETS, correctedStates, { marketLimit: 1 });
   assert.equal(plans[0].marketId, "sgp");
-  assert.equal(plans[0].correctedHistoryCount, 3);
+  assert.equal(plans[0].correctedHistoryCount, 1);
 });
 
 Deno.test("requested market hanya memproses market yang diminta", () => {
@@ -151,5 +150,5 @@ Deno.test("force menjadwalkan ulang state yang sudah terbaru", () => {
     { marketLimit: 1, force: true },
   );
   assert.equal(plans.length, 1);
-  assert.deepEqual(plans[0].targets, ["depan", "tengah", "belakang"]);
+  assert.deepEqual(plans[0].targets, ["belakang"]);
 });
