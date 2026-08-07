@@ -8,7 +8,11 @@ import type {
   AdaptivePersistenceContext,
   AdaptiveRun,
 } from "./types";
-import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types";
+import {
+  ADAPTIVE_CONFIG_VERSION,
+  ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_SELECTION_COUNT,
+} from "./types";
 import type { Target2D } from "@/lib/engine/types";
 
 export interface AdaptiveWriteContextToken {
@@ -169,11 +173,15 @@ export async function persistAdaptiveRun(
   const selectionsPublished = Number(payload.selectionsPublished ?? 0);
   const selectionsSettled = Number(payload.selectionsSettled ?? 0);
   const snapshotComplete = payload.snapshotComplete === true;
-  if (selectionsPublished !== 18 || !snapshotComplete) {
-    throw new Error("Adaptive service belum menyimpan snapshot lengkap 18 selection.");
+  if (selectionsPublished !== ADAPTIVE_SELECTION_COUNT || !snapshotComplete) {
+    throw new Error(
+      `Adaptive service belum menyimpan snapshot lengkap ${ADAPTIVE_SELECTION_COUNT} selection.`,
+    );
   }
-  if (run.settlement && selectionsSettled !== 18) {
-    throw new Error("Adaptive service belum menyimpan 18 evaluasi settlement.");
+  if (run.settlement && selectionsSettled !== ADAPTIVE_SELECTION_COUNT) {
+    throw new Error(
+      `Adaptive service belum menyimpan ${ADAPTIVE_SELECTION_COUNT} evaluasi settlement.`,
+    );
   }
 
   return {

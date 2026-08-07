@@ -3,6 +3,7 @@ import { validateAdaptivePublishedSnapshot } from "../lib/adaptive/published-sna
 import {
   ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_SELECTION_COUNT,
 } from "../lib/adaptive/types.ts";
 
 const expected = {
@@ -26,7 +27,7 @@ const completeSnapshot = {
   signal_strength: "high",
   state_revision: 12,
   snapshot_complete: true,
-  selection_count: 18,
+  selection_count: ADAPTIVE_SELECTION_COUNT,
   prediction_created_at: "2026-08-06T12:00:00.000Z",
   method: "bbfs",
   digit_count: 7,
@@ -73,7 +74,7 @@ Deno.test("snapshot versi lama dan publication tidak lengkap ditolak", () => {
   }, expected);
   const incomplete = validateAdaptivePublishedSnapshot({
     ...completeSnapshot,
-    selection_count: 17,
+    selection_count: ADAPTIVE_SELECTION_COUNT - 1,
     snapshot_complete: false,
   }, expected);
 
@@ -109,4 +110,15 @@ Deno.test("route Adaptive UI hanya membaca snapshot dan tidak menjalankan writer
   assert.doesNotMatch(route, /runAdaptiveOnline/);
   assert.doesNotMatch(route, /persistAdaptiveRun/);
   assert.doesNotMatch(route, /loadAdaptiveContext/);
+});
+
+Deno.test("persistence helper memakai selection count V2 terpusat", async () => {
+  const persistence = await Deno.readTextFile(
+    new URL("../lib/adaptive/persistence.ts", import.meta.url),
+  );
+
+  assert.match(persistence, /ADAPTIVE_SELECTION_COUNT/);
+  assert.doesNotMatch(persistence, /selectionsPublished\s*!==\s*18/);
+  assert.doesNotMatch(persistence, /selectionsSettled\s*!==\s*18/);
+  assert.doesNotMatch(persistence, /18 selection/);
 });
