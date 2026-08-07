@@ -26,7 +26,7 @@ function pendingFromRun(run: ReturnType<typeof runAdaptiveOnline>): AdaptivePend
   };
 }
 
-Deno.test("rolling window panjang tetap melakukan settlement V2 pada result terbaru", () => {
+Deno.test("rolling window V2 melakukan settlement dari exact window sebelumnya", () => {
   const initial = runAdaptiveOnline(HISTORY, "belakang", "bbfs", 7);
   const pending = pendingFromRun(initial);
   const rollingHistory = [...HISTORY.slice(1), "4587"];
@@ -38,7 +38,10 @@ Deno.test("rolling window panjang tetap melakukan settlement V2 pada result terb
     7,
     initial.state,
     pending,
-    { rollingWindowAdvance: true },
+    {
+      rollingWindowAdvance: true,
+      previousHistoryDraws: HISTORY,
+    },
   );
 
   assert.equal(rollingHistory.length, HISTORY.length);
@@ -53,6 +56,23 @@ Deno.test("rolling window panjang tetap melakukan settlement V2 pada result terb
   assert.equal(Object.keys(next.settlement.aiResults).length, 6);
   assert.equal(Object.keys(next.settlement.bbfsResults).length, 5);
   assert.equal(next.settlement.selectionCalibrationUpdates.length, ADAPTIVE_SELECTION_COUNT);
+});
+
+Deno.test("rolling marker tanpa exact previous window ditolak fail-safe", () => {
+  const initial = runAdaptiveOnline(HISTORY, "belakang", "bbfs", 7);
+  const rollingHistory = [...HISTORY.slice(1), "4587"];
+  assert.throws(
+    () => runAdaptiveOnline(
+      rollingHistory,
+      "belakang",
+      "bbfs",
+      7,
+      initial.state,
+      pendingFromRun(initial),
+      { rollingWindowAdvance: true },
+    ),
+    /window histori sebelumnya/i,
+  );
 });
 
 Deno.test("window panjang tetap tanpa marker tidak menyelesaikan pending", () => {
@@ -116,7 +136,7 @@ Deno.test("planner membedakan rolling advance dari koreksi histori", () => {
   assert.equal(correction[0].correctedHistoryCount, 1);
 });
 
-Deno.test("migration 009 tetap menerima rolling tanpa menekan settlement V2", async () => {
+Deno.test("migration 009 dan reconciliation membawa exact previous window", async () => {
   const migration = await Deno.readTextFile(
     new URL("../sql/neon/009_adaptive_fixed_rolling_window.sql", import.meta.url),
   );
@@ -130,6 +150,5 @@ Deno.test("migration 009 tetap menerima rolling tanpa menekan settlement V2", as
   assert.match(migration, /v_history_correction_detected := false/);
   assert.match(reconciliation, /previousDraws\.slice\(1\)/);
   assert.match(reconciliation, /previousHistoryDraws:/);
-  assert.match(reconciliation, /rollingWindowAdvance: context\.rollingWindowAdvance/);
-  assert.match(reconciliation, /\{ rollingWindowAdvance: context\.rollingWindowAdvance \}/);
+  assert.match(reconciliation, /previousHistoryDraws: context\.rollingWindowAdvance \? previousDraws : undefined/);
 });
