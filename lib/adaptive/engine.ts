@@ -6,6 +6,7 @@ import {
   applySelectionCalibrationUpdates,
   buildIndependentlyCalibratedSelections,
   buildSelectionCalibrationUpdates,
+  replaySelectionCalibrationHistory,
 } from "./selection-calibration";
 import type {
   AdaptiveLearningState,
@@ -16,12 +17,27 @@ import type {
   AdaptiveSelection,
   AdaptiveSelectionCalibrationState,
 } from "./types";
-import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types";
+import {
+  ADAPTIVE_CONFIG_VERSION,
+  ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_SELECTION_COUNT,
+  isAdaptiveSelection,
+} from "./types";
 
 function signalStrength(lift: number, margin: number): AdaptivePrediction["signalStrength"] {
   if (lift >= 0.05 && margin >= 0.01) return "high";
   if (lift >= 0.02 || margin >= 0.004) return "medium";
   return "low";
+}
+
+function historyWindowFingerprint(draws: readonly string[]): string {
+  let hash = 0xcbf29ce484222325n;
+  const input = draws.join("|");
+  for (let index = 0; index < input.length; index++) {
+    hash ^= BigInt(input.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+  }
+  return hash.toString(16).padStart(16, "0");
 }
 
 function requestedSelection(
@@ -60,21 +76,32 @@ export function runAdaptiveOnline(
   initialState?: AdaptiveLearningState | null,
   pendingPrediction?: AdaptivePendingPrediction | null,
 ): AdaptiveRun {
+  if (target2D !== "belakang") throw new Error("Adaptive V2 hanya memproses target 2D belakang.");
+  if (!isAdaptiveSelection(method, digitCount)) {
+    throw new Error(`Selection Adaptive V2 ${method.toUpperCase()} ${digitCount} digit tidak tersedia.`);
+  }
+
   const replay = replayAdaptiveHistory(draws, target2D, initialState);
   const pairProbabilities = combinePairMatrices(replay.experts);
   const marginals = calculateMarginals(pairProbabilities);
   const baseSettlement = settlePendingPrediction(pendingPrediction, draws, target2D);
   let settlement = baseSettlement;
-  let calibrationStates = calibrationStatesFromPending(pendingPrediction);
+  let calibrationStates = replay.summary.mode === "full"
+    ? replaySelectionCalibrationHistory(draws, target2D)
+    : calibrationStatesFromPending(pendingPrediction);
 
   if (baseSettlement && pendingPrediction) {
     const updates = buildSelectionCalibrationUpdates(
       pendingPrediction.selections,
       calibrationStates,
+      pendingPrediction.expertWeights,
       draws.slice(0, pendingPrediction.historyLength),
       draws[pendingPrediction.historyLength],
       target2D,
     );
+    if (updates.length !== ADAPTIVE_SELECTION_COUNT) {
+      throw new Error(`Settlement harus menghasilkan ${ADAPTIVE_SELECTION_COUNT} update calibration.`);
+    }
     calibrationStates = applySelectionCalibrationUpdates(calibrationStates, updates);
     settlement = { ...baseSettlement, selectionCalibrationUpdates: updates };
   }
@@ -84,6 +111,9 @@ export function runAdaptiveOnline(
     calibrationStates,
     replay.state.expertWeights,
   );
+  if (selections.length !== ADAPTIVE_SELECTION_COUNT) {
+    throw new Error(`Adaptive V2 harus menghasilkan ${ADAPTIVE_SELECTION_COUNT} selection.`);
+  }
   const selection = requestedSelection(selections, method, digitCount);
   const latestDraw = draws[draws.length - 1];
 
@@ -92,7 +122,7 @@ export function runAdaptiveOnline(
     configVersion: ADAPTIVE_CONFIG_VERSION,
     target2D,
     historyLength: draws.length,
-    historyCutoffKey: `${draws.length}:${latestDraw}`,
+    historyCutoffKey: `${draws.length}:${latestDraw}:${historyWindowFingerprint(draws)}`,
     latestDraw,
     pairProbabilities,
     leftProbabilities: marginals.left,
