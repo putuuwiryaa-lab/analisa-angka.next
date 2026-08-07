@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import { runAdaptiveOnline } from "../adaptive-service/core/engine.mts";
+import {
+  ADAPTIVE_REPLAY_WARMUP,
+  ADAPTIVE_SELECTION_COUNT,
+  ADAPTIVE_SELECTION_SPECS,
+} from "../adaptive-service/core/types.mts";
 import type {
   AdaptivePendingPrediction,
   AdaptiveSelection,
@@ -65,10 +70,26 @@ function weightMapsDiffer(
   return [...keys].some((key) => Math.abs((left[key] ?? 0) - (right[key] ?? 0)) > 1e-12);
 }
 
-Deno.test("BBFS7, BBFS8, dan AI7 dikalibrasi pada state masing-masing", () => {
-  const first = runAdaptiveOnline(HISTORY, "belakang", "bbfs", 7);
-  assert.equal(first.prediction.selections.length, 18);
+Deno.test("V2 hanya menerbitkan AI1-6 dan BBFS5-9", () => {
+  const run = runAdaptiveOnline(HISTORY, "belakang", "bbfs", 7);
+  assert.equal(run.prediction.selections.length, ADAPTIVE_SELECTION_COUNT);
+  assert.deepEqual(
+    run.prediction.selections.map((item) => `${item.method}:${item.digitCount}`),
+    ADAPTIVE_SELECTION_SPECS.map((item) => `${item.method}:${item.digitCount}`),
+  );
+  assert.equal(run.prediction.replay.mode, "full");
+  assert.equal(run.prediction.replay.startHistoryLength, ADAPTIVE_REPLAY_WARMUP);
 
+  for (const published of run.prediction.selections) {
+    assert.equal(
+      published.calibrationStateRevision,
+      Math.max(0, HISTORY.length - ADAPTIVE_REPLAY_WARMUP),
+    );
+  }
+});
+
+Deno.test("BBFS7, BBFS8, dan AI6 dikalibrasi pada state masing-masing", () => {
+  const first = runAdaptiveOnline(HISTORY, "belakang", "bbfs", 7);
   const firstBbfs7 = selection(first.prediction.selections, "bbfs", 7);
   const firstBbfs8 = selection(first.prediction.selections, "bbfs", 8);
   const [left, right] = findBbfs8HitBbfs7Miss(firstBbfs7, firstBbfs8);
@@ -85,10 +106,10 @@ Deno.test("BBFS7, BBFS8, dan AI7 dikalibrasi pada state masing-masing", () => {
 
   assert.ok(next.settlement);
   const updates = next.settlement.selectionCalibrationUpdates;
-  assert.equal(updates.length, 18);
+  assert.equal(updates.length, ADAPTIVE_SELECTION_COUNT);
   assert.equal(
     new Set(updates.map((update) => `${update.method}:${update.digitCount}`)).size,
-    18,
+    ADAPTIVE_SELECTION_COUNT,
   );
 
   const bbfs7Update = updates.find((update) =>
@@ -97,38 +118,38 @@ Deno.test("BBFS7, BBFS8, dan AI7 dikalibrasi pada state masing-masing", () => {
   const bbfs8Update = updates.find((update) =>
     update.method === "bbfs" && update.digitCount === 8
   );
-  const ai7Update = updates.find((update) =>
-    update.method === "ai" && update.digitCount === 7
+  const ai6Update = updates.find((update) =>
+    update.method === "ai" && update.digitCount === 6
   );
   assert.ok(bbfs7Update);
   assert.ok(bbfs8Update);
-  assert.ok(ai7Update);
+  assert.ok(ai6Update);
   assert.equal(bbfs7Update.hit, false);
   assert.equal(bbfs8Update.hit, true);
 
   const nextBbfs7 = selection(next.prediction.selections, "bbfs", 7);
   const nextBbfs8 = selection(next.prediction.selections, "bbfs", 8);
-  const nextAi7 = selection(next.prediction.selections, "ai", 7);
+  const nextAi6 = selection(next.prediction.selections, "ai", 6);
 
   assert.deepEqual(nextBbfs7.calibrationWeights, bbfs7Update.weightsAfter);
   assert.deepEqual(nextBbfs8.calibrationWeights, bbfs8Update.weightsAfter);
-  assert.deepEqual(nextAi7.calibrationWeights, ai7Update.weightsAfter);
+  assert.deepEqual(nextAi6.calibrationWeights, ai6Update.weightsAfter);
   assert.equal(nextBbfs7.calibrationStateRevision, bbfs7Update.stateRevisionAfter);
   assert.equal(nextBbfs8.calibrationStateRevision, bbfs8Update.stateRevisionAfter);
-  assert.equal(nextAi7.calibrationStateRevision, ai7Update.stateRevisionAfter);
+  assert.equal(nextAi6.calibrationStateRevision, ai6Update.stateRevisionAfter);
 
   assert.ok(weightMapsDiffer(nextBbfs7.calibrationWeights, nextBbfs8.calibrationWeights));
-  assert.ok(weightMapsDiffer(nextBbfs7.calibrationWeights, nextAi7.calibrationWeights));
+  assert.ok(weightMapsDiffer(nextBbfs7.calibrationWeights, nextAi6.calibrationWeights));
 });
 
 Deno.test("run tanpa settlement mempertahankan state selection yang sama", () => {
-  const first = runAdaptiveOnline(HISTORY, "tengah", "ai", 7);
+  const first = runAdaptiveOnline(HISTORY, "belakang", "ai", 6);
   const pending = pendingFromRun(first);
   const repeated = runAdaptiveOnline(
     HISTORY,
-    "tengah",
+    "belakang",
     "ai",
-    7,
+    6,
     first.state,
     pending,
   );
@@ -145,19 +166,19 @@ Deno.test("run tanpa settlement mempertahankan state selection yang sama", () =>
   }
 });
 
-Deno.test("migration 010 menyimpan dan mengaudit 18 calibration state", async () => {
+Deno.test("migration 011 menyimpan dan mengaudit 11 calibration state V2", async () => {
   const migration = await Deno.readTextFile(
-    new URL("../sql/neon/010_independent_selection_calibration.sql", import.meta.url),
+    new URL("../sql/neon/011_adaptive_v2_back_only.sql", import.meta.url),
   );
   const reconciliation = await Deno.readTextFile(
     new URL("../adaptive-service/reconcile.mts", import.meta.url),
   );
 
-  assert.match(migration, /calibration_weights/);
-  assert.match(migration, /calibration_state_revision/);
+  assert.match(migration, /hf-apie-v2-back/);
+  assert.match(migration, /tepat 11 selection/);
   assert.match(migration, /selectionCalibrationPublished/);
   assert.match(migration, /selectionCalibrationUpdated/);
-  assert.match(reconciliation, /calibrationWeights/);
-  assert.match(reconciliation, /calibrationStateRevision/);
-  assert.match(reconciliation, /Migration 010 belum aktif/);
+  assert.match(migration, /store_online_run_v1_calibration_base/);
+  assert.match(reconciliation, /ADAPTIVE_SELECTION_COUNT/);
+  assert.match(reconciliation, /Migration 011 belum aktif/);
 });

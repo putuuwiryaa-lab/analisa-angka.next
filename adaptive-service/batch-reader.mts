@@ -1,5 +1,6 @@
 import { neon } from "jsr:@neon/serverless@1.0.1";
 import { parseAdaptiveBatchRequest } from "./batch-contract.mts";
+import { ADAPTIVE_SELECTION_COUNT } from "./core/types.mts";
 
 const databaseUrl = Deno.env.get("NEON_DATABASE_URL")?.trim();
 const serviceSecret = Deno.env.get("ADAPTIVE_SERVICE_SECRET")?.trim();
@@ -70,12 +71,12 @@ export async function adaptiveBatchReader(request: Request): Promise<Response> {
       and p.config_version = ${configVersion}
       and p.status = 'pending'
       and p.snapshot_complete is true
-      and p.selection_count = 18
+      and p.selection_count = ${ADAPTIVE_SELECTION_COUNT}
       and (
         select count(*)
         from adaptive.published_selections publication
         where publication.prediction_id = p.id
-      ) = 18
+      ) = ${ADAPTIVE_SELECTION_COUNT}
     order by p.market_id, p.history_length desc, p.created_at desc
   `;
 

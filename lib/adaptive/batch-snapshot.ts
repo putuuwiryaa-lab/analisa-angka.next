@@ -1,6 +1,11 @@
-import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types";
+import type { Target2D } from "@/lib/engine/types";
+import {
+  ADAPTIVE_CONFIG_VERSION,
+  ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_SELECTION_COUNT,
+} from "./types";
 
-export const ADAPTIVE_PUBLICATION_SELECTION_COUNT = 18;
+export const ADAPTIVE_PUBLICATION_SELECTION_COUNT = ADAPTIVE_SELECTION_COUNT;
 
 export interface AdaptiveBatchSnapshotMetadata {
   engine_version: unknown;
@@ -13,7 +18,7 @@ export type AdaptiveBatchSnapshotIssue = "version" | "incomplete" | null;
 
 export function buildAdaptiveBatchSnapshotRequest(input: {
   marketIds: string[];
-  target2D: "depan" | "tengah" | "belakang";
+  target2D: Target2D;
   method: "ai" | "bbfs";
   digitCount: number;
 }) {

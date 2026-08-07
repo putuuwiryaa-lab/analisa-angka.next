@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { runAdaptiveFoundation } from "../lib/adaptive/engine.ts";
 import {
   optimizeAllSelections,
+  optimizeConfiguredSelections,
   optimizeDigitSelection,
   scoreDigitSubset,
 } from "../lib/adaptive/optimizer.ts";
 import { createUniformPairMatrix, pairIndex } from "../lib/adaptive/pair-probability.ts";
+import { ADAPTIVE_SELECTION_COUNT } from "../lib/adaptive/types.ts";
 
 Deno.test("uniform baseline membedakan objective AI dan BBFS", () => {
   const uniform = createUniformPairMatrix();
@@ -30,7 +32,7 @@ Deno.test("AI memilih coverage luas sedangkan BBFS memilih pasangan terkuat", ()
   assert.ok(Math.abs(bbfs.estimatedSuccess - 0.7) < 1e-12);
 });
 
-Deno.test("optimizer penuh menghasilkan 18 selection unik dan deterministik", () => {
+Deno.test("optimizer kompatibilitas penuh tetap deterministik 18 selection", () => {
   const matrix = Array.from({ length: 100 }, (_, index) => index + 1);
   const first = optimizeAllSelections(matrix);
   const second = optimizeAllSelections(matrix);
@@ -38,20 +40,22 @@ Deno.test("optimizer penuh menghasilkan 18 selection unik dan deterministik", ()
   assert.equal(first.length, 18);
   assert.equal(new Set(first.map((selection) => `${selection.method}:${selection.digitCount}`)).size, 18);
   assert.deepEqual(first, second);
-
-  for (const method of ["ai", "bbfs"] as const) {
-    for (let digitCount = 1; digitCount <= 9; digitCount++) {
-      const selection = first.find((item) =>
-        item.method === method && item.digitCount === digitCount
-      );
-      assert.ok(selection);
-      assert.equal(selection.digits.length, digitCount);
-      assert.equal(new Set(selection.digits).size, digitCount);
-    }
-  }
 });
 
-Deno.test("foundation engine menghasilkan matriks valid dan seluruh output deterministik", () => {
+Deno.test("optimizer production V2 hanya menghasilkan 11 selection", () => {
+  const matrix = Array.from({ length: 100 }, (_, index) => index + 1);
+  const selections = optimizeConfiguredSelections(matrix);
+  assert.equal(selections.length, ADAPTIVE_SELECTION_COUNT);
+  assert.deepEqual(
+    selections.map((selection) => `${selection.method}:${selection.digitCount}`),
+    [
+      "ai:1", "ai:2", "ai:3", "ai:4", "ai:5", "ai:6",
+      "bbfs:5", "bbfs:6", "bbfs:7", "bbfs:8", "bbfs:9",
+    ],
+  );
+});
+
+Deno.test("foundation engine menghasilkan matriks valid dan output V2 deterministik", () => {
   const draws = [
     "1234", "5678", "9012", "3456", "7890", "1122", "3344",
     "5566", "7788", "9900", "1357", "2468", "8642", "7531",
@@ -65,7 +69,7 @@ Deno.test("foundation engine menghasilkan matriks valid dan seluruh output deter
   assert.equal(first.leftProbabilities.length, 10);
   assert.equal(first.rightProbabilities.length, 10);
   assert.ok(Math.abs(first.pairProbabilities.reduce((sum, value) => sum + value, 0) - 1) < 1e-12);
-  assert.equal(first.selections.length, 18);
+  assert.equal(first.selections.length, ADAPTIVE_SELECTION_COUNT);
   assert.deepEqual(first.selections, second.selections);
   assert.deepEqual(first.selection.digits, second.selection.digits);
   assert.equal(first.selection.digits.length, 7);

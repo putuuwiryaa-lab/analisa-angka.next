@@ -14,11 +14,15 @@ import type {
   AdaptiveReplaySummary,
   AdaptiveSettlement,
 } from "./types";
-import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types";
+import {
+  ADAPTIVE_CONFIG_VERSION,
+  ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_REPLAY_WARMUP as V2_REPLAY_WARMUP,
+} from "./types";
 
 export const ADAPTIVE_LEARNING_RATE = 1;
 export const ADAPTIVE_FIXED_SHARE = 0.02;
-export const ADAPTIVE_REPLAY_WARMUP = 14;
+export const ADAPTIVE_REPLAY_WARMUP = V2_REPLAY_WARMUP;
 
 const PAIR_LOSS_WEIGHT = 0.7;
 const LEFT_LOSS_WEIGHT = 0.15;
@@ -54,16 +58,11 @@ export function resolveExpertWeights(
       .map((expert) => [expert.id, Number(storedWeights?.[expert.id] ?? 0)] as const)
       .filter(([, value]) => Number.isFinite(value) && value > 0),
   );
-
   if (Object.keys(activeStored).length === 0) return baseline;
-
-  const combined = Object.fromEntries(
-    experts.map((expert) => [
-      expert.id,
-      activeStored[expert.id] ?? (baseline[expert.id] ?? 0) * NEW_EXPERT_PRIOR_SHARE,
-    ]),
-  );
-  return normalizeWeights(combined);
+  return normalizeWeights(Object.fromEntries(experts.map((expert) => [
+    expert.id,
+    activeStored[expert.id] ?? (baseline[expert.id] ?? 0) * NEW_EXPERT_PRIOR_SHARE,
+  ])));
 }
 
 function applyExpertWeights(
@@ -73,16 +72,8 @@ function applyExpertWeights(
   return experts.map((expert) => ({ ...expert, weight: weights[expert.id] ?? 0 }));
 }
 
-function combinedLoss(
-  pairLoss: number,
-  leftLoss: number,
-  rightLoss: number,
-): number {
-  return (
-    pairLoss * PAIR_LOSS_WEIGHT +
-    leftLoss * LEFT_LOSS_WEIGHT +
-    rightLoss * RIGHT_LOSS_WEIGHT
-  );
+function combinedLoss(pairLoss: number, leftLoss: number, rightLoss: number): number {
+  return pairLoss * PAIR_LOSS_WEIGHT + leftLoss * LEFT_LOSS_WEIGHT + rightLoss * RIGHT_LOSS_WEIGHT;
 }
 
 export function evaluateExpertLosses(
@@ -91,11 +82,12 @@ export function evaluateExpertLosses(
   actualRight: number,
 ): Record<string, number> {
   return Object.fromEntries(experts.map((expert) => {
-    const marginals = calculateMarginals(expert.pairProbabilities);
-    const pairLoss = pairBrierLoss(expert.pairProbabilities, actualLeft, actualRight);
-    const leftLoss = positionalBrierLoss(marginals.left, actualLeft);
-    const rightLoss = positionalBrierLoss(marginals.right, actualRight);
-    return [expert.id, combinedLoss(pairLoss, leftLoss, rightLoss)];
+    const expertMarginals = calculateMarginals(expert.pairProbabilities);
+    return [expert.id, combinedLoss(
+      pairBrierLoss(expert.pairProbabilities, actualLeft, actualRight),
+      positionalBrierLoss(expertMarginals.left, actualLeft),
+      positionalBrierLoss(expertMarginals.right, actualRight),
+    )];
   }));
 }
 
@@ -106,12 +98,10 @@ export function updateExpertWeights(
 ): Record<string, number> {
   const baseline = baselineWeights(experts);
   const resolved = resolveExpertWeights(experts, currentWeights);
-  const posteriorRaw = Object.fromEntries(experts.map((expert) => {
+  const posterior = normalizeWeights(Object.fromEntries(experts.map((expert) => {
     const loss = Number.isFinite(losses[expert.id]) ? Math.max(0, losses[expert.id]) : 1;
     return [expert.id, (resolved[expert.id] ?? 0) * Math.exp(-ADAPTIVE_LEARNING_RATE * loss)];
-  }));
-  const posterior = normalizeWeights(posteriorRaw);
-
+  })));
   return normalizeWeights(Object.fromEntries(experts.map((expert) => [
     expert.id,
     (1 - ADAPTIVE_FIXED_SHARE) * (posterior[expert.id] ?? 0) +
@@ -125,14 +115,12 @@ function aggregateWeights(
 ): { familyWeights: Record<string, number>; horizonWeights: Record<string, number> } {
   const familyWeights: Record<string, number> = {};
   const horizonWeights: Record<string, number> = {};
-
   for (const expert of experts) {
     const weight = weights[expert.id] ?? 0;
     familyWeights[expert.family] = (familyWeights[expert.family] ?? 0) + weight;
     const horizon = String(expert.horizon);
     horizonWeights[horizon] = (horizonWeights[horizon] ?? 0) + weight;
   }
-
   return {
     familyWeights: normalizeWeights(familyWeights),
     horizonWeights: normalizeWeights(horizonWeights),
@@ -145,9 +133,7 @@ function isCompatibleState(
   target2D: Target2D,
 ): state is AdaptiveLearningState {
   if (!state) return false;
-  if (state.engineVersion !== ADAPTIVE_ENGINE_VERSION || state.configVersion !== ADAPTIVE_CONFIG_VERSION) {
-    return false;
-  }
+  if (state.engineVersion !== ADAPTIVE_ENGINE_VERSION || state.configVersion !== ADAPTIVE_CONFIG_VERSION) return false;
   if (state.target2D !== target2D) return false;
   if (!Number.isInteger(state.processedHistoryLength) || state.processedHistoryLength < 2) return false;
   if (state.processedHistoryLength > draws.length) return false;
@@ -165,8 +151,9 @@ export function replayAdaptiveHistory(
   }
 
   const compatible = isCompatibleState(initialState, draws, target2D);
-  const fullReplayStart = Math.min(ADAPTIVE_REPLAY_WARMUP, draws.length);
-  const startHistoryLength = compatible ? initialState.processedHistoryLength : fullReplayStart;
+  const startHistoryLength = compatible
+    ? initialState.processedHistoryLength
+    : Math.min(ADAPTIVE_REPLAY_WARMUP, draws.length);
   let weights: Record<string, number> = compatible ? { ...initialState.expertWeights } : {};
   let ensembleLossTotal = 0;
   let processedSteps = 0;
@@ -174,41 +161,28 @@ export function replayAdaptiveHistory(
   const expertLossCounts: Record<string, number> = {};
 
   for (let actualIndex = startHistoryLength; actualIndex < draws.length; actualIndex++) {
-    const history = draws.slice(0, actualIndex);
-    const experts = buildBaselineExperts(history, target2D);
+    const experts = buildBaselineExperts(draws.slice(0, actualIndex), target2D);
     const resolvedWeights = resolveExpertWeights(experts, weights);
-    const weightedExperts = applyExpertWeights(experts, resolvedWeights);
-    const ensemble = combinePairMatrices(weightedExperts);
+    const ensemble = combinePairMatrices(applyExpertWeights(experts, resolvedWeights));
     const ensembleMarginals = calculateMarginals(ensemble);
     const [actualLeft, actualRight] = extractTargetPair(draws[actualIndex], target2D);
-
-    const pairLoss = pairBrierLoss(ensemble, actualLeft, actualRight);
-    const leftLoss = positionalBrierLoss(ensembleMarginals.left, actualLeft);
-    const rightLoss = positionalBrierLoss(ensembleMarginals.right, actualRight);
-    ensembleLossTotal += combinedLoss(pairLoss, leftLoss, rightLoss);
-
+    ensembleLossTotal += combinedLoss(
+      pairBrierLoss(ensemble, actualLeft, actualRight),
+      positionalBrierLoss(ensembleMarginals.left, actualLeft),
+      positionalBrierLoss(ensembleMarginals.right, actualRight),
+    );
     const expertLosses = evaluateExpertLosses(experts, actualLeft, actualRight);
     for (const [id, loss] of Object.entries(expertLosses)) {
       expertLossTotals[id] = (expertLossTotals[id] ?? 0) + loss;
       expertLossCounts[id] = (expertLossCounts[id] ?? 0) + 1;
     }
-
     weights = updateExpertWeights(experts, resolvedWeights, expertLosses);
     processedSteps += 1;
   }
 
   const finalExperts = buildBaselineExperts(draws, target2D);
   const finalWeights = resolveExpertWeights(finalExperts, weights);
-  const weightedFinalExperts = applyExpertWeights(finalExperts, finalWeights);
   const aggregates = aggregateWeights(finalExperts, finalWeights);
-  const mode: AdaptiveReplaySummary["mode"] = compatible
-    ? (processedSteps > 0 ? "incremental" : "noop")
-    : "full";
-
-  const expertMeanLosses = Object.fromEntries(
-    Object.entries(expertLossTotals).map(([id, total]) => [id, total / (expertLossCounts[id] ?? 1)]),
-  );
-
   return {
     state: {
       engineVersion: ADAPTIVE_ENGINE_VERSION,
@@ -222,14 +196,16 @@ export function replayAdaptiveHistory(
       stateRevision: compatible ? initialState.stateRevision : 0,
     },
     summary: {
-      mode,
+      mode: compatible ? (processedSteps > 0 ? "incremental" : "noop") : "full",
       startHistoryLength,
       endHistoryLength: draws.length,
       processedSteps,
       meanEnsembleLoss: processedSteps > 0 ? ensembleLossTotal / processedSteps : 0,
-      expertMeanLosses,
+      expertMeanLosses: Object.fromEntries(
+        Object.entries(expertLossTotals).map(([id, total]) => [id, total / (expertLossCounts[id] ?? 1)]),
+      ),
     },
-    experts: weightedFinalExperts,
+    experts: applyExpertWeights(finalExperts, finalWeights),
   };
 }
 
@@ -239,35 +215,26 @@ export function settlePendingPrediction(
   target2D: Target2D,
 ): AdaptiveSettlement | null {
   if (!pending) return null;
-  if (pending.engineVersion !== ADAPTIVE_ENGINE_VERSION || pending.configVersion !== ADAPTIVE_CONFIG_VERSION) {
-    return null;
-  }
+  if (pending.engineVersion !== ADAPTIVE_ENGINE_VERSION || pending.configVersion !== ADAPTIVE_CONFIG_VERSION) return null;
   if (pending.target2D !== target2D || draws.length <= pending.historyLength) return null;
-
   const actualDraw = draws[pending.historyLength];
   if (!/^\d{4}$/.test(actualDraw)) return null;
   const [actualLeft, actualRight] = extractTargetPair(actualDraw, target2D);
-  const pairLoss = pairBrierLoss(pending.pairProbabilities, actualLeft, actualRight);
-  const leftLoss = positionalBrierLoss(pending.leftProbabilities, actualLeft);
-  const rightLoss = positionalBrierLoss(pending.rightProbabilities, actualRight);
-
   const historicalExperts = buildBaselineExperts(draws.slice(0, pending.historyLength), target2D);
   const weightsBefore = resolveExpertWeights(historicalExperts, pending.expertWeights);
   const expertLosses = evaluateExpertLosses(historicalExperts, actualLeft, actualRight);
   const weightsAfter = updateExpertWeights(historicalExperts, weightsBefore, expertLosses);
   const aiResults: Record<string, boolean> = {};
   const bbfsResults: Record<string, boolean> = {};
-
   for (const selection of pending.selections) {
     const selected = new Set(selection.digits);
     const key = String(selection.digitCount);
-    if (selection.method === "ai") {
-      aiResults[key] = selected.has(actualLeft) || selected.has(actualRight);
-    } else {
-      bbfsResults[key] = selected.has(actualLeft) && selected.has(actualRight);
-    }
+    if (selection.method === "ai") aiResults[key] = selected.has(actualLeft) || selected.has(actualRight);
+    else bbfsResults[key] = selected.has(actualLeft) && selected.has(actualRight);
   }
-
+  const pairLoss = pairBrierLoss(pending.pairProbabilities, actualLeft, actualRight);
+  const leftLoss = positionalBrierLoss(pending.leftProbabilities, actualLeft);
+  const rightLoss = positionalBrierLoss(pending.rightProbabilities, actualRight);
   return {
     predictionId: pending.predictionId,
     actualPair: actualLeft * 10 + actualRight,

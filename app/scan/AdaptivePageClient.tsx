@@ -28,14 +28,11 @@ interface AdaptiveResult {
   signalStrength: "low" | "medium" | "high";
   stateRevision: number;
   snapshotComplete: true;
-  selectionCount: 18;
+  selectionCount: number;
 }
 
-const TARGET_LABELS: Record<Target2D, string> = {
-  depan: "2D Depan",
-  tengah: "2D Tengah",
-  belakang: "2D Belakang",
-};
+const TARGET_2D: Target2D = "belakang";
+const TARGET_LABEL = "2D Belakang";
 
 const METHOD_LABELS: Record<AdaptiveMethod, string> = {
   ai: "AI",
@@ -47,6 +44,10 @@ const SIGNAL_LABELS: Record<AdaptiveResult["signalStrength"], string> = {
   medium: "Moderat",
   high: "Kuat",
 };
+
+function digitRange(method: AdaptiveMethod): { min: number; max: number } {
+  return method === "ai" ? { min: 1, max: 6 } : { min: 5, max: 9 };
+}
 
 function percentage(value: number) {
   return `${(value * 100).toFixed(1)}%`;
@@ -67,7 +68,6 @@ export default function AdaptivePageClient() {
   const [marketId, setMarketId] = useState("");
   const [method, setMethod] = useState<AdaptiveMethod>("bbfs");
   const [digitCount, setDigitCount] = useState(7);
-  const [target2D, setTarget2D] = useState<Target2D>("belakang");
   const [result, setResult] = useState<AdaptiveResult | null>(null);
   const [marketName, setMarketName] = useState("");
   const [evaluationRefresh, setEvaluationRefresh] = useState(0);
@@ -109,6 +109,7 @@ export default function AdaptivePageClient() {
     () => markets.find((market) => market.id === marketId),
     [marketId, markets],
   );
+  const range = digitRange(method);
 
   function resetSnapshot() {
     setResult(null);
@@ -124,19 +125,16 @@ export default function AdaptivePageClient() {
 
   function changeMethod(value: AdaptiveMethod) {
     if (value === method) return;
+    const nextRange = digitRange(value);
     setMethod(value);
-    resetSnapshot();
-  }
-
-  function changeTarget(value: Target2D) {
-    if (value === target2D) return;
-    setTarget2D(value);
+    setDigitCount((current) => Math.max(nextRange.min, Math.min(nextRange.max, current)));
     resetSnapshot();
   }
 
   function changeDigitCount(value: number) {
-    if (value === digitCount) return;
-    setDigitCount(value);
+    const bounded = Math.max(range.min, Math.min(range.max, value));
+    if (bounded === digitCount) return;
+    setDigitCount(bounded);
     resetSnapshot();
   }
 
@@ -149,7 +147,13 @@ export default function AdaptivePageClient() {
       const response = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "adaptive", marketId, method, digitCount, target2D }),
+        body: JSON.stringify({
+          action: "adaptive",
+          marketId,
+          method,
+          digitCount,
+          target2D: TARGET_2D,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || "Hasil terbaru gagal dimuat.");
@@ -179,7 +183,7 @@ export default function AdaptivePageClient() {
             </p>
             <h2 className="display text-xl text-text">Adaptive Intelligence</h2>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
-              Bukan sekadar membaca data. Sistem mengikuti perubahannya.
+              Fokus 2D belakang dengan pembelajaran dari histori hingga 170 result.
             </p>
           </div>
         </div>
@@ -228,8 +232,8 @@ export default function AdaptivePageClient() {
             </div>
             <input
               type="range"
-              min={1}
-              max={9}
+              min={range.min}
+              max={range.max}
               step={1}
               value={digitCount}
               onChange={(event) => changeDigitCount(Number(event.target.value))}
@@ -237,32 +241,17 @@ export default function AdaptivePageClient() {
               className="w-full accent-[var(--color-primary)]"
             />
             <div className="mt-1 flex justify-between text-[9px] font-bold text-text-muted">
-              <span>1</span>
-              <span>9</span>
+              <span>{range.min}</span>
+              <span>{range.max}</span>
             </div>
+            <p className="mt-1.5 text-[9px] text-text-muted">
+              {method === "ai" ? "AI tersedia 1–6 digit." : "BBFS tersedia 5–9 digit."}
+            </p>
           </div>
 
-          <div>
-            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.13em] text-text-muted">
-              Fokus Analisis
-            </span>
-            <div className="grid grid-cols-3 gap-2">
-              {(["depan", "tengah", "belakang"] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => changeTarget(value)}
-                  disabled={busy}
-                  className={`pressable min-h-11 rounded-xl border px-2 text-[10px] font-black uppercase tracking-wide transition-colors ${
-                    target2D === value
-                      ? "border-primary/50 bg-primary/20 text-primary-soft"
-                      : "border-border-soft bg-bg-deep/60 text-text-muted hover:text-text"
-                  }`}
-                >
-                  {TARGET_LABELS[value]}
-                </button>
-              ))}
-            </div>
+          <div className="rounded-xl border border-border-soft bg-bg-deep/55 px-3 py-2.5">
+            <p className="text-[9px] font-black uppercase tracking-[0.13em] text-text-muted">Fokus Analisis</p>
+            <p className="mt-1 text-xs font-black text-primary-soft">{TARGET_LABEL}</p>
           </div>
 
           <button
@@ -288,7 +277,7 @@ export default function AdaptivePageClient() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary-soft">
-                Pilihan Utama · {METHOD_LABELS[result.method]} {result.digitCount} Digit · {TARGET_LABELS[result.target2D]}
+                Pilihan Utama · {METHOD_LABELS[result.method]} {result.digitCount} Digit · {TARGET_LABEL}
               </p>
               <h3 className="display mt-1 text-xl text-text">
                 {marketName || selectedMarket?.name}
@@ -317,10 +306,7 @@ export default function AdaptivePageClient() {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Metric label="Confidence" value={percentage(result.estimatedSuccess)} />
             <Metric label="Reference" value={percentage(result.baselineSuccess)} />
-            <Metric
-              label="Edge"
-              value={`${result.lift >= 0 ? "+" : ""}${percentage(result.lift)}`}
-            />
+            <Metric label="Edge" value={`${result.lift >= 0 ? "+" : ""}${percentage(result.lift)}`} />
             <Metric label="Signal" value={SIGNAL_LABELS[result.signalStrength]} />
           </div>
 
@@ -337,7 +323,7 @@ export default function AdaptivePageClient() {
 
       <AdaptiveEvaluationPanel
         marketId={marketId}
-        target2D={target2D}
+        target2D={TARGET_2D}
         method={method}
         digitCount={digitCount}
         refreshKey={evaluationRefresh}

@@ -3,6 +3,7 @@ import { runAdaptiveOnline } from "./core/engine.mts";
 import {
   ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_SELECTION_COUNT,
 } from "./core/types.mts";
 import type {
   AdaptiveLearningState,
@@ -68,13 +69,13 @@ interface ParsedMarket extends ReconciliationMarketSnapshot {
   historyFingerprint: string;
 }
 
-type RollingDetection = "overlap" | "latest-fallback" | null;
+type RollingDetection = "overlap" | null;
 
 const DEFAULT_MARKET_LIMIT = 4;
 const MAX_MARKET_LIMIT = 50;
 const BACKGROUND_METHOD = "bbfs" as const;
 const BACKGROUND_DIGIT_COUNT = 7;
-const COMPLETE_SELECTION_COUNT = 18;
+const COMPLETE_SELECTION_COUNT = ADAPTIVE_SELECTION_COUNT;
 
 function requiredEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -98,17 +99,10 @@ function rollingWindowDetection(
   stateLastDraw: string | null,
 ): RollingDetection {
   if (stateHistoryLength !== currentDraws.length || currentDraws.length < 2) return null;
-
-  if (previousDraws.length === currentDraws.length) {
-    if (previousDraws[previousDraws.length - 1] !== stateLastDraw) return null;
-    const overlap = previousDraws.slice(1).every((draw, index) => draw === currentDraws[index]);
-    return overlap ? "overlap" : null;
-  }
-
-  const latestDraw = currentDraws[currentDraws.length - 1];
-  return previousDraws.length === 0 && stateLastDraw !== latestDraw
-    ? "latest-fallback"
-    : null;
+  if (previousDraws.length !== currentDraws.length) return null;
+  if (previousDraws[previousDraws.length - 1] !== stateLastDraw) return null;
+  const overlap = previousDraws.slice(1).every((draw, index) => draw === currentDraws[index]);
+  return overlap ? "overlap" : null;
 }
 
 async function fetchSupabaseMarkets(): Promise<{
@@ -212,7 +206,7 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
 
   return rows.flatMap((row) => {
     const target2D = String(row.target_2d);
-    if (target2D !== "depan" && target2D !== "tengah" && target2D !== "belakang") return [];
+    if (target2D !== "belakang") return [];
     return [{
       marketId: String(row.market_id),
       target2D,
@@ -350,7 +344,7 @@ async function loadContext(
       stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
     )
     : null;
-  const rollingWindowAdvance = rollingDetection !== null;
+  const rollingWindowAdvance = rollingDetection === "overlap";
   const compatibility = stateRow
     ? rollingWindowAdvance
       ? { compatible: true, correctionDetected: false, currentFingerprint: null }
@@ -539,7 +533,10 @@ export async function runAdaptiveReconciliation(
             BACKGROUND_DIGIT_COUNT,
             context.state,
             context.pendingPrediction,
-            { rollingWindowAdvance: context.rollingWindowAdvance },
+            {
+              rollingWindowAdvance: context.rollingWindowAdvance,
+              previousHistoryDraws: context.rollingWindowAdvance ? previousDraws : undefined,
+            },
           );
           const payload = {
             marketId: market.id,
@@ -569,16 +566,16 @@ export async function runAdaptiveReconciliation(
           const calibrationPublished = Number(stored.selectionCalibrationPublished ?? 0);
           const calibrationUpdated = Number(stored.selectionCalibrationUpdated ?? 0);
           if (publishedCount !== COMPLETE_SELECTION_COUNT || stored.snapshotComplete !== true) {
-            throw new Error("Snapshot Adaptive belum lengkap 18 selection.");
+            throw new Error(`Snapshot Adaptive V2 belum lengkap ${COMPLETE_SELECTION_COUNT} selection.`);
           }
           if (calibrationPublished !== COMPLETE_SELECTION_COUNT) {
-            throw new Error("Migration 010 belum aktif: state calibration 18 selection belum tersimpan.");
+            throw new Error(`Migration 011 belum aktif: ${COMPLETE_SELECTION_COUNT} calibration state belum tersimpan.`);
           }
           if (run.settlement && settledCount !== COMPLETE_SELECTION_COUNT) {
-            throw new Error("Settlement Adaptive tidak menghasilkan 18 evaluasi selection.");
+            throw new Error(`Settlement Adaptive V2 tidak menghasilkan ${COMPLETE_SELECTION_COUNT} evaluasi selection.`);
           }
           if (run.settlement && calibrationUpdated !== COMPLETE_SELECTION_COUNT) {
-            throw new Error("Settlement tidak memperbarui 18 calibration state independen.");
+            throw new Error(`Settlement tidak memperbarui ${COMPLETE_SELECTION_COUNT} calibration state independen.`);
           }
 
           const guardrailPayload: GuardrailRunPayload = {

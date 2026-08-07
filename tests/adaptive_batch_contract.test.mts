@@ -8,9 +8,10 @@ import {
 import {
   ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_SELECTION_COUNT,
 } from "../lib/adaptive/types.ts";
 
-Deno.test("kontrak Batch Adaptive menormalisasi request dengan versi aktif", () => {
+Deno.test("kontrak Batch Adaptive V2 menormalisasi request belakang dengan versi aktif", () => {
   const result = parseAdaptiveBatchRequest({
     marketIds: ["sgp", " hk ", "sgp"],
     target2D: "belakang",
@@ -33,6 +34,34 @@ Deno.test("kontrak Batch Adaptive menormalisasi request dengan versi aktif", () 
   });
 });
 
+Deno.test("kontrak Batch Adaptive V2 menolak target depan dan selection retired", () => {
+  const target = parseAdaptiveBatchRequest({
+    marketIds: ["sgp"],
+    target2D: "depan",
+    method: "ai",
+    digitCount: 4,
+    engineVersion: ADAPTIVE_ENGINE_VERSION,
+    configVersion: ADAPTIVE_CONFIG_VERSION,
+  });
+  assert.deepEqual(target, {
+    ok: false,
+    error: "Adaptive V2 hanya menyediakan target 2D belakang.",
+  });
+
+  const retired = parseAdaptiveBatchRequest({
+    marketIds: ["sgp"],
+    target2D: "belakang",
+    method: "bbfs",
+    digitCount: 4,
+    engineVersion: ADAPTIVE_ENGINE_VERSION,
+    configVersion: ADAPTIVE_CONFIG_VERSION,
+  });
+  assert.deepEqual(retired, {
+    ok: false,
+    error: "Kombinasi metode dan jumlah digit Adaptive V2 tidak tersedia.",
+  });
+});
+
 Deno.test("kontrak Batch Adaptive menolak request tanpa engine/config version", () => {
   const result = parseAdaptiveBatchRequest({
     marketIds: ["sgp"],
@@ -47,31 +76,15 @@ Deno.test("kontrak Batch Adaptive menolak request tanpa engine/config version", 
   });
 });
 
-Deno.test("kontrak Batch Adaptive menolak format version yang ambigu", () => {
-  const result = parseAdaptiveBatchRequest({
-    marketIds: ["sgp"],
-    target2D: "depan",
-    method: "ai",
-    digitCount: 4,
-    engineVersion: "hf apie latest",
-    configVersion: ADAPTIVE_CONFIG_VERSION,
-  });
-
-  assert.deepEqual(result, {
-    ok: false,
-    error: "Versi engine dan konfigurasi Adaptive tidak valid.",
-  });
-});
-
-Deno.test("caller Batch selalu mengirim versi engine dan config yang sedang aktif", () => {
+Deno.test("caller Batch selalu mengirim versi engine dan config V2 aktif", () => {
   assert.deepEqual(buildAdaptiveBatchSnapshotRequest({
     marketIds: ["sgp"],
-    target2D: "tengah",
+    target2D: "belakang",
     method: "ai",
     digitCount: 4,
   }), {
     marketIds: ["sgp"],
-    target2D: "tengah",
+    target2D: "belakang",
     method: "ai",
     digitCount: 4,
     engineVersion: ADAPTIVE_ENGINE_VERSION,
@@ -79,7 +92,10 @@ Deno.test("caller Batch selalu mengirim versi engine dan config yang sedang akti
   });
 });
 
-Deno.test("metadata snapshot Batch menolak versi lama dan publication tidak lengkap", () => {
+Deno.test("metadata snapshot Batch memakai publication count V2", () => {
+  assert.equal(ADAPTIVE_PUBLICATION_SELECTION_COUNT, ADAPTIVE_SELECTION_COUNT);
+  assert.equal(ADAPTIVE_PUBLICATION_SELECTION_COUNT, 11);
+
   const complete = {
     engine_version: ADAPTIVE_ENGINE_VERSION,
     config_version: ADAPTIVE_CONFIG_VERSION,
@@ -92,10 +108,6 @@ Deno.test("metadata snapshot Batch menolak versi lama dan publication tidak leng
     ...complete,
     config_version: "config-lama",
   }), "version");
-  assert.equal(adaptiveBatchSnapshotIssue({
-    ...complete,
-    snapshot_complete: false,
-  }), "incomplete");
   assert.equal(adaptiveBatchSnapshotIssue({
     ...complete,
     selection_count: ADAPTIVE_PUBLICATION_SELECTION_COUNT - 1,

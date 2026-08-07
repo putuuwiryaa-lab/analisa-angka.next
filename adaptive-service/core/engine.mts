@@ -5,6 +5,7 @@ import {
   applySelectionCalibrationUpdates,
   buildIndependentlyCalibratedSelections,
   buildSelectionCalibrationUpdates,
+  replaySelectionCalibrationHistory,
 } from "./selection-calibration.mts";
 import type {
   AdaptiveLearningState,
@@ -17,7 +18,12 @@ import type {
   AdaptiveSelectionCalibrationState,
   Target2D,
 } from "./types.mts";
-import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types.mts";
+import {
+  ADAPTIVE_CONFIG_VERSION,
+  ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_SELECTION_COUNT,
+  isAdaptiveSelection,
+} from "./types.mts";
 
 function signalStrength(lift: number, margin: number): AdaptivePrediction["signalStrength"] {
   if (lift >= 0.05 && margin >= 0.01) return "high";
@@ -70,11 +76,15 @@ function calibrationStatesFromPending(
 function actualSettlementContext(
   draws: readonly string[],
   pending: AdaptivePendingPrediction,
-  rollingWindowAdvance: boolean,
+  options: AdaptiveRunOptions,
 ): { historyBeforeActual: string[]; actualDraw: string } | null {
-  if (rollingWindowAdvance && draws.length === pending.historyLength) {
+  if (options.rollingWindowAdvance === true && draws.length === pending.historyLength) {
+    const previous = options.previousHistoryDraws;
+    if (!previous || previous.length !== pending.historyLength) {
+      throw new Error("Window histori sebelumnya wajib tersedia untuk calibration rolling V2.");
+    }
     return {
-      historyBeforeActual: draws.slice(0, -1),
+      historyBeforeActual: [...previous],
       actualDraw: draws[draws.length - 1],
     };
   }
@@ -94,6 +104,13 @@ export function runAdaptiveOnline(
   pendingPrediction?: AdaptivePendingPrediction | null,
   options: AdaptiveRunOptions = {},
 ): AdaptiveRun {
+  if (target2D !== "belakang") {
+    throw new Error("Adaptive V2 hanya memproses target 2D belakang.");
+  }
+  if (!isAdaptiveSelection(method, digitCount)) {
+    throw new Error(`Selection Adaptive V2 ${method.toUpperCase()} ${digitCount} digit tidak tersedia.`);
+  }
+
   const replay = replayAdaptiveHistory(draws, target2D, initialState, options);
   const pairProbabilities = combinePairMatrices(replay.experts);
   const marginals = calculateMarginals(pairProbabilities);
@@ -105,16 +122,14 @@ export function runAdaptiveOnline(
     options,
   );
   let settlement = baseSettlement;
-  let calibrationStates = options.selectionCalibrationStates?.length
+  let calibrationStates = replay.summary.mode === "full"
+    ? replaySelectionCalibrationHistory(draws, target2D)
+    : options.selectionCalibrationStates?.length
     ? [...options.selectionCalibrationStates]
     : calibrationStatesFromPending(pendingPrediction);
 
   if (baseSettlement && pendingPrediction) {
-    const context = actualSettlementContext(
-      draws,
-      pendingPrediction,
-      options.rollingWindowAdvance === true,
-    );
+    const context = actualSettlementContext(draws, pendingPrediction, options);
     if (!context) throw new Error("Konteks settlement selection tidak tersedia.");
 
     const updates = buildSelectionCalibrationUpdates(
@@ -125,8 +140,10 @@ export function runAdaptiveOnline(
       context.actualDraw,
       target2D,
     );
-    if (updates.length !== 18) {
-      throw new Error("Settlement harus menghasilkan 18 update calibration independen.");
+    if (updates.length !== ADAPTIVE_SELECTION_COUNT) {
+      throw new Error(
+        `Settlement harus menghasilkan ${ADAPTIVE_SELECTION_COUNT} update calibration independen.`,
+      );
     }
     calibrationStates = applySelectionCalibrationUpdates(calibrationStates, updates);
     settlement = {
@@ -141,6 +158,9 @@ export function runAdaptiveOnline(
     calibrationStates,
     replay.state.expertWeights,
   );
+  if (selections.length !== ADAPTIVE_SELECTION_COUNT) {
+    throw new Error(`Adaptive V2 harus menghasilkan tepat ${ADAPTIVE_SELECTION_COUNT} selection.`);
+  }
   const selection = requestedSelection(selections, method, digitCount);
   const latestDraw = draws[draws.length - 1];
 
