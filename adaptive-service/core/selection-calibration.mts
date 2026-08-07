@@ -1,5 +1,4 @@
 import { buildBaselineExperts } from "./experts.mts";
-import { resolveExpertWeights, updateExpertWeights } from "./learning.mts";
 import { optimizeDigitSelection } from "./optimizer.mts";
 import { combinePairMatrices } from "./pair-probability.mts";
 import { extractTargetPair } from "./targets.mts";
@@ -11,6 +10,7 @@ import type {
   AdaptiveSelectionCalibrationUpdate,
   Target2D,
 } from "./types.mts";
+import { resolveExpertWeights, updateExpertWeights } from "./weights.mts";
 
 const METHODS = ["ai", "bbfs"] as const satisfies readonly AdaptiveMethod[];
 
