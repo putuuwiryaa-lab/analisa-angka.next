@@ -15,8 +15,7 @@ $$;
 
 alter table adaptive.published_selections
   add column if not exists calibration_weights jsonb not null default '{}'::jsonb,
-  add column if not exists calibration_state_revision bigint not null default 0
-    check (calibration_state_revision >= 0);
+  add column if not exists calibration_state_revision bigint not null default 0;
 
 alter table adaptive.selection_evaluations
   add column if not exists calibration_loss real,
@@ -24,14 +23,47 @@ alter table adaptive.selection_evaluations
   add column if not exists calibration_weights_before jsonb not null default '{}'::jsonb,
   add column if not exists calibration_weights_after jsonb not null default '{}'::jsonb,
   add column if not exists calibration_state_revision_before bigint,
-  add column if not exists calibration_state_revision_after bigint,
-  add constraint selection_evaluations_calibration_loss_check
-    check (calibration_loss is null or calibration_loss between 0 and 1),
-  add constraint selection_evaluations_calibration_revision_check
-    check (
-      calibration_state_revision_before is null
-      or calibration_state_revision_after = calibration_state_revision_before + 1
-    );
+  add column if not exists calibration_state_revision_after bigint;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'published_selections_calibration_revision_check'
+      and conrelid = 'adaptive.published_selections'::regclass
+  ) then
+    alter table adaptive.published_selections
+      add constraint published_selections_calibration_revision_check
+      check (calibration_state_revision >= 0);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'selection_evaluations_calibration_loss_check'
+      and conrelid = 'adaptive.selection_evaluations'::regclass
+  ) then
+    alter table adaptive.selection_evaluations
+      add constraint selection_evaluations_calibration_loss_check
+      check (calibration_loss is null or calibration_loss between 0 and 1);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'selection_evaluations_calibration_revision_check'
+      and conrelid = 'adaptive.selection_evaluations'::regclass
+  ) then
+    alter table adaptive.selection_evaluations
+      add constraint selection_evaluations_calibration_revision_check
+      check (
+        calibration_state_revision_before is null
+        or calibration_state_revision_after = calibration_state_revision_before + 1
+      );
+  end if;
+end;
+$$;
 
 -- Preserve the migration-005 publisher under a stable internal name, then put
 -- this calibration wrapper back at the name expected by migration 009.
@@ -62,9 +94,10 @@ declare
   v_update_count integer := 0;
   v_update_key_count integer := 0;
 begin
-  if jsonb_typeof(v_selections) <> 'array'
-    or jsonb_array_length(v_selections) <> 18
-  then
+  if jsonb_typeof(v_selections) <> 'array' then
+    raise exception 'Prediction harus membawa array selections.';
+  end if;
+  if jsonb_array_length(v_selections) <> 18 then
     raise exception 'Prediction harus membawa tepat 18 selection untuk calibration.';
   end if;
 
@@ -78,8 +111,11 @@ begin
         from jsonb_each_text(item->'calibrationWeights') weight
         where weight.value !~ '^[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'
           or weight.value::double precision < 0
-          or not isfinite(weight.value::double precision)
       )
+      or abs(coalesce((
+        select sum(weight.value::double precision)
+        from jsonb_each_text(item->'calibrationWeights') weight
+      ), 0) - 1) > 0.000001
   ) then
     raise exception 'Metadata calibration pada prediction selection tidak valid.';
   end if;
@@ -130,8 +166,18 @@ begin
         or coalesce(item->>'stateRevisionAfter', '') !~ '^[0-9]+$'
         or (item->>'stateRevisionAfter')::bigint <>
           (item->>'stateRevisionBefore')::bigint + 1
+        or coalesce(item->>'calibrationLoss', '') !~
+          '^[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'
         or (item->>'calibrationLoss')::real < 0
         or (item->>'calibrationLoss')::real > 1
+        or abs(coalesce((
+          select sum(weight.value::double precision)
+          from jsonb_each_text(item->'weightsBefore') weight
+        ), 0) - 1) > 0.000001
+        or abs(coalesce((
+          select sum(weight.value::double precision)
+          from jsonb_each_text(item->'weightsAfter') weight
+        ), 0) - 1) > 0.000001
     ) then
       raise exception 'Payload update calibration independen tidak valid.';
     end if;
@@ -176,8 +222,7 @@ begin
       raise exception 'Gagal mengaudit 18 update calibration independen.';
     end if;
 
-    -- Prediction baru must carry exactly the resulting revision for every
-    -- independent selection state.
+    -- Prediction baru membawa revision hasil update masing-masing selection.
     if (
       select count(*)
       from jsonb_array_elements(v_updates) item
