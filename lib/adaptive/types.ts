@@ -27,6 +27,31 @@ export interface AdaptiveSelection {
   baselineSuccess: number;
   lift: number;
   selectionMargin: number;
+  calibrationWeights: Record<string, number>;
+  calibrationStateRevision: number;
+}
+
+export interface AdaptiveSelectionCalibrationState {
+  method: AdaptiveMethod;
+  digitCount: number;
+  expertWeights: Record<string, number>;
+  sampleCount: number;
+  hitCount: number;
+  cumulativeLoss: number;
+  stateRevision: number;
+}
+
+export interface AdaptiveSelectionCalibrationUpdate {
+  method: AdaptiveMethod;
+  digitCount: number;
+  hit: boolean;
+  estimatedSuccess: number;
+  calibrationLoss: number;
+  expertLosses: Record<string, number>;
+  weightsBefore: Record<string, number>;
+  weightsAfter: Record<string, number>;
+  stateRevisionBefore: number;
+  stateRevisionAfter: number;
 }
 
 export interface AdaptiveReplaySummary {
@@ -61,9 +86,7 @@ export interface AdaptivePrediction {
   leftProbabilities: DigitVector;
   rightProbabilities: DigitVector;
   expertWeights: Record<string, number>;
-  /** Selection yang diminta caller; dipertahankan untuk kompatibilitas UI/API saat ini. */
   selection: AdaptiveSelection;
-  /** Seluruh optimizer pass AI 1-9 dan BBFS 1-9 dari matrix yang sama. */
   selections: AdaptiveSelection[];
   signalStrength: "low" | "medium" | "high";
   replay: AdaptiveReplaySummary;
@@ -96,12 +119,18 @@ export interface AdaptiveSettlement {
   expertLosses: Record<string, number>;
   weightsBefore: Record<string, number>;
   weightsAfter: Record<string, number>;
+  selectionCalibrationUpdates: AdaptiveSelectionCalibrationUpdate[];
 }
 
 export interface AdaptivePersistenceContext {
   configured: boolean;
   state: AdaptiveLearningState | null;
   pendingPrediction: AdaptivePendingPrediction | null;
+}
+
+export interface AdaptiveRunOptions {
+  rollingWindowAdvance?: boolean;
+  selectionCalibrationStates?: readonly AdaptiveSelectionCalibrationState[];
 }
 
 export interface AdaptiveRun {
