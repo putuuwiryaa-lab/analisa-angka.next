@@ -1,7 +1,9 @@
 import type { AdaptiveMethod, AdaptiveSelection } from "./types.mts";
-
-const METHODS = ["ai", "bbfs"] as const satisfies readonly AdaptiveMethod[];
-const EXPECTED_SELECTION_COUNT = METHODS.length * 9;
+import {
+  ADAPTIVE_SELECTION_COUNT,
+  ADAPTIVE_SELECTION_SPECS,
+  isAdaptiveSelection,
+} from "./types.mts";
 
 function finiteProbability(value: unknown): boolean {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
@@ -41,8 +43,11 @@ export function validateAdaptiveSelection(value: unknown): string | null {
   if (selection.method !== "ai" && selection.method !== "bbfs") {
     return "Metode selection Adaptive tidak valid.";
   }
-  if (!Number.isInteger(selection.digitCount) || Number(selection.digitCount) < 1 || Number(selection.digitCount) > 9) {
-    return "Jumlah digit selection Adaptive harus antara 1 dan 9.";
+  if (!Number.isInteger(selection.digitCount) || !isAdaptiveSelection(
+    selection.method,
+    Number(selection.digitCount),
+  )) {
+    return "Kombinasi metode dan jumlah digit selection Adaptive V2 tidak tersedia.";
   }
   if (!Array.isArray(selection.digits) || selection.digits.length !== selection.digitCount) {
     return "Jumlah output digit selection Adaptive tidak konsisten.";
@@ -76,8 +81,8 @@ export function validateAdaptiveSelection(value: unknown): string | null {
 
 export function validateFullAdaptivePublication(value: unknown): string | null {
   if (!Array.isArray(value)) return "Seluruh selection Adaptive harus berupa array.";
-  if (value.length !== EXPECTED_SELECTION_COUNT) {
-    return `Adaptive harus menerbitkan tepat ${EXPECTED_SELECTION_COUNT} selection.`;
+  if (value.length !== ADAPTIVE_SELECTION_COUNT) {
+    return `Adaptive V2 harus menerbitkan tepat ${ADAPTIVE_SELECTION_COUNT} selection.`;
   }
 
   const keys = new Set<string>();
@@ -90,11 +95,9 @@ export function validateFullAdaptivePublication(value: unknown): string | null {
     keys.add(key);
   }
 
-  for (const method of METHODS) {
-    for (let digitCount = 1; digitCount <= 9; digitCount++) {
-      const key = adaptiveSelectionKey(method, digitCount);
-      if (!keys.has(key)) return `Selection Adaptive ${key} belum tersedia.`;
-    }
+  for (const spec of ADAPTIVE_SELECTION_SPECS) {
+    const key = adaptiveSelectionKey(spec.method, spec.digitCount);
+    if (!keys.has(key)) return `Selection Adaptive ${key} belum tersedia.`;
   }
 
   return null;
