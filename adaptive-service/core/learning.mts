@@ -14,7 +14,11 @@ import type {
   AdaptiveSettlement,
   Target2D,
 } from "./types.mts";
-import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types.mts";
+import {
+  ADAPTIVE_CONFIG_VERSION,
+  ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_REPLAY_WARMUP as V2_REPLAY_WARMUP,
+} from "./types.mts";
 import {
   aggregateWeights,
   applyExpertWeights,
@@ -24,7 +28,7 @@ import {
   updateExpertWeights,
 } from "./weights.mts";
 
-export const ADAPTIVE_REPLAY_WARMUP = 14;
+export const ADAPTIVE_REPLAY_WARMUP = V2_REPLAY_WARMUP;
 
 function validateDraws(draws: readonly string[]): void {
   if (draws.length < 2) throw new Error("Adaptive membutuhkan minimal 2 result 4D.");
