@@ -1,3 +1,4 @@
+import type { Target2D } from "@/lib/engine/types";
 import {
   ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_ENGINE_VERSION,
@@ -17,7 +18,7 @@ export type AdaptiveBatchSnapshotIssue = "version" | "incomplete" | null;
 
 export function buildAdaptiveBatchSnapshotRequest(input: {
   marketIds: string[];
-  target2D: "belakang";
+  target2D: Target2D;
   method: "ai" | "bbfs";
   digitCount: number;
 }) {
