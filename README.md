@@ -28,6 +28,8 @@ Repository ini tidak lagi memiliki konfigurasi Vercel atau Render. Semua task da
 
 ## Arsitektur Adaptive Learning
 
+> **Scraper & otomatisasi Adaptive:** scraper production yang memperbarui histori market dan memicu Adaptive reconciliation berada di repository [`putuuwiryaa-lab/backup-`](https://github.com/putuuwiryaa-lab/backup-). Pipeline Render menjalankan scraper/evaluator terlebih dahulu, lalu `trigger_adaptive_reconciliation.py` memanggil endpoint `/reconcile` pada `adaptive-engine-service`. Repository `analisa-angka.next` menyimpan engine, API/read-path, UI, persistence contract, dan service reconciliation-nya.
+
 Adaptive memakai histori market dengan window tetap maksimal 170 result. Saat result baru masuk, result terlama dibuang sehingga panjang histori tetap 170; sistem tidak mengandalkan adanya data ke-171 di source database.
 
 Siklus learning dirancang sebagai berikut:
