@@ -120,6 +120,7 @@ export function runAdaptiveOnline(
     const updates = buildSelectionCalibrationUpdates(
       pendingPrediction.selections,
       calibrationStates,
+      pendingPrediction.expertWeights,
       context.historyBeforeActual,
       context.actualDraw,
       target2D,
