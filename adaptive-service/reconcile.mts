@@ -69,7 +69,7 @@ interface ParsedMarket extends ReconciliationMarketSnapshot {
   historyFingerprint: string;
 }
 
-type RollingDetection = "overlap" | "latest-fallback" | null;
+type RollingDetection = "overlap" | null;
 
 const DEFAULT_MARKET_LIMIT = 4;
 const MAX_MARKET_LIMIT = 50;
@@ -99,17 +99,10 @@ function rollingWindowDetection(
   stateLastDraw: string | null,
 ): RollingDetection {
   if (stateHistoryLength !== currentDraws.length || currentDraws.length < 2) return null;
-
-  if (previousDraws.length === currentDraws.length) {
-    if (previousDraws[previousDraws.length - 1] !== stateLastDraw) return null;
-    const overlap = previousDraws.slice(1).every((draw, index) => draw === currentDraws[index]);
-    return overlap ? "overlap" : null;
-  }
-
-  const latestDraw = currentDraws[currentDraws.length - 1];
-  return previousDraws.length === 0 && stateLastDraw !== latestDraw
-    ? "latest-fallback"
-    : null;
+  if (previousDraws.length !== currentDraws.length) return null;
+  if (previousDraws[previousDraws.length - 1] !== stateLastDraw) return null;
+  const overlap = previousDraws.slice(1).every((draw, index) => draw === currentDraws[index]);
+  return overlap ? "overlap" : null;
 }
 
 async function fetchSupabaseMarkets(): Promise<{
@@ -351,7 +344,7 @@ async function loadContext(
       stateRow.last_processed_draw ? String(stateRow.last_processed_draw) : null,
     )
     : null;
-  const rollingWindowAdvance = rollingDetection !== null;
+  const rollingWindowAdvance = rollingDetection === "overlap";
   const compatibility = stateRow
     ? rollingWindowAdvance
       ? { compatible: true, correctionDetected: false, currentFingerprint: null }
@@ -540,7 +533,10 @@ export async function runAdaptiveReconciliation(
             BACKGROUND_DIGIT_COUNT,
             context.state,
             context.pendingPrediction,
-            { rollingWindowAdvance: context.rollingWindowAdvance },
+            {
+              rollingWindowAdvance: context.rollingWindowAdvance,
+              previousHistoryDraws: context.rollingWindowAdvance ? previousDraws : undefined,
+            },
           );
           const payload = {
             marketId: market.id,
