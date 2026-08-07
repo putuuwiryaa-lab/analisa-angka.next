@@ -63,13 +63,29 @@ function rollingState(
   return state.lastProcessedDraw !== draws[draws.length - 1];
 }
 
+function exactPreviousRollingHistory(
+  draws: readonly string[],
+  options: AdaptiveRunOptions,
+): string[] {
+  const previous = options.previousHistoryDraws;
+  if (!previous || previous.length !== draws.length || previous.length < 2) {
+    throw new Error("Adaptive V2 membutuhkan window histori sebelumnya untuk settlement rolling 170.");
+  }
+  const overlapValid = previous.slice(1).every((draw, index) => draw === draws[index]);
+  if (!overlapValid) {
+    throw new Error("Window histori sebelumnya tidak membentuk overlap rolling yang valid.");
+  }
+  return [...previous];
+}
+
 function replayRollingWindow(
   draws: readonly string[],
   target2D: Target2D,
   initialState: AdaptiveLearningState,
+  options: AdaptiveRunOptions,
 ) {
   const actualDraw = draws[draws.length - 1];
-  const historyBeforeActual = draws.slice(0, -1);
+  const historyBeforeActual = exactPreviousRollingHistory(draws, options);
   const expertsBefore = buildBaselineExperts(historyBeforeActual, target2D);
   const weightsBefore = resolveExpertWeights(expertsBefore, initialState.expertWeights);
   const weightedBefore = applyExpertWeights(expertsBefore, weightsBefore);
@@ -119,7 +135,7 @@ export function replayAdaptiveHistory(
   validateDraws(draws);
 
   if (rollingState(initialState, draws, target2D, options)) {
-    return replayRollingWindow(draws, target2D, initialState);
+    return replayRollingWindow(draws, target2D, initialState, options);
   }
 
   const compatible = compatibleState(initialState, draws, target2D);
@@ -205,7 +221,7 @@ export function settlePendingPrediction(
   if (!/^\d{4}$/.test(actualDraw)) return null;
 
   const historicalDraws = rollingWindowAdvance
-    ? draws.slice(0, -1)
+    ? exactPreviousRollingHistory(draws, options)
     : draws.slice(0, pending.historyLength);
   const [actualLeft, actualRight] = extractTargetPair(actualDraw, target2D);
   const historicalExperts = buildBaselineExperts(historicalDraws, target2D);
