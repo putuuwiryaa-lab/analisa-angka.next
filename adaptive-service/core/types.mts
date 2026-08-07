@@ -148,6 +148,8 @@ export interface AdaptiveSettlement {
 
 export interface AdaptiveRunOptions {
   rollingWindowAdvance?: boolean;
+  /** Exact 170-result window yang dipakai saat pending prediction dibuat. */
+  previousHistoryDraws?: readonly string[];
   selectionCalibrationStates?: readonly AdaptiveSelectionCalibrationState[];
 }
 
