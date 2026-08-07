@@ -14,6 +14,7 @@ import type {
   AdaptiveRun,
   AdaptiveRunOptions,
   AdaptiveSelection,
+  AdaptiveSelectionCalibrationState,
   Target2D,
 } from "./types.mts";
 import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types.mts";
@@ -50,6 +51,20 @@ function requestedSelection(
     throw new Error(`Selection Adaptive ${method.toUpperCase()} ${digitCount} digit tidak tersedia.`);
   }
   return selection;
+}
+
+function calibrationStatesFromPending(
+  pending: AdaptivePendingPrediction | null | undefined,
+): AdaptiveSelectionCalibrationState[] {
+  return (pending?.selections ?? []).map((selection) => ({
+    method: selection.method,
+    digitCount: selection.digitCount,
+    expertWeights: { ...(selection.calibrationWeights ?? {}) },
+    sampleCount: 0,
+    hitCount: 0,
+    cumulativeLoss: 0,
+    stateRevision: selection.calibrationStateRevision ?? 0,
+  }));
 }
 
 function actualSettlementContext(
@@ -90,7 +105,9 @@ export function runAdaptiveOnline(
     options,
   );
   let settlement = baseSettlement;
-  let calibrationStates = [...(options.selectionCalibrationStates ?? [])];
+  let calibrationStates = options.selectionCalibrationStates?.length
+    ? [...options.selectionCalibrationStates]
+    : calibrationStatesFromPending(pendingPrediction);
 
   if (baseSettlement && pendingPrediction) {
     const context = actualSettlementContext(
