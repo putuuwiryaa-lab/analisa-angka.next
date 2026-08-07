@@ -236,5 +236,6 @@ export function settlePendingPrediction(
     expertLosses,
     weightsBefore,
     weightsAfter,
+    selectionCalibrationUpdates: [],
   };
 }
