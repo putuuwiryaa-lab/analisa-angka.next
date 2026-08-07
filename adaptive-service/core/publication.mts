@@ -11,6 +11,23 @@ function finiteNumber(value: unknown): boolean {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function validWeightMap(value: unknown): value is Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0) return false;
+  const total = entries.reduce((sum, [, raw]) =>
+    sum + (typeof raw === "number" && Number.isFinite(raw) && raw >= 0 ? raw : Number.NaN), 0);
+  return Number.isFinite(total) && Math.abs(total - 1) <= 1e-8;
+}
+
+function sameWeightMap(
+  left: Readonly<Record<string, number>>,
+  right: Readonly<Record<string, number>>,
+): boolean {
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  return [...keys].every((key) => Math.abs((left[key] ?? 0) - (right[key] ?? 0)) <= 1e-12);
+}
+
 export function adaptiveSelectionKey(method: AdaptiveMethod, digitCount: number): string {
   return `${method}:${digitCount}`;
 }
@@ -47,6 +64,12 @@ export function validateAdaptiveSelection(value: unknown): string | null {
   }
   if (!finiteNumber(selection.selectionMargin) || Number(selection.selectionMargin) < 0) {
     return "Selection margin Adaptive tidak valid.";
+  }
+  if (!validWeightMap(selection.calibrationWeights)) {
+    return "Calibration weights selection Adaptive tidak valid.";
+  }
+  if (!Number.isInteger(selection.calibrationStateRevision) || Number(selection.calibrationStateRevision) < 0) {
+    return "Calibration state revision selection Adaptive tidak valid.";
   }
   return null;
 }
@@ -91,6 +114,8 @@ export function requestedSelectionBelongsToPublication(
     Math.abs(published.estimatedSuccess - requested.estimatedSuccess) <= 1e-12 &&
     Math.abs(published.baselineSuccess - requested.baselineSuccess) <= 1e-12 &&
     Math.abs(published.lift - requested.lift) <= 1e-12 &&
-    Math.abs(published.selectionMargin - requested.selectionMargin) <= 1e-12
+    Math.abs(published.selectionMargin - requested.selectionMargin) <= 1e-12 &&
+    published.calibrationStateRevision === requested.calibrationStateRevision &&
+    sameWeightMap(published.calibrationWeights, requested.calibrationWeights)
   );
 }

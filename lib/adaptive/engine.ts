@@ -1,7 +1,12 @@
 import type { Target2D } from "@/lib/engine/types";
+import { buildBaselineExperts } from "./experts";
 import { replayAdaptiveHistory, settlePendingPrediction } from "./learning";
-import { optimizeAllSelections } from "./optimizer";
 import { calculateMarginals, combinePairMatrices } from "./pair-probability";
+import {
+  applySelectionCalibrationUpdates,
+  buildIndependentlyCalibratedSelections,
+  buildSelectionCalibrationUpdates,
+} from "./selection-calibration";
 import type {
   AdaptiveLearningState,
   AdaptiveMethod,
@@ -9,6 +14,7 @@ import type {
   AdaptivePrediction,
   AdaptiveRun,
   AdaptiveSelection,
+  AdaptiveSelectionCalibrationState,
 } from "./types";
 import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types";
 
@@ -32,6 +38,20 @@ function requestedSelection(
   return selection;
 }
 
+function calibrationStatesFromPending(
+  pending: AdaptivePendingPrediction | null | undefined,
+): AdaptiveSelectionCalibrationState[] {
+  return (pending?.selections ?? []).map((selection) => ({
+    method: selection.method,
+    digitCount: selection.digitCount,
+    expertWeights: { ...(selection.calibrationWeights ?? {}) },
+    sampleCount: 0,
+    hitCount: 0,
+    cumulativeLoss: 0,
+    stateRevision: selection.calibrationStateRevision ?? 0,
+  }));
+}
+
 export function runAdaptiveOnline(
   draws: readonly string[],
   target2D: Target2D,
@@ -43,7 +63,27 @@ export function runAdaptiveOnline(
   const replay = replayAdaptiveHistory(draws, target2D, initialState);
   const pairProbabilities = combinePairMatrices(replay.experts);
   const marginals = calculateMarginals(pairProbabilities);
-  const selections = optimizeAllSelections(pairProbabilities);
+  const baseSettlement = settlePendingPrediction(pendingPrediction, draws, target2D);
+  let settlement = baseSettlement;
+  let calibrationStates = calibrationStatesFromPending(pendingPrediction);
+
+  if (baseSettlement && pendingPrediction) {
+    const updates = buildSelectionCalibrationUpdates(
+      pendingPrediction.selections,
+      calibrationStates,
+      draws.slice(0, pendingPrediction.historyLength),
+      draws[pendingPrediction.historyLength],
+      target2D,
+    );
+    calibrationStates = applySelectionCalibrationUpdates(calibrationStates, updates);
+    settlement = { ...baseSettlement, selectionCalibrationUpdates: updates };
+  }
+
+  const selections = buildIndependentlyCalibratedSelections(
+    buildBaselineExperts(draws, target2D),
+    calibrationStates,
+    replay.state.expertWeights,
+  );
   const selection = requestedSelection(selections, method, digitCount);
   const latestDraw = draws[draws.length - 1];
 
@@ -67,11 +107,7 @@ export function runAdaptiveOnline(
   return {
     prediction,
     state: replay.state,
-    settlement: settlePendingPrediction(
-      pendingPrediction,
-      draws,
-      target2D,
-    ),
+    settlement,
     historyDraws: [...draws],
   };
 }

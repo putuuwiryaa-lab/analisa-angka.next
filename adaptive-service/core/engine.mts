@@ -1,6 +1,11 @@
+import { buildBaselineExperts } from "./experts.mts";
 import { replayAdaptiveHistory, settlePendingPrediction } from "./learning.mts";
-import { optimizeAllSelections } from "./optimizer.mts";
 import { calculateMarginals, combinePairMatrices } from "./pair-probability.mts";
+import {
+  applySelectionCalibrationUpdates,
+  buildIndependentlyCalibratedSelections,
+  buildSelectionCalibrationUpdates,
+} from "./selection-calibration.mts";
 import type {
   AdaptiveLearningState,
   AdaptiveMethod,
@@ -9,6 +14,7 @@ import type {
   AdaptiveRun,
   AdaptiveRunOptions,
   AdaptiveSelection,
+  AdaptiveSelectionCalibrationState,
   Target2D,
 } from "./types.mts";
 import { ADAPTIVE_CONFIG_VERSION, ADAPTIVE_ENGINE_VERSION } from "./types.mts";
@@ -20,8 +26,6 @@ function signalStrength(lift: number, margin: number): AdaptivePrediction["signa
 }
 
 function historyWindowFingerprint(draws: readonly string[]): string {
-  // FNV-1a 64-bit menjaga key ringkas dan deterministik. Seluruh window masuk
-  // ke fingerprint agar result 4D yang berulang tidak mengaktifkan row lama.
   let hash = 0xcbf29ce484222325n;
   const input = draws.join("|");
   for (let index = 0; index < input.length; index++) {
@@ -49,6 +53,38 @@ function requestedSelection(
   return selection;
 }
 
+function calibrationStatesFromPending(
+  pending: AdaptivePendingPrediction | null | undefined,
+): AdaptiveSelectionCalibrationState[] {
+  return (pending?.selections ?? []).map((selection) => ({
+    method: selection.method,
+    digitCount: selection.digitCount,
+    expertWeights: { ...(selection.calibrationWeights ?? {}) },
+    sampleCount: 0,
+    hitCount: 0,
+    cumulativeLoss: 0,
+    stateRevision: selection.calibrationStateRevision ?? 0,
+  }));
+}
+
+function actualSettlementContext(
+  draws: readonly string[],
+  pending: AdaptivePendingPrediction,
+  rollingWindowAdvance: boolean,
+): { historyBeforeActual: string[]; actualDraw: string } | null {
+  if (rollingWindowAdvance && draws.length === pending.historyLength) {
+    return {
+      historyBeforeActual: draws.slice(0, -1),
+      actualDraw: draws[draws.length - 1],
+    };
+  }
+  if (draws.length <= pending.historyLength) return null;
+  return {
+    historyBeforeActual: draws.slice(0, pending.historyLength),
+    actualDraw: draws[pending.historyLength],
+  };
+}
+
 export function runAdaptiveOnline(
   draws: readonly string[],
   target2D: Target2D,
@@ -61,7 +97,50 @@ export function runAdaptiveOnline(
   const replay = replayAdaptiveHistory(draws, target2D, initialState, options);
   const pairProbabilities = combinePairMatrices(replay.experts);
   const marginals = calculateMarginals(pairProbabilities);
-  const selections = optimizeAllSelections(pairProbabilities);
+
+  const baseSettlement = settlePendingPrediction(
+    pendingPrediction,
+    draws,
+    target2D,
+    options,
+  );
+  let settlement = baseSettlement;
+  let calibrationStates = options.selectionCalibrationStates?.length
+    ? [...options.selectionCalibrationStates]
+    : calibrationStatesFromPending(pendingPrediction);
+
+  if (baseSettlement && pendingPrediction) {
+    const context = actualSettlementContext(
+      draws,
+      pendingPrediction,
+      options.rollingWindowAdvance === true,
+    );
+    if (!context) throw new Error("Konteks settlement selection tidak tersedia.");
+
+    const updates = buildSelectionCalibrationUpdates(
+      pendingPrediction.selections,
+      calibrationStates,
+      pendingPrediction.expertWeights,
+      context.historyBeforeActual,
+      context.actualDraw,
+      target2D,
+    );
+    if (updates.length !== 18) {
+      throw new Error("Settlement harus menghasilkan 18 update calibration independen.");
+    }
+    calibrationStates = applySelectionCalibrationUpdates(calibrationStates, updates);
+    settlement = {
+      ...baseSettlement,
+      selectionCalibrationUpdates: updates,
+    };
+  }
+
+  const selectionExperts = buildBaselineExperts(draws, target2D);
+  const selections = buildIndependentlyCalibratedSelections(
+    selectionExperts,
+    calibrationStates,
+    replay.state.expertWeights,
+  );
   const selection = requestedSelection(selections, method, digitCount);
   const latestDraw = draws[draws.length - 1];
 
@@ -85,12 +164,7 @@ export function runAdaptiveOnline(
   return {
     prediction,
     state: replay.state,
-    settlement: settlePendingPrediction(
-      pendingPrediction,
-      draws,
-      target2D,
-      options,
-    ),
+    settlement,
     historyDraws: [...draws],
   };
 }

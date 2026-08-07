@@ -124,6 +124,8 @@ function optimizeNormalizedSelection(
     baselineSuccess,
     lift: best.score - baselineSuccess,
     selectionMargin: runnerUp ? Math.max(0, best.score - runnerUp.score) : 0,
+    calibrationWeights: {},
+    calibrationStateRevision: 0,
   };
 }
 
