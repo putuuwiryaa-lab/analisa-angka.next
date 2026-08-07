@@ -74,6 +74,7 @@ const DEFAULT_MARKET_LIMIT = 4;
 const MAX_MARKET_LIMIT = 50;
 const BACKGROUND_METHOD = "bbfs" as const;
 const BACKGROUND_DIGIT_COUNT = 7;
+const COMPLETE_SELECTION_COUNT = 18;
 
 function requiredEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -110,7 +111,10 @@ function rollingWindowDetection(
     : null;
 }
 
-async function fetchSupabaseMarkets(): Promise<{ markets: ParsedMarket[]; errors: Array<Record<string, unknown>> }> {
+async function fetchSupabaseMarkets(): Promise<{
+  markets: ParsedMarket[];
+  errors: Array<Record<string, unknown>>;
+}> {
   const supabaseUrl = requiredEnv("SUPABASE_URL");
   const serviceRoleKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
   const endpoint = new URL("/rest/v1/markets", supabaseUrl);
@@ -188,7 +192,7 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
         count(ps.id)::integer as selection_count,
         coalesce(
           (to_jsonb(p)->>'snapshot_complete')::boolean,
-          count(ps.id) = 18
+          count(ps.id) = ${COMPLETE_SELECTION_COUNT}
         ) as snapshot_complete
       from adaptive.predictions p
       left join adaptive.published_selections ps
@@ -206,7 +210,7 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
       and s.config_version = ${ADAPTIVE_CONFIG_VERSION}
   `;
 
-  return rows.flatMap((row: Record<string, unknown>) => {
+  return rows.flatMap((row) => {
     const target2D = String(row.target_2d);
     if (target2D !== "depan" && target2D !== "tengah" && target2D !== "belakang") return [];
     return [{
@@ -236,9 +240,7 @@ async function fetchStateSnapshots(sql: SqlClient): Promise<ReconciliationStateS
 
 async function loadStoredHistoryWindow(sql: SqlClient, marketId: string): Promise<string[]> {
   const rows = await sql`
-    select
-      result_4d,
-      source_sequence
+    select result_4d, source_sequence
     from adaptive.result_snapshots
     where market_id = ${marketId}
       and draw_key = 'seq:' || source_sequence::text
@@ -247,9 +249,8 @@ async function loadStoredHistoryWindow(sql: SqlClient, marketId: string): Promis
 
   const draws: string[] = [];
   for (let index = 0; index < rows.length; index++) {
-    const row = rows[index];
-    const sequence = Number(row.source_sequence);
-    const draw = String(row.result_4d ?? "");
+    const sequence = Number(rows[index].source_sequence);
+    const draw = String(rows[index].result_4d ?? "");
     if (sequence !== index + 1 || !/^\d{4}$/.test(draw)) return [];
     draws.push(draw);
   }
@@ -272,66 +273,72 @@ async function loadContext(
   expectedStateRevision: number | null;
   expectedHistoryFingerprint: string | null;
 }> {
-  const stateRows = await sql`
-    select
-      target_2d,
-      engine_version,
-      config_version,
-      processed_history_length,
-      last_processed_draw,
-      expert_weights,
-      family_weights,
-      horizon_weights,
-      state_revision,
-      to_jsonb(s)->>'history_fingerprint' as history_fingerprint
-    from adaptive.engine_states s
-    where market_id = ${marketId}
-      and target_2d = ${target2D}
-      and engine_version = ${ADAPTIVE_ENGINE_VERSION}
-      and config_version = ${ADAPTIVE_CONFIG_VERSION}
-    limit 1
-  `;
-
-  const pendingRows = await sql`
-    select
-      p.id::text as prediction_id,
-      p.engine_version,
-      p.config_version,
-      p.target_2d,
-      p.history_length,
-      p.pair_probabilities,
-      p.left_probabilities,
-      p.right_probabilities,
-      p.expert_weights,
-      coalesce((
-        select jsonb_agg(
-          jsonb_build_object(
-            'method', s.method,
-            'digitCount', s.digit_count,
-            'digits', to_jsonb(s.digits),
-            'estimatedSuccess', s.estimated_success,
-            'baselineSuccess', s.baseline_success,
-            'lift', s.lift,
-            'selectionMargin', s.selection_margin
+  const [stateRows, pendingRows] = await Promise.all([
+    sql`
+      select
+        target_2d,
+        engine_version,
+        config_version,
+        processed_history_length,
+        last_processed_draw,
+        expert_weights,
+        family_weights,
+        horizon_weights,
+        state_revision,
+        to_jsonb(s)->>'history_fingerprint' as history_fingerprint
+      from adaptive.engine_states s
+      where market_id = ${marketId}
+        and target_2d = ${target2D}
+        and engine_version = ${ADAPTIVE_ENGINE_VERSION}
+        and config_version = ${ADAPTIVE_CONFIG_VERSION}
+      limit 1
+    `,
+    sql`
+      select
+        p.id::text as prediction_id,
+        p.engine_version,
+        p.config_version,
+        p.target_2d,
+        p.history_length,
+        p.pair_probabilities,
+        p.left_probabilities,
+        p.right_probabilities,
+        p.expert_weights,
+        coalesce((
+          select jsonb_agg(
+            jsonb_build_object(
+              'method', s.method,
+              'digitCount', s.digit_count,
+              'digits', to_jsonb(s.digits),
+              'estimatedSuccess', s.estimated_success,
+              'baselineSuccess', s.baseline_success,
+              'lift', s.lift,
+              'selectionMargin', s.selection_margin,
+              'calibrationWeights', coalesce(to_jsonb(s)->'calibration_weights', '{}'::jsonb),
+              'calibrationStateRevision', coalesce(
+                (to_jsonb(s)->>'calibration_state_revision')::bigint,
+                0
+              )
+            )
+            order by s.method, s.digit_count
           )
-          order by s.method, s.digit_count
-        )
-        from adaptive.published_selections s
-        where s.prediction_id = p.id
-      ), '[]'::jsonb) as selections
-    from adaptive.predictions p
-    where p.market_id = ${marketId}
-      and p.target_2d = ${target2D}
-      and p.engine_version = ${ADAPTIVE_ENGINE_VERSION}
-      and p.config_version = ${ADAPTIVE_CONFIG_VERSION}
-      and p.status = 'pending'
-    order by
-      (p.history_length < ${draws.length}) desc,
-      case when p.history_length < ${draws.length} then p.history_length end asc,
-      p.history_length desc,
-      p.created_at desc
-    limit 1
-  `;
+          from adaptive.published_selections s
+          where s.prediction_id = p.id
+        ), '[]'::jsonb) as selections
+      from adaptive.predictions p
+      where p.market_id = ${marketId}
+        and p.target_2d = ${target2D}
+        and p.engine_version = ${ADAPTIVE_ENGINE_VERSION}
+        and p.config_version = ${ADAPTIVE_CONFIG_VERSION}
+        and p.status = 'pending'
+      order by
+        (p.history_length < ${draws.length}) desc,
+        case when p.history_length < ${draws.length} then p.history_length end asc,
+        p.history_length desc,
+        p.created_at desc
+      limit 1
+    `,
+  ]);
 
   const stateRow = stateRows[0];
   const pendingRow = pendingRows[0];
@@ -559,11 +566,19 @@ export async function runAdaptiveReconciliation(
           const stored = storeResult as Record<string, unknown>;
           const publishedCount = Number(stored.selectionsPublished ?? 0);
           const settledCount = Number(stored.selectionsSettled ?? 0);
-          if (publishedCount !== 18 || stored.snapshotComplete !== true) {
-            throw new Error("Migration 005 belum aktif: snapshot Adaptive belum lengkap 18 selection.");
+          const calibrationPublished = Number(stored.selectionCalibrationPublished ?? 0);
+          const calibrationUpdated = Number(stored.selectionCalibrationUpdated ?? 0);
+          if (publishedCount !== COMPLETE_SELECTION_COUNT || stored.snapshotComplete !== true) {
+            throw new Error("Snapshot Adaptive belum lengkap 18 selection.");
           }
-          if (run.settlement && settledCount !== 18) {
+          if (calibrationPublished !== COMPLETE_SELECTION_COUNT) {
+            throw new Error("Migration 010 belum aktif: state calibration 18 selection belum tersimpan.");
+          }
+          if (run.settlement && settledCount !== COMPLETE_SELECTION_COUNT) {
             throw new Error("Settlement Adaptive tidak menghasilkan 18 evaluasi selection.");
+          }
+          if (run.settlement && calibrationUpdated !== COMPLETE_SELECTION_COUNT) {
+            throw new Error("Settlement tidak memperbarui 18 calibration state independen.");
           }
 
           const guardrailPayload: GuardrailRunPayload = {
@@ -607,6 +622,8 @@ export async function runAdaptiveReconciliation(
             currentHistoryLength: market.draws.length,
             selectionsPublished: publishedCount,
             selectionsSettled: settledCount,
+            selectionCalibrationPublished: calibrationPublished,
+            selectionCalibrationUpdated: calibrationUpdated,
             snapshotComplete: stored.snapshotComplete === true,
             historyCorrectionDetected: context.correctionDetected,
             optimisticConcurrencyChecked: stored.optimisticConcurrencyChecked === true,
