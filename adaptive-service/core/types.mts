@@ -27,6 +27,32 @@ export interface AdaptiveSelection {
   baselineSuccess: number;
   lift: number;
   selectionMargin: number;
+  /** Bobot expert khusus selection ini pada saat prediction diterbitkan. */
+  calibrationWeights: Record<string, number>;
+  calibrationStateRevision: number;
+}
+
+export interface AdaptiveSelectionCalibrationState {
+  method: AdaptiveMethod;
+  digitCount: number;
+  expertWeights: Record<string, number>;
+  sampleCount: number;
+  hitCount: number;
+  cumulativeLoss: number;
+  stateRevision: number;
+}
+
+export interface AdaptiveSelectionCalibrationUpdate {
+  method: AdaptiveMethod;
+  digitCount: number;
+  hit: boolean;
+  estimatedSuccess: number;
+  calibrationLoss: number;
+  expertLosses: Record<string, number>;
+  weightsBefore: Record<string, number>;
+  weightsAfter: Record<string, number>;
+  stateRevisionBefore: number;
+  stateRevisionAfter: number;
 }
 
 export interface AdaptiveReplaySummary {
@@ -94,10 +120,12 @@ export interface AdaptiveSettlement {
   expertLosses: Record<string, number>;
   weightsBefore: Record<string, number>;
   weightsAfter: Record<string, number>;
+  selectionCalibrationUpdates: AdaptiveSelectionCalibrationUpdate[];
 }
 
 export interface AdaptiveRunOptions {
   rollingWindowAdvance?: boolean;
+  selectionCalibrationStates?: readonly AdaptiveSelectionCalibrationState[];
 }
 
 export interface AdaptiveRun {
