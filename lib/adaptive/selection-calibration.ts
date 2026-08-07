@@ -1,7 +1,10 @@
 import type { Target2D } from "@/lib/engine/types";
 import { buildBaselineExperts } from "./experts";
 import { resolveExpertWeights, updateExpertWeights } from "./learning";
-import { optimizeDigitSelection } from "./optimizer";
+import {
+  optimizeConfiguredSelections,
+  optimizeDigitSelection,
+} from "./optimizer";
 import { combinePairMatrices } from "./pair-probability";
 import { extractTargetPair } from "./targets";
 import type {
@@ -11,8 +14,10 @@ import type {
   AdaptiveSelectionCalibrationState,
   AdaptiveSelectionCalibrationUpdate,
 } from "./types";
-
-const METHODS = ["ai", "bbfs"] as const satisfies readonly AdaptiveMethod[];
+import {
+  ADAPTIVE_REPLAY_WARMUP,
+  ADAPTIVE_SELECTION_SPECS,
+} from "./types";
 
 export function selectionCalibrationKey(method: AdaptiveMethod, digitCount: number): string {
   return `${method}:${digitCount}`;
@@ -37,6 +42,13 @@ function weightedExperts(
   return experts.map((expert) => ({ ...expert, weight: weights[expert.id] ?? 0 }));
 }
 
+function nonEmptyWeights(
+  primary: Readonly<Record<string, number>> | null | undefined,
+  fallback: Readonly<Record<string, number>>,
+): Readonly<Record<string, number>> {
+  return primary && Object.keys(primary).length > 0 ? primary : fallback;
+}
+
 function stateMap(
   states: readonly AdaptiveSelectionCalibrationState[] | undefined,
 ): Map<string, AdaptiveSelectionCalibrationState> {
@@ -46,65 +58,82 @@ function stateMap(
   ]));
 }
 
+function sortStates(states: Iterable<AdaptiveSelectionCalibrationState>): AdaptiveSelectionCalibrationState[] {
+  return [...states].sort((left, right) =>
+    left.method.localeCompare(right.method) || left.digitCount - right.digitCount
+  );
+}
+
+function configuredExpertSelections(
+  experts: readonly AdaptiveExpertOutput[],
+): Map<string, Map<string, AdaptiveSelection>> {
+  return new Map(experts.map((expert) => [
+    expert.id,
+    new Map(optimizeConfiguredSelections(expert.pairProbabilities).map((selection) => [
+      selectionCalibrationKey(selection.method, selection.digitCount),
+      selection,
+    ])),
+  ]));
+}
+
 export function buildIndependentlyCalibratedSelections(
   experts: readonly AdaptiveExpertOutput[],
   states: readonly AdaptiveSelectionCalibrationState[] | undefined,
   fallbackWeights: Readonly<Record<string, number>>,
 ): AdaptiveSelection[] {
   const byKey = stateMap(states);
-  const selections: AdaptiveSelection[] = [];
-
-  for (const method of METHODS) {
-    for (let digitCount = 1; digitCount <= 9; digitCount++) {
-      const state = byKey.get(selectionCalibrationKey(method, digitCount));
-      const weights = resolveExpertWeights(experts, state?.expertWeights ?? fallbackWeights);
-      const matrix = combinePairMatrices(weightedExperts(experts, weights));
-      selections.push({
-        ...optimizeDigitSelection(matrix, method, digitCount),
-        calibrationWeights: weights,
-        calibrationStateRevision: state?.stateRevision ?? 0,
-      });
-    }
-  }
-
-  return selections;
+  return ADAPTIVE_SELECTION_SPECS.map((spec) => {
+    const state = byKey.get(selectionCalibrationKey(spec.method, spec.digitCount));
+    const weights = resolveExpertWeights(
+      experts,
+      nonEmptyWeights(state?.expertWeights, fallbackWeights),
+    );
+    const matrix = combinePairMatrices(weightedExperts(experts, weights));
+    return {
+      ...optimizeDigitSelection(matrix, spec.method, spec.digitCount),
+      calibrationWeights: weights,
+      calibrationStateRevision: state?.stateRevision ?? 0,
+    };
+  });
 }
 
 export function buildSelectionCalibrationUpdates(
   pendingSelections: readonly AdaptiveSelection[],
   states: readonly AdaptiveSelectionCalibrationState[] | undefined,
+  fallbackWeights: Readonly<Record<string, number>>,
   historyBeforeActual: readonly string[],
   actualDraw: string,
   target2D: Target2D,
 ): AdaptiveSelectionCalibrationUpdate[] {
   const experts = buildBaselineExperts(historyBeforeActual, target2D);
+  const expertSelections = configuredExpertSelections(experts);
   const [actualLeft, actualRight] = extractTargetPair(actualDraw, target2D);
   const byKey = stateMap(states);
 
   return pendingSelections.map((pending) => {
-    const state = byKey.get(selectionCalibrationKey(pending.method, pending.digitCount));
+    const key = selectionCalibrationKey(pending.method, pending.digitCount);
+    const state = byKey.get(key);
     const weightsBefore = resolveExpertWeights(
       experts,
-      state?.expertWeights ?? pending.calibrationWeights,
+      nonEmptyWeights(
+        state?.expertWeights,
+        nonEmptyWeights(pending.calibrationWeights, fallbackWeights),
+      ),
     );
     const expertLosses = Object.fromEntries(experts.map((expert) => {
-      const expertSelection = optimizeDigitSelection(
-        expert.pairProbabilities,
+      const selection = expertSelections.get(expert.id)?.get(key);
+      if (!selection) throw new Error(`Selection expert ${expert.id}/${key} tidak tersedia.`);
+      const observed = selectionHit(
         pending.method,
-        pending.digitCount,
-      );
-      const hit = selectionHit(
-        pending.method,
-        expertSelection.digits,
+        selection.digits,
         actualLeft,
         actualRight,
-      );
-      return [expert.id, Math.pow(expertSelection.estimatedSuccess - (hit ? 1 : 0), 2)];
+      ) ? 1 : 0;
+      return [expert.id, Math.pow(selection.estimatedSuccess - observed, 2)];
     }));
     const weightsAfter = updateExpertWeights(experts, weightsBefore, expertLosses);
     const hit = selectionHit(pending.method, pending.digits, actualLeft, actualRight);
     const stateRevisionBefore = state?.stateRevision ?? pending.calibrationStateRevision ?? 0;
-
     return {
       method: pending.method,
       digitCount: pending.digitCount,
@@ -120,12 +149,63 @@ export function buildSelectionCalibrationUpdates(
   });
 }
 
+export function replaySelectionCalibrationHistory(
+  draws: readonly string[],
+  target2D: Target2D,
+): AdaptiveSelectionCalibrationState[] {
+  const byKey = new Map<string, AdaptiveSelectionCalibrationState>();
+  const start = Math.min(ADAPTIVE_REPLAY_WARMUP, draws.length);
+  for (let actualIndex = start; actualIndex < draws.length; actualIndex++) {
+    const historyBeforeActual = draws.slice(0, actualIndex);
+    const actualDraw = draws[actualIndex];
+    const [actualLeft, actualRight] = extractTargetPair(actualDraw, target2D);
+    const experts = buildBaselineExperts(historyBeforeActual, target2D);
+    const expertSelections = configuredExpertSelections(experts);
+
+    for (const spec of ADAPTIVE_SELECTION_SPECS) {
+      const key = selectionCalibrationKey(spec.method, spec.digitCount);
+      const previous = byKey.get(key);
+      const weightsBefore = resolveExpertWeights(experts, previous?.expertWeights ?? {});
+      const expertLosses = Object.fromEntries(experts.map((expert) => {
+        const selection = expertSelections.get(expert.id)?.get(key);
+        if (!selection) throw new Error(`Replay selection ${expert.id}/${key} tidak tersedia.`);
+        const observed = selectionHit(
+          spec.method,
+          selection.digits,
+          actualLeft,
+          actualRight,
+        ) ? 1 : 0;
+        return [expert.id, Math.pow(selection.estimatedSuccess - observed, 2)];
+      }));
+      const weightsAfter = updateExpertWeights(experts, weightsBefore, expertLosses);
+      const ensemble = combinePairMatrices(weightedExperts(experts, weightsBefore));
+      const publishedSelection = optimizeDigitSelection(ensemble, spec.method, spec.digitCount);
+      const hit = selectionHit(
+        spec.method,
+        publishedSelection.digits,
+        actualLeft,
+        actualRight,
+      );
+      byKey.set(key, {
+        method: spec.method,
+        digitCount: spec.digitCount,
+        expertWeights: weightsAfter,
+        sampleCount: (previous?.sampleCount ?? 0) + 1,
+        hitCount: (previous?.hitCount ?? 0) + (hit ? 1 : 0),
+        cumulativeLoss: (previous?.cumulativeLoss ?? 0) +
+          Math.pow(publishedSelection.estimatedSuccess - (hit ? 1 : 0), 2),
+        stateRevision: (previous?.stateRevision ?? 0) + 1,
+      });
+    }
+  }
+  return sortStates(byKey.values());
+}
+
 export function applySelectionCalibrationUpdates(
   states: readonly AdaptiveSelectionCalibrationState[] | undefined,
   updates: readonly AdaptiveSelectionCalibrationUpdate[],
 ): AdaptiveSelectionCalibrationState[] {
   const byKey = stateMap(states);
-
   for (const update of updates) {
     const key = selectionCalibrationKey(update.method, update.digitCount);
     const previous = byKey.get(key);
@@ -139,8 +219,5 @@ export function applySelectionCalibrationUpdates(
       stateRevision: update.stateRevisionAfter,
     });
   }
-
-  return [...byKey.values()].sort((left, right) =>
-    left.method.localeCompare(right.method) || left.digitCount - right.digitCount
-  );
+  return sortStates(byKey.values());
 }
