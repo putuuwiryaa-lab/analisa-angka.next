@@ -40,6 +40,13 @@ function weightedExperts(
   }));
 }
 
+function nonEmptyWeights(
+  primary: Readonly<Record<string, number>> | null | undefined,
+  fallback: Readonly<Record<string, number>>,
+): Readonly<Record<string, number>> {
+  return primary && Object.keys(primary).length > 0 ? primary : fallback;
+}
+
 function stateMap(
   states: readonly AdaptiveSelectionCalibrationState[] | undefined,
 ): Map<string, AdaptiveSelectionCalibrationState> {
@@ -64,7 +71,7 @@ export function buildIndependentlyCalibratedSelections(
       const state = byKey.get(selectionCalibrationKey(method, digitCount));
       const weights = resolveExpertWeights(
         experts,
-        state?.expertWeights ?? fallbackWeights,
+        nonEmptyWeights(state?.expertWeights, fallbackWeights),
       );
       const matrix = combinePairMatrices(weightedExperts(experts, weights));
       const selection = optimizeDigitSelection(matrix, method, digitCount);
@@ -82,6 +89,7 @@ export function buildIndependentlyCalibratedSelections(
 export function buildSelectionCalibrationUpdates(
   pendingSelections: readonly AdaptiveSelection[],
   states: readonly AdaptiveSelectionCalibrationState[] | undefined,
+  fallbackWeights: Readonly<Record<string, number>>,
   historyBeforeActual: readonly string[],
   actualDraw: string,
   target2D: Target2D,
@@ -93,10 +101,11 @@ export function buildSelectionCalibrationUpdates(
   return pendingSelections.map((pending) => {
     const key = selectionCalibrationKey(pending.method, pending.digitCount);
     const state = byKey.get(key);
-    const weightsBefore = resolveExpertWeights(
-      experts,
-      state?.expertWeights ?? pending.calibrationWeights,
+    const storedWeights = nonEmptyWeights(
+      state?.expertWeights,
+      nonEmptyWeights(pending.calibrationWeights, fallbackWeights),
     );
+    const weightsBefore = resolveExpertWeights(experts, storedWeights);
     const expertLosses = Object.fromEntries(experts.map((expert) => {
       const expertSelection = optimizeDigitSelection(
         expert.pairProbabilities,
