@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { runAdaptiveOnline } from "../adaptive-service/core/engine.mts";
 import { planAdaptiveReconciliation } from "../adaptive-service/reconcile-plan.mts";
-import type { AdaptivePendingPrediction } from "../adaptive-service/core/types.mts";
+import {
+  ADAPTIVE_SELECTION_COUNT,
+  type AdaptivePendingPrediction,
+} from "../adaptive-service/core/types.mts";
 
 const HISTORY = [
   "1234", "5678", "9012", "3456", "7890", "1122", "3344", "5566", "7788", "9900",
@@ -23,7 +26,7 @@ function pendingFromRun(run: ReturnType<typeof runAdaptiveOnline>): AdaptivePend
   };
 }
 
-Deno.test("rolling window panjang tetap melakukan settlement pada result terbaru", () => {
+Deno.test("rolling window panjang tetap melakukan settlement V2 pada result terbaru", () => {
   const initial = runAdaptiveOnline(HISTORY, "belakang", "bbfs", 7);
   const pending = pendingFromRun(initial);
   const rollingHistory = [...HISTORY.slice(1), "4587"];
@@ -47,8 +50,9 @@ Deno.test("rolling window panjang tetap melakukan settlement pada result terbaru
   assert.ok(next.settlement);
   assert.equal(next.settlement.predictionId, pending.predictionId);
   assert.equal(next.settlement.actualPair, 87);
-  assert.equal(Object.keys(next.settlement.aiResults).length, 9);
-  assert.equal(Object.keys(next.settlement.bbfsResults).length, 9);
+  assert.equal(Object.keys(next.settlement.aiResults).length, 6);
+  assert.equal(Object.keys(next.settlement.bbfsResults).length, 5);
+  assert.equal(next.settlement.selectionCalibrationUpdates.length, ADAPTIVE_SELECTION_COUNT);
 });
 
 Deno.test("window panjang tetap tanpa marker tidak menyelesaikan pending", () => {
@@ -94,7 +98,7 @@ Deno.test("planner membedakan rolling advance dari koreksi histori", () => {
     pendingHistoryLength: 170,
     oldestPendingHistoryLength: 170,
     pendingCount: 1,
-    pendingSelectionCount: 18,
+    pendingSelectionCount: ADAPTIVE_SELECTION_COUNT,
     pendingSnapshotComplete: true,
   };
 
@@ -112,7 +116,7 @@ Deno.test("planner membedakan rolling advance dari koreksi histori", () => {
   assert.equal(correction[0].correctedHistoryCount, 1);
 });
 
-Deno.test("migration 009 menerima rolling tanpa menekan settlement", async () => {
+Deno.test("migration 009 tetap menerima rolling tanpa menekan settlement V2", async () => {
   const migration = await Deno.readTextFile(
     new URL("../sql/neon/009_adaptive_fixed_rolling_window.sql", import.meta.url),
   );
