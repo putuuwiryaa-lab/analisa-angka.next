@@ -1,4 +1,6 @@
-export const RECONCILIATION_TARGETS = ["depan", "tengah", "belakang"] as const;
+import { ADAPTIVE_SELECTION_COUNT } from "./core/types.mts";
+
+export const RECONCILIATION_TARGETS = ["belakang"] as const;
 export type ReconciliationTarget = (typeof RECONCILIATION_TARGETS)[number];
 
 export interface ReconciliationMarketSnapshot {
@@ -85,14 +87,13 @@ export function planAdaptiveReconciliation(
       const state = stateMap.get(stateKey(market.id, target2D));
       const hasPendingPrediction = Number.isInteger(state?.pendingHistoryLength);
       const oldestPending = oldestPendingHistoryLength(state);
-      const pendingNeedsSettlement = Number.isInteger(oldestPending) &&
-        Number(oldestPending) < market.historyLength;
+      const pendingNeedsSettlement = Number.isInteger(oldestPending) && Number(oldestPending) < market.historyLength;
       const missingPendingSnapshot = Boolean(state && !hasPendingPrediction);
       const incompletePendingSnapshot = Boolean(
         state &&
         hasPendingPrediction &&
         Number(state.pendingHistoryLength) === market.historyLength &&
-        (Number(state.pendingSelectionCount) !== 18 || state.pendingSnapshotComplete !== true)
+        (Number(state.pendingSelectionCount) !== ADAPTIVE_SELECTION_COUNT || state.pendingSnapshotComplete !== true)
       );
       const rollingWindowAdvance = Boolean(
         state &&
