@@ -76,11 +76,15 @@ function calibrationStatesFromPending(
 function actualSettlementContext(
   draws: readonly string[],
   pending: AdaptivePendingPrediction,
-  rollingWindowAdvance: boolean,
+  options: AdaptiveRunOptions,
 ): { historyBeforeActual: string[]; actualDraw: string } | null {
-  if (rollingWindowAdvance && draws.length === pending.historyLength) {
+  if (options.rollingWindowAdvance === true && draws.length === pending.historyLength) {
+    const previous = options.previousHistoryDraws;
+    if (!previous || previous.length !== pending.historyLength) {
+      throw new Error("Window histori sebelumnya wajib tersedia untuk calibration rolling V2.");
+    }
     return {
-      historyBeforeActual: draws.slice(0, -1),
+      historyBeforeActual: [...previous],
       actualDraw: draws[draws.length - 1],
     };
   }
@@ -125,11 +129,7 @@ export function runAdaptiveOnline(
     : calibrationStatesFromPending(pendingPrediction);
 
   if (baseSettlement && pendingPrediction) {
-    const context = actualSettlementContext(
-      draws,
-      pendingPrediction,
-      options.rollingWindowAdvance === true,
-    );
+    const context = actualSettlementContext(draws, pendingPrediction, options);
     if (!context) throw new Error("Konteks settlement selection tidak tersedia.");
 
     const updates = buildSelectionCalibrationUpdates(
