@@ -3,13 +3,31 @@ import type { Target2D } from "@/lib/engine/types";
 export const ADAPTIVE_METHODS = ["ai", "bbfs"] as const;
 export type AdaptiveMethod = (typeof ADAPTIVE_METHODS)[number];
 
-export const ADAPTIVE_TARGETS = ["depan", "tengah", "belakang"] as const satisfies readonly Target2D[];
+/** Adaptive V2 mempublikasikan prediction hanya untuk 2D belakang. */
+export const ADAPTIVE_TARGETS = ["belakang"] as const satisfies readonly Target2D[];
+export const ADAPTIVE_AI_DIGIT_COUNTS = [1, 2, 3, 4, 5, 6] as const;
+export const ADAPTIVE_BBFS_DIGIT_COUNTS = [5, 6, 7, 8, 9] as const;
+export const ADAPTIVE_SELECTION_SPECS = [
+  ...ADAPTIVE_AI_DIGIT_COUNTS.map((digitCount) => ({ method: "ai" as const, digitCount })),
+  ...ADAPTIVE_BBFS_DIGIT_COUNTS.map((digitCount) => ({ method: "bbfs" as const, digitCount })),
+] as const;
+export const ADAPTIVE_SELECTION_COUNT = ADAPTIVE_SELECTION_SPECS.length;
+export const ADAPTIVE_MAX_HISTORY = 170;
+export const ADAPTIVE_REPLAY_WARMUP = 28;
+export const ADAPTIVE_BASE_HORIZONS = [21, 42, 85, 170] as const;
 
-export const ADAPTIVE_ENGINE_VERSION = "hf-apie-v1-online";
-export const ADAPTIVE_CONFIG_VERSION = "2026-08-04.2";
+export const ADAPTIVE_ENGINE_VERSION = "hf-apie-v2-back";
+export const ADAPTIVE_CONFIG_VERSION = "2026-08-07.1";
+
+export function isAdaptiveSelection(method: AdaptiveMethod, digitCount: number): boolean {
+  return ADAPTIVE_SELECTION_SPECS.some((spec) =>
+    spec.method === method && spec.digitCount === digitCount
+  );
+}
 
 export type PairMatrix = number[];
 export type DigitVector = number[];
+export type AdaptiveTimescale = "short" | "medium" | "long" | "adaptive" | "null";
 
 export interface AdaptiveExpertOutput {
   id: string;
@@ -17,6 +35,12 @@ export interface AdaptiveExpertOutput {
   horizon: number;
   weight: number;
   pairProbabilities: PairMatrix;
+  effectiveHistory?: number;
+  effectiveSampleSize?: number;
+  supportScore?: number;
+  entropy?: number;
+  fallbackLevel?: number;
+  timescale?: AdaptiveTimescale;
 }
 
 export interface AdaptiveSelection {
