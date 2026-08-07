@@ -1,4 +1,6 @@
-export type AdaptiveBatchTarget = "depan" | "tengah" | "belakang";
+import { isAdaptiveSelection } from "./core/types.mts";
+
+export type AdaptiveBatchTarget = "belakang";
 export type AdaptiveBatchMethod = "ai" | "bbfs";
 
 export interface AdaptiveBatchRequest {
@@ -14,8 +16,6 @@ export type AdaptiveBatchRequestResult =
   | { ok: true; value: AdaptiveBatchRequest }
   | { ok: false; error: string };
 
-const TARGETS = new Set<AdaptiveBatchTarget>(["depan", "tengah", "belakang"]);
-const METHODS = new Set<AdaptiveBatchMethod>(["ai", "bbfs"]);
 const VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:+/-]{0,127}$/;
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -44,14 +44,14 @@ export function parseAdaptiveBatchRequest(input: unknown): AdaptiveBatchRequestR
   if (!marketIds.length || marketIds.length > 35) {
     return { ok: false, error: "Pasaran harus berisi 1 sampai 35 item." };
   }
-  if (!TARGETS.has(target2D)) {
-    return { ok: false, error: "Target Adaptive tidak valid." };
+  if (target2D !== "belakang") {
+    return { ok: false, error: "Adaptive V2 hanya menyediakan target 2D belakang." };
   }
-  if (!METHODS.has(method)) {
+  if (method !== "ai" && method !== "bbfs") {
     return { ok: false, error: "Metode Adaptive tidak valid." };
   }
-  if (!Number.isInteger(digitCount) || digitCount < 1 || digitCount > 9) {
-    return { ok: false, error: "Jumlah digit Adaptive harus antara 1 dan 9." };
+  if (!Number.isInteger(digitCount) || !isAdaptiveSelection(method, digitCount)) {
+    return { ok: false, error: "Kombinasi metode dan jumlah digit Adaptive V2 tidak tersedia." };
   }
   if (!engineVersion || !configVersion) {
     return { ok: false, error: "Versi engine dan konfigurasi Adaptive tidak valid." };
