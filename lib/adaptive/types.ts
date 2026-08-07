@@ -119,7 +119,7 @@ export interface AdaptiveSettlement {
   expertLosses: Record<string, number>;
   weightsBefore: Record<string, number>;
   weightsAfter: Record<string, number>;
-  selectionCalibrationUpdates: AdaptiveSelectionCalibrationUpdate[];
+  selectionCalibrationUpdates?: AdaptiveSelectionCalibrationUpdate[];
 }
 
 export interface AdaptivePersistenceContext {
