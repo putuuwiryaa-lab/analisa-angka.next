@@ -6,7 +6,12 @@ import {
   reconcileAdaptiveMarkets,
 } from "@/lib/adaptive/persistence";
 import { validateAdaptivePublishedSnapshot } from "@/lib/adaptive/published-snapshot";
-import { isAdaptiveMethod, isAdaptiveTarget } from "@/lib/adaptive/types";
+import {
+  ADAPTIVE_SELECTION_COUNT,
+  isAdaptiveMethod,
+  isAdaptiveSelection,
+  isAdaptiveTarget,
+} from "@/lib/adaptive/types";
 import { runAutoScan } from "@/lib/engine/acke-engine";
 import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
 import { isScanMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
@@ -76,7 +81,7 @@ export async function POST(req: Request) {
 
     if (action === "adaptive-guardrail-health") {
       if (!isAdaptiveTarget(body?.target2D)) {
-        return NextResponse.json({ error: "Target health guardrail tidak valid." }, { status: 400 });
+        return NextResponse.json({ error: "Adaptive V2 hanya menyediakan target 2D belakang." }, { status: 400 });
       }
       const health = await loadAdaptiveGuardrailHealth({
         marketId,
@@ -90,11 +95,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Metode evaluasi Adaptive tidak valid." }, { status: 400 });
       }
       if (!isAdaptiveTarget(body?.target2D)) {
-        return NextResponse.json({ error: "Target evaluasi Adaptive tidak valid." }, { status: 400 });
+        return NextResponse.json({ error: "Adaptive V2 hanya menyediakan target 2D belakang." }, { status: 400 });
       }
       const digitCount = Number(body?.digitCount);
-      if (!Number.isInteger(digitCount) || digitCount < 1 || digitCount > 9) {
-        return NextResponse.json({ error: "Jumlah digit evaluasi harus antara 1 dan 9." }, { status: 400 });
+      if (!Number.isInteger(digitCount) || !isAdaptiveSelection(body.method, digitCount)) {
+        return NextResponse.json({ error: "Selection evaluasi Adaptive V2 tidak tersedia." }, { status: 400 });
       }
 
       const dashboard = await loadAdaptiveEvaluationDashboard({
@@ -112,12 +117,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Metode Adaptive tidak valid." }, { status: 400 });
       }
       if (!isAdaptiveTarget(body?.target2D)) {
-        return NextResponse.json({ error: "Target 2D Adaptive tidak valid." }, { status: 400 });
+        return NextResponse.json({ error: "Adaptive V2 hanya menyediakan target 2D belakang." }, { status: 400 });
       }
 
       const digitCount = Number(body?.digitCount);
-      if (!Number.isInteger(digitCount) || digitCount < 1 || digitCount > 9) {
-        return NextResponse.json({ error: "Jumlah digit harus antara 1 dan 9." }, { status: 400 });
+      if (!Number.isInteger(digitCount) || !isAdaptiveSelection(body.method, digitCount)) {
+        return NextResponse.json({ error: "Selection Adaptive V2 tidak tersedia." }, { status: 400 });
       }
 
       const supabase = createAdminClient();
@@ -186,7 +191,7 @@ export async function POST(req: Request) {
           signalStrength: published.signalStrength,
           stateRevision: published.stateRevision,
           snapshotComplete: true,
-          selectionCount: 18,
+          selectionCount: ADAPTIVE_SELECTION_COUNT,
         },
       });
     }
@@ -194,15 +199,12 @@ export async function POST(req: Request) {
     if (body?.scanMode !== undefined && !isScanMode(body.scanMode)) {
       return NextResponse.json({ error: "Jenis scan tidak valid." }, { status: 400 });
     }
-
     if (body?.targetPos !== undefined && !isPosisi(body.targetPos)) {
       return NextResponse.json({ error: "Target posisi tidak valid." }, { status: 400 });
     }
-
     if (body?.target2D !== undefined && !isTarget2D(body.target2D)) {
       return NextResponse.json({ error: "Target 2D tidak valid." }, { status: 400 });
     }
-
     if (body?.target3D !== undefined && !isTarget3D(body.target3D)) {
       return NextResponse.json({ error: "Target 3D tidak valid." }, { status: 400 });
     }
