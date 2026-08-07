@@ -2,10 +2,10 @@ import type { AdaptiveMethod } from "./types";
 import {
   ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_ENGINE_VERSION,
+  ADAPTIVE_SELECTION_COUNT,
+  isAdaptiveSelection,
 } from "./types";
 import type { Target2D } from "@/lib/engine/types";
-
-const COMPLETE_SELECTION_COUNT = 18;
 
 export interface AdaptivePublishedSnapshot {
   predictionId: string;
@@ -69,11 +69,7 @@ export function validateAdaptivePublishedSnapshot(
 ): AdaptivePublishedSnapshotResult {
   const row = record(input);
   if (!row) {
-    return {
-      ok: false,
-      issue: "missing",
-      error: "Snapshot Adaptive belum tersedia.",
-    };
+    return { ok: false, issue: "missing", error: "Snapshot Adaptive belum tersedia." };
   }
 
   if (
@@ -87,11 +83,22 @@ export function validateAdaptivePublishedSnapshot(
     };
   }
 
-  if (row.snapshot_complete !== true || Number(row.selection_count) !== COMPLETE_SELECTION_COUNT) {
+  if (row.snapshot_complete !== true || Number(row.selection_count) !== ADAPTIVE_SELECTION_COUNT) {
     return {
       ok: false,
       issue: "incomplete",
-      error: "Snapshot Adaptive belum mempunyai publikasi lengkap 18 selection.",
+      error: `Snapshot Adaptive V2 belum mempunyai publikasi lengkap ${ADAPTIVE_SELECTION_COUNT} selection.`,
+    };
+  }
+
+  if (
+    expected.target2D !== "belakang" ||
+    !isAdaptiveSelection(expected.method, expected.digitCount)
+  ) {
+    return {
+      ok: false,
+      issue: "selection",
+      error: "Request selection Adaptive V2 tidak tersedia.",
     };
   }
 
@@ -134,11 +141,8 @@ export function validateAdaptivePublishedSnapshot(
   const selectionMargin = finite(row.selection_margin);
   const stateRevision = finite(row.state_revision);
   if (
-    estimatedSuccess === null ||
-    baselineSuccess === null ||
-    lift === null ||
-    selectionMargin === null ||
-    stateRevision === null
+    estimatedSuccess === null || baselineSuccess === null || lift === null ||
+    selectionMargin === null || stateRevision === null
   ) {
     return {
       ok: false,
