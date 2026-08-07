@@ -26,6 +26,53 @@ Repository ini tidak lagi memiliki konfigurasi Vercel atau Render. Semua task da
 - PWA dan service worker.
 - Sistem PIN 8 digit serta panel admin untuk generate/revoke akses.
 
+## Arsitektur Adaptive Learning
+
+Adaptive memakai histori market dengan window tetap maksimal 170 result. Saat result baru masuk, result terlama dibuang sehingga panjang histori tetap 170; sistem tidak mengandalkan adanya data ke-171 di source database.
+
+Siklus learning dirancang sebagai berikut:
+
+1. **Bootstrap / full replay**
+   - Dilakukan saat state Adaptive belum tersedia, tidak kompatibel, atau harus dibangun ulang setelah koreksi histori.
+   - Histori yang tersedia digunakan untuk membentuk state awal dan bobot expert.
+
+2. **Operasi normal setelah state terbentuk**
+   - Engine tidak melakukan full replay 170 result pada setiap result baru.
+   - Pergeseran window `R1...R170` menjadi `R2...R171` diperlakukan sebagai satu langkah incremental.
+   - Result terbaru digunakan untuk mengevaluasi prediction sebelumnya, menghitung loss, dan memperbarui bobot.
+   - Replay summary pada jalur normal adalah `incremental` dengan `processedSteps: 1`.
+
+3. **Kalibrasi bobot global**
+   - Setiap result baru memperbarui global expert weights berdasarkan performa prediction terhadap actual result.
+   - Alur dasarnya adalah `weightsBefore -> expertLosses -> weightsAfter`.
+
+4. **Kalibrasi selection independen**
+   - AI1 sampai AI9 dan BBFS1 sampai BBFS9 memiliki calibration state dan expert weights masing-masing.
+   - Settlement menghasilkan tepat 18 update independen.
+   - Hit/miss atau loss pada satu selection hanya mengkalibrasi state selection tersebut; tidak memakai satu calibration state bersama untuk seluruh AI/BBFS.
+   - Prediction berikutnya menggunakan calibration weights terbaru dari masing-masing selection.
+
+5. **Fixed rolling window**
+   - Window sebelumnya disimpan pada state/snapshot Adaptive untuk memvalidasi bahwa perubahan histori benar-benar merupakan pergeseran satu result.
+   - Rolling valid ketika 169 result yang bertahan memiliki overlap yang benar antara window lama dan window baru.
+   - Koreksi histori diperlakukan berbeda dari rolling normal dan dapat memicu pembatalan pending prediction serta full replay recovery.
+
+Ringkasnya, pola normal Adaptive adalah:
+
+```text
+170 histori
+  -> bootstrap/full replay sekali saat diperlukan
+  -> state + bobot awal
+  -> result baru masuk, result terlama dibuang, tetap 170
+  -> settlement prediction sebelumnya
+  -> one-step update global expert weights
+  -> one-step calibration AI1-AI9 dan BBFS1-BBFS9
+  -> publish prediction berikutnya
+  -> ulang pada result berikutnya
+```
+
+Full replay bukan proses rutin setiap result baru. Setelah state valid tersedia, Adaptive berjalan sebagai online incremental calibration.
+
 ## Sistem akses
 
 Sistem akses memakai tabel Supabase berikut:
