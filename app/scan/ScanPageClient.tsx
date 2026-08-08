@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AutoScanItem, AutoScanResult, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import ScanFields from "./_components/ScanFields";
 import ScanResultSection, { trekId } from "./_components/ScanResultSection";
@@ -18,6 +18,10 @@ import {
   STORAGE_KEY,
 } from "./_lib";
 import type { DetailData, Market, SavedTrek } from "./_lib";
+
+const MemoScanFields = memo(ScanFields);
+const MemoScanResultSection = memo(ScanResultSection);
+const MemoSavedTreksSection = memo(SavedTreksSection);
 
 type CompletedScan = {
   marketId: string;
@@ -108,14 +112,18 @@ export default function ScanPageClient() {
     };
   }, [viewItem, viewSaved]);
 
-  const selectedMarket = markets.find((market) => market.id === marketId) ?? null;
+  const selectedMarket = useMemo(
+    () => markets.find((market) => market.id === marketId) ?? null,
+    [marketId, markets],
+  );
   const result = completedScan?.result ?? null;
-  const title = String(
-    completedScan?.marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran",
-  ).toUpperCase();
+  const title = useMemo(
+    () => String(completedScan?.marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran").toUpperCase(),
+    [completedScan?.marketName, selectedMarket?.id, selectedMarket?.name],
+  );
   const savedGroups = useMemo(() => buildSavedGroups(savedTreks), [savedTreks]);
 
-  function invalidateScanOutput() {
+  const invalidateScanOutput = useCallback(() => {
     scanVersionRef.current += 1;
     setCompletedScan(null);
     setViewItem(null);
@@ -123,66 +131,69 @@ export default function ScanPageClient() {
     setSavedId("");
     setError("");
     setLoading(false);
-  }
+  }, []);
 
-  function changeMarket(value: string) {
+  const changeMarket = useCallback((value: string) => {
     if (value === marketId) return;
     invalidateScanOutput();
     setMarketId(value);
-  }
+  }, [invalidateScanOutput, marketId]);
 
-  function changeMode(mode: ScanMode) {
+  const changeMode = useCallback((mode: ScanMode) => {
     if (mode === scanMode) return;
     invalidateScanOutput();
     setScanMode(mode);
     setDigitCount(MODE_OPTIONS.find((item) => item.value === mode)?.digits ?? 7);
-  }
+  }, [invalidateScanOutput, scanMode]);
 
-  function changeRounds(value: number) {
+  const changeRounds = useCallback((value: number) => {
     if (value === rounds) return;
     invalidateScanOutput();
     setRounds(value);
     setPatah((current) => Math.min(current, value));
-  }
+  }, [invalidateScanOutput, rounds]);
 
-  function changePatah(value: number) {
+  const changePatah = useCallback((value: number) => {
     if (value === patah) return;
     invalidateScanOutput();
     setPatah(value);
-  }
+  }, [invalidateScanOutput, patah]);
 
-  function changeTargetPos(value: Posisi) {
+  const changeTargetPos = useCallback((value: Posisi) => {
     if (value === targetPos) return;
     invalidateScanOutput();
     setTargetPos(value);
-  }
+  }, [invalidateScanOutput, targetPos]);
 
-  function changeTarget2D(value: Target2D) {
+  const changeTarget2D = useCallback((value: Target2D) => {
     if (value === target2D) return;
     invalidateScanOutput();
     setTarget2D(value);
-  }
+  }, [invalidateScanOutput, target2D]);
 
-  function changeTarget3D(value: Target3D) {
+  const changeTarget3D = useCallback((value: Target3D) => {
     if (value === target3D) return;
     invalidateScanOutput();
     setTarget3D(value);
-  }
+  }, [invalidateScanOutput, target3D]);
 
-  function changeDigitCount(value: number) {
+  const changeDigitCount = useCallback((value: number) => {
     if (value === digitCount) return;
     invalidateScanOutput();
     setDigitCount(value);
-  }
+  }, [digitCount, invalidateScanOutput]);
 
-  function changeStopScan(value: number) {
+  const changeStopScan = useCallback((value: number) => {
     if (value === stopScan) return;
     invalidateScanOutput();
     setStopScan(value);
-  }
+  }, [invalidateScanOutput, stopScan]);
 
-  async function runScan() {
-    if (!marketId) return setError("Pilih pasaran terlebih dahulu.");
+  const runScan = useCallback(async () => {
+    if (!marketId) {
+      setError("Pilih pasaran terlebih dahulu.");
+      return;
+    }
 
     const requestVersion = scanVersionRef.current + 1;
     scanVersionRef.current = requestVersion;
@@ -236,9 +247,9 @@ export default function ScanPageClient() {
     } finally {
       if (requestVersion === scanVersionRef.current) setLoading(false);
     }
-  }
+  }, [digitCount, marketId, patah, rounds, scanMode, selectedMarket, stopScan, target2D, target3D, targetPos]);
 
-  function saveTrek(item: AutoScanItem) {
+  const saveTrek = useCallback((item: AutoScanItem) => {
     if (!completedScan) return;
 
     const completedMarketId = completedScan.marketId;
@@ -273,25 +284,52 @@ export default function ScanPageClient() {
     setSavedTreks((current) => [saved, ...current.filter((trek) => trek.id !== id)].slice(0, 50));
     setSavedId(id);
     window.setTimeout(() => setSavedId(""), 1400);
-  }
+  }, [completedScan]);
 
-  function deleteTrek(id: string) {
+  const deleteTrek = useCallback((id: string) => {
     setSavedTreks((current) => current.filter((item) => item.id !== id));
     setViewSaved((current) => current?.id === id ? null : current);
-  }
+  }, []);
 
-  async function copyDetail(detail: DetailData, id: string) {
+  const copyDetail = useCallback(async (detail: DetailData, id: string) => {
     await copyText(detailCopyText(detail));
     setCopiedId(id);
     window.setTimeout(() => setCopiedId(""), 1400);
-  }
+  }, []);
 
-  const live = viewItem ? liveDetail(viewItem, title, result?.config.digitCount ?? digitCount) : null;
-  const saved = viewSaved ? savedDetail(viewSaved) : null;
+  const viewLiveItem = useCallback((item: AutoScanItem) => {
+    setViewSaved(null);
+    setViewItem(item);
+  }, []);
+
+  const viewSavedTrek = useCallback((item: SavedTrek) => {
+    setViewItem(null);
+    setViewSaved(item);
+  }, []);
+
+  const closeLiveItem = useCallback(() => setViewItem(null), []);
+  const closeSavedTrek = useCallback(() => setViewSaved(null), []);
+
+  const liveDigitCount = result?.config.digitCount ?? digitCount;
+  const live = useMemo(
+    () => viewItem ? liveDetail(viewItem, title, liveDigitCount) : null,
+    [liveDigitCount, title, viewItem],
+  );
+  const saved = useMemo(() => viewSaved ? savedDetail(viewSaved) : null, [viewSaved]);
+
+  const copyLiveDetail = useCallback(() => {
+    if (!live) return;
+    void copyDetail(live, viewItem?.code ?? "live");
+  }, [copyDetail, live, viewItem?.code]);
+
+  const copySavedDetail = useCallback(() => {
+    if (!saved || !viewSaved) return;
+    void copyDetail(saved, viewSaved.id);
+  }, [copyDetail, saved, viewSaved]);
 
   return (
-    <div className="animate-rise space-y-4">
-      <ScanFields
+    <div className="animate-fade-in space-y-4">
+      <MemoScanFields
         markets={markets}
         marketId={marketId}
         selectedMarket={selectedMarket}
@@ -318,29 +356,23 @@ export default function ScanPageClient() {
       />
       {error ? <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">{error}</div> : null}
       {completedScan ? (
-        <ScanResultSection
+        <MemoScanResultSection
           result={completedScan.result}
           marketTitle={title}
           marketId={completedScan.marketId}
           savedId={savedId}
           onSave={saveTrek}
-          onView={(item) => {
-            setViewSaved(null);
-            setViewItem(item);
-          }}
+          onView={viewLiveItem}
         />
       ) : null}
-      <SavedTreksSection
+      <MemoSavedTreksSection
         total={savedTreks.length}
         groups={savedGroups}
-        onView={(item) => {
-          setViewItem(null);
-          setViewSaved(item);
-        }}
+        onView={viewSavedTrek}
         onDelete={deleteTrek}
       />
-      {live ? <TrekDetailModal data={live} copied={copiedId === viewItem?.code} onCopy={() => copyDetail(live, viewItem?.code ?? "live")} onClose={() => setViewItem(null)} /> : null}
-      {saved && viewSaved ? <TrekDetailModal data={saved} copied={copiedId === viewSaved.id} onCopy={() => copyDetail(saved, viewSaved.id)} onClose={() => setViewSaved(null)} /> : null}
+      {live ? <TrekDetailModal data={live} copied={copiedId === viewItem?.code} onCopy={copyLiveDetail} onClose={closeLiveItem} /> : null}
+      {saved && viewSaved ? <TrekDetailModal data={saved} copied={copiedId === viewSaved.id} onCopy={copySavedDetail} onClose={closeSavedTrek} /> : null}
     </div>
   );
 }
