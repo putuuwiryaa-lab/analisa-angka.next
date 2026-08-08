@@ -33,10 +33,9 @@ export function StatisticCard({
     <div
       className={
         topRank
-          ? "animate-soft-pop depth-accent overflow-hidden rounded-3xl border p-3 text-left sm:p-4"
-          : "animate-soft-pop depth-1 overflow-hidden rounded-3xl border p-3 text-left sm:p-4"
+          ? "render-lazy-stat depth-accent overflow-hidden rounded-3xl border p-3 text-left sm:p-4"
+          : "render-lazy-stat depth-1 overflow-hidden rounded-3xl border p-3 text-left sm:p-4"
       }
-      style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}
     >
       <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
         <div className="flex w-10 shrink-0 flex-col items-center gap-1.5 sm:w-14">
