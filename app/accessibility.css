@@ -5,6 +5,38 @@
     0 0 0 4px var(--color-bg-deep);
 }
 
+/* Keep motion responsive without pinning every animated element to a GPU layer. */
+.pressable,
+.animate-rise,
+.animate-soft-pop,
+.animate-fade-in,
+.animate-page-enter,
+.animate-slide-up-soft,
+.animate-mobile-card {
+  will-change: auto;
+}
+
+/* The active/hover states still animate; only the permanent translateZ layer is removed. */
+.pressable {
+  transform: none;
+}
+
+/* Mobile GPUs pay a high cost for large fixed backdrop filters and repeated card shadows. */
+@media (hover: none), (pointer: coarse) {
+  nav.fixed.bottom-0.backdrop-blur-xl {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+
+  .depth-1 {
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  }
+
+  .depth-glow-soft {
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15), 0 0 22px rgba(124, 77, 255, 0.05);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
