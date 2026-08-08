@@ -9,7 +9,10 @@ import {
   updateExpertWeights,
 } from "../lib/adaptive/learning.ts";
 import { extractTargetPair } from "../lib/adaptive/targets.ts";
-import type { AdaptivePendingPrediction } from "../lib/adaptive/types.ts";
+import {
+  ADAPTIVE_REPLAY_WARMUP,
+  type AdaptivePendingPrediction,
+} from "../lib/adaptive/types.ts";
 
 const DRAWS = [
   "1234", "5678", "9012", "3456", "7890", "1122", "3344", "5566", "7788", "9900",
@@ -37,7 +40,7 @@ function assertWeightsClose(
   }
 }
 
-Deno.test("incremental replay setara dengan full replay untuk histori yang sama", () => {
+Deno.test("incremental replay setara dengan full replay V2 untuk histori yang sama", () => {
   const first = replayAdaptiveHistory(DRAWS.slice(0, 30), "belakang");
   const incremental = replayAdaptiveHistory(DRAWS, "belakang", first.state);
   const full = replayAdaptiveHistory(DRAWS, "belakang");
@@ -45,25 +48,25 @@ Deno.test("incremental replay setara dengan full replay untuk histori yang sama"
   assert.equal(first.summary.mode, "full");
   assert.equal(incremental.summary.mode, "incremental");
   assert.equal(incremental.summary.processedSteps, 10);
-  assert.equal(full.summary.processedSteps, DRAWS.length - 14);
+  assert.equal(full.summary.processedSteps, DRAWS.length - ADAPTIVE_REPLAY_WARMUP);
   assertWeightMap(incremental.state.expertWeights);
   assertWeightMap(full.state.expertWeights);
   assertWeightsClose(incremental.state.expertWeights, full.state.expertWeights);
 });
 
-Deno.test("replay tanpa result baru menjadi noop dan mempertahankan bobot", () => {
-  const first = replayAdaptiveHistory(DRAWS, "depan");
-  const second = replayAdaptiveHistory(DRAWS, "depan", first.state);
+Deno.test("replay V2 tanpa result baru menjadi noop dan mempertahankan bobot", () => {
+  const first = replayAdaptiveHistory(DRAWS, "belakang");
+  const second = replayAdaptiveHistory(DRAWS, "belakang", first.state);
 
   assert.equal(second.summary.mode, "noop");
   assert.equal(second.summary.processedSteps, 0);
   assert.deepEqual(second.state.expertWeights, first.state.expertWeights);
 });
 
-Deno.test("semua selection pending di-settle pada result berikutnya", () => {
+Deno.test("selection pending belakang di-settle pada result berikutnya", () => {
   const history = DRAWS.slice(0, 25);
-  const aiRun = runAdaptiveOnline(history, "tengah", "ai", 4);
-  const bbfsRun = runAdaptiveOnline(history, "tengah", "bbfs", 7, aiRun.state);
+  const aiRun = runAdaptiveOnline(history, "belakang", "ai", 4);
+  const bbfsRun = runAdaptiveOnline(history, "belakang", "bbfs", 7, aiRun.state);
   const pending: AdaptivePendingPrediction = {
     predictionId: "00000000-0000-0000-0000-000000000001",
     engineVersion: aiRun.prediction.engineVersion,
@@ -78,7 +81,7 @@ Deno.test("semua selection pending di-settle pada result berikutnya", () => {
   };
 
   const nextHistory = DRAWS.slice(0, 26);
-  const settlement = settlePendingPrediction(pending, nextHistory, "tengah");
+  const settlement = settlePendingPrediction(pending, nextHistory, "belakang");
 
   assert.ok(settlement);
   assert.equal(settlement.predictionId, pending.predictionId);
