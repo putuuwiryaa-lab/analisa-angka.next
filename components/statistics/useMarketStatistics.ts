@@ -50,9 +50,7 @@ async function fetchStatistics(args: {
     param: String(args.param),
   });
 
-  const response = await fetch(`/api/statistics?${params.toString()}`, {
-    cache: "no-store",
-  });
+  const response = await fetch(`/api/statistics?${params.toString()}`);
   const json = await response.json();
 
   if (!response.ok) throw new Error(json?.error || "Gagal memuat statistik pasaran");
@@ -82,6 +80,8 @@ export function useMarketStatistics() {
     staleTime: STATISTICS_STALE_TIME,
     gcTime: STATISTICS_GC_TIME,
     placeholderData: keepPreviousData,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 
   return {
