@@ -17,7 +17,7 @@ export const ADAPTIVE_REPLAY_WARMUP = 28;
 export const ADAPTIVE_BASE_HORIZONS = [21, 42, 85, 170] as const;
 
 export const ADAPTIVE_ENGINE_VERSION = "hf-apie-v2-back";
-export const ADAPTIVE_CONFIG_VERSION = "2026-08-07.1";
+export const ADAPTIVE_CONFIG_VERSION = "2026-08-08.1";
 
 export function isAdaptiveSelection(method: AdaptiveMethod, digitCount: number): boolean {
   return ADAPTIVE_SELECTION_SPECS.some((spec) =>
