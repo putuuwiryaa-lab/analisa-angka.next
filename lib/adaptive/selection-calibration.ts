@@ -76,6 +76,27 @@ function configuredExpertSelections(
   ]));
 }
 
+function expertSelectionLosses(
+  experts: readonly AdaptiveExpertOutput[],
+  expertSelections: ReadonlyMap<string, ReadonlyMap<string, AdaptiveSelection>>,
+  key: string,
+  method: AdaptiveMethod,
+  actualLeft: number,
+  actualRight: number,
+): Record<string, number> {
+  return Object.fromEntries(experts.map((expert) => {
+    const expertSelection = expertSelections.get(expert.id)?.get(key);
+    if (!expertSelection) throw new Error(`Selection expert ${expert.id}/${key} tidak tersedia.`);
+    const observed = selectionHit(
+      method,
+      expertSelection.digits,
+      actualLeft,
+      actualRight,
+    ) ? 1 : 0;
+    return [expert.id, Math.pow(expertSelection.estimatedSuccess - observed, 2)];
+  }));
+}
+
 export function buildIndependentlyCalibratedSelections(
   experts: readonly AdaptiveExpertOutput[],
   states: readonly AdaptiveSelectionCalibrationState[] | undefined,
@@ -120,19 +141,18 @@ export function buildSelectionCalibrationUpdates(
         nonEmptyWeights(pending.calibrationWeights, fallbackWeights),
       ),
     );
-    const expertLosses = Object.fromEntries(experts.map((expert) => {
-      const selection = expertSelections.get(expert.id)?.get(key);
-      if (!selection) throw new Error(`Selection expert ${expert.id}/${key} tidak tersedia.`);
-      const observed = selectionHit(
-        pending.method,
-        selection.digits,
-        actualLeft,
-        actualRight,
-      ) ? 1 : 0;
-      return [expert.id, Math.pow(selection.estimatedSuccess - observed, 2)];
-    }));
-    const weightsAfter = updateExpertWeights(experts, weightsBefore, expertLosses);
     const hit = selectionHit(pending.method, pending.digits, actualLeft, actualRight);
+    const expertLosses = expertSelectionLosses(
+      experts,
+      expertSelections,
+      key,
+      pending.method,
+      actualLeft,
+      actualRight,
+    );
+    const weightsAfter = hit
+      ? { ...weightsBefore }
+      : updateExpertWeights(experts, weightsBefore, expertLosses);
     const stateRevisionBefore = state?.stateRevision ?? pending.calibrationStateRevision ?? 0;
     return {
       method: pending.method,
@@ -166,18 +186,6 @@ export function replaySelectionCalibrationHistory(
       const key = selectionCalibrationKey(spec.method, spec.digitCount);
       const previous = byKey.get(key);
       const weightsBefore = resolveExpertWeights(experts, previous?.expertWeights ?? {});
-      const expertLosses = Object.fromEntries(experts.map((expert) => {
-        const selection = expertSelections.get(expert.id)?.get(key);
-        if (!selection) throw new Error(`Replay selection ${expert.id}/${key} tidak tersedia.`);
-        const observed = selectionHit(
-          spec.method,
-          selection.digits,
-          actualLeft,
-          actualRight,
-        ) ? 1 : 0;
-        return [expert.id, Math.pow(selection.estimatedSuccess - observed, 2)];
-      }));
-      const weightsAfter = updateExpertWeights(experts, weightsBefore, expertLosses);
       const ensemble = combinePairMatrices(weightedExperts(experts, weightsBefore));
       const publishedSelection = optimizeDigitSelection(ensemble, spec.method, spec.digitCount);
       const hit = selectionHit(
@@ -186,6 +194,17 @@ export function replaySelectionCalibrationHistory(
         actualLeft,
         actualRight,
       );
+      const expertLosses = expertSelectionLosses(
+        experts,
+        expertSelections,
+        key,
+        spec.method,
+        actualLeft,
+        actualRight,
+      );
+      const weightsAfter = hit
+        ? { ...weightsBefore }
+        : updateExpertWeights(experts, weightsBefore, expertLosses);
       byKey.set(key, {
         method: spec.method,
         digitCount: spec.digitCount,
