@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Activity, Database, RefreshCw } from "lucide-react";
 import AdaptiveEvaluationPanel from "./AdaptiveEvaluationPanel";
 import AdaptiveMarketSelect, {
@@ -8,6 +8,7 @@ import AdaptiveMarketSelect, {
 } from "./_components/AdaptiveMarketSelect";
 import type { AdaptiveMethod } from "@/lib/adaptive/types";
 import type { Target2D } from "@/lib/engine/types";
+import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 
 interface AdaptiveResult {
   source: "published";
@@ -64,52 +65,34 @@ function publishedAtLabel(value: string): string {
 }
 
 export default function AdaptivePageClient() {
-  const [markets, setMarkets] = useState<AdaptiveMarketOption[]>([]);
+  const {
+    data: sharedMarkets = [],
+    isPending: marketsPending,
+    error: marketsQueryError,
+  } = useMarketsQuery();
+  const markets = sharedMarkets as AdaptiveMarketOption[];
+  const loadingMarkets = marketsPending && markets.length === 0;
   const [marketId, setMarketId] = useState("");
   const [method, setMethod] = useState<AdaptiveMethod>("bbfs");
   const [digitCount, setDigitCount] = useState(7);
   const [result, setResult] = useState<AdaptiveResult | null>(null);
   const [marketName, setMarketName] = useState("");
   const [evaluationRefresh, setEvaluationRefresh] = useState(0);
-  const [loadingMarkets, setLoadingMarkets] = useState(true);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadMarkets() {
-      try {
-        const response = await fetch("/api/markets", { cache: "no-store" });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload?.error || "Gagal memuat pasaran.");
-        if (cancelled) return;
-        const rows: AdaptiveMarketOption[] = Array.isArray(payload) ? payload : [];
-        setMarkets(rows);
-        const defaultMarket = rows.find((market) =>
-          /singapore|sgp/i.test(`${market.id} ${market.name}`)
-        ) ?? rows[0];
-        if (defaultMarket) setMarketId(defaultMarket.id);
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Gagal memuat pasaran.");
-        }
-      } finally {
-        if (!cancelled) setLoadingMarkets(false);
-      }
-    }
-
-    void loadMarkets();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  const defaultMarket = useMemo(
+    () => markets.find((market) => /singapore|sgp/i.test(`${market.id} ${market.name}`)) ?? markets[0] ?? null,
+    [markets],
+  );
+  const activeMarketId = marketId || defaultMarket?.id || "";
   const selectedMarket = useMemo(
-    () => markets.find((market) => market.id === marketId),
-    [marketId, markets],
+    () => markets.find((market) => market.id === activeMarketId) ?? null,
+    [activeMarketId, markets],
   );
   const range = digitRange(method);
+  const marketsError = marketsQueryError instanceof Error ? marketsQueryError.message : marketsQueryError ? "Gagal memuat pasaran." : "";
+  const visibleError = error || marketsError;
 
   function resetSnapshot() {
     setResult(null);
@@ -118,7 +101,7 @@ export default function AdaptivePageClient() {
   }
 
   function changeMarket(value: string) {
-    if (value === marketId) return;
+    if (value === activeMarketId) return;
     setMarketId(value);
     resetSnapshot();
   }
@@ -139,7 +122,7 @@ export default function AdaptivePageClient() {
   }
 
   async function loadSnapshot() {
-    if (!marketId) return;
+    if (!activeMarketId) return;
     setRunning(true);
     setError("");
 
@@ -149,7 +132,7 @@ export default function AdaptivePageClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "adaptive",
-          marketId,
+          marketId: activeMarketId,
           method,
           digitCount,
           target2D: TARGET_2D,
@@ -191,8 +174,8 @@ export default function AdaptivePageClient() {
         <div className="space-y-4">
           <AdaptiveMarketSelect
             markets={markets}
-            value={marketId}
-            selectedMarket={selectedMarket ?? null}
+            value={activeMarketId}
+            selectedMarket={selectedMarket}
             disabled={loadingMarkets || busy}
             loading={loadingMarkets}
             onChange={changeMarket}
@@ -257,7 +240,7 @@ export default function AdaptivePageClient() {
           <button
             type="button"
             onClick={loadSnapshot}
-            disabled={!marketId || busy || loadingMarkets}
+            disabled={!activeMarketId || busy || loadingMarkets}
             className="pressable flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-primary/55 bg-primary/25 text-sm font-black uppercase tracking-wide text-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw className={running ? "animate-spin" : ""} size={18} />
@@ -266,9 +249,9 @@ export default function AdaptivePageClient() {
         </div>
       </section>
 
-      {error && (
+      {visibleError && (
         <section className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm font-semibold text-red-200">
-          {error}
+          {visibleError}
         </section>
       )}
 
@@ -322,7 +305,7 @@ export default function AdaptivePageClient() {
       )}
 
       <AdaptiveEvaluationPanel
-        marketId={marketId}
+        marketId={activeMarketId}
         target2D={TARGET_2D}
         method={method}
         digitCount={digitCount}
