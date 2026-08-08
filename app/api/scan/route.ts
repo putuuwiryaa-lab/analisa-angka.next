@@ -26,6 +26,7 @@ const DEFAULT_DIGIT_COUNT = 4;
 const DEFAULT_SCAN_MODE: ScanMode = "ai_2d_belakang";
 const DEFAULT_STOP_SCAN = 1;
 const MAX_STOP_SCAN = 200;
+const ADAPTIVE_READ_CACHE_TTL_MS = 30 * 1000;
 
 type RequestAction =
   | "scan"
@@ -33,6 +34,35 @@ type RequestAction =
   | "adaptive-evaluation"
   | "adaptive-guardrail-health"
   | "adaptive-reconcile";
+
+type AdaptiveReadCacheEntry = {
+  expiresAt: number;
+  value: unknown;
+};
+
+const adaptiveReadCache = new Map<string, AdaptiveReadCacheEntry>();
+const adaptiveReadInFlight = new Map<string, Promise<unknown>>();
+
+async function cachedAdaptiveRead<T>(key: string, loader: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const cached = adaptiveReadCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.value as T;
+  if (cached) adaptiveReadCache.delete(key);
+
+  const pending = adaptiveReadInFlight.get(key);
+  if (pending) return pending as Promise<T>;
+
+  const request = loader();
+  adaptiveReadInFlight.set(key, request);
+
+  try {
+    const value = await request;
+    adaptiveReadCache.set(key, { value, expiresAt: Date.now() + ADAPTIVE_READ_CACHE_TTL_MS });
+    return value;
+  } finally {
+    adaptiveReadInFlight.delete(key);
+  }
+}
 
 function isPosisi(value: unknown): value is Posisi {
   return value === "A" || value === "C" || value === "K" || value === "E";
@@ -71,6 +101,7 @@ export async function POST(req: Request) {
         marketLimit: clamp(body?.marketLimit, 6, 1, 20),
         force: Boolean(body?.force),
       });
+      adaptiveReadCache.clear();
       return NextResponse.json({ summary });
     }
 
@@ -83,10 +114,13 @@ export async function POST(req: Request) {
       if (!isAdaptiveTarget(body?.target2D)) {
         return NextResponse.json({ error: "Adaptive V2 hanya menyediakan target 2D belakang." }, { status: 400 });
       }
-      const health = await loadAdaptiveGuardrailHealth({
-        marketId,
-        target2D: body.target2D,
-      });
+      const health = await cachedAdaptiveRead(
+        ["guardrail", marketId, body.target2D].join(":"),
+        () => loadAdaptiveGuardrailHealth({
+          marketId,
+          target2D: body.target2D,
+        }),
+      );
       return NextResponse.json({ health });
     }
 
@@ -101,14 +135,18 @@ export async function POST(req: Request) {
       if (!Number.isInteger(digitCount) || !isAdaptiveSelection(body.method, digitCount)) {
         return NextResponse.json({ error: "Selection evaluasi Adaptive V2 tidak tersedia." }, { status: 400 });
       }
+      const window = clamp(body?.window, 100, 10, 200);
 
-      const dashboard = await loadAdaptiveEvaluationDashboard({
-        marketId,
-        target2D: body.target2D,
-        method: body.method,
-        digitCount,
-        window: clamp(body?.window, 100, 10, 200),
-      });
+      const dashboard = await cachedAdaptiveRead(
+        ["evaluation", marketId, body.target2D, body.method, digitCount, window].join(":"),
+        () => loadAdaptiveEvaluationDashboard({
+          marketId,
+          target2D: body.target2D,
+          method: body.method,
+          digitCount,
+          window,
+        }),
+      );
       return NextResponse.json({ dashboard });
     }
 

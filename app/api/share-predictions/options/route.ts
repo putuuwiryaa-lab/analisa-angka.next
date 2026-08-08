@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { requireActiveAccess } from "@/lib/server/access";
-import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
+import { NO_STORE_HEADERS, PRIVATE_MEDIUM_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +29,10 @@ const VALID_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2
 const VALID_TARGET_PAIRS = new Set(["depan", "tengah", "belakang"]);
 const PAGE_SIZE = 1000;
 const MAX_ROWS = 30000;
+const OPTIONS_CACHE_TTL_MS = 60 * 1000;
+
+let cachedOptions: { expiresAt: number; value: ShareOption[] } | null = null;
+let optionsInFlight: Promise<ShareOption[]> | null = null;
 
 function optionKey(mode: string, param: number, targetPair: string, analysisScope: string) {
   return `${mode}|${param}|${targetPair}|${analysisScope}`;
@@ -61,13 +65,12 @@ function normalizeOption(row: SnapshotOptionRow) {
   return { mode, param, targetPair, analysisScope };
 }
 
-export async function GET(request: Request) {
-  const access = await requireActiveAccess(request.headers);
-  if (!access.ok) {
-    return NextResponse.json({ error: access.error }, { status: access.status, headers: NO_STORE_HEADERS });
-  }
+async function loadOptions(): Promise<ShareOption[]> {
+  const now = Date.now();
+  if (cachedOptions && cachedOptions.expiresAt > now) return cachedOptions.value;
+  if (optionsInFlight) return optionsInFlight;
 
-  try {
+  optionsInFlight = (async () => {
     const supabase = createAdminClient();
     const options = new Map<string, ShareOption>();
 
@@ -108,8 +111,27 @@ export async function GET(request: Request) {
       if (rows.length < PAGE_SIZE) break;
     }
 
-    return NextResponse.json(Array.from(options.values()), {
-      headers: NO_STORE_HEADERS,
+    const value = Array.from(options.values());
+    cachedOptions = { value, expiresAt: Date.now() + OPTIONS_CACHE_TTL_MS };
+    return value;
+  })();
+
+  try {
+    return await optionsInFlight;
+  } finally {
+    optionsInFlight = null;
+  }
+}
+
+export async function GET(request: Request) {
+  const access = await requireActiveAccess(request.headers);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status, headers: NO_STORE_HEADERS });
+  }
+
+  try {
+    return NextResponse.json(await loadOptions(), {
+      headers: PRIVATE_MEDIUM_CACHE_HEADERS,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memuat pilihan share prediksi";

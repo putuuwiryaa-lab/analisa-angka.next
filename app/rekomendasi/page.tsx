@@ -162,7 +162,7 @@ function bestRowForPair(market: InvestMarketOverview, pair: Pair): InvestRow | n
 }
 
 async function fetchInvestOverview(): Promise<InvestOverviewResponse> {
-  const response = await fetch("/api/invest", { cache: "no-store" });
+  const response = await fetch("/api/invest");
   const json = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(json.error || "Gagal memuat rekomendasi invest.");
   return json as InvestOverviewResponse;
@@ -201,6 +201,8 @@ export default function RekomendasiPage() {
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     placeholderData: keepPreviousData,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 
   const rows = useMemo(() => {

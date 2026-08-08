@@ -125,6 +125,13 @@ export function ServiceWorkerRegister() {
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Aplikasi tetap dapat dipakai ketika pendaftaran service worker gagal.
+    });
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") return;
 
     if (isAdminPath(pathname)) {
@@ -134,12 +141,6 @@ export function ServiceWorkerRegister() {
     }
 
     ensureManifestLink();
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
-        // Aplikasi tetap dapat dipakai ketika pendaftaran service worker gagal.
-      });
-    }
 
     if (isStandalone()) {
       setVisible(false);

@@ -24,15 +24,25 @@ export type MarketStatisticRow = {
 const STAT_SELECT =
   "market_id,market_name,group_key,mode,position,param,target_pair,analysis_scope,wins_15,wins_last_5,max_loss_streak,score";
 const STAT_PAGE_SIZE = 1000;
+const STAT_CACHE_TTL_MS = 60 * 1000;
 
-/**
- * Membaca seluruh statistik yang lolos filter Invest secara bertahap.
- *
- * Offset maju berdasarkan jumlah baris aktual yang dikembalikan, bukan ukuran
- * page yang diminta. Ini tetap aman bila PostgREST/Supabase menerapkan batas
- * response yang lebih kecil dari STAT_PAGE_SIZE.
- */
-export async function fetchWinningMarketStatistics(marketId?: string): Promise<MarketStatisticRow[]> {
+type StatisticsCacheEntry = {
+  expiresAt: number;
+  rows: MarketStatisticRow[];
+};
+
+const statisticsCache = new Map<string, StatisticsCacheEntry>();
+const statisticsInFlight = new Map<string, Promise<MarketStatisticRow[]>>();
+
+function normalizeMarketId(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function statisticsCacheKey(marketId?: string) {
+  return marketId ? normalizeMarketId(marketId) : "*";
+}
+
+async function loadWinningMarketStatistics(marketId?: string): Promise<MarketStatisticRow[]> {
   const supabase = createAdminClient();
   const rows: MarketStatisticRow[] = [];
   let from = 0;
@@ -89,6 +99,60 @@ export async function fetchWinningMarketStatistics(marketId?: string): Promise<M
   }
 
   return rows;
+}
+
+/**
+ * Reads statistics with a short per-isolate cache. The data is global (not user
+ * specific), while route-level access checks still run before this function.
+ * Concurrent cold requests share the same Promise instead of repeating the
+ * same paginated Supabase scan.
+ */
+export async function fetchWinningMarketStatistics(marketId?: string): Promise<MarketStatisticRow[]> {
+  const key = statisticsCacheKey(marketId);
+  const now = Date.now();
+  const cached = statisticsCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.rows;
+  if (cached) statisticsCache.delete(key);
+
+  if (marketId) {
+    const globalCache = statisticsCache.get("*");
+    if (globalCache && globalCache.expiresAt > now) {
+      const normalizedId = normalizeMarketId(marketId);
+      const rows = globalCache.rows.filter((row) => normalizeMarketId(row.market_id) === normalizedId);
+      statisticsCache.set(key, { rows, expiresAt: globalCache.expiresAt });
+      return rows;
+    }
+  }
+
+  const pending = statisticsInFlight.get(key);
+  if (pending) return pending;
+
+  if (marketId) {
+    const globalPending = statisticsInFlight.get("*");
+    if (globalPending) {
+      const normalizedId = normalizeMarketId(marketId);
+      const request = globalPending.then((rows) => rows.filter((row) => normalizeMarketId(row.market_id) === normalizedId));
+      statisticsInFlight.set(key, request);
+      try {
+        const rows = await request;
+        statisticsCache.set(key, { rows, expiresAt: Date.now() + STAT_CACHE_TTL_MS });
+        return rows;
+      } finally {
+        statisticsInFlight.delete(key);
+      }
+    }
+  }
+
+  const request = loadWinningMarketStatistics(marketId);
+  statisticsInFlight.set(key, request);
+
+  try {
+    const rows = await request;
+    statisticsCache.set(key, { rows, expiresAt: Date.now() + STAT_CACHE_TTL_MS });
+    return rows;
+  } finally {
+    statisticsInFlight.delete(key);
+  }
 }
 
 export function groupMarketStatistics(rows: MarketStatisticRow[]) {

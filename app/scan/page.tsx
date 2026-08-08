@@ -1,5 +1,4 @@
-import AdaptivePageClient from "./AdaptivePageClient";
-import ScanPageClient from "./ScanPageClient";
+import ScanViewClient from "./ScanViewClient";
 import styles from "./ScanTheme.module.css";
 
 interface ScanPageProps {
@@ -12,7 +11,7 @@ export default async function ScanPage({ searchParams }: ScanPageProps) {
 
   return (
     <div className={styles.theme} data-scan-theme>
-      {view === "adaptive" ? <AdaptivePageClient /> : <ScanPageClient />}
+      <ScanViewClient view={view} />
     </div>
   );
 }

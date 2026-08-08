@@ -23,6 +23,8 @@ type Group = "ai" | "ai_parity" | "ai_size" | "bbfs" | "mati" | "jumlah" | "shio
 type Score = { param: number; badge: RecommendationBadge };
 type MarketRow = { id?: string | null; name?: string | null };
 
+const SHARE_2D_PAIRS: TargetPair[] = ["depan", "tengah", "belakang"];
+
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value);
@@ -132,28 +134,71 @@ function globalBbfsParams() {
   return [7, 8, 9];
 }
 
+async function applyPairRecommendations(
+  next: RecommendedMap,
+  supabase: SupabaseClient,
+  marketIds: string[],
+  pair: TargetPair,
+) {
+  const [aiRows, parityRows, sizeRows, bbfsRows, jumlahRows, shioRows] = await Promise.all([
+    loadRows(supabase, marketIds, "ai", "all", [2, 4, 6], pair),
+    loadRows(supabase, marketIds, "ai_parity", "all", [1], pair),
+    loadRows(supabase, marketIds, "ai_size", "all", [1], pair),
+    loadRows(supabase, marketIds, "bbfs", "all", [7, 8, 9], pair, pairScope(pair)),
+    loadRows(supabase, marketIds, "jumlah", "all", [1, 2, 3], pair),
+    loadRows(supabase, marketIds, "shio", "all", [1, 2, 3], pair),
+  ]);
+
+  apply(next, (param) => `ai-${pair}-${param}`, aiRows, [2, 4, 6], "low", "ai");
+  apply(next, () => `ai-${pair}-7`, parityRows, [1], "low", "ai_parity");
+  apply(next, () => `ai-${pair}-8`, sizeRows, [1], "low", "ai_size");
+  apply(next, (param) => `bbfs-${pair}-${param}`, bbfsRows, [7, 8, 9], "low", "bbfs");
+  apply(next, (param) => `jumlah-${pair}-${param}`, jumlahRows, [1, 2, 3], "high", "jumlah");
+  apply(next, (param) => `shio-${pair}-${param}`, shioRows, [1, 2, 3], "high", "shio");
+}
+
+async function applyPositionRecommendations(
+  next: RecommendedMap,
+  supabase: SupabaseClient,
+  marketIds: string[],
+) {
+  const [asRows, kopRows, kepalaRows, ekorRows] = await Promise.all([
+    loadRows(supabase, marketIds, "mati", "as", [1, 2, 3]),
+    loadRows(supabase, marketIds, "mati", "kop", [1, 2, 3]),
+    loadRows(supabase, marketIds, "mati", "kepala", [1, 2, 3]),
+    loadRows(supabase, marketIds, "mati", "ekor", [1, 2, 3]),
+  ]);
+
+  apply(next, (param) => `as-${param}`, asRows, [1, 2, 3], "high", "mati");
+  apply(next, (param) => `kop-${param}`, kopRows, [1, 2, 3], "high", "mati");
+  apply(next, (param) => `kepala-${param}`, kepalaRows, [1, 2, 3], "high", "mati");
+  apply(next, (param) => `ekor-${param}`, ekorRows, [1, 2, 3], "high", "mati");
+}
+
+/**
+ * Share Prediksi only renders the three 2D pair sections. This avoids running
+ * the 3D/4D/global recommendation queries and deduplicates position queries.
+ */
+export async function buildShareRekap2DRecommendations(
+  supabase: SupabaseClient,
+  marketIds: string[],
+): Promise<RecommendedMap> {
+  const next: RecommendedMap = {};
+
+  await Promise.all([
+    ...SHARE_2D_PAIRS.map((pair) => applyPairRecommendations(next, supabase, marketIds, pair)),
+    applyPositionRecommendations(next, supabase, marketIds),
+  ]);
+
+  return next;
+}
+
 export async function buildCustomRekapRecommendations(supabase: SupabaseClient, marketIds: string[], customFocus: CustomFocus): Promise<RecommendedMap> {
   const pairs = customFocusPairs(customFocus);
   const bbfsScope = customFocusToBBFSScope(customFocus);
   const next: RecommendedMap = {};
 
-  await Promise.all(pairs.map(async (pair) => {
-    const [aiRows, parityRows, sizeRows, bbfsRows, jumlahRows, shioRows] = await Promise.all([
-      loadRows(supabase, marketIds, "ai", "all", [2, 4, 6], pair),
-      loadRows(supabase, marketIds, "ai_parity", "all", [1], pair),
-      loadRows(supabase, marketIds, "ai_size", "all", [1], pair),
-      loadRows(supabase, marketIds, "bbfs", "all", [7, 8, 9], pair, pairScope(pair)),
-      loadRows(supabase, marketIds, "jumlah", "all", [1, 2, 3], pair),
-      loadRows(supabase, marketIds, "shio", "all", [1, 2, 3], pair),
-    ]);
-
-    apply(next, (param) => `ai-${pair}-${param}`, aiRows, [2, 4, 6], "low", "ai");
-    apply(next, () => `ai-${pair}-7`, parityRows, [1], "low", "ai_parity");
-    apply(next, () => `ai-${pair}-8`, sizeRows, [1], "low", "ai_size");
-    apply(next, (param) => `bbfs-${pair}-${param}`, bbfsRows, [7, 8, 9], "low", "bbfs");
-    apply(next, (param) => `jumlah-${pair}-${param}`, jumlahRows, [1, 2, 3], "high", "jumlah");
-    apply(next, (param) => `shio-${pair}-${param}`, shioRows, [1, 2, 3], "high", "shio");
-  }));
+  await Promise.all(pairs.map((pair) => applyPairRecommendations(next, supabase, marketIds, pair)));
 
   if (customFocus === "3d" || customFocus === "4d") {
     const [ai3dRows, parity3dRows, size3dRows] = await Promise.all([
@@ -176,17 +221,7 @@ export async function buildCustomRekapRecommendations(supabase: SupabaseClient, 
   const bbfsRows = await loadRows(supabase, marketIds, "bbfs", "all", bbfsParams, bbfsTargetPair, bbfsScope);
   apply(next, (param) => `bbfs-${param}`, bbfsRows, bbfsParams, "low", "bbfs");
 
-  const [asRows, kopRows, kepalaRows, ekorRows] = await Promise.all([
-    loadRows(supabase, marketIds, "mati", "as", [1, 2, 3]),
-    loadRows(supabase, marketIds, "mati", "kop", [1, 2, 3]),
-    loadRows(supabase, marketIds, "mati", "kepala", [1, 2, 3]),
-    loadRows(supabase, marketIds, "mati", "ekor", [1, 2, 3]),
-  ]);
-
-  apply(next, (param) => `as-${param}`, asRows, [1, 2, 3], "high", "mati");
-  apply(next, (param) => `kop-${param}`, kopRows, [1, 2, 3], "high", "mati");
-  apply(next, (param) => `kepala-${param}`, kepalaRows, [1, 2, 3], "high", "mati");
-  apply(next, (param) => `ekor-${param}`, ekorRows, [1, 2, 3], "high", "mati");
+  await applyPositionRecommendations(next, supabase, marketIds);
 
   return next;
 }

@@ -138,7 +138,7 @@ export function optionSort(a: ShareOption, b: ShareOption) {
 }
 
 export async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url);
   const json = await response.json();
   if (!response.ok) throw new Error(json?.error || "Gagal memuat data.");
   return json as T;

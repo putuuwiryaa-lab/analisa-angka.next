@@ -2,17 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Clock3, Database, Plus, RefreshCw, Search, X, Zap } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
-import {
-  MARKETS_GC_TIME,
-  MARKETS_QUERY_KEY,
-  MARKETS_STALE_TIME,
-  fetchMarkets,
-  formatMarketUpdatedAt,
-} from "@/lib/markets/client";
+import { formatMarketUpdatedAt } from "@/lib/markets/client";
+import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 
 const WA_NUMBER = "6285119341538";
 const APP_LINKS = [
@@ -27,13 +21,7 @@ export default function DashboardPage() {
     error,
     refetch,
     isFetching,
-  } = useQuery({
-    queryKey: MARKETS_QUERY_KEY,
-    queryFn: () => fetchMarkets(),
-    staleTime: MARKETS_STALE_TIME,
-    gcTime: MARKETS_GC_TIME,
-    placeholderData: keepPreviousData,
-  });
+  } = useMarketsQuery();
 
   const requestMarketUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
     "Halo, saya ingin request penambahan pasaran.",
