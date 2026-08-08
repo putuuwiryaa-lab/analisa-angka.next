@@ -172,7 +172,7 @@ export default function AdaptivePageClient() {
 
   return (
     <main className="space-y-3 px-1 sm:px-0">
-      <section className="animate-fade-in rounded-2xl border border-border-soft bg-surface/75 p-4 backdrop-blur-xl">
+      <section className="animate-fade-in rounded-2xl border border-border-soft bg-surface/75 p-4 backdrop-blur-md sm:backdrop-blur-xl">
         <div className="mb-4 flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/15 text-primary-soft">
             <Activity size={21} />
@@ -273,7 +273,7 @@ export default function AdaptivePageClient() {
       )}
 
       {result && (
-        <section className="animate-fade-in rounded-2xl border border-primary/30 bg-surface/80 p-4 backdrop-blur-xl">
+        <section className="animate-fade-in rounded-2xl border border-primary/30 bg-surface/80 p-4 backdrop-blur-md sm:backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.15em] text-primary-soft">
