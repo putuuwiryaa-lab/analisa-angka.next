@@ -88,6 +88,8 @@ export default function BatchScanPage() {
     return markets.filter((market) => `${market.id} ${market.name}`.toLowerCase().includes(normalized));
   }, [markets, query]);
 
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+
   const outputText = useMemo(() => {
     if (!result) return "";
     const activeSeparator = result.lineSeparator || separator;
@@ -181,7 +183,7 @@ export default function BatchScanPage() {
       : 10;
 
   return (
-    <div className="animate-rise space-y-3">
+    <div className="animate-fade-in space-y-3">
       <section className="depth-1 rounded-2xl border p-3 sm:p-4">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2.5">
@@ -268,13 +270,13 @@ export default function BatchScanPage() {
 
         <div className="grid max-h-[22rem] grid-cols-3 gap-1.5 overflow-y-auto pr-1">
           {filteredMarkets.map((market) => {
-            const active = selected.includes(market.id);
+            const active = selectedSet.has(market.id);
             return (
               <button
                 key={market.id}
                 type="button"
                 onClick={() => toggleMarket(market.id)}
-                className={`pressable flex min-h-12 items-center justify-between gap-1 rounded-xl border px-2 py-2 text-left shadow-inner shadow-black/10 ${active ? "border-primary/45 bg-primary/15" : "border-border-soft bg-surface"}`}
+                className={`render-lazy-row pressable flex min-h-12 items-center justify-between gap-1 rounded-xl border px-2 py-2 text-left shadow-inner shadow-black/10 ${active ? "border-primary/45 bg-primary/15" : "border-border-soft bg-surface"}`}
               >
                 <span className={`line-clamp-2 text-[9px] font-black uppercase leading-snug ${active ? "text-primary-soft" : "text-text"}`}>{market.name || market.id}</span>
                 {active ? <Check size={13} className="shrink-0 text-primary-soft" /> : null}

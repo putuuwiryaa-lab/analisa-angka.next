@@ -23,7 +23,7 @@ export default function SavedTreksSection({ total, groups, onView, onDelete }: P
             {` · ${group.digitCount} ${isShioMode(group.scanMode) ? "shio" : "digit"} · ${group.L || "-"} data · patah ${group.patah} · ${group.items.length} hasil`}
           </p>
           <div className="space-y-2">{group.items.map((saved) => (
-            <article key={saved.id} className="rounded-2xl border border-border-soft bg-white/[0.025] p-3">
+            <article key={saved.id} className="render-lazy-card rounded-2xl border border-border-soft bg-white/[0.025] p-3">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="max-w-[7.5rem] shrink-0 truncate rounded-xl border border-border bg-white/[0.08] px-3 py-2 text-sm font-black text-text-muted">{saved.formula}</span>

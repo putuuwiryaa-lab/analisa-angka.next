@@ -5,6 +5,81 @@
     0 0 0 4px var(--color-bg-deep);
 }
 
+/* Keep motion responsive without pinning every animated element to a GPU layer. */
+.pressable,
+.animate-rise,
+.animate-soft-pop,
+.animate-fade-in,
+.animate-page-enter,
+.animate-slide-up-soft,
+.animate-mobile-card {
+  will-change: auto;
+}
+
+/* The active/hover states still animate; only the permanent translateZ layer is removed. */
+.pressable {
+  transform: none;
+}
+
+/* Let the browser defer layout/paint for long lists that are far outside the viewport. */
+.render-lazy-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
+}
+
+.render-lazy-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 84px;
+}
+
+.render-lazy-stat {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 190px;
+}
+
+/* Mobile GPUs pay a high cost for fixed backdrop filters, paint filters and repeated transforms. */
+@media (hover: none), (pointer: coarse) {
+  nav.fixed.bottom-0.backdrop-blur-xl {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Keep mobile page entry feedback, but avoid translate/scale and staggered compositor work. */
+  .animate-rise,
+  .animate-soft-pop,
+  .animate-page-enter,
+  .animate-slide-up-soft,
+  .animate-mobile-card {
+    animation-name: fade-in;
+    animation-duration: 180ms;
+    animation-delay: 0ms !important;
+    animation-timing-function: var(--ease-out-soft);
+  }
+
+  .pressable:hover:not(:active) {
+    transform: none;
+  }
+
+  .pressable:active,
+  .pressable:hover:active {
+    filter: none;
+  }
+
+  .depth-1 {
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  }
+
+  .depth-glow-soft {
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15), 0 0 22px rgba(124, 77, 255, 0.05);
+  }
+
+  /* Multiple moving gradient skeletons repaint every frame; static placeholders are cheaper on touch devices. */
+  .animate-shimmer {
+    animation: none;
+    background-size: 100% 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
