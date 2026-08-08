@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { requireActiveAccess } from "@/lib/server/access";
+import { NO_STORE_HEADERS, PRIVATE_MEDIUM_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import {
   MARKET_STAT_SELECT,
   MAX_LOSS_STREAK_ALLOWED,
@@ -58,7 +59,12 @@ function normalizeAiParam(category: VisibleCategoryKey, param: number) {
 
 export async function GET(request: NextRequest) {
   const access = await requireActiveAccess(request.headers);
-  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+  if (!access.ok) {
+    return NextResponse.json(
+      { error: access.error },
+      { status: access.status, headers: NO_STORE_HEADERS },
+    );
+  }
 
   try {
     const search = request.nextUrl.searchParams;
@@ -120,7 +126,10 @@ export async function GET(request: NextRequest) {
     const marketIds = Array.from(new Set(rankingRows.map((item) => item.market_id).filter(Boolean)));
 
     if (!marketIds.length) {
-      return NextResponse.json({ items: rankingRows, relatedStats: {} }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json(
+        { items: rankingRows, relatedStats: {} },
+        { headers: PRIVATE_MEDIUM_CACHE_HEADERS },
+      );
     }
 
     const { data: relatedData, error: relatedError } = await supabase
@@ -145,10 +154,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { items: rankingRows, relatedStats },
-      { headers: { "Cache-Control": "no-store" } },
+      { headers: PRIVATE_MEDIUM_CACHE_HEADERS },
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat statistik pasaran";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: 500, headers: NO_STORE_HEADERS },
+    );
   }
 }
