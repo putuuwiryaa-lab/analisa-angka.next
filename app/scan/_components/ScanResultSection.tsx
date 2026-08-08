@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Bookmark, Eye } from "lucide-react";
 import type { AutoScanItem, AutoScanResult } from "@/lib/engine/types";
 import { isShioMode } from "@/lib/shared/scan-mode";
@@ -23,7 +24,7 @@ export function trekId(marketId: string, item: AutoScanItem) {
 }
 
 export default function ScanResultSection({ result, marketTitle, marketId, savedId, onSave, onView }: Props) {
-  const frequencyRows = buildFrequencyRows(result);
+  const frequencyRows = useMemo(() => buildFrequencyRows(result), [result]);
   const unit = isShioMode(result.config.scanMode) ? "shio" : "digit";
 
   return (
@@ -45,7 +46,7 @@ export default function ScanResultSection({ result, marketTitle, marketId, saved
           const labels = labelsFromValues(item.angkaHidup, item.scanMode);
 
           return (
-            <article key={`${item.code}-${index}`} className={`rounded-xl border px-2.5 py-2 ${style.row}`}>
+            <article key={`${item.code}-${index}`} className={`render-lazy-row rounded-xl border px-2.5 py-2 ${style.row}`}>
               <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-1.5">
                 <span className={`max-w-[5.2rem] truncate rounded-md border px-1.5 py-1 text-[9px] font-black ${style.badge}`} title={item.formula}>
                   {item.formula}
