@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { requireActiveAccess } from "@/lib/server/access";
-import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
+import { NO_STORE_HEADERS, PRIVATE_MEDIUM_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -109,7 +109,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(Array.from(options.values()), {
-      headers: NO_STORE_HEADERS,
+      headers: PRIVATE_MEDIUM_CACHE_HEADERS,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memuat pilihan share prediksi";
