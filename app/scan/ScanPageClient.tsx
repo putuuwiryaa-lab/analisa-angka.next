@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AutoScanItem, AutoScanResult, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
+import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 import ScanFields from "./_components/ScanFields";
 import ScanResultSection, { trekId } from "./_components/ScanResultSection";
 import SavedTreksSection from "./_components/SavedTreksSection";
@@ -45,9 +46,14 @@ async function copyText(text: string) {
 }
 
 export default function ScanPageClient() {
-  const [markets, setMarkets] = useState<Market[]>([]);
+  const {
+    data: sharedMarkets = [],
+    isPending: marketsPending,
+    error: marketsQueryError,
+  } = useMarketsQuery();
+  const markets = sharedMarkets as Market[];
+  const marketsLoading = marketsPending && markets.length === 0;
   const [marketId, setMarketId] = useState("");
-  const [marketsLoading, setMarketsLoading] = useState(true);
   const [scanMode, setScanMode] = useState<ScanMode>("ai_2d_belakang");
   const [targetPos, setTargetPos] = useState<Posisi>("K");
   const [target2D, setTarget2D] = useState<Target2D>("belakang");
@@ -68,22 +74,15 @@ export default function ScanPageClient() {
   const scanVersionRef = useRef(0);
 
   useEffect(() => {
-    fetch("/api/markets")
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data?.error || "Gagal memuat pasaran.");
-        return Array.isArray(data) ? data : [];
-      })
-      .then((data: Market[]) => {
-        setMarkets(data);
-        const defaultMarket = data.find((market) => /singapore|sgp/i.test(`${market.id} ${market.name}`)) ?? data[0];
-        if (defaultMarket) setMarketId(defaultMarket.id);
-      })
-      .catch((reason) => setError(reason instanceof Error ? reason.message : "Gagal memuat pasaran."))
-      .finally(() => setMarketsLoading(false));
     setSavedTreks(readStoredTreks());
     setStorageReady(true);
   }, []);
+
+  useEffect(() => {
+    if (marketId || markets.length === 0) return;
+    const defaultMarket = markets.find((market) => /singapore|sgp/i.test(`${market.id} ${market.name}`)) ?? markets[0];
+    if (defaultMarket) setMarketId(defaultMarket.id);
+  }, [marketId, markets]);
 
   useEffect(() => {
     if (!storageReady) return;
@@ -122,6 +121,8 @@ export default function ScanPageClient() {
     [completedScan?.marketName, selectedMarket?.id, selectedMarket?.name],
   );
   const savedGroups = useMemo(() => buildSavedGroups(savedTreks), [savedTreks]);
+  const marketsError = marketsQueryError instanceof Error ? marketsQueryError.message : marketsQueryError ? "Gagal memuat pasaran." : "";
+  const visibleError = error || marketsError;
 
   const invalidateScanOutput = useCallback(() => {
     scanVersionRef.current += 1;
@@ -354,7 +355,7 @@ export default function ScanPageClient() {
         onStopScanChange={changeStopScan}
         onScan={runScan}
       />
-      {error ? <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">{error}</div> : null}
+      {visibleError ? <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">{visibleError}</div> : null}
       {completedScan ? (
         <MemoScanResultSection
           result={completedScan.result}
