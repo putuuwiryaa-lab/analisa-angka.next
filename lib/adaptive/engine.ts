@@ -24,6 +24,12 @@ import {
   isAdaptiveSelection,
 } from "./types";
 
+/**
+ * Compatibility mirror for tests and shared helpers only.
+ * Production reconciliation is authoritative in adaptive-service/core/engine.mts.
+ * Do not introduce a UI/server writer path that executes this module.
+ */
+
 function signalStrength(lift: number, margin: number): AdaptivePrediction["signalStrength"] {
   if (lift >= 0.05 && margin >= 0.01) return "high";
   if (lift >= 0.02 || margin >= 0.004) return "medium";
