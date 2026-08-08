@@ -58,8 +58,8 @@ export default function DashboardPage() {
   const showInitialSkeleton = isPending && markets.length === 0;
 
   return (
-    <div className="animate-rise">
-      <div className="animate-soft-pop depth-1 mb-4 rounded-3xl border p-3">
+    <div className="animate-fade-in">
+      <div className="depth-1 mb-4 rounded-3xl border p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-accent">
@@ -82,12 +82,12 @@ export default function DashboardPage() {
       </div>
 
       {errorMessage && (
-        <div className="animate-soft-pop mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
+        <div className="animate-fade-in mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
           {errorMessage}
         </div>
       )}
 
-      <div className="animate-fade-in relative mb-4">
+      <div className="relative mb-4">
         <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
         <Input
           type="text"
@@ -113,21 +113,20 @@ export default function DashboardPage() {
           Array.from({ length: 14 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-3xl" />)
         ) : (
           <>
-            {filteredMarkets.map((m, index) => (
+            {filteredMarkets.map((m) => (
               <Link
                 key={m.id}
                 href={`/analyze/${encodeURIComponent(m.id)}`}
                 prefetch={false}
-                className="pressable animate-soft-pop depth-1 group flex h-[112px] flex-col overflow-hidden rounded-3xl border text-center hover:border-border hover:bg-surface-2"
-                style={{ animationDelay: `${Math.min(index, 10) * 24}ms` }}
+                className="pressable depth-1 flex h-[112px] flex-col overflow-hidden rounded-3xl border text-center hover:border-border hover:bg-surface-2"
               >
-                <div className="depth-2 flex min-h-[48px] items-center justify-center border-b border-border-soft px-3 transition-colors group-hover:bg-white/[0.04]">
+                <div className="depth-2 flex min-h-[48px] items-center justify-center border-b border-border-soft px-3">
                   <span className="display line-clamp-2 text-[12px] leading-4 text-text">
                     {String(m.name || m.id).toUpperCase()}
                   </span>
                 </div>
                 <div className="flex flex-1 items-center justify-center">
-                  <span className="num text-2xl font-black tracking-[0.08em] text-accent transition-transform duration-150 group-hover:scale-[1.03]">{m.lastResult || "----"}</span>
+                  <span className="num text-2xl font-black tracking-[0.08em] text-accent">{m.lastResult || "----"}</span>
                 </div>
               </Link>
             ))}
@@ -136,7 +135,7 @@ export default function DashboardPage() {
               href={requestMarketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="pressable animate-soft-pop depth-2 flex h-[112px] flex-col items-center justify-center rounded-3xl border border-dashed text-center hover:border-border hover:bg-surface"
+              className="pressable depth-2 flex h-[112px] flex-col items-center justify-center rounded-3xl border border-dashed text-center hover:border-border hover:bg-surface"
               aria-label="Request penambahan pasaran via WhatsApp"
             >
               <div className="depth-3 flex h-10 w-10 items-center justify-center rounded-2xl border text-primary-soft">
@@ -149,7 +148,7 @@ export default function DashboardPage() {
             </a>
 
             {filteredMarkets.length === 0 && (
-              <div className="animate-soft-pop depth-1 col-span-2 rounded-3xl border border-dashed py-12 text-center sm:col-span-3">
+              <div className="animate-fade-in depth-1 col-span-2 rounded-3xl border border-dashed py-12 text-center sm:col-span-3">
                 <Database className="mx-auto mb-3 text-text-soft" />
                 <p className="text-xs uppercase tracking-wide text-text-muted">Pasaran tidak ditemukan</p>
               </div>
@@ -166,7 +165,7 @@ export default function DashboardPage() {
 function CrossAppBanner() {
   return (
     <section
-      className="animate-soft-pop mb-4 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-border-soft bg-white/[0.035] px-3 py-2"
+      className="mb-4 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-border-soft bg-white/[0.035] px-3 py-2"
       aria-label="Tools tambahan"
     >
       <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.14em] text-text-soft">Tools tambahan</span>
