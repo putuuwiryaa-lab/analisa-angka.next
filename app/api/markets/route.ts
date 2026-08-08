@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { NO_STORE_HEADERS, PRIVATE_SHORT_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
+import { NO_STORE_HEADERS, PRIVATE_MEDIUM_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { tokenizeHistory } from "@/lib/shared/history";
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
       .sort((a, b) => Number(a.order ?? 99) - Number(b.order ?? 99));
 
     return NextResponse.json(markets, {
-      headers: PRIVATE_SHORT_CACHE_HEADERS,
+      headers: PRIVATE_MEDIUM_CACHE_HEADERS,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat markets";
