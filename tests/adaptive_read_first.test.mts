@@ -122,3 +122,16 @@ Deno.test("persistence helper memakai selection count V2 terpusat", async () => 
   assert.doesNotMatch(persistence, /selectionsSettled\s*!==\s*18/);
   assert.doesNotMatch(persistence, /18 selection/);
 });
+
+Deno.test("adaptive service HTTP mengikuti contract V2 dan context membawa calibration metadata", async () => {
+  const service = await Deno.readTextFile(
+    new URL("../adaptive-service/http.mts", import.meta.url),
+  );
+
+  assert.match(service, /ADAPTIVE_SELECTION_COUNT/);
+  assert.doesNotMatch(service, /selectionsPublished\s*!==\s*18/);
+  assert.doesNotMatch(service, /selectionsSettled\s*!==\s*18/);
+  assert.doesNotMatch(service, /publicationSelectionCount:\s*18/);
+  assert.match(service, /'calibrationWeights'/);
+  assert.match(service, /'calibrationStateRevision'/);
+});
