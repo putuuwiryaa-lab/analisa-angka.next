@@ -30,6 +30,30 @@ const VALID_AI_SCOPES = new Set(["4d", "3d", "2d_depan", "2d_tengah", "2d_belaka
 const VALID_ANALYSIS_SCOPES = new Set(["default", "4d", "3d", "2d_depan", "2d_tengah", "2d_belakang"]);
 
 const STATISTICS_MIN_WINS_15 = 12;
+const STATISTICS_SERVER_CACHE_TTL_MS = 60 * 1000;
+const STATISTICS_SERVER_CACHE_MAX_ENTRIES = 96;
+
+type StatisticsRequest = {
+  category: VisibleCategoryKey;
+  targetPair: TargetPair;
+  matiPosition: MatiPosition;
+  aiScope: AiStatScope;
+  bbfsScope: AnalysisScope;
+  param: number;
+};
+
+type StatisticsPayload = {
+  items: MarketStatistic[];
+  relatedStats: RelatedStatsMap;
+};
+
+type StatisticsCacheEntry = {
+  expiresAt: number;
+  value: StatisticsPayload;
+};
+
+const statisticsCache = new Map<string, StatisticsCacheEntry>();
+const statisticsInFlight = new Map<string, Promise<StatisticsPayload>>();
 
 function parseCategory(value: string | null): VisibleCategoryKey {
   return VALID_CATEGORIES.has(value || "") ? (value as VisibleCategoryKey) : "ai";
@@ -57,38 +81,57 @@ function normalizeAiParam(category: VisibleCategoryKey, param: number) {
   return param;
 }
 
-export async function GET(request: NextRequest) {
-  const access = await requireActiveAccess(request.headers);
-  if (!access.ok) {
-    return NextResponse.json(
-      { error: access.error },
-      { status: access.status, headers: NO_STORE_HEADERS },
-    );
+function readStatisticsRequest(request: NextRequest): StatisticsRequest {
+  const search = request.nextUrl.searchParams;
+  const category = parseCategory(search.get("category"));
+  const rawParam = Number(search.get("param") || 0);
+  const param = normalizeAiParam(category, rawParam);
+  if (!Number.isFinite(param) || param <= 0) throw new Error("Parameter statistik tidak valid.");
+
+  return {
+    category,
+    targetPair: parseTargetPair(search.get("targetPair")),
+    matiPosition: parseMatiPosition(search.get("matiPosition")),
+    aiScope: parseAiScope(search.get("aiScope")),
+    bbfsScope: parseAnalysisScope(search.get("bbfsScope")),
+    param,
+  };
+}
+
+function statisticsCacheKey(input: StatisticsRequest) {
+  return [input.category, input.targetPair, input.matiPosition, input.aiScope, input.bbfsScope, input.param].join(":");
+}
+
+function storeStatisticsCache(key: string, value: StatisticsPayload) {
+  if (statisticsCache.size >= STATISTICS_SERVER_CACHE_MAX_ENTRIES && !statisticsCache.has(key)) {
+    const oldest = statisticsCache.keys().next().value;
+    if (typeof oldest === "string") statisticsCache.delete(oldest);
   }
+  statisticsCache.delete(key);
+  statisticsCache.set(key, { value, expiresAt: Date.now() + STATISTICS_SERVER_CACHE_TTL_MS });
+}
 
-  try {
-    const search = request.nextUrl.searchParams;
-    const category = parseCategory(search.get("category"));
-    const targetPair = parseTargetPair(search.get("targetPair"));
-    const matiPosition = parseMatiPosition(search.get("matiPosition"));
-    const aiScope = parseAiScope(search.get("aiScope"));
-    const bbfsScope = parseAnalysisScope(search.get("bbfsScope"));
-    const rawParam = Number(search.get("param") || 0);
-    const param = normalizeAiParam(category, rawParam);
+async function loadStatistics(input: StatisticsRequest): Promise<StatisticsPayload> {
+  const key = statisticsCacheKey(input);
+  const now = Date.now();
+  const cached = statisticsCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.value;
+  if (cached) statisticsCache.delete(key);
 
-    if (!Number.isFinite(param) || param <= 0) throw new Error("Parameter statistik tidak valid.");
+  const pending = statisticsInFlight.get(key);
+  if (pending) return pending;
 
+  const request = (async () => {
     const supabase = createAdminClient();
+    const isPositionCategory = input.category === "off_digit";
+    const isBBFSCategory = input.category === "bbfs";
+    const isAiCategory = isAiFamilyCategory(input.category);
+    const isPairCategory = input.category === "off_jumlah" || input.category === "off_shio";
 
-    const isPositionCategory = category === "off_digit";
-    const isBBFSCategory = category === "bbfs";
-    const isAiCategory = isAiFamilyCategory(category);
-    const isPairCategory = category === "off_jumlah" || category === "off_shio";
-
-    const selectedBBFS = bbfsScopeMeta(bbfsScope);
-    const selectedAI = aiScopeMeta(aiScope);
-    const queryGroupKey = category === "ai" ? aiParamGroupKey(param) : category;
-    const queryParam = isAiCategory ? aiParamStatParam(param) : param;
+    const selectedBBFS = bbfsScopeMeta(input.bbfsScope);
+    const selectedAI = aiScopeMeta(input.aiScope);
+    const queryGroupKey = input.category === "ai" ? aiParamGroupKey(input.param) : input.category;
+    const queryParam = isAiCategory ? aiParamStatParam(input.param) : input.param;
 
     let query = supabase
       .from("market_statistics")
@@ -106,18 +149,25 @@ export async function GET(request: NextRequest) {
       query = query
         .eq("mode", "mati")
         .eq("param", queryParam)
-        .eq("position", matiPosition)
+        .eq("position", input.matiPosition)
         .eq("target_pair", "all")
         .eq("analysis_scope", "default");
     } else if (isBBFSCategory) {
-      query = query.eq("mode", "bbfs").eq("param", queryParam).eq("target_pair", selectedBBFS.targetPair).eq("analysis_scope", bbfsScope);
+      query = query
+        .eq("mode", "bbfs")
+        .eq("param", queryParam)
+        .eq("target_pair", selectedBBFS.targetPair)
+        .eq("analysis_scope", input.bbfsScope);
     } else if (isAiCategory) {
-      query = query.eq("param", queryParam).eq("target_pair", selectedAI.targetPair).eq("analysis_scope", selectedAI.analysisScope);
+      query = query
+        .eq("param", queryParam)
+        .eq("target_pair", selectedAI.targetPair)
+        .eq("analysis_scope", selectedAI.analysisScope);
     } else {
       query = query.eq("param", queryParam).eq("analysis_scope", "default");
     }
 
-    if (isPairCategory) query = query.eq("target_pair", targetPair);
+    if (isPairCategory) query = query.eq("target_pair", input.targetPair);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -126,10 +176,9 @@ export async function GET(request: NextRequest) {
     const marketIds = Array.from(new Set(rankingRows.map((item) => item.market_id).filter(Boolean)));
 
     if (!marketIds.length) {
-      return NextResponse.json(
-        { items: rankingRows, relatedStats: {} },
-        { headers: PRIVATE_MEDIUM_CACHE_HEADERS },
-      );
+      const value = { items: rankingRows, relatedStats: {} } satisfies StatisticsPayload;
+      storeStatisticsCache(key, value);
+      return value;
     }
 
     const { data: relatedData, error: relatedError } = await supabase
@@ -152,10 +201,33 @@ export async function GET(request: NextRequest) {
         return acc;
       }, {});
 
+    const value = { items: rankingRows, relatedStats } satisfies StatisticsPayload;
+    storeStatisticsCache(key, value);
+    return value;
+  })();
+
+  statisticsInFlight.set(key, request);
+  try {
+    return await request;
+  } finally {
+    statisticsInFlight.delete(key);
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const access = await requireActiveAccess(request.headers);
+  if (!access.ok) {
     return NextResponse.json(
-      { items: rankingRows, relatedStats },
-      { headers: PRIVATE_MEDIUM_CACHE_HEADERS },
+      { error: access.error },
+      { status: access.status, headers: NO_STORE_HEADERS },
     );
+  }
+
+  try {
+    const input = readStatisticsRequest(request);
+    return NextResponse.json(await loadStatistics(input), {
+      headers: PRIVATE_MEDIUM_CACHE_HEADERS,
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gagal memuat statistik pasaran";
     return NextResponse.json(
