@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Check, ChevronDown, Clipboard, Search, Square, SquareCheckBig, X } from "lucide-react";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
+import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
 
-type Market = { id: string; name: string; lastResult?: string };
+type Market = { id: string; name?: string | null; lastResult?: string };
 type AdaptiveBatchMode = "adaptive_bbfs" | "adaptive_ai";
 type BatchMode = ScanMode | AdaptiveBatchMode;
 type BatchResult = {
@@ -51,7 +52,13 @@ async function writeClipboard(value: string) {
 }
 
 export default function BatchScanPage() {
-  const [markets, setMarkets] = useState<Market[]>([]);
+  const {
+    data: sharedMarkets = [],
+    isPending: marketsPending,
+    error: marketsQueryError,
+  } = useMarketsQuery();
+  const markets = sharedMarkets as Market[];
+  const marketsLoading = marketsPending && markets.length === 0;
   const [selected, setSelected] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [scanMode, setScanMode] = useState<BatchMode>("bbfs_2d_belakang");
@@ -65,27 +72,16 @@ export default function BatchScanPage() {
   const [separator, setSeparator] = useState("➜");
   const [result, setResult] = useState<BatchResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [marketsLoading, setMarketsLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const adaptive = isAdaptiveMode(scanMode);
-
-  useEffect(() => {
-    fetch("/api/markets")
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data?.error || "Gagal memuat pasaran.");
-        return Array.isArray(data) ? data : [];
-      })
-      .then((data: Market[]) => setMarkets(data))
-      .catch((reason) => setError(reason instanceof Error ? reason.message : "Gagal memuat pasaran."))
-      .finally(() => setMarketsLoading(false));
-  }, []);
+  const marketsError = marketsQueryError instanceof Error ? marketsQueryError.message : marketsQueryError ? "Gagal memuat pasaran." : "";
+  const visibleError = error || marketsError;
 
   const filteredMarkets = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return markets;
-    return markets.filter((market) => `${market.id} ${market.name}`.toLowerCase().includes(normalized));
+    return markets.filter((market) => `${market.id} ${market.name || ""}`.toLowerCase().includes(normalized));
   }, [markets, query]);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -285,7 +281,7 @@ export default function BatchScanPage() {
           })}
         </div>
 
-        {error ? <div className="mt-3 rounded-xl border border-danger/30 bg-danger/10 p-2.5 text-xs font-bold text-danger">{error}</div> : null}
+        {visibleError ? <div className="mt-3 rounded-xl border border-danger/30 bg-danger/10 p-2.5 text-xs font-bold text-danger">{visibleError}</div> : null}
 
         <button type="button" onClick={runBatch} disabled={loading || marketsLoading || !selected.length} className="pressable mt-4 flex h-[3.25rem] w-full items-center justify-center rounded-xl border border-primary/70 bg-primary px-4 text-sm font-black text-bg-deep shadow-[0_10px_24px_rgba(105,151,255,0.16)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50">
           {loading ? `Memproses ${selected.length} pasaran…` : "Batch Scan Sekarang"}
