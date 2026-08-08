@@ -5,7 +5,7 @@ import { buildCustomDigitLines, type TargetPair } from "@/lib/analysis/customDig
 import type { RecommendedMap } from "@/lib/analysis/recommendations";
 import { buildCustomRekapRecommendations, resolveCustomRekapMarketIds } from "@/lib/server/customRekapRecommendations";
 import { requireActiveAccess } from "@/lib/server/access";
-import { NO_STORE_HEADERS } from "@/lib/server/cacheHeaders";
+import { NO_STORE_HEADERS, PRIVATE_SHORT_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
     }
 
     const nextCursor = requestedIds.length || markets.length < limit ? null : cursor + limit;
-    return NextResponse.json({ rows, nextCursor, limit }, { headers: NO_STORE_HEADERS });
+    return NextResponse.json({ rows, nextCursor, limit }, { headers: PRIVATE_SHORT_CACHE_HEADERS });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal membuat rekap badge.";
     return NextResponse.json({ error: message }, { status: 500, headers: NO_STORE_HEADERS });
