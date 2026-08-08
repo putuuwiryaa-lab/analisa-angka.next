@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { NO_STORE_HEADERS, PRIVATE_MEDIUM_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
-import { tokenizeHistory } from "@/lib/shared/history";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MARKET_COLUMNS = "id,name,history_data,market_order:order,updated_at,last_result";
+// `last_result` is maintained by a database trigger whenever history_data changes,
+// so the market list never needs to pull full histories just to render one digit row.
+const MARKET_COLUMNS = "id,name,market_order:order,updated_at,last_result";
 const MARKETS_SERVER_CACHE_TTL_MS = 60 * 1000;
 
 type NormalizedMarket = ReturnType<typeof normalizeMarket>;
@@ -20,32 +21,9 @@ function readMarketField(market: unknown, field: string) {
   return Reflect.get(market, field);
 }
 
-function normalizeHistoryData(market: unknown) {
-  return String(
-    readMarketField(market, "history_data") ??
-      readMarketField(market, "historyData") ??
-      readMarketField(market, "history") ??
-      readMarketField(market, "data") ??
-      readMarketField(market, "results") ??
-      readMarketField(market, "result") ??
-      "",
-  );
-}
-
-function getLastResult(historyData: string) {
-  const tokens = tokenizeHistory(historyData);
-
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    if (/^\d{4}$/.test(tokens[i])) return tokens[i];
-  }
-
-  return "----";
-}
-
 function normalizeLastResult(market: unknown) {
   const direct = readMarketField(market, "last_result") ?? readMarketField(market, "lastResult");
-  if (typeof direct === "string" && /^\d{4}$/.test(direct.trim())) return direct.trim();
-  return getLastResult(normalizeHistoryData(market));
+  return typeof direct === "string" && /^\d{4}$/.test(direct.trim()) ? direct.trim() : "----";
 }
 
 function normalizeMarket(market: unknown) {
