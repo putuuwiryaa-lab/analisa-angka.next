@@ -1,5 +1,13 @@
 const STATIC_CACHE_PREFIX = "analisa-static-";
 const STATIC_CACHE = `${STATIC_CACHE_PREFIX}v1`;
+const STATIC_CACHE_MAX_ENTRIES = 96;
+
+async function trimStaticCache(cache) {
+  const keys = await cache.keys();
+  const overflow = keys.length - STATIC_CACHE_MAX_ENTRIES;
+  if (overflow <= 0) return;
+  await Promise.all(keys.slice(0, overflow).map((request) => cache.delete(request)));
+}
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -38,7 +46,10 @@ self.addEventListener("fetch", (event) => {
       if (cached) return cached;
 
       const response = await fetch(request);
-      if (response.ok) await cache.put(request, response.clone());
+      if (response.ok) {
+        await cache.put(request, response.clone());
+        await trimStaticCache(cache);
+      }
       return response;
     }),
   );
