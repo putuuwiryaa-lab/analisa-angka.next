@@ -36,7 +36,7 @@ Adaptive production saat ini menggunakan:
 
 ```text
 engineVersion = hf-apie-v2-back
-configVersion = 2026-08-07.1
+configVersion = 2026-08-08.1
 target        = 2D belakang
 maxHistory    = 170
 replayWarmup  = 28
@@ -63,7 +63,7 @@ Render scraper (repo backup-)
   -> evaluator/statistics
   -> trigger_adaptive_reconciliation.py
   -> adaptive-engine-service /reconcile
-  -> replay/settlement/update weights
+  -> replay/settlement/learning
   -> simpan state + prediction + audit ke Neon
   -> UI analisa-angka.next membaca published snapshot
 ```
@@ -92,18 +92,36 @@ Rolling normal divalidasi melalui overlap 169 result. Pending prediction dievalu
    - Warmup awal adalah 28 result.
    - Replay berjalan prequential: prediction untuk result ke-`t` hanya boleh menggunakan histori sebelum result `t`.
    - Global expert weights dan 11 independent selection calibration state dibootstrap dari histori yang tersedia.
+   - Policy selection saat bootstrap sama dengan production: **WIN membekukan calibration weights; MISS saja yang melakukan recalibration**.
 
 2. **Operasi normal**
    - Full replay tidak dijalankan setiap result.
    - Result baru menyelesaikan pending prediction sebelumnya.
-   - Global expert weights diperbarui satu langkah.
-   - Masing-masing dari 11 selection memperbarui calibration state-nya sendiri.
+   - Global expert weights tetap diperbarui satu langkah berdasarkan probabilistic loss actual 2D.
+   - Untuk masing-masing dari 11 selection, hasil WIN tetap dicatat untuk audit/hit-rate tetapi calibration weights tidak diubah.
+   - Hanya selection yang MISS yang menjalankan recalibration expert weights miliknya.
    - Prediction berikutnya dipublish sebagai snapshot baru.
 
 3. **Optimistic concurrency dan lineage**
    - State memakai `stateRevision` dan history fingerprint untuk menolak stale write.
    - Fixed rolling window dibedakan dari koreksi histori.
    - Pending dari lineage histori yang tidak kompatibel tidak boleh disettle sebagai prediction valid.
+
+Ringkas policy learning selection:
+
+```text
+WIN
+  -> catat hit + calibration loss untuk audit
+  -> weightsAfter = weightsBefore
+  -> tidak tuning selection
+
+MISS
+  -> catat miss + expert losses
+  -> update selection expert weights
+  -> prediction berikutnya memakai bobot hasil recalibration
+```
+
+Global expert weights sengaja tetap belajar pada setiap actual result karena lapisan global mengevaluasi distribusi probabilitas 2D secara keseluruhan, bukan status menang/kalah satu selection.
 
 ### Expert ensemble
 
@@ -150,14 +168,16 @@ BBFS9
 
 AI7-AI9 dipensiunkan karena coverage terlalu longgar, sedangkan BBFS1-BBFS4 dipensiunkan karena terlalu ketat untuk production use case.
 
-Setiap kombinasi `method + digitCount` mempunyai calibration state dan expert weights sendiri. Contoh: miss pada BBFS7 memperbarui BBFS7, bukan BBFS8 atau AI6.
+Setiap kombinasi `method + digitCount` mempunyai calibration state dan expert weights sendiri. Contoh: MISS pada BBFS7 hanya merecalibrate BBFS7, bukan BBFS8 atau AI6. Jika BBFS8 WIN pada result yang sama, bobot BBFS8 dibekukan.
 
 ### Persistence dan migration
 
 - Supabase adalah source histori market.
 - Neon menyimpan Adaptive state, pending/published prediction, selection, settlement, evaluation, guardrail, reconciliation run, dan audit terkait.
-- Migration V2 berada di `sql/neon/011_adaptive_v2_back_only.sql`.
-- Migration 011 mempertahankan settled history V1 untuk audit, membatalkan pending V1, dan mengaktifkan config V2.
+- Contract V2 dasar berada di `sql/neon/011_adaptive_v2_back_only.sql`.
+- Policy WIN-freeze/MISS-recalibrate berada di `sql/neon/012_freeze_selection_weights_on_win.sql`.
+- Migration 011 mempertahankan settled history V1 untuk audit, membatalkan pending V1, dan mengaktifkan contract V2.
+- Migration 012 mengaktifkan config `2026-08-08.1`, membatalkan pending config sebelumnya, dan memisahkan state baru dari rule calibration lama.
 - Snapshot V2 dianggap lengkap hanya jika membawa tepat 11 selection yang valid.
 
 ## Otomatisasi reconciliation
@@ -267,11 +287,13 @@ Repository ini mempunyai dua workload Deno yang harus menggunakan source/config 
    - build: `deno task build`
 
 2. **adaptive-engine-service**
-   - menjalankan service pada `adaptive-service/`
+   - branch production: `main`
+   - application directory: `adaptive-service/`
+   - entrypoint: `main.mts`
    - memerlukan Neon + Supabase + service secret
    - menangani snapshot, evaluation, guardrail, storage, dan reconciliation
 
-Untuk perubahan contract Adaptive yang membutuhkan schema baru, urutan rollout yang aman adalah:
+Untuk perubahan contract Adaptive yang membutuhkan schema/config baru, urutan rollout yang aman adalah:
 
 ```text
 migration Neon
@@ -307,6 +329,6 @@ putuuwiryaa-lab/backup-
 
 ## Catatan
 
-Adaptive V2 adalah statistical online-learning ensemble, bukan neural network/deep-learning model. Engine menghasilkan probabilitas relatif dari histori dan mengevaluasi dirinya secara prequential; perubahan bobot tidak dengan sendirinya membuktikan adanya predictive edge.
+Adaptive V2 adalah statistical online-learning ensemble, bukan neural network/deep-learning model. Engine menghasilkan probabilitas relatif dari histori dan mengevaluasi dirinya secara prequential. Global weights tetap adaptif pada setiap actual; selection weights memakai policy konservatif **WIN freeze / MISS recalibrate** agar selection yang sudah berhasil tidak dituning ulang tanpa kebutuhan.
 
-Aplikasi ini adalah alat bantu analisa berbasis data historis dan evaluasi sistem. Hasil analisa bukan jaminan hasil akhir.
+Perubahan bobot tidak dengan sendirinya membuktikan adanya predictive edge. Aplikasi ini adalah alat bantu analisa berbasis data historis dan evaluasi sistem. Hasil analisa bukan jaminan hasil akhir.

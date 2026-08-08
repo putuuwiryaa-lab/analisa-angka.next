@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { runAdaptiveOnline } from "../adaptive-service/core/engine.mts";
 import {
+  ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_REPLAY_WARMUP,
   ADAPTIVE_SELECTION_COUNT,
   ADAPTIVE_SELECTION_SPECS,
@@ -88,7 +89,7 @@ Deno.test("V2 hanya menerbitkan AI1-6 dan BBFS5-9", () => {
   }
 });
 
-Deno.test("BBFS7, BBFS8, dan AI6 dikalibrasi pada state masing-masing", () => {
+Deno.test("WIN membekukan selection weights dan MISS saja yang recalibrate", () => {
   const first = runAdaptiveOnline(HISTORY, "belakang", "bbfs", 7);
   const firstBbfs7 = selection(first.prediction.selections, "bbfs", 7);
   const firstBbfs8 = selection(first.prediction.selections, "bbfs", 8);
@@ -127,6 +128,14 @@ Deno.test("BBFS7, BBFS8, dan AI6 dikalibrasi pada state masing-masing", () => {
   assert.equal(bbfs7Update.hit, false);
   assert.equal(bbfs8Update.hit, true);
 
+  // BBFS8 WIN: tetap dievaluasi untuk audit, tetapi bobot tidak berubah.
+  assert.ok(Object.keys(bbfs8Update.expertLosses).length > 0);
+  assert.deepEqual(bbfs8Update.weightsAfter, bbfs8Update.weightsBefore);
+
+  // BBFS7 MISS: jalur recalibration tetap aktif.
+  assert.ok(Object.keys(bbfs7Update.expertLosses).length > 0);
+  assert.equal(weightMapsDiffer(bbfs7Update.weightsAfter, bbfs7Update.weightsBefore), true);
+
   const nextBbfs7 = selection(next.prediction.selections, "bbfs", 7);
   const nextBbfs8 = selection(next.prediction.selections, "bbfs", 8);
   const nextAi6 = selection(next.prediction.selections, "ai", 6);
@@ -139,7 +148,6 @@ Deno.test("BBFS7, BBFS8, dan AI6 dikalibrasi pada state masing-masing", () => {
   assert.equal(nextAi6.calibrationStateRevision, ai6Update.stateRevisionAfter);
 
   assert.ok(weightMapsDiffer(nextBbfs7.calibrationWeights, nextBbfs8.calibrationWeights));
-  assert.ok(weightMapsDiffer(nextBbfs7.calibrationWeights, nextAi6.calibrationWeights));
 });
 
 Deno.test("run tanpa settlement mempertahankan state selection yang sama", () => {
@@ -166,19 +174,27 @@ Deno.test("run tanpa settlement mempertahankan state selection yang sama", () =>
   }
 });
 
-Deno.test("migration 011 menyimpan dan mengaudit 11 calibration state V2", async () => {
-  const migration = await Deno.readTextFile(
+Deno.test("migration 011/012 menyimpan contract V2 dan policy WIN-freeze", async () => {
+  const migration011 = await Deno.readTextFile(
     new URL("../sql/neon/011_adaptive_v2_back_only.sql", import.meta.url),
+  );
+  const migration012 = await Deno.readTextFile(
+    new URL("../sql/neon/012_freeze_selection_weights_on_win.sql", import.meta.url),
   );
   const reconciliation = await Deno.readTextFile(
     new URL("../adaptive-service/reconcile.mts", import.meta.url),
   );
 
-  assert.match(migration, /hf-apie-v2-back/);
-  assert.match(migration, /tepat 11 selection/);
-  assert.match(migration, /selectionCalibrationPublished/);
-  assert.match(migration, /selectionCalibrationUpdated/);
-  assert.match(migration, /store_online_run_v1_calibration_base/);
+  assert.equal(ADAPTIVE_CONFIG_VERSION, "2026-08-08.1");
+  assert.match(migration011, /hf-apie-v2-back/);
+  assert.match(migration011, /tepat 11 selection/);
+  assert.match(migration011, /selectionCalibrationPublished/);
+  assert.match(migration011, /selectionCalibrationUpdated/);
+  assert.match(migration011, /store_online_run_v1_calibration_base/);
+  assert.match(migration012, /2026-08-08\.1/);
+  assert.match(migration012, /selectionWinPolicy', 'freeze'/);
+  assert.match(migration012, /selectionLossPolicy', 'recalibrate'/);
+  assert.match(migration012, /config_version = '2026-08-07\.1'/);
   assert.match(reconciliation, /ADAPTIVE_SELECTION_COUNT/);
   assert.match(reconciliation, /Migration 011 belum aktif/);
 });
