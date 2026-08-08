@@ -34,8 +34,12 @@ type StatisticsCacheEntry = {
 const statisticsCache = new Map<string, StatisticsCacheEntry>();
 const statisticsInFlight = new Map<string, Promise<MarketStatisticRow[]>>();
 
+function normalizeMarketId(value: string) {
+  return value.trim().toLowerCase();
+}
+
 function statisticsCacheKey(marketId?: string) {
-  return marketId?.trim().toLowerCase() || "*";
+  return marketId ? normalizeMarketId(marketId) : "*";
 }
 
 async function loadWinningMarketStatistics(marketId?: string): Promise<MarketStatisticRow[]> {
@@ -110,8 +114,34 @@ export async function fetchWinningMarketStatistics(marketId?: string): Promise<M
   if (cached && cached.expiresAt > now) return cached.rows;
   if (cached) statisticsCache.delete(key);
 
+  if (marketId) {
+    const globalCache = statisticsCache.get("*");
+    if (globalCache && globalCache.expiresAt > now) {
+      const normalizedId = normalizeMarketId(marketId);
+      const rows = globalCache.rows.filter((row) => normalizeMarketId(row.market_id) === normalizedId);
+      statisticsCache.set(key, { rows, expiresAt: globalCache.expiresAt });
+      return rows;
+    }
+  }
+
   const pending = statisticsInFlight.get(key);
   if (pending) return pending;
+
+  if (marketId) {
+    const globalPending = statisticsInFlight.get("*");
+    if (globalPending) {
+      const normalizedId = normalizeMarketId(marketId);
+      const request = globalPending.then((rows) => rows.filter((row) => normalizeMarketId(row.market_id) === normalizedId));
+      statisticsInFlight.set(key, request);
+      try {
+        const rows = await request;
+        statisticsCache.set(key, { rows, expiresAt: Date.now() + STAT_CACHE_TTL_MS });
+        return rows;
+      } finally {
+        statisticsInFlight.delete(key);
+      }
+    }
+  }
 
   const request = loadWinningMarketStatistics(marketId);
   statisticsInFlight.set(key, request);
