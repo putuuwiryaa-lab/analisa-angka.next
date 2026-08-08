@@ -12,8 +12,6 @@ begin;
 do $$
 declare
   v_definition text;
-  v_old_guard text := 'if v_config_version is distinct from ''2026-08-07.1'' then';
-  v_new_guard text := 'if v_config_version not in (''2026-08-07.1'', ''2026-08-08.1'') then';
 begin
   if to_regprocedure('adaptive.store_online_run_base(jsonb)') is null then
     raise exception 'Migration 011 belum aktif. Jalankan migration 011 lebih dulu.';
@@ -22,13 +20,15 @@ begin
   select pg_get_functiondef('adaptive.store_online_run_base(jsonb)'::regprocedure)
   into v_definition;
 
-  if position(v_new_guard in v_definition) > 0 then
-    null; -- rerun idempotent
-  elsif position(v_old_guard in v_definition) > 0 then
-    v_definition := replace(v_definition, v_old_guard, v_new_guard);
+  if position('2026-08-07.1' in v_definition) > 0 then
+    -- Function migration 011 menyebut config version pada guard dan metadata
+    -- engine config. Ganti seluruh referensi agar publisher konsisten.
+    v_definition := replace(v_definition, '2026-08-07.1', '2026-08-08.1');
     execute v_definition;
+  elsif position('2026-08-08.1' in v_definition) > 0 then
+    null; -- rerun idempotent
   else
-    raise exception 'Guard config Adaptive V2 migration 011 tidak ditemukan.';
+    raise exception 'Config Adaptive V2 migration 011 tidak ditemukan pada publisher.';
   end if;
 end;
 $$;
@@ -74,7 +74,7 @@ do update set
   config = excluded.config,
   is_active = true;
 
--- Fail closed bila function publisher belum menerima config baru.
+-- Fail closed bila function publisher belum sepenuhnya berpindah ke config baru.
 do $$
 declare
   v_definition text;
@@ -82,8 +82,9 @@ begin
   select pg_get_functiondef('adaptive.store_online_run_base(jsonb)'::regprocedure)
   into v_definition;
 
-  if position('2026-08-08.1' in v_definition) = 0 then
-    raise exception 'Publisher Adaptive belum menerima config 2026-08-08.1.';
+  if position('2026-08-08.1' in v_definition) = 0
+     or position('2026-08-07.1' in v_definition) > 0 then
+    raise exception 'Publisher Adaptive belum sepenuhnya memakai config 2026-08-08.1.';
   end if;
 end;
 $$;
