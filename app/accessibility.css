@@ -21,6 +21,17 @@
   transform: none;
 }
 
+/* Let the browser defer layout/paint for long Scan rows that are far outside the viewport. */
+.render-lazy-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
+}
+
+.render-lazy-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 84px;
+}
+
 /* Mobile GPUs pay a high cost for fixed backdrop filters, paint filters and repeated shadows. */
 @media (hover: none), (pointer: coarse) {
   nav.fixed.bottom-0.backdrop-blur-xl {
