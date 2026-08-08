@@ -21,6 +21,7 @@ import {
   validateAdaptiveSelection,
   validateFullAdaptivePublication,
 } from "./core/publication.mts";
+import { ADAPTIVE_SELECTION_COUNT } from "./core/types.mts";
 
 type AdaptiveTarget = "depan" | "tengah" | "belakang";
 type AdaptiveMethod = "ai" | "bbfs";
@@ -33,6 +34,8 @@ interface AdaptiveSelectionPayload {
   baselineSuccess: number;
   lift: number;
   selectionMargin: number;
+  calibrationWeights: Record<string, number>;
+  calibrationStateRevision: number;
 }
 
 interface AdaptivePredictionPayload {
@@ -224,7 +227,12 @@ async function loadContext(body: LoadContextRequest): Promise<Response> {
             'estimatedSuccess', s.estimated_success,
             'baselineSuccess', s.baseline_success,
             'lift', s.lift,
-            'selectionMargin', s.selection_margin
+            'selectionMargin', s.selection_margin,
+            'calibrationWeights', coalesce(to_jsonb(s)->'calibration_weights', '{}'::jsonb),
+            'calibrationStateRevision', coalesce(
+              (to_jsonb(s)->>'calibration_state_revision')::bigint,
+              0
+            )
           )
           order by s.method, s.digit_count
         )
@@ -337,11 +345,15 @@ async function storeOnlineRun(body: StoreOnlineRunRequest): Promise<Response> {
   const selectionsPublished = Number(stored.selectionsPublished ?? 0);
   const selectionsSettled = Number(stored.selectionsSettled ?? 0);
   const snapshotComplete = stored.snapshotComplete === true;
-  if (selectionsPublished !== 18 || !snapshotComplete) {
-    throw new Error("Migration 005 belum aktif: snapshot Adaptive belum menyimpan 18 selection.");
+  if (selectionsPublished !== ADAPTIVE_SELECTION_COUNT || !snapshotComplete) {
+    throw new Error(
+      `Adaptive service belum menyimpan snapshot lengkap ${ADAPTIVE_SELECTION_COUNT} selection.`,
+    );
   }
-  if (body.settlement?.predictionId && selectionsSettled !== 18) {
-    throw new Error("Settlement Adaptive tidak menghasilkan 18 evaluasi selection.");
+  if (body.settlement?.predictionId && selectionsSettled !== ADAPTIVE_SELECTION_COUNT) {
+    throw new Error(
+      `Settlement Adaptive tidak menghasilkan ${ADAPTIVE_SELECTION_COUNT} evaluasi selection.`,
+    );
   }
 
   const guardrailPayload: GuardrailRunPayload = {
@@ -372,7 +384,7 @@ export async function adaptiveServiceHandler(request: Request): Promise<Response
       ok: true,
       service: "hf-apie-adaptive-persistence",
       mode: "online-learning-full-publication",
-      publicationSelectionCount: 18,
+      publicationSelectionCount: ADAPTIVE_SELECTION_COUNT,
       guardrail: "ewma-ph-v1-observe-only",
       reconciliationConfigured: Boolean(
         Deno.env.get("SUPABASE_URL")?.trim() &&
