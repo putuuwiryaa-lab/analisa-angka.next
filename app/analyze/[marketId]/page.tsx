@@ -3,12 +3,12 @@
 import { use, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Share2, Target } from "lucide-react";
 import { MODES, type ModeKey } from "@/components/analysis/modes";
 import { PageTopBar } from "@/components/layout/PageTopBar";
 import { cn } from "@/lib/cn";
-import { fetchMarkets } from "@/lib/markets/client";
+import { findMarketByIdOrName } from "@/lib/markets/client";
+import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 
 function safeDecode(value: string) {
   try {
@@ -16,23 +16,6 @@ function safeDecode(value: string) {
   } catch {
     return value;
   }
-}
-
-function normalizeId(value: string) {
-  return safeDecode(value).trim().toLowerCase();
-}
-
-async function fetchMarketName(marketId: string) {
-  const markets = await fetchMarkets();
-  const decodedMarketId = safeDecode(marketId);
-  const requestedId = normalizeId(marketId);
-  const market = markets.find((item) => {
-    const id = item?.id ? normalizeId(String(item.id)) : "";
-    const name = item?.name ? normalizeId(String(item.name)) : "";
-    return id === requestedId || name === requestedId;
-  });
-
-  return market?.name || market?.id || decodedMarketId;
 }
 
 type MenuItem = {
@@ -143,12 +126,9 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
   const { marketId } = use(params);
   const router = useRouter();
   const decodedMarketId = safeDecode(marketId);
-
-  const { data: marketName = decodedMarketId } = useQuery({
-    queryKey: ["marketName", decodedMarketId],
-    queryFn: () => fetchMarketName(decodedMarketId),
-    enabled: Boolean(decodedMarketId),
-  });
+  const { data: markets = [] } = useMarketsQuery();
+  const market = findMarketByIdOrName(markets, decodedMarketId);
+  const marketName = market?.name || market?.id || decodedMarketId;
 
   return (
     <div className="animate-rise space-y-4 pb-5">
