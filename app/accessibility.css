@@ -37,11 +37,23 @@
   contain-intrinsic-size: auto 190px;
 }
 
-/* Mobile GPUs pay a high cost for fixed backdrop filters, paint filters and repeated shadows. */
+/* Mobile GPUs pay a high cost for fixed backdrop filters, paint filters and repeated transforms. */
 @media (hover: none), (pointer: coarse) {
   nav.fixed.bottom-0.backdrop-blur-xl {
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
+  }
+
+  /* Keep mobile page entry feedback, but avoid translate/scale and staggered compositor work. */
+  .animate-rise,
+  .animate-soft-pop,
+  .animate-page-enter,
+  .animate-slide-up-soft,
+  .animate-mobile-card {
+    animation-name: fade-in;
+    animation-duration: 180ms;
+    animation-delay: 0ms !important;
+    animation-timing-function: var(--ease-out-soft);
   }
 
   .pressable:hover:not(:active) {
