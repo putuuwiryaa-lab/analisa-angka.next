@@ -243,9 +243,10 @@ export function useAnalysisController({ type, marketId }: { type: string; market
         analysisScope: selectedScope,
       });
 
-      const cached = result ? null : readAnalysisCache(cacheKey);
-      if (cached) {
-        setResult(cached);
+      // Very recent entries are safe to reuse without an extra history lookup.
+      const recentCached = result ? null : readAnalysisCache(cacheKey);
+      if (recentCached) {
+        setResult(recentCached);
         setDetailValidationOpen(false);
         setAngkaJadiOpen(false);
         return;
@@ -255,15 +256,27 @@ export function useAnalysisController({ type, marketId }: { type: string; market
 
       try {
         const data = await getMarketData();
+        const revision = data[data.length - 1] || "";
+
+        // Older cache entries are reused only when they were produced from the
+        // exact same latest draw. A new result automatically invalidates them.
+        const verifiedCached = result ? null : readAnalysisCache(cacheKey, revision);
+        if (verifiedCached) {
+          setResult(verifiedCached);
+          setDetailValidationOpen(false);
+          setAngkaJadiOpen(false);
+          return;
+        }
+
         const nextResult = await postAnalyze(type, data, selectedParam, finalTargetPair, requestScope);
         setResult(nextResult);
-        writeAnalysisCache(cacheKey, nextResult);
+        writeAnalysisCache(cacheKey, nextResult, revision);
         setDetailValidationOpen(false);
       } catch (e: any) {
         setError(e.message || "Error koneksi server");
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     },
     [
       analysisScope,
