@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { runAnalysis } from "@/lib/server/engines/predictionEngine";
 import { buildCustomDigitLines, type TargetPair } from "@/lib/analysis/customDigit";
@@ -44,7 +45,7 @@ function normalizeMarket(market: MarketRow) {
     name: String(market.name ?? market.title ?? market.id ?? "Pasaran"),
     order: Number(market.order ?? market.sort_order ?? market.sort ?? 99),
     updatedAt: String(market.updated_at ?? "") || null,
-    data: historyData.split(/[\s\n\r\t,;|]+/).map((item) => item.trim()).filter((item) => /^\d{4}$/.test(item)).slice(-200),
+    data: parseStrictHistory(historyData).slice(-200),
   };
 }
 
@@ -203,6 +204,13 @@ export async function GET(request: NextRequest) {
     const nextCursor = requestedIds.length || markets.length < limit ? null : cursor + limit;
     return NextResponse.json({ rows, nextCursor, limit }, { headers: PRIVATE_SHORT_CACHE_HEADERS });
   } catch (error) {
+    if (error instanceof HistoryDataFormatError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 422, headers: NO_STORE_HEADERS },
+      );
+    }
+
     const message = error instanceof Error ? error.message : "Gagal membuat rekap badge.";
     return NextResponse.json({ error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
