@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
 import { NO_STORE_HEADERS, PRIVATE_SHORT_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
@@ -70,13 +71,6 @@ function extractHistoryData(market: RawMarket) {
   );
 }
 
-function parseHistoryTokens(historyData: string) {
-  return historyData
-    .split(/[\s\n\r\t,;|]+/)
-    .map((token) => token.trim())
-    .filter((token) => /^\d{4}$/.test(token));
-}
-
 async function findMarketByColumn(
   supabase: MarketSupabaseClient,
   column: "id" | "name",
@@ -128,7 +122,7 @@ async function loadMarketHistory(marketId: string): Promise<MarketHistoryPayload
 
     if (!matched) return null;
 
-    const history = parseHistoryTokens(extractHistoryData(market));
+    const history = parseStrictHistory(extractHistoryData(market));
     const value: MarketHistoryPayload = {
       success: true,
       market_id: marketIdOf(market),
@@ -178,6 +172,13 @@ export async function GET(request: NextRequest) {
       headers: PRIVATE_SHORT_CACHE_HEADERS,
     });
   } catch (e) {
+    if (e instanceof HistoryDataFormatError) {
+      return NextResponse.json(
+        { success: false, error: e.message },
+        { status: 422, headers: NO_STORE_HEADERS },
+      );
+    }
+
     const message = e instanceof Error ? e.message : "Gagal memuat histori pasaran";
     return NextResponse.json({ success: false, error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
