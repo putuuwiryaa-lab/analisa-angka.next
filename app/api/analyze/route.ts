@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
 import { runAnalysis } from "@/lib/server/engines/predictionEngine";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
@@ -79,21 +80,12 @@ function extractHistoryData(market: RawMarket) {
   );
 }
 
-function parseHistoryTokens(historyData: string) {
-  return historyData
-    .split(/[\s\n\r\t,;|]+/)
-    .map((token) => token.trim())
-    .filter((token) => /^\d{4}$/.test(token));
-}
-
 function sanitizeData(data: unknown): string[] | null {
   if (!Array.isArray(data)) return null;
 
-  const cleaned = data
-    .map((item) => String(item || "").trim())
-    .filter((item) => /^\d{4}$/.test(item));
+  const cleaned = data.map((item) => String(item ?? "").trim());
 
-  if (cleaned.length < 17) return null;
+  if (cleaned.some((item) => !/^\d{4}$/.test(item)) || cleaned.length < 17) return null;
 
   return cleaned.slice(-ANALYZE_WINDOW);
 }
@@ -139,7 +131,7 @@ async function loadMarketHistoryData(marketId: string) {
 
   if (!matched) return null;
 
-  return parseHistoryTokens(extractHistoryData(market));
+  return parseStrictHistory(extractHistoryData(market));
 }
 
 async function resolveAnalyzeData(marketId: string, data: unknown, internal: boolean) {
@@ -282,6 +274,13 @@ export async function POST(request: Request) {
       analysis_scope: safeScope,
     });
   } catch (e) {
+    if (e instanceof HistoryDataFormatError) {
+      return NextResponse.json(
+        { error: e.message },
+        { status: 422 },
+      );
+    }
+
     console.error(e);
 
     return NextResponse.json(
