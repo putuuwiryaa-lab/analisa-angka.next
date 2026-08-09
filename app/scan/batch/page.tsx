@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { Check, ChevronDown, Clipboard, Search, Square, SquareCheckBig, X } from "lucide-react";
+import { ADAPTIVE_AI_DIGIT_COUNTS, ADAPTIVE_BBFS_DIGIT_COUNTS, ADAPTIVE_TARGETS } from "@/lib/adaptive/types";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
@@ -95,7 +96,10 @@ export default function BatchScanPage() {
   function changeMode(mode: BatchMode) {
     setScanMode(mode);
     setDigitCount(MODES.find((item) => item.value === mode)?.digits ?? 7);
-    if (isAdaptiveMode(mode)) setTopRanks([1]);
+    if (isAdaptiveMode(mode)) {
+      setTopRanks([1]);
+      setTarget2D(ADAPTIVE_TARGETS[0]);
+    }
     setResult(null);
     setError("");
   }
@@ -146,7 +150,7 @@ export default function BatchScanPage() {
           marketIds: selected,
           scanMode,
           targetPos,
-          target2D,
+          target2D: adaptive ? ADAPTIVE_TARGETS[0] : target2D,
           target3D,
           digitCount,
           topRanks: adaptive ? [1] : topRanks,
@@ -172,11 +176,12 @@ export default function BatchScanPage() {
     window.setTimeout(() => setCopied(false), 1400);
   }
 
-  const digitMaximum = adaptive
-    ? 9
-    : isShioMode(scanMode as ScanMode)
-      ? 12
-      : 10;
+  const digitMaximum = !adaptive && isShioMode(scanMode as ScanMode) ? 12 : 10;
+  const digitOptions: readonly number[] = adaptive
+    ? scanMode === "adaptive_ai"
+      ? ADAPTIVE_AI_DIGIT_COUNTS
+      : ADAPTIVE_BBFS_DIGIT_COUNTS
+    : Array.from({ length: digitMaximum }, (_, index) => index + 1);
 
   return (
     <div className="animate-fade-in space-y-3">
@@ -200,6 +205,15 @@ export default function BatchScanPage() {
               <SelectField label="Target" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
                 <option value="depan">Depan</option><option value="belakang">Belakang</option>
               </SelectField>
+            ) : adaptive ? (
+              <SelectField
+                label="Target"
+                value={ADAPTIVE_TARGETS[0]}
+                onChange={(value) => setTarget2D(value as Target2D)}
+                disabled
+              >
+                <option value={ADAPTIVE_TARGETS[0]}>Belakang (Adaptive V2)</option>
+              </SelectField>
             ) : (
               <SelectField label="Target" value={target2D} onChange={(value) => setTarget2D(value as Target2D)}>
                 <option value="depan">Depan</option><option value="tengah">Tengah</option><option value="belakang">Belakang</option>
@@ -209,7 +223,7 @@ export default function BatchScanPage() {
 
           <div className="grid grid-cols-2 gap-2.5">
             <SelectField label="Jumlah digit" value={String(digitCount)} onChange={(value) => setDigitCount(Number(value))}>
-              {Array.from({ length: digitMaximum }, (_, index) => index + 1).map((digit) => <option key={digit} value={digit}>{digit} digit</option>)}
+              {digitOptions.map((digit) => <option key={digit} value={digit}>{digit} digit</option>)}
             </SelectField>
             <TextField label="Pemisah output" value={separator} onChange={(value) => setSeparator(value.slice(0, 16))} />
           </div>
@@ -315,12 +329,31 @@ function FieldLabel({ children }: { children: ReactNode }) {
   return <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted">{children}</span>;
 }
 
-function SelectField({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  children,
+  disabled = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+  disabled?: boolean;
+}) {
   return (
-    <label className="block min-w-0">
+    <label className={`block min-w-0 ${disabled ? "opacity-55" : ""}`}>
       <FieldLabel>{label}</FieldLabel>
       <div className="relative">
-        <select value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)} className="h-12 w-full appearance-none rounded-xl border border-border-soft bg-surface px-3 pr-8 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50">{children}</select>
+        <select
+          value={value}
+          disabled={disabled}
+          onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)}
+          className="h-12 w-full appearance-none rounded-xl border border-border-soft bg-surface px-3 pr-8 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:cursor-not-allowed disabled:text-text-soft"
+        >
+          {children}
+        </select>
         <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-soft" />
       </div>
     </label>
