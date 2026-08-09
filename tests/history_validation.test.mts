@@ -54,3 +54,41 @@ Deno.test("histori kosong tetap menghasilkan collection kosong dan latest null",
   assert.deepEqual(parseAdaptiveServiceHistory(" \n\t "), []);
   assert.equal(latestStrictHistoryResult(null), null);
 });
+
+Deno.test("route Analisa publik menolak history_data malformed dengan notifikasi 422", async () => {
+  const routePaths = [
+    "../app/api/analyze/route.ts",
+    "../app/api/market-history/route.ts",
+    "../app/api/share-predictions/rekap-badge/route.ts",
+  ];
+
+  for (const path of routePaths) {
+    const route = await Deno.readTextFile(new URL(path, import.meta.url));
+
+    assert.match(route, /parseStrictHistory/, `${path} wajib memakai parser histori strict`);
+    assert.match(route, /HistoryDataFormatError/, `${path} wajib mengenali format histori rusak`);
+    assert.match(route, /status:\s*422/, `${path} wajib mengirim status 422`);
+    assert.equal(
+      route.includes(".filter((token) => /^\\d{4}$/.test(token))") ||
+        route.includes(".filter((item) => /^\\d{4}$/.test(item))"),
+      false,
+      `${path} tidak boleh membuang token rusak secara diam-diam`,
+    );
+  }
+});
+
+Deno.test("pesan histori rusak diteruskan sampai notifikasi error Analisa", async () => {
+  const [marketClient, analyzeClient, controller, view] = await Promise.all([
+    Deno.readTextFile(new URL("../lib/markets/client.ts", import.meta.url)),
+    Deno.readTextFile(new URL("../components/analysis/analysisApiClient.ts", import.meta.url)),
+    Deno.readTextFile(new URL("../components/analysis/useAnalysisController.ts", import.meta.url)),
+    Deno.readTextFile(
+      new URL("../app/analyze/[marketId]/[mode]/AnalyzeModeClient.tsx", import.meta.url),
+    ),
+  ]);
+
+  assert.match(marketClient, /throw new Error\(json\?\.error/);
+  assert.match(analyzeClient, /throw new Error\(json\.error/);
+  assert.match(controller, /setError\(e\.message/);
+  assert.match(view, /\{error\}/);
+});
