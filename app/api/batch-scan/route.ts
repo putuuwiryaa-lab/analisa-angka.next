@@ -3,6 +3,11 @@ import {
   adaptiveBatchSnapshotIssue,
   buildAdaptiveBatchSnapshotRequest,
 } from "@/lib/adaptive/batch-snapshot";
+import {
+  type AdaptiveMethod,
+  isAdaptiveSelection,
+  isAdaptiveTarget,
+} from "@/lib/adaptive/types";
 import { runAutoScan } from "@/lib/engine/acke-engine";
 import {
   HistoryDataFormatError,
@@ -20,7 +25,6 @@ export const dynamic = "force-dynamic";
 const MAX_BATCH_MARKETS = 35;
 const TOP_RANKS = [1, 2, 3] as const;
 
-type AdaptiveMethod = "ai" | "bbfs";
 type MarketRow = { id: string; name: string | null; history_data: string | null };
 type BatchLine = { id: string; name: string; digits: string };
 type ScanRequest = {
@@ -225,10 +229,21 @@ export async function POST(req: Request) {
     const method = adaptiveMethod(body.scanMode);
 
     if (method) {
-      if (!isTarget2D(body.target2D)) {
-        return NextResponse.json({ error: "Target Adaptive tidak valid." }, { status: 400 });
+      if (!isAdaptiveTarget(body.target2D)) {
+        return NextResponse.json(
+          { error: "Adaptive V2 hanya menyediakan target 2D belakang." },
+          { status: 400 },
+        );
       }
-      const digitCount = clamp(body.digitCount, method === "ai" ? 4 : 7, 1, 9);
+
+      const digitCount = Number(body.digitCount ?? (method === "ai" ? 4 : 7));
+      if (!Number.isInteger(digitCount) || !isAdaptiveSelection(method, digitCount)) {
+        return NextResponse.json(
+          { error: "Kombinasi metode dan jumlah digit Adaptive V2 tidak tersedia." },
+          { status: 400 },
+        );
+      }
+
       const latestById = new Map<string, string | null>();
 
       for (const id of marketIds) {
