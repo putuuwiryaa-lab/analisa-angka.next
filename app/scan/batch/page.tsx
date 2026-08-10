@@ -1,32 +1,12 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type ReactNode,
-} from "react";
-import {
-  Check,
-  Clipboard,
-  Search,
-  Square,
-  SquareCheckBig,
-  X,
-} from "lucide-react";
-import {
-  ADAPTIVE_AI_DIGIT_COUNTS,
-  ADAPTIVE_BBFS_DIGIT_COUNTS,
-  ADAPTIVE_TARGETS,
-} from "@/lib/adaptive/types";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { Check, Clipboard, Search, Square, SquareCheckBig, X } from "lucide-react";
+import { ADAPTIVE_AI_DIGIT_COUNTS, ADAPTIVE_BBFS_DIGIT_COUNTS, ADAPTIVE_TARGETS } from "@/lib/adaptive/types";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
-import ThemedSelect, {
-  type ThemedSelectOption,
-} from "../_components/ThemedSelect";
+import ThemedSelect, { type ThemedSelectOption } from "../_components/ThemedSelect";
 
 type Market = { id: string; name?: string | null; lastResult?: string };
 type AdaptiveBatchMode = "adaptive_bbfs" | "adaptive_ai";
@@ -119,20 +99,13 @@ export default function BatchScanPage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const adaptive = isAdaptiveMode(scanMode);
-  const marketsError =
-    marketsQueryError instanceof Error
-      ? marketsQueryError.message
-      : marketsQueryError
-        ? "Gagal memuat pasaran."
-        : "";
+  const marketsError = marketsQueryError instanceof Error ? marketsQueryError.message : marketsQueryError ? "Gagal memuat pasaran." : "";
   const visibleError = error || marketsError;
 
   const filteredMarkets = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return markets;
-    return markets.filter((market) =>
-      `${market.id} ${market.name || ""}`.toLowerCase().includes(normalized),
-    );
+    return markets.filter((market) => `${market.id} ${market.name || ""}`.toLowerCase().includes(normalized));
   }, [markets, query]);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -140,9 +113,7 @@ export default function BatchScanPage() {
   const outputText = useMemo(() => {
     if (!result) return "";
     const activeSeparator = result.lineSeparator || separator;
-    return result.results
-      .map((row) => `${row.name} ${activeSeparator} ${row.digits}`)
-      .join("\n");
+    return result.results.map((row) => `${row.name} ${activeSeparator} ${row.digits}`).join("\n");
   }, [result, separator]);
 
   function changeMode(mode: BatchMode) {
@@ -172,14 +143,7 @@ export default function BatchScanPage() {
   }
 
   function selectVisible() {
-    setSelected(
-      [
-        ...new Set([
-          ...selected,
-          ...filteredMarkets.map((market) => market.id),
-        ]),
-      ].slice(0, MAX_MARKETS),
-    );
+    setSelected([...new Set([...selected, ...filteredMarkets.map((market) => market.id)])].slice(0, MAX_MARKETS));
   }
 
   function toggleRank(rank: number) {
@@ -219,8 +183,7 @@ export default function BatchScanPage() {
         }),
       });
       const data = await response.json();
-      if (!response.ok || data?.error)
-        throw new Error(data?.error || "Batch scan gagal.");
+      if (!response.ok || data?.error) throw new Error(data?.error || "Batch scan gagal.");
       setResult(data);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Batch scan gagal.");
@@ -252,24 +215,8 @@ export default function BatchScanPage() {
       <section className="depth-1 rounded-2xl border p-3 sm:p-4">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2.5">
-            <NumberField
-              label="Data uji"
-              value={rounds}
-              min={1}
-              max={100}
-              hint="maks. 100"
-              onChange={changeRounds}
-              disabled={adaptive}
-            />
-            <NumberField
-              label="Patah"
-              value={patah}
-              min={0}
-              max={rounds}
-              hint={`maks. ${rounds}`}
-              onChange={setPatah}
-              disabled={adaptive}
-            />
+            <NumberField label="Data uji" value={rounds} min={1} max={100} hint="maks. 100" onChange={changeRounds} disabled={adaptive} />
+            <NumberField label="Patah" value={patah} min={0} max={rounds} hint={`maks. ${rounds}`} onChange={setPatah} disabled={adaptive} />
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
@@ -324,11 +271,7 @@ export default function BatchScanPage() {
               options={digitOptions}
               onChange={(value) => setDigitCount(Number(value))}
             />
-            <TextField
-              label="Pemisah output"
-              value={separator}
-              onChange={(value) => setSeparator(value.slice(0, 16))}
-            />
+            <TextField label="Pemisah output" value={separator} onChange={(value) => setSeparator(value.slice(0, 16))} />
           </div>
 
           {!adaptive ? (
@@ -344,12 +287,7 @@ export default function BatchScanPage() {
                       onClick={() => toggleRank(rank)}
                       className={`pressable flex h-12 items-center justify-center gap-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wide shadow-inner shadow-black/10 ${active ? "border-primary/40 bg-primary/15 text-primary-soft" : "border-border-soft bg-surface text-text-muted"}`}
                     >
-                      {active ? (
-                        <SquareCheckBig size={15} />
-                      ) : (
-                        <Square size={15} />
-                      )}{" "}
-                      Top {rank}
+                      {active ? <SquareCheckBig size={15} /> : <Square size={15} />} Top {rank}
                     </button>
                   );
                 })}
@@ -362,29 +300,18 @@ export default function BatchScanPage() {
       <section className="depth-1 rounded-2xl border p-3 sm:p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-text-soft">
-              Daftar pasaran
-            </p>
-            <h2 className="display text-base text-text">
-              Dipilih {selected.length}/{MAX_MARKETS}
-            </h2>
+            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-text-soft">Daftar pasaran</p>
+            <h2 className="display text-base text-text">Dipilih {selected.length}/{MAX_MARKETS}</h2>
           </div>
           {selected.length ? (
-            <button
-              type="button"
-              onClick={() => setSelected([])}
-              className="pressable flex h-8 items-center gap-1 rounded-lg border border-danger/25 bg-danger/10 px-2.5 text-[9px] font-black uppercase text-danger"
-            >
+            <button type="button" onClick={() => setSelected([])} className="pressable flex h-8 items-center gap-1 rounded-lg border border-danger/25 bg-danger/10 px-2.5 text-[9px] font-black uppercase text-danger">
               <X size={13} /> Bersihkan
             </button>
           ) : null}
         </div>
 
         <div className="relative mb-2.5">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-soft"
-            size={16}
-          />
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-soft" size={16} />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -393,12 +320,7 @@ export default function BatchScanPage() {
           />
         </div>
 
-        <button
-          type="button"
-          onClick={selectVisible}
-          disabled={marketsLoading || !filteredMarkets.length}
-          className="pressable mb-2.5 h-10 w-full rounded-xl border border-border-soft bg-surface text-[10px] font-black uppercase tracking-wide text-text-muted shadow-inner shadow-black/10 disabled:opacity-50"
-        >
+        <button type="button" onClick={selectVisible} disabled={marketsLoading || !filteredMarkets.length} className="pressable mb-2.5 h-10 w-full rounded-xl border border-border-soft bg-surface text-[10px] font-black uppercase tracking-wide text-text-muted shadow-inner shadow-black/10 disabled:opacity-50">
           Pilih semua hasil pencarian
         </button>
 
@@ -412,34 +334,17 @@ export default function BatchScanPage() {
                 onClick={() => toggleMarket(market.id)}
                 className={`render-lazy-row pressable flex min-h-12 items-center justify-between gap-1 rounded-xl border px-2 py-2 text-left shadow-inner shadow-black/10 ${active ? "border-primary/45 bg-primary/15" : "border-border-soft bg-surface"}`}
               >
-                <span
-                  className={`line-clamp-2 text-[9px] font-black uppercase leading-snug ${active ? "text-primary-soft" : "text-text"}`}
-                >
-                  {market.name || market.id}
-                </span>
-                {active ? (
-                  <Check size={13} className="shrink-0 text-primary-soft" />
-                ) : null}
+                <span className={`line-clamp-2 text-[9px] font-black uppercase leading-snug ${active ? "text-primary-soft" : "text-text"}`}>{market.name || market.id}</span>
+                {active ? <Check size={13} className="shrink-0 text-primary-soft" /> : null}
               </button>
             );
           })}
         </div>
 
-        {visibleError ? (
-          <div className="mt-3 rounded-xl border border-danger/30 bg-danger/10 p-2.5 text-xs font-bold text-danger">
-            {visibleError}
-          </div>
-        ) : null}
+        {visibleError ? <div className="mt-3 rounded-xl border border-danger/30 bg-danger/10 p-2.5 text-xs font-bold text-danger">{visibleError}</div> : null}
 
-        <button
-          type="button"
-          onClick={runBatch}
-          disabled={loading || marketsLoading || !selected.length}
-          className="pressable mt-4 flex h-[3.25rem] w-full items-center justify-center rounded-xl border border-primary/70 bg-primary px-4 text-sm font-black text-bg-deep shadow-[0_10px_24px_rgba(105,151,255,0.16)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading
-            ? `Memproses ${selected.length} pasaran…`
-            : "Batch Scan Sekarang"}
+        <button type="button" onClick={runBatch} disabled={loading || marketsLoading || !selected.length} className="pressable mt-4 flex h-[3.25rem] w-full items-center justify-center rounded-xl border border-primary/70 bg-primary px-4 text-sm font-black text-bg-deep shadow-[0_10px_24px_rgba(105,151,255,0.16)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50">
+          {loading ? `Memproses ${selected.length} pasaran…` : "Batch Scan Sekarang"}
         </button>
       </section>
 
@@ -447,11 +352,7 @@ export default function BatchScanPage() {
         <section className="depth-1 rounded-2xl border p-3 sm:p-4">
           <div className="mb-2.5 flex items-center justify-between gap-2">
             <FieldLabel>Hasil siap copy</FieldLabel>
-            <button
-              type="button"
-              onClick={copyOutput}
-              className="pressable flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 text-[9px] font-black uppercase tracking-wide text-primary-soft"
-            >
+            <button type="button" onClick={copyOutput} className="pressable flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 text-[9px] font-black uppercase tracking-wide text-primary-soft">
               {copied ? <Check size={13} /> : <Clipboard size={13} />}
               {copied ? "Tersalin" : "Copy"}
             </button>
@@ -471,11 +372,7 @@ export default function BatchScanPage() {
 }
 
 function FieldLabel({ children }: { children: ReactNode }) {
-  return (
-    <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted">
-      {children}
-    </span>
-  );
+  return <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted">{children}</span>;
 }
 
 function NumberField({
@@ -532,9 +429,7 @@ function NumberField({
           min={min}
           max={max}
           disabled={disabled}
-          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-            setDraft(event.target.value)
-          }
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
           onBlur={() => {
             if (cancelBlurRef.current) {
               cancelBlurRef.current = false;
@@ -553,35 +448,17 @@ function NumberField({
           }}
           className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:cursor-not-allowed disabled:text-text-soft"
         />
-        {hint ? (
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">
-            {hint}
-          </span>
-        ) : null}
+        {hint ? <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">{hint}</span> : null}
       </div>
     </label>
   );
 }
 
-function TextField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function TextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
     <label className="block min-w-0">
       <FieldLabel>{label}</FieldLabel>
-      <input
-        value={value}
-        onChange={(event: ChangeEvent<HTMLInputElement>) =>
-          onChange(event.target.value)
-        }
-        className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50"
-      />
+      <input value={value} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value)} className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50" />
     </label>
   );
 }
