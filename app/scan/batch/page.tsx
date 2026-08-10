@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { Check, ChevronDown, Clipboard, Search, Square, SquareCheckBig, X } from "lucide-react";
+import { Check, Clipboard, Search, Square, SquareCheckBig, X } from "lucide-react";
 import { ADAPTIVE_AI_DIGIT_COUNTS, ADAPTIVE_BBFS_DIGIT_COUNTS, ADAPTIVE_TARGETS } from "@/lib/adaptive/types";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
+import ThemedSelect, { type ThemedSelectOption } from "../_components/ThemedSelect";
 
 type Market = { id: string; name?: string | null; lastResult?: string };
 type AdaptiveBatchMode = "adaptive_bbfs" | "adaptive_ai";
@@ -31,6 +32,28 @@ const MODES: { value: BatchMode; label: string; digits: number }[] = [
   { value: "off_3d", label: "OFF 3D", digits: 3 },
   { value: "shio", label: "Shio", digits: 6 },
   { value: "off_shio", label: "OFF Shio", digits: 6 },
+];
+
+const POSITION_OPTIONS: ThemedSelectOption[] = [
+  { value: "A", label: "AS" },
+  { value: "C", label: "COP" },
+  { value: "K", label: "KPL" },
+  { value: "E", label: "EKR" },
+];
+
+const TARGET_3D_OPTIONS: ThemedSelectOption[] = [
+  { value: "depan", label: "Depan" },
+  { value: "belakang", label: "Belakang" },
+];
+
+const TARGET_2D_OPTIONS: ThemedSelectOption[] = [
+  { value: "depan", label: "Depan" },
+  { value: "tengah", label: "Tengah" },
+  { value: "belakang", label: "Belakang" },
+];
+
+const ADAPTIVE_TARGET_OPTIONS: ThemedSelectOption[] = [
+  { value: ADAPTIVE_TARGETS[0], label: "Belakang (Adaptive V2)" },
 ];
 
 function isAdaptiveMode(mode: BatchMode): mode is AdaptiveBatchMode {
@@ -177,11 +200,15 @@ export default function BatchScanPage() {
   }
 
   const digitMaximum = !adaptive && isShioMode(scanMode as ScanMode) ? 12 : 10;
-  const digitOptions: readonly number[] = adaptive
+  const digitValues: readonly number[] = adaptive
     ? scanMode === "adaptive_ai"
       ? ADAPTIVE_AI_DIGIT_COUNTS
       : ADAPTIVE_BBFS_DIGIT_COUNTS
     : Array.from({ length: digitMaximum }, (_, index) => index + 1);
+  const digitOptions: ThemedSelectOption[] = digitValues.map((digit) => ({
+    value: String(digit),
+    label: `${digit} digit`,
+  }));
 
   return (
     <div className="animate-fade-in space-y-3">
@@ -193,38 +220,57 @@ export default function BatchScanPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
-            <SelectField label="Jenis" value={scanMode} onChange={(value) => changeMode(value as BatchMode)}>
-              {MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
-            </SelectField>
+            <ThemedSelect
+              label="Jenis"
+              value={scanMode}
+              options={MODES}
+              onChange={(value) => changeMode(value as BatchMode)}
+              wide
+            />
 
             {!adaptive && isPositionMode(scanMode) ? (
-              <SelectField label="Target" value={targetPos} onChange={(value) => setTargetPos(value as Posisi)}>
-                <option value="A">AS</option><option value="C">COP</option><option value="K">KPL</option><option value="E">EKR</option>
-              </SelectField>
+              <ThemedSelect
+                label="Target"
+                value={targetPos}
+                options={POSITION_OPTIONS}
+                onChange={(value) => setTargetPos(value as Posisi)}
+                align="end"
+              />
             ) : !adaptive && is3DMode(scanMode) ? (
-              <SelectField label="Target" value={target3D} onChange={(value) => setTarget3D(value as Target3D)}>
-                <option value="depan">Depan</option><option value="belakang">Belakang</option>
-              </SelectField>
+              <ThemedSelect
+                label="Target"
+                value={target3D}
+                options={TARGET_3D_OPTIONS}
+                onChange={(value) => setTarget3D(value as Target3D)}
+                align="end"
+              />
             ) : adaptive ? (
-              <SelectField
+              <ThemedSelect
                 label="Target"
                 value={ADAPTIVE_TARGETS[0]}
+                options={ADAPTIVE_TARGET_OPTIONS}
                 onChange={(value) => setTarget2D(value as Target2D)}
                 disabled
-              >
-                <option value={ADAPTIVE_TARGETS[0]}>Belakang (Adaptive V2)</option>
-              </SelectField>
+                align="end"
+              />
             ) : (
-              <SelectField label="Target" value={target2D} onChange={(value) => setTarget2D(value as Target2D)}>
-                <option value="depan">Depan</option><option value="tengah">Tengah</option><option value="belakang">Belakang</option>
-              </SelectField>
+              <ThemedSelect
+                label="Target"
+                value={target2D}
+                options={TARGET_2D_OPTIONS}
+                onChange={(value) => setTarget2D(value as Target2D)}
+                align="end"
+              />
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
-            <SelectField label="Jumlah digit" value={String(digitCount)} onChange={(value) => setDigitCount(Number(value))}>
-              {digitOptions.map((digit) => <option key={digit} value={digit}>{digit} digit</option>)}
-            </SelectField>
+            <ThemedSelect
+              label="Jumlah digit"
+              value={String(digitCount)}
+              options={digitOptions}
+              onChange={(value) => setDigitCount(Number(value))}
+            />
             <TextField label="Pemisah output" value={separator} onChange={(value) => setSeparator(value.slice(0, 16))} />
           </div>
 
@@ -327,37 +373,6 @@ export default function BatchScanPage() {
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted">{children}</span>;
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  children,
-  disabled = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: ReactNode;
-  disabled?: boolean;
-}) {
-  return (
-    <label className={`block min-w-0 ${disabled ? "opacity-55" : ""}`}>
-      <FieldLabel>{label}</FieldLabel>
-      <div className="relative">
-        <select
-          value={value}
-          disabled={disabled}
-          onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)}
-          className="h-12 w-full appearance-none rounded-xl border border-border-soft bg-surface px-3 pr-8 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:cursor-not-allowed disabled:text-text-soft"
-        >
-          {children}
-        </select>
-        <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-soft" />
-      </div>
-    </label>
-  );
 }
 
 function NumberField({
