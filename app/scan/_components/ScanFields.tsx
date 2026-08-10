@@ -7,6 +7,7 @@ import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { is3DMode, isPositionMode } from "@/lib/shared/scan-mode";
 import { marketLabel, MODE_OPTIONS } from "../_lib";
 import type { Market } from "../_lib";
+import ThemedSelect, { type ThemedSelectOption } from "./ThemedSelect";
 
 type Props = {
   markets: Market[];
@@ -34,31 +35,27 @@ type Props = {
   onScan: () => void;
 };
 
-type SelectOption = {
-  value: string;
-  label: string;
-};
-
-const POSITION_OPTIONS: SelectOption[] = [
+const POSITION_OPTIONS: ThemedSelectOption[] = [
   { value: "A", label: "AS" },
   { value: "C", label: "COP" },
   { value: "K", label: "KPL" },
   { value: "E", label: "EKR" },
 ];
 
-const TARGET_3D_OPTIONS: SelectOption[] = [
+const TARGET_3D_OPTIONS: ThemedSelectOption[] = [
   { value: "depan", label: "Depan" },
   { value: "belakang", label: "Belakang" },
 ];
 
-const TARGET_2D_OPTIONS: SelectOption[] = [
+const TARGET_2D_OPTIONS: ThemedSelectOption[] = [
   { value: "depan", label: "Depan" },
   { value: "tengah", label: "Tengah" },
   { value: "belakang", label: "Belakang" },
 ];
 
 export default function ScanFields(props: Props) {
-  const digitMaximum = props.scanMode === "shio" || props.scanMode === "off_shio" ? 12 : 10;
+  const digitMaximum =
+    props.scanMode === "shio" || props.scanMode === "off_shio" ? 12 : 10;
   const digitOptions = Array.from({ length: digitMaximum }, (_, index) => ({
     value: String(index + 1),
     label: `${index + 1} digit`,
@@ -76,8 +73,22 @@ export default function ScanFields(props: Props) {
         />
 
         <div className="grid grid-cols-2 gap-2.5">
-          <NumberField label="Data uji" value={props.rounds} min={1} max={100} hint="maks. 100" onChange={props.onRoundsChange} />
-          <NumberField label="Patah" value={props.patah} min={0} max={props.rounds} hint={`maks. ${props.rounds}`} onChange={props.onPatahChange} />
+          <NumberField
+            label="Data uji"
+            value={props.rounds}
+            min={1}
+            max={100}
+            hint="maks. 100"
+            onChange={props.onRoundsChange}
+          />
+          <NumberField
+            label="Patah"
+            value={props.patah}
+            min={0}
+            max={props.rounds}
+            hint={`maks. ${props.rounds}`}
+            onChange={props.onPatahChange}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
@@ -119,7 +130,13 @@ export default function ScanFields(props: Props) {
             options={digitOptions}
             onChange={(value) => props.onDigitCountChange(Number(value))}
           />
-          <NumberField label="Batas hasil" value={props.stopScan} min={1} hint="saran ≤20" onChange={props.onStopScanChange} />
+          <NumberField
+            label="Batas hasil"
+            value={props.stopScan}
+            min={1}
+            hint="saran ≤20"
+            onChange={props.onStopScanChange}
+          />
         </div>
       </div>
 
@@ -136,7 +153,11 @@ export default function ScanFields(props: Props) {
 }
 
 function FieldLabel({ children }: { children: ReactNode }) {
-  return <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted">{children}</span>;
+  return (
+    <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted">
+      {children}
+    </span>
+  );
 }
 
 function MarketSelectField({
@@ -158,7 +179,11 @@ function MarketSelectField({
   const searchRef = useRef<HTMLInputElement>(null);
   const normalizedQuery = query.trim().toLocaleLowerCase("id-ID");
   const filteredMarkets = normalizedQuery
-    ? markets.filter((market) => `${marketLabel(market)} ${market.lastResult || ""}`.toLocaleLowerCase("id-ID").includes(normalizedQuery))
+    ? markets.filter((market) =>
+        `${marketLabel(market)} ${market.lastResult || ""}`
+          .toLocaleLowerCase("id-ID")
+          .includes(normalizedQuery),
+      )
     : markets;
 
   useEffect(() => {
@@ -200,12 +225,19 @@ function MarketSelectField({
       >
         <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_4px_rgba(124,77,255,0.14)]" />
         <span className="min-w-0 flex-1 truncate text-sm font-black text-text">
-          {selectedMarket ? marketLabel(selectedMarket) : disabled ? "MEMUAT PASARAN…" : "PILIH PASARAN"}
+          {selectedMarket
+            ? marketLabel(selectedMarket)
+            : disabled
+              ? "MEMUAT PASARAN…"
+              : "PILIH PASARAN"}
         </span>
         <span className="num shrink-0 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-sm font-black tracking-[0.06em] text-accent">
           {selectedMarket?.lastResult || "----"}
         </span>
-        <ChevronDown size={16} className={`shrink-0 text-text-soft transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          size={16}
+          className={`shrink-0 text-text-soft transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open ? (
@@ -223,7 +255,11 @@ function MarketSelectField({
             </div>
           </div>
 
-          <div role="listbox" aria-label="Daftar pasaran" className="max-h-[min(18rem,52vh)] overflow-y-auto p-1.5">
+          <div
+            role="listbox"
+            aria-label="Daftar pasaran"
+            className="max-h-[min(18rem,52vh)] overflow-y-auto p-1.5"
+          >
             {filteredMarkets.length ? (
               filteredMarkets.map((market) => {
                 const selected = market.id === value;
@@ -235,105 +271,33 @@ function MarketSelectField({
                     aria-selected={selected}
                     onClick={() => selectMarket(market.id)}
                     className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors ${
-                      selected ? "bg-primary/16 text-text" : "text-text-muted hover:bg-white/[0.06] hover:text-text"
+                      selected
+                        ? "bg-primary/16 text-text"
+                        : "text-text-muted hover:bg-white/[0.06] hover:text-text"
                     }`}
                   >
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${selected ? "bg-primary" : "bg-text-faint"}`} />
-                    <span className="min-w-0 flex-1 truncate text-sm font-black">{marketLabel(market)}</span>
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${selected ? "bg-primary" : "bg-text-faint"}`}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm font-black">
+                      {marketLabel(market)}
+                    </span>
                     <span className="num shrink-0 rounded-lg border border-accent/25 bg-accent/10 px-2 py-1 text-xs font-black text-accent">
                       {market.lastResult || "----"}
                     </span>
-                    <Check size={15} className={selected ? "text-primary-soft" : "invisible"} />
+                    <Check
+                      size={15}
+                      className={selected ? "text-primary-soft" : "invisible"}
+                    />
                   </button>
                 );
               })
             ) : (
-              <div className="px-3 py-8 text-center text-xs font-bold text-text-soft">Pasaran tidak ditemukan</div>
+              <div className="px-3 py-8 text-center text-xs font-bold text-text-soft">
+                Pasaran tidak ditemukan
+              </div>
             )}
           </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function ThemedSelect({
-  label,
-  value,
-  options,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  value: string;
-  options: readonly SelectOption[];
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const selectedOption = options.find((option) => option.value === value) ?? options[0];
-
-  useEffect(() => {
-    if (!open) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  return (
-    <div ref={rootRef} className={`relative min-w-0 ${open ? "z-40" : "z-0"}`}>
-      <FieldLabel>{label}</FieldLabel>
-      <button
-        type="button"
-        disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-        className="flex h-12 w-full items-center rounded-xl border border-border-soft bg-surface px-3 text-left text-sm font-black text-text shadow-inner shadow-black/10 outline-none transition-colors hover:border-border-strong focus:border-primary/60 focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-55"
-      >
-        <span className="min-w-0 flex-1 truncate">{selectedOption?.label || "Pilih"}</span>
-        <ChevronDown size={16} className={`ml-2 shrink-0 text-text-soft transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open ? (
-        <div
-          role="listbox"
-          aria-label={label}
-          className="absolute left-0 right-0 top-full mt-2 max-h-56 overflow-y-auto rounded-xl border border-border-strong bg-surface-2 p-1.5 shadow-[0_20px_55px_rgba(0,0,0,0.5)] ring-1 ring-white/5"
-        >
-          {options.map((option) => {
-            const selected = option.value === value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                onClick={() => {
-                  onChange(option.value);
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-black transition-colors ${
-                  selected ? "bg-primary/16 text-text" : "text-text-muted hover:bg-white/[0.06] hover:text-text"
-                }`}
-              >
-                <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                <Check size={14} className={selected ? "text-primary-soft" : "invisible"} />
-              </button>
-            );
-          })}
         </div>
       ) : null}
     </div>
@@ -377,7 +341,10 @@ function NumberField({
     }
 
     const integer = Math.trunc(parsed);
-    const normalized = Math.max(min, max === undefined ? integer : Math.min(max, integer));
+    const normalized = Math.max(
+      min,
+      max === undefined ? integer : Math.min(max, integer),
+    );
     setDraft(String(normalized));
     if (normalized !== value) onChange(normalized);
   };
@@ -393,7 +360,9 @@ function NumberField({
           min={min}
           max={max}
           disabled={disabled}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            setDraft(event.target.value)
+          }
           onBlur={() => {
             if (cancelBlurRef.current) {
               cancelBlurRef.current = false;
@@ -412,7 +381,11 @@ function NumberField({
           }}
           className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55"
         />
-        {hint ? <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">{hint}</span> : null}
+        {hint ? (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">
+            {hint}
+          </span>
+        ) : null}
       </div>
     </label>
   );
