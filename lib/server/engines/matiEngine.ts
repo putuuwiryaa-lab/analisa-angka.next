@@ -41,6 +41,39 @@ export function matiRecencyValue(
   return recency[digit] ?? NEVER_SEEN_RECENCY;
 }
 
+export function buildMatiActiveStats({
+  keys,
+  names,
+  scores,
+  eliteSelection,
+  predictions,
+  result,
+}: {
+  keys: string[];
+  names: string[];
+  scores: Record<string, number>;
+  eliteSelection: MatiEliteSelection;
+  predictions: Record<string, number>;
+  result: string[];
+}): MatiPosStat[] {
+  const eliteKeys = new Set(eliteSelection.keys);
+
+  return keys
+    .filter(
+      (key) =>
+        eliteKeys.has(key) && result.includes(String(predictions[key])),
+    )
+    .map((key) => {
+      const index = keys.indexOf(key);
+      return {
+        name: names[index],
+        score: scores[key],
+        lolos: true,
+        fallback: eliteSelection.fallback,
+      };
+    });
+}
+
 /**
  * Engine angka mati per posisi (AS=0, KOP=1, KEPALA=2, EKOR=3).
  * SATU sumber kebenaran — dipakai menu Mati DAN menu Rekap.
@@ -75,14 +108,6 @@ export function runMatiPos(D: string[], posIdx: number, param: number = 1): Mati
 
   const eliteSelection = selectMatiEliteKeys(MK, SA);
   const el = eliteSelection.keys;
-  const eliteKeys = new Set(el);
-  const allStats = MK.map((k, idx) => ({
-    key: k,
-    name: RM_NAMES[idx],
-    score: SA[k],
-    lolos: eliteKeys.has(k),
-    fallback: eliteSelection.fallback,
-  }));
 
   const FP: any = _0x3ca571(D[D.length - 2], D[D.length - 1]);
   const ct: Record<string, number> = {};
@@ -113,15 +138,15 @@ export function runMatiPos(D: string[], posIdx: number, param: number = 1): Mati
 
   if (result.length === 0) result.push('0');
 
-  // Stats hanya untuk rumus elite yang FP-nya termasuk hasil terpilih (untuk panel Detail Validasi).
-  const stats: MatiPosStat[] = allStats
-    .filter((s) => s.lolos && result.includes(String(FP[s.key])))
-    .map((s) => ({
-      name: s.name,
-      score: s.score,
-      lolos: s.lolos,
-      fallback: s.fallback,
-    }));
+  // Stats hanya untuk rumus aktif yang FP-nya termasuk hasil terpilih (untuk panel Detail Validasi).
+  const stats = buildMatiActiveStats({
+    keys: MK,
+    names: RM_NAMES,
+    scores: SA,
+    eliteSelection,
+    predictions: FP,
+    result,
+  });
 
   return {
     result,
