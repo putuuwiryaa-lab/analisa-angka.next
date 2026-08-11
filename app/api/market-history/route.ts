@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { formatMarketName } from "@/lib/markets/format";
 import { NO_STORE_HEADERS, PRIVATE_SHORT_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
@@ -132,7 +133,7 @@ async function loadMarketHistory(marketId: string): Promise<MarketHistoryPayload
     const value: MarketHistoryPayload = {
       success: true,
       market_id: marketIdOf(market),
-      market_name: marketNameOf(market),
+      market_name: formatMarketName(marketNameOf(market), marketIdOf(market)),
       latest_result: history[history.length - 1] || "----",
       history_count: history.length,
       data: history.slice(-HISTORY_WINDOW),
