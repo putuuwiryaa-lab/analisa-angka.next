@@ -62,7 +62,7 @@ function BottomNav() {
 
   return (
     <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
-      <div className="mx-auto grid max-w-3xl grid-cols-3 items-end gap-2 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3 sm:gap-3">
+      <div className="mx-auto grid max-w-3xl grid-cols-[3fr_4fr_3fr] items-end gap-2 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3 sm:gap-3">
         <Link
           data-mode="statistics"
           href="/pantauan-rekap"
