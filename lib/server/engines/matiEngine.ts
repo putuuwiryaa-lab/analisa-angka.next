@@ -1,12 +1,45 @@
 import "server-only";
 import { _0x3ca571, RM_NAMES } from './offFormula';
 
-export type MatiPosStat = { name: string; score: number; lolos: boolean };
+export type MatiPosStat = {
+  name: string;
+  score: number;
+  lolos: boolean;
+  fallback: boolean;
+};
 export type MatiPosResult = {
   result: string[];
   stats: MatiPosStat[];
   activeCount: number;
+  fallback: boolean;
 };
+export type MatiEliteSelection = {
+  keys: string[];
+  fallback: boolean;
+};
+
+const NEVER_SEEN_RECENCY = 99;
+
+export function selectMatiEliteKeys(
+  keys: string[],
+  scores: Record<string, number>,
+): MatiEliteSelection {
+  const perfect = keys.filter((key) => (scores[key] ?? 0) >= 14);
+  if (perfect.length > 0) return { keys: perfect, fallback: false };
+
+  const maxScore = Math.max(...keys.map((key) => scores[key] ?? 0));
+  return {
+    keys: keys.filter((key) => (scores[key] ?? 0) === maxScore),
+    fallback: true,
+  };
+}
+
+export function matiRecencyValue(
+  recency: Record<string, number>,
+  digit: string,
+) {
+  return recency[digit] ?? NEVER_SEEN_RECENCY;
+}
 
 /**
  * Engine angka mati per posisi (AS=0, KOP=1, KEPALA=2, EKOR=3).
@@ -29,8 +62,6 @@ export function runMatiPos(D: string[], posIdx: number, param: number = 1): Mati
     MK.forEach((k) => { if (pr[k] !== val) SA[k] += 1; });
   }
 
-  const allStats = MK.map((k, idx) => ({ key: k, name: RM_NAMES[idx], score: SA[k], lolos: SA[k] >= 14 }));
-
   const fq: Record<string, number> = {};
   for (let d = 0; d <= 9; d++) fq[String(d)] = 0;
   U.forEach((r) => { fq[r[posIdx]]++; });
@@ -42,11 +73,16 @@ export function runMatiPos(D: string[], posIdx: number, param: number = 1): Mati
     if (rc[dg] === 99) rc[dg] = (U.length - 1 - j);
   }
 
-  let el = MK.filter((k) => SA[k] >= 14);
-  if (el.length === 0) {
-    const mx = Math.max(...MK.map((k) => SA[k]));
-    el = MK.filter((k) => SA[k] === mx);
-  }
+  const eliteSelection = selectMatiEliteKeys(MK, SA);
+  const el = eliteSelection.keys;
+  const eliteKeys = new Set(el);
+  const allStats = MK.map((k, idx) => ({
+    key: k,
+    name: RM_NAMES[idx],
+    score: SA[k],
+    lolos: eliteKeys.has(k),
+    fallback: eliteSelection.fallback,
+  }));
 
   const FP: any = _0x3ca571(D[D.length - 2], D[D.length - 1]);
   const ct: Record<string, number> = {};
@@ -55,7 +91,7 @@ export function runMatiPos(D: string[], posIdx: number, param: number = 1): Mati
   const sr = Object.keys(ct).sort((a, b) => {
     if (ct[b] !== ct[a]) return ct[b] - ct[a];
     if ((fq[a] || 0) !== (fq[b] || 0)) return (fq[a] || 0) - (fq[b] || 0);
-    return (rc[b] || 99) - (rc[a] || 99);
+    return matiRecencyValue(rc, b) - matiRecencyValue(rc, a);
   });
 
   // Kandidat utama dari rumus elite.
@@ -68,7 +104,7 @@ export function runMatiPos(D: string[], posIdx: number, param: number = 1): Mati
   if (result.length < param) {
     const fb = Object.keys(fq).sort((a, b) => {
       if (fq[a] !== fq[b]) return fq[a] - fq[b];
-      return (rc[b] || 99) - (rc[a] || 99);
+      return matiRecencyValue(rc, b) - matiRecencyValue(rc, a);
     });
     for (let fi = 0; fi < fb.length && result.length < param; fi++) {
       if (!result.includes(fb[fi])) result.push(fb[fi]);
@@ -80,7 +116,17 @@ export function runMatiPos(D: string[], posIdx: number, param: number = 1): Mati
   // Stats hanya untuk rumus elite yang FP-nya termasuk hasil terpilih (untuk panel Detail Validasi).
   const stats: MatiPosStat[] = allStats
     .filter((s) => s.lolos && result.includes(String(FP[s.key])))
-    .map((s) => ({ name: s.name, score: s.score, lolos: s.lolos }));
+    .map((s) => ({
+      name: s.name,
+      score: s.score,
+      lolos: s.lolos,
+      fallback: s.fallback,
+    }));
 
-  return { result, stats, activeCount: stats.length };
+  return {
+    result,
+    stats,
+    activeCount: stats.length,
+    fallback: eliteSelection.fallback,
+  };
 }
