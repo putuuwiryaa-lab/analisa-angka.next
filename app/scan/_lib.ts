@@ -1,4 +1,5 @@
 import { KOLOM, SHIO_KOLOM } from "@/lib/engine/types";
+import { formatMarketName } from "@/lib/markets/format";
 import type {
   AutoScanItem,
   AutoScanResult,
@@ -102,7 +103,7 @@ export const MODE_OPTIONS: { value: ScanMode; label: string; digits: number }[] 
 const MODE_VALUES = new Set<ScanMode>(MODE_OPTIONS.map((option) => option.value));
 
 export function marketLabel(market: Market) {
-  return String(market.name || market.id).toUpperCase();
+  return formatMarketName(market.name, market.id);
 }
 
 export function modeLabel(mode: ScanMode) {
