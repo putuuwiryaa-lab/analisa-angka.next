@@ -1,5 +1,6 @@
 import { MATI_POSITIONS, MODE_LABEL, MODE_ORDER, REKAP_BADGE_MODE, SEPARATOR, TARGET_LABEL, TARGET_ORDER, TARGET_PAIR_LABEL } from "./constants";
 import type { MarketOption, ShareOption, ShareRow } from "./types";
+import { formatMarketName } from "@/lib/markets/format";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -39,9 +40,7 @@ export function marketKey(row: ShareRow) {
 }
 
 export function marketLabel(row: ShareRow) {
-  const raw = String(row.marketName || row.marketId || "-").trim().replace(/\s+/g, " ");
-  if (raw === "-") return raw;
-  return raw.toLowerCase().replace(/\b([a-z])/g, (letter) => letter.toUpperCase()).replace(/6d\b/gi, "6D");
+  return formatMarketName(row.marketName, row.marketId || "-");
 }
 
 export function targetKey(option: ShareOption) {
