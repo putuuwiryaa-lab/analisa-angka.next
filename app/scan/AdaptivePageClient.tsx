@@ -8,6 +8,7 @@ import AdaptiveMarketSelect, {
 } from "./_components/AdaptiveMarketSelect";
 import type { AdaptiveMethod } from "@/lib/adaptive/types";
 import type { Target2D } from "@/lib/engine/types";
+import { formatMarketName } from "@/lib/markets/format";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 
 interface AdaptiveResult {
@@ -263,7 +264,7 @@ export default function AdaptivePageClient() {
                 Pilihan Utama · {METHOD_LABELS[result.method]} {result.digitCount} Digit · {TARGET_LABEL}
               </p>
               <h3 className="display mt-1 text-xl text-text">
-                {marketName || selectedMarket?.name}
+                {formatMarketName(marketName, selectedMarket?.name || selectedMarket?.id)}
               </h3>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-bg-deep/60 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wide text-text-muted">
