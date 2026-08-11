@@ -30,7 +30,7 @@ function StatsList({ stats }: { stats: any[] }) {
             className="animate-soft-pop depth-2 grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border p-3"
           >
             <span className="accent-border accent-text rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wide">
-              Elite
+              {s.fallback ? "Fallback" : "Elite"}
             </span>
             <div className="min-w-0">
               <div className="truncate text-[11px] font-semibold uppercase tracking-wide text-text opacity-90">
