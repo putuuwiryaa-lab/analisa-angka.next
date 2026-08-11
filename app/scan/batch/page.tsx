@@ -5,7 +5,7 @@ import { Check, Clipboard, Search, Square, SquareCheckBig, X } from "lucide-reac
 import { ADAPTIVE_AI_DIGIT_COUNTS, ADAPTIVE_BBFS_DIGIT_COUNTS, ADAPTIVE_TARGETS } from "@/lib/adaptive/types";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
-import { is3DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
+import { is3DMode, isPositionMode, maxScanDigitCount } from "@/lib/shared/scan-mode";
 import ThemedSelect, { type ThemedSelectOption } from "../_components/ThemedSelect";
 
 type Market = { id: string; name?: string | null; lastResult?: string };
@@ -199,12 +199,14 @@ export default function BatchScanPage() {
     window.setTimeout(() => setCopied(false), 1400);
   }
 
-  const digitMaximum = !adaptive && isShioMode(scanMode as ScanMode) ? 12 : 10;
   const digitValues: readonly number[] = adaptive
     ? scanMode === "adaptive_ai"
       ? ADAPTIVE_AI_DIGIT_COUNTS
       : ADAPTIVE_BBFS_DIGIT_COUNTS
-    : Array.from({ length: digitMaximum }, (_, index) => index + 1);
+    : Array.from(
+        { length: maxScanDigitCount(scanMode as ScanMode) },
+        (_, index) => index + 1,
+      );
   const digitOptions: ThemedSelectOption[] = digitValues.map((digit) => ({
     value: String(digit),
     label: `${digit} digit`,
