@@ -40,6 +40,12 @@ function finite(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function nullableFinite(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function objectValue(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return value as Record<string, unknown>;
@@ -70,6 +76,12 @@ function normalizeSelections(value: unknown): EvaluationSelectionSample[] {
       baselineSuccess: finite(row.baselineSuccess),
       lift: finite(row.lift),
       hit: row.hit === true || row.hit === "true",
+      calibrationLoss: nullableFinite(row.calibrationLoss),
+      calibrationExpertLosses: numberRecord(row.calibrationExpertLosses),
+      calibrationWeightsBefore: numberRecord(row.calibrationWeightsBefore),
+      calibrationWeightsAfter: numberRecord(row.calibrationWeightsAfter),
+      calibrationStateRevisionBefore: nullableFinite(row.calibrationStateRevisionBefore),
+      calibrationStateRevisionAfter: nullableFinite(row.calibrationStateRevisionAfter),
     } satisfies EvaluationSelectionSample];
   });
 }
@@ -117,15 +129,25 @@ export async function loadAdaptiveEvaluationDashboard(
               'estimatedSuccess', s.estimated_success,
               'baselineSuccess', s.baseline_success,
               'lift', s.lift,
-              'hit', case
-                when s.method = 'ai'
-                  then coalesce((e.ai_results ->> s.digit_count::text)::boolean, false)
-                else coalesce((e.bbfs_results ->> s.digit_count::text)::boolean, false)
-              end
+              'hit', coalesce(selection_evaluation.hit, case
+                  when s.method = 'ai'
+                    then coalesce((e.ai_results ->> s.digit_count::text)::boolean, false)
+                  else coalesce((e.bbfs_results ->> s.digit_count::text)::boolean, false)
+                end),
+              'calibrationLoss', selection_evaluation.calibration_loss,
+              'calibrationExpertLosses', selection_evaluation.calibration_expert_losses,
+              'calibrationWeightsBefore', selection_evaluation.calibration_weights_before,
+              'calibrationWeightsAfter', selection_evaluation.calibration_weights_after,
+              'calibrationStateRevisionBefore', selection_evaluation.calibration_state_revision_before,
+              'calibrationStateRevisionAfter', selection_evaluation.calibration_state_revision_after
             )
             order by s.method, s.digit_count
           )
           from adaptive.published_selections s
+          left join adaptive.selection_evaluations selection_evaluation
+            on selection_evaluation.prediction_id = s.prediction_id
+            and selection_evaluation.method = s.method
+            and selection_evaluation.digit_count = s.digit_count
           where s.prediction_id = p.id
         ), '[]'::jsonb) as selections
       from adaptive.evaluations e

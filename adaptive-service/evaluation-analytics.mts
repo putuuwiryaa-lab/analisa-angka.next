@@ -8,6 +8,12 @@ export interface EvaluationSelectionSample {
   baselineSuccess: number;
   lift: number;
   hit: boolean;
+  calibrationLoss: number | null;
+  calibrationExpertLosses: Record<string, number>;
+  calibrationWeightsBefore: Record<string, number>;
+  calibrationWeightsAfter: Record<string, number>;
+  calibrationStateRevisionBefore: number | null;
+  calibrationStateRevisionAfter: number | null;
 }
 
 export interface EvaluationRow {
@@ -141,13 +147,23 @@ export function buildAdaptiveEvaluationDashboard(
       };
     });
 
-  const recentTen = rows.slice(0, 10).map((row) => row.combinedLoss);
-  const previousTen = rows.slice(10, 20).map((row) => row.combinedLoss);
-  const lossTrend = previousTen.length > 0 ? mean(recentTen) - mean(previousTen) : null;
+  const globalRecentTen = rows.slice(0, 10).map((row) => row.combinedLoss);
+  const globalPreviousTen = rows.slice(10, 20).map((row) => row.combinedLoss);
+  const globalLossTrend = globalPreviousTen.length > 0
+    ? mean(globalRecentTen) - mean(globalPreviousTen)
+    : null;
+  const selectedLosses = selectedSamples.flatMap((sample) =>
+    sample.calibrationLoss === null ? [] : [sample.calibrationLoss]
+  );
+  const selectedRecentTen = selectedLosses.slice(0, 10);
+  const selectedPreviousTen = selectedLosses.slice(10, 20);
+  const selectedLossTrend = selectedPreviousTen.length > 0
+    ? mean(selectedRecentTen) - mean(selectedPreviousTen)
+    : null;
 
   const expertLossGroups = new Map<string, number[]>();
-  for (const row of rows) {
-    for (const [expertId, loss] of Object.entries(normalizedRecord(row.expertLosses))) {
+  for (const sample of selectedSamples) {
+    for (const [expertId, loss] of Object.entries(normalizedRecord(sample.calibrationExpertLosses))) {
       const values = expertLossGroups.get(expertId) ?? [];
       values.push(loss);
       expertLossGroups.set(expertId, values);
@@ -158,9 +174,9 @@ export function buildAdaptiveEvaluationDashboard(
     .map(([expertId, losses]) => ({ expertId, samples: losses.length, meanLoss: mean(losses) }))
     .sort((left, right) => left.meanLoss - right.meanLoss);
 
-  const latest = rows[0] ?? null;
-  const before = normalizedRecord(latest?.weightsBefore);
-  const after = normalizedRecord(latest?.weightsAfter);
+  const latestSelection = selectedSamples[0] ?? null;
+  const before = normalizedRecord(latestSelection?.calibrationWeightsBefore);
+  const after = normalizedRecord(latestSelection?.calibrationWeightsAfter);
   const weightChanges = [...new Set([...Object.keys(before), ...Object.keys(after)])]
     .map((expertId) => ({
       expertId,
@@ -183,6 +199,8 @@ export function buildAdaptiveEvaluationDashboard(
       hit: selected?.hit ?? null,
       estimatedSuccess: selected?.estimatedSuccess ?? null,
       baselineSuccess: selected?.baselineSuccess ?? null,
+      calibrationLoss: selected?.calibrationLoss ?? null,
+      calibrationStateRevisionAfter: selected?.calibrationStateRevisionAfter ?? null,
       createdAt: row.createdAt,
     };
   });
@@ -194,8 +212,8 @@ export function buildAdaptiveEvaluationDashboard(
     digitCount: options.digitCount,
     window: options.window,
     readiness: {
-      stage: readinessStage(rows.length),
-      settlements: rows.length,
+      stage: readinessStage(selectedSamples.length),
+      settlements: selectedSamples.length,
       targetSettlements: 100,
       enoughForCalibration: selectedSamples.length >= 30,
       selectedSamples: selectedSamples.length,
@@ -207,8 +225,22 @@ export function buildAdaptiveEvaluationDashboard(
       meanPairBrier: mean(rows.map((row) => row.pairBrier)),
       meanLeftBrier: mean(rows.map((row) => row.leftBrier)),
       meanRightBrier: mean(rows.map((row) => row.rightBrier)),
-      recent10Loss: mean(recentTen),
-      lossTrend,
+      recent10Loss: mean(globalRecentTen),
+      lossTrend: globalLossTrend,
+    },
+    selectionOverview: {
+      samples: selectedSamples.length,
+      meanCalibrationLoss: selectedLosses.length > 0 ? mean(selectedLosses) : null,
+      recent10Loss: selectedRecentTen.length > 0 ? mean(selectedRecentTen) : null,
+      lossTrend: selectedLossTrend,
+      latestUpdate: latestSelection
+        ? {
+          hit: latestSelection.hit,
+          policy: latestSelection.hit ? "frozen" : "recalibrated",
+          stateRevisionBefore: latestSelection.calibrationStateRevisionBefore,
+          stateRevisionAfter: latestSelection.calibrationStateRevisionAfter,
+        }
+        : null,
     },
     state: options.state,
     selectionMetrics,
