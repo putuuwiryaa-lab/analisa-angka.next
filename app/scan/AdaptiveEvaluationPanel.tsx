@@ -128,10 +128,13 @@ export default function AdaptiveEvaluationPanel({
     [dashboard, digitCount, method],
   );
 
+  const selectionLabel = `${method.toUpperCase()}${digitCount}`;
   const progress = dashboard
     ? Math.min(100, (dashboard.readiness.settlements / dashboard.readiness.targetSettlements) * 100)
     : 0;
-  const trend = dashboard?.overview.lossTrend ?? null;
+  const selectionOverview = dashboard?.selectionOverview ?? null;
+  const trend = selectionOverview?.lossTrend ?? null;
+  const latestUpdate = selectionOverview?.latestUpdate ?? null;
 
   return (
     <section className="animate-fade-in rounded-2xl border border-border-soft bg-surface/75 p-4 backdrop-blur-xl">
@@ -144,7 +147,7 @@ export default function AdaptiveEvaluationPanel({
             <p className="text-[9px] font-black uppercase tracking-[0.15em] text-primary-soft">Performance Intelligence</p>
             <h3 className="display text-lg text-text">Adaptive Performance</h3>
             <p className="mt-1 text-[10px] leading-relaxed text-text-muted">
-              Membaca konsistensi hasil dan arah sistem dari data aktual.
+              Signal, confidence, dan bobot mengikuti kalibrasi {selectionLabel}.
             </p>
           </div>
         </div>
@@ -210,9 +213,14 @@ export default function AdaptiveEvaluationPanel({
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <AuditMetric label="Model Error" value={decimal(dashboard.overview.meanCombinedLoss)} />
-            <AuditMetric label="Pair Error" value={decimal(dashboard.overview.meanPairBrier)} />
-            <AuditMetric label="Recent Score" value={decimal(dashboard.overview.recent10Loss)} />
+            <AuditMetric label="Calibration Error" value={decimal(selectionOverview?.meanCalibrationLoss ?? null)} />
+            <AuditMetric label="Recent Error" value={decimal(selectionOverview?.recent10Loss ?? null)} />
+            <AuditMetric
+              label="Revision"
+              value={latestUpdate?.stateRevisionAfter === null || latestUpdate?.stateRevisionAfter === undefined
+                ? "—"
+                : String(latestUpdate.stateRevisionAfter)}
+            />
             <AuditMetric label="Awaiting" value={String(dashboard.overview.pendingPredictions)} />
           </div>
 
@@ -223,7 +231,7 @@ export default function AdaptiveEvaluationPanel({
                 <p className="text-[10px] font-black uppercase tracking-wide text-text">Selection Performance</p>
               </div>
               <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">
-                {method.toUpperCase()} {digitCount}
+                {selectionLabel}
               </span>
             </div>
 
@@ -236,7 +244,7 @@ export default function AdaptiveEvaluationPanel({
               </div>
             ) : (
               <p className="mt-3 rounded-lg border border-border-soft bg-surface/40 p-3 text-[10px] leading-relaxed text-text-muted">
-                Data evaluasi {method.toUpperCase()} {digitCount} digit belum terbentuk. Sistem akan memperbaruinya setelah result berikutnya.
+                Data evaluasi {selectionLabel} belum terbentuk. Sistem akan memperbaruinya setelah result berikutnya.
               </p>
             )}
 
@@ -253,6 +261,9 @@ export default function AdaptiveEvaluationPanel({
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[10px] font-black uppercase tracking-wide text-text">Performance Trend</p>
+              <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">{selectionLabel}</span>
+            </div>
+            <div className="mt-2 flex justify-end">
               {trend === null ? (
                 <span className="text-[9px] text-text-muted">Data belum cukup</span>
               ) : trend <= 0 ? (
@@ -289,7 +300,10 @@ export default function AdaptiveEvaluationPanel({
 
           {dashboard.expertPerformance.length > 0 && (
             <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-text">Top Signals</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-black uppercase tracking-wide text-text">Top Signals</p>
+                <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">{selectionLabel}</span>
+              </div>
               <div className="mt-3 space-y-2">
                 {dashboard.expertPerformance.slice(0, 5).map((expert, index) => (
                   <div key={expert.expertId} className="flex items-center justify-between gap-3 text-[10px]">
@@ -301,19 +315,40 @@ export default function AdaptiveEvaluationPanel({
             </div>
           )}
 
-          {dashboard.weightChanges.length > 0 && (
+          {latestUpdate && (
             <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
-              <p className="text-[10px] font-black uppercase tracking-wide text-text">Adaptive Shift</p>
-              <div className="mt-3 space-y-2">
-                {dashboard.weightChanges.slice(0, 5).map((change) => (
-                  <div key={change.expertId} className="flex items-center justify-between gap-3 text-[10px]">
-                    <span className="min-w-0 truncate text-text-muted">{compactExpertName(change.expertId)}</span>
-                    <span className={`shrink-0 font-black ${change.delta >= 0 ? "text-emerald-300" : "text-amber-300"}`}>
-                      {change.delta >= 0 ? "+" : ""}{percentage(change.delta, 2)}
-                    </span>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-black uppercase tracking-wide text-text">Adaptive Shift</p>
+                <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">{selectionLabel}</span>
               </div>
+              <div className="mt-3 flex items-center justify-between gap-3 text-[10px]">
+                <span className={`font-black ${latestUpdate.hit ? "text-emerald-300" : "text-amber-300"}`}>
+                  {latestUpdate.hit ? "WIN · Bobot dibekukan" : "MISS · Direkalibrasi"}
+                </span>
+                <span className="shrink-0 text-text-muted">
+                  rev {latestUpdate.stateRevisionBefore ?? "—"} → {latestUpdate.stateRevisionAfter ?? "—"}
+                </span>
+              </div>
+              {latestUpdate.policy === "frozen" ? (
+                <p className="mt-3 rounded-lg border border-emerald-400/15 bg-emerald-500/5 p-3 text-[9px] leading-relaxed text-text-muted">
+                  Bobot {selectionLabel} tidak berubah sesuai policy WIN.
+                </p>
+              ) : dashboard.weightChanges.length > 0 ? (
+                <div className="mt-3 space-y-2">
+                  {dashboard.weightChanges.slice(0, 5).map((change) => (
+                    <div key={change.expertId} className="flex items-center justify-between gap-3 text-[10px]">
+                      <span className="min-w-0 truncate text-text-muted">{compactExpertName(change.expertId)}</span>
+                      <span className={`shrink-0 font-black ${change.delta >= 0 ? "text-emerald-300" : "text-amber-300"}`}>
+                        {change.delta >= 0 ? "+" : ""}{percentage(change.delta, 2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-[9px] leading-relaxed text-text-muted">
+                  Audit perubahan bobot {selectionLabel} belum tersedia.
+                </p>
+              )}
             </div>
           )}
 
@@ -344,8 +379,10 @@ export default function AdaptiveEvaluationPanel({
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-black text-text">score {decimal(settlement.combinedLoss)}</p>
-                      <p className="text-[9px] text-text-muted">conf. {percentage(settlement.estimatedSuccess)}</p>
+                      <p className="text-[10px] font-black text-text">score {decimal(settlement.calibrationLoss)}</p>
+                      <p className="text-[9px] text-text-muted">
+                        conf. {percentage(settlement.estimatedSuccess)} · rev {settlement.calibrationStateRevisionAfter ?? "—"}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -355,7 +392,7 @@ export default function AdaptiveEvaluationPanel({
 
           {dashboard.state && (
             <p className="px-1 text-[9px] leading-relaxed text-text-muted">
-              Basis {dashboard.state.processedHistoryLength} result · kondisi {driftLabel(dashboard.state.driftState)}.
+              Basis {dashboard.state.processedHistoryLength} result · scope {selectionLabel} · kondisi global {driftLabel(dashboard.state.driftState)}.
             </p>
           )}
         </div>
