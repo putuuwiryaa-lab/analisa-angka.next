@@ -31,6 +31,18 @@ export interface AdaptiveEvaluationDashboard {
     recent10Loss: number;
     lossTrend: number | null;
   };
+  selectionOverview: {
+    samples: number;
+    meanCalibrationLoss: number | null;
+    recent10Loss: number | null;
+    lossTrend: number | null;
+    latestUpdate: null | {
+      hit: boolean;
+      policy: "frozen" | "recalibrated";
+      stateRevisionBefore: number | null;
+      stateRevisionAfter: number | null;
+    };
+  };
   state: null | {
     stateRevision: number;
     processedHistoryLength: number;
@@ -80,6 +92,8 @@ export interface AdaptiveEvaluationDashboard {
     hit: boolean | null;
     estimatedSuccess: number | null;
     baselineSuccess: number | null;
+    calibrationLoss: number | null;
+    calibrationStateRevisionAfter: number | null;
     createdAt: string;
   }>;
 }
