@@ -1,3 +1,5 @@
+import { formatMarketName } from "./format";
+
 export const MARKETS_QUERY_KEY = ["markets"] as const;
 export const MARKETS_STALE_TIME = 60 * 1000;
 export const MARKETS_GC_TIME = 30 * 60 * 1000;
@@ -121,6 +123,7 @@ export async function fetchMarkets(..._args: unknown[]): Promise<Market[]> {
     .sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
     .map((market) => ({
       ...market,
+      name: formatMarketName(market.name, market.id),
       lastResult: market.lastResult || getLastResult(market.history_data),
     }));
 }
@@ -138,5 +141,8 @@ export async function fetchMarketHistory(marketId: string): Promise<MarketHistor
     throw new Error("Format histori pasaran dari server tidak valid.");
   }
 
-  return json;
+  return {
+    ...json,
+    market_name: formatMarketName(json.market_name, json.market_id),
+  };
 }
