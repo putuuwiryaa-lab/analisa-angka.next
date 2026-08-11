@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatMarketName } from "@/lib/markets/format";
 import { NO_STORE_HEADERS, PRIVATE_MEDIUM_CACHE_HEADERS } from "@/lib/server/cacheHeaders";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
@@ -33,7 +34,7 @@ function normalizeMarket(market: unknown) {
 
   return {
     id: String(id ?? ""),
-    name: String(name ?? id ?? "Pasaran"),
+    name: formatMarketName(name, id),
     order: Number(order ?? 99),
     updated_at: readMarketField(market, "updated_at") ?? readMarketField(market, "updatedAt") ?? null,
     lastResult: normalizeLastResult(market),

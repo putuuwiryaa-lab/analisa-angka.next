@@ -8,6 +8,7 @@ import {
 import { analysisScopeLabel, targetPairLabel, type AnalysisScope } from "./ScopeSelectors";
 import { PageTopBar } from "@/components/layout/PageTopBar";
 import { Button } from "@/components/ui/Button";
+import { formatMarketName } from "@/lib/markets/format";
 
 function SelectionChip({ label, value, onReset }: { label: string; value: string; onReset: () => void }) {
   return (
@@ -87,7 +88,7 @@ export function AnalysisPageChrome({
           <div className="min-w-0 flex-1">
             <div className="accent-text text-[9px] font-black uppercase tracking-[0.18em]">Pasaran Analisa</div>
             <h1 className="display mt-1 break-words text-[2rem] leading-none text-text sm:text-[2.25rem]">
-              {marketId}
+              {formatMarketName(marketId)}
             </h1>
             <div className="depth-3 accent-text mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
               <Sparkles size={10} /> {title}

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
+import { formatMarketName } from "@/lib/markets/format";
 
 export interface AdaptiveMarketOption {
   id: string;
@@ -10,7 +11,7 @@ export interface AdaptiveMarketOption {
 }
 
 function marketLabel(market: AdaptiveMarketOption) {
-  return String(market.name || market.id).toUpperCase();
+  return formatMarketName(market.name, market.id);
 }
 
 export default function AdaptiveMarketSelect({

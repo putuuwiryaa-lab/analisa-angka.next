@@ -6,6 +6,7 @@ import { Clock3, Database, Plus, RefreshCw, Search, X, Zap } from "lucide-react"
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatMarketUpdatedAt } from "@/lib/markets/client";
+import { formatMarketName } from "@/lib/markets/format";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 
 const WA_NUMBER = "6285119341538";
@@ -110,7 +111,7 @@ export default function DashboardPage() {
               >
                 <div className="depth-2 flex min-h-[48px] items-center justify-center border-b border-border-soft px-3">
                   <span className="display line-clamp-2 text-[12px] leading-4 text-text">
-                    {String(m.name || m.id).toUpperCase()}
+                    {formatMarketName(m.name, m.id)}
                   </span>
                 </div>
                 <div className="flex flex-1 items-center justify-center">

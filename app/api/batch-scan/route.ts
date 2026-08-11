@@ -16,6 +16,7 @@ import {
 } from "@/lib/engine/history";
 import { isScanMode, isShioMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
 import type { Draw, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
+import { formatMarketName } from "@/lib/markets/format";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 
@@ -97,10 +98,6 @@ function normalizeRanks(value: unknown): number[] {
 function normalizeSeparator(value: unknown): string {
   const separator = String(value ?? "➜").replace(/[\r\n\t]+/g, " ").trim().slice(0, 16);
   return separator || "➜";
-}
-
-function titleCase(value: string): string {
-  return value.toLowerCase().replace(/(^|[\s-])([a-z])/g, (_, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
 }
 
 function readRequest(source: Record<string, unknown>, fallback?: ScanRequest): ScanRequest | string {
@@ -248,7 +245,7 @@ export async function POST(req: Request) {
 
       for (const id of marketIds) {
         const market = byId.get(id);
-        const name = titleCase(market?.name ?? id);
+        const name = formatMarketName(market?.name ?? id);
         if (!market?.history_data) {
           latestById.set(id, null);
           continue;
@@ -269,7 +266,7 @@ export async function POST(req: Request) {
       const results: BatchLine[] = marketIds.map((id) => {
         const market = byId.get(id);
         const snapshot = snapshotById.get(id);
-        const name = titleCase(market?.name ?? String(snapshot?.market_name ?? id));
+        const name = formatMarketName(market?.name ?? String(snapshot?.market_name ?? id));
         if (!snapshot) return { id, name, digits: "SNAPSHOT BELUM TERSEDIA" };
 
         const snapshotIssue = adaptiveBatchSnapshotIssue(snapshot);
@@ -323,7 +320,7 @@ export async function POST(req: Request) {
 
     for (const id of marketIds) {
       const market = byId.get(id);
-      const name = titleCase(market?.name ?? id);
+      const name = formatMarketName(market?.name ?? id);
       if (!market?.history_data) {
         results.push({ id, name, digits: "DATA BELUM TERSEDIA" });
         continue;

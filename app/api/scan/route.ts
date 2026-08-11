@@ -16,6 +16,7 @@ import { runAutoScan } from "@/lib/engine/acke-engine";
 import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history";
 import { isScanMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
+import { formatMarketName } from "@/lib/markets/format";
 import { requireActiveAccess, requireAdminSession } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 
@@ -209,7 +210,7 @@ export async function POST(req: Request) {
 
       const published = snapshot.value;
       return NextResponse.json({
-        market: String(data.name ?? published.marketName),
+        market: formatMarketName(data.name, published.marketName),
         result: {
           source: "published",
           predictionId: published.predictionId,
@@ -277,7 +278,7 @@ export async function POST(req: Request) {
 
     const draws = parseStrictHistory(data.history_data);
     const result = runAutoScan(draws, config);
-    return NextResponse.json({ market: data.name, result });
+    return NextResponse.json({ market: formatMarketName(data.name, marketId), result });
   } catch (error) {
     if (error instanceof HistoryDataFormatError) {
       return NextResponse.json({ error: error.message }, { status: 422 });

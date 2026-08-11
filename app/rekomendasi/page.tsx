@@ -20,6 +20,7 @@ import {
 import { PageTopBar } from "@/components/layout/PageTopBar";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { formatMarketName } from "@/lib/markets/format";
 
 type Pair = "depan" | "tengah" | "belakang" | "3d";
 
@@ -154,7 +155,7 @@ function bestRowForPair(market: InvestMarketOverview, pair: Pair): InvestRow | n
   if (!item?.combo) return null;
   return {
     marketId: market.marketId,
-    marketName: market.marketName,
+    marketName: formatMarketName(market.marketName, market.marketId),
     pair,
     pairLabel: item.pairLabel,
     combo: item.combo,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { formatMarketName } from "@/lib/markets/format";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 import { runAnalysis } from "@/lib/server/engines/predictionEngine";
 import { buildCustomDigitLines, type TargetPair } from "@/lib/analysis/customDigit";
@@ -41,7 +42,7 @@ function normalizeMarket(market: MarketRow) {
   const historyData = String(market.history_data ?? market.historyData ?? market.history ?? market.data ?? market.results ?? market.result ?? "");
   return {
     id: String(market.id ?? market.slug ?? market.code ?? market.name ?? ""),
-    name: String(market.name ?? market.title ?? market.id ?? "Pasaran"),
+    name: formatMarketName(market.name ?? market.title, market.id),
     order: Number(market.order ?? market.sort_order ?? market.sort ?? 99),
     updatedAt: String(market.updated_at ?? "") || null,
     data: historyData.split(/[\s\n\r\t,;|]+/).map((item) => item.trim()).filter((item) => /^\d{4}$/.test(item)).slice(-200),
