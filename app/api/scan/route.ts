@@ -17,6 +17,7 @@ import { HistoryDataFormatError, parseStrictHistory } from "@/lib/engine/history
 import { isScanMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { formatMarketName } from "@/lib/markets/format";
+import { isValidScanDigitCount, maxScanDigitCount } from "@/lib/shared/scan-mode";
 import { requireActiveAccess, requireAdminSession } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 
@@ -249,6 +250,16 @@ export async function POST(req: Request) {
     }
 
     const scanMode = (body?.scanMode ?? DEFAULT_SCAN_MODE) as ScanMode;
+    const digitCount = Number(body?.digitCount ?? body?.minHidup ?? DEFAULT_DIGIT_COUNT);
+    if (!isValidScanDigitCount(scanMode, digitCount)) {
+      return NextResponse.json(
+        {
+          error: `Jumlah digit tidak valid untuk jenis scan ini. Gunakan 1-${maxScanDigitCount(scanMode)}.`,
+        },
+        { status: 400 },
+      );
+    }
+
     const L = clamp(body?.L, 14, 1, 100);
     const config = {
       L,
@@ -256,7 +267,7 @@ export async function POST(req: Request) {
       targetPos: body?.targetPos as Posisi | undefined,
       target2D: body?.target2D as Target2D | undefined,
       target3D: body?.target3D as Target3D | undefined,
-      digitCount: clamp(body?.digitCount ?? body?.minHidup, DEFAULT_DIGIT_COUNT, 1, 12),
+      digitCount,
       stopScan: clamp(body?.stopScan, DEFAULT_STOP_SCAN, 1, MAX_STOP_SCAN),
       scanMode,
     };
