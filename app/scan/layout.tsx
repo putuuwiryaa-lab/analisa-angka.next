@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowLeft, ScanSearch } from "lucide-react";
+import { House, ScanSearch } from "lucide-react";
 import { ScanNavigation, ScanNavigationFallback } from "./ScanNavigation";
 import styles from "./ScanTheme.module.css";
 
@@ -15,9 +15,9 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
           href="/"
           prefetch={false}
           className="pressable flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-soft bg-white/[0.04] text-text-muted hover:border-border hover:text-text"
-          aria-label="Kembali ke Analisa Angka"
+          aria-label="Ke halaman utama"
         >
-          <ArrowLeft size={18} />
+          <House size={18} />
         </Link>
         <div className="min-w-0 flex-1 text-center">
           <p className="text-[9px] font-black uppercase tracking-[0.17em] text-primary-soft">Analisa Angka</p>
