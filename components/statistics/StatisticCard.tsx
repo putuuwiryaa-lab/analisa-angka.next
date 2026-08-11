@@ -8,6 +8,7 @@ import {
   movementTone,
   statTitle,
 } from "@/lib/analysis/statistics";
+import { formatMarketName } from "@/lib/markets/format";
 
 const solidAccentStyle = {
   background: "linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 76%,#2ec96f))",
@@ -24,7 +25,7 @@ export function StatisticCard({
   relatedStats?: RelatedStatsMap;
   onOpen: (url: string) => void;
 }) {
-  const marketName = item.market_name || item.market_id;
+  const marketName = formatMarketName(item.market_name, item.market_id);
   const topRank = index === 0;
   const movement = movementText(item.rank_movement);
   const tone = movementTone(item);
