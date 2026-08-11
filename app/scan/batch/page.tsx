@@ -199,12 +199,12 @@ export default function BatchScanPage() {
     window.setTimeout(() => setCopied(false), 1400);
   }
 
-  const digitValues: readonly number[] = adaptive
+  const digitValues: readonly number[] = isAdaptiveMode(scanMode)
     ? scanMode === "adaptive_ai"
       ? ADAPTIVE_AI_DIGIT_COUNTS
       : ADAPTIVE_BBFS_DIGIT_COUNTS
     : Array.from(
-        { length: maxScanDigitCount(scanMode as ScanMode) },
+        { length: maxScanDigitCount(scanMode) },
         (_, index) => index + 1,
       );
   const digitOptions: ThemedSelectOption[] = digitValues.map((digit) => ({
