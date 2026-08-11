@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { ChevronRight, Share2, Target } from "lucide-react";
 import { MODES, type ModeKey } from "@/components/analysis/modes";
 import { PageTopBar } from "@/components/layout/PageTopBar";
-import { cn } from "@/lib/cn";
 import { findMarketByIdOrName } from "@/lib/markets/client";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 
@@ -21,13 +20,12 @@ function safeDecode(value: string) {
 type MenuItem = {
   mode: ModeKey;
   subtitle: string;
-  full?: boolean;
 };
 
 const MAIN_MENU: MenuItem[] = [
   { mode: "ai", subtitle: "Cari digit yang paling kuat" },
   { mode: "bbfs", subtitle: "Susun kumpulan digit pilihan" },
-  { mode: "mati", subtitle: "Buang digit lemah per posisi", full: true },
+  { mode: "mati", subtitle: "Buang digit lemah per posisi" },
   { mode: "jumlah", subtitle: "Filter berdasarkan jumlah 2D" },
   { mode: "shio", subtitle: "Filter berdasarkan shio 2D" },
 ];
@@ -40,20 +38,14 @@ function AnalysisMenuCard({ item, marketId, index }: { item: MenuItem; marketId:
       href={`/analyze/${encodeURIComponent(safeDecode(marketId))}/${item.mode}`}
       prefetch={false}
       data-mode={item.mode}
-      className={cn(
-        "pressable animate-soft-pop depth-1 group relative flex items-center gap-3 overflow-hidden rounded-3xl border p-3.5 text-left hover:border-border",
-        item.full ? "col-span-2 min-h-[84px]" : "min-h-[100px]",
-      )}
+      className="pressable animate-soft-pop depth-1 group relative flex min-h-[78px] items-center gap-3 overflow-hidden rounded-3xl border p-3.5 text-left hover:border-border"
       style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
     >
       <span className="absolute inset-x-5 top-0 h-1 rounded-b-full bg-[var(--accent)] opacity-70" />
       <span
-        className={cn(
-          "depth-3 accent-text flex shrink-0 items-center justify-center rounded-2xl border transition-transform duration-150 group-hover:scale-[1.035]",
-          item.full ? "h-12 w-12" : "h-11 w-11",
-        )}
+        className="depth-3 accent-text flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-150 group-hover:scale-[1.035]"
       >
-        <Icon size={item.full ? 20 : 19} strokeWidth={1.9} />
+        <Icon size={19} strokeWidth={1.9} />
       </span>
 
       <span className="min-w-0 flex-1">
@@ -149,7 +141,7 @@ export default function AnalyzeMenuPage({ params }: { params: Promise<{ marketId
 
       <section>
         <SectionTitle>Analisa Utama</SectionTitle>
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="space-y-2.5">
           {MAIN_MENU.map((item, index) => (
             <AnalysisMenuCard key={item.mode} item={item} marketId={decodedMarketId} index={index} />
           ))}
