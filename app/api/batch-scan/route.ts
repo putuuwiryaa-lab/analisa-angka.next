@@ -17,6 +17,7 @@ import {
 import { isScanMode, isShioMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
 import type { Draw, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { formatMarketName } from "@/lib/markets/format";
+import { isValidScanDigitCount, maxScanDigitCount } from "@/lib/shared/scan-mode";
 import { requireActiveAccess } from "@/lib/server/access";
 import { createAdminClient } from "@/lib/server/supabase-admin";
 
@@ -111,13 +112,18 @@ function readRequest(source: Record<string, unknown>, fallback?: ScanRequest): S
   if (!isTarget2D(target2D)) return "Target 2D tidak valid.";
   if (!isTarget3D(target3D)) return "Target 3D tidak valid.";
 
+  const digitCount = Number(source.digitCount ?? fallback?.digitCount ?? 7);
+  if (!isValidScanDigitCount(scanMode, digitCount)) {
+    return `Jumlah digit tidak valid untuk jenis scan ini. Gunakan 1-${maxScanDigitCount(scanMode)}.`;
+  }
+
   const L = clamp(source.L, fallback?.L ?? 14, 1, 100);
   return {
     scanMode,
     targetPos,
     target2D,
     target3D,
-    digitCount: clamp(source.digitCount, fallback?.digitCount ?? 7, 1, 12),
+    digitCount,
     topRanks: normalizeRanks(source.topRanks ?? fallback?.topRanks),
     L,
     patah: clamp(source.patah, fallback?.patah ?? 0, 0, L),

@@ -15,6 +15,9 @@ export const SCAN_MODES = [
 
 export type ScanMode = (typeof SCAN_MODES)[number];
 
+export const MAX_SCAN_NUMBER_DIGITS = 9;
+export const MAX_SCAN_SHIO_DIGITS = 12;
+
 export function isScanMode(value: unknown): value is ScanMode {
   return typeof value === "string" && (SCAN_MODES as readonly string[]).includes(value);
 }
@@ -49,4 +52,15 @@ export function isOff3DMode(mode: ScanMode) {
 
 export function isShioMode(mode: ScanMode) {
   return mode === "shio" || mode === "off_shio";
+}
+
+export function maxScanDigitCount(mode: ScanMode): number {
+  return isShioMode(mode) ? MAX_SCAN_SHIO_DIGITS : MAX_SCAN_NUMBER_DIGITS;
+}
+
+export function isValidScanDigitCount(mode: ScanMode, value: unknown): value is number {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= maxScanDigitCount(mode);
 }

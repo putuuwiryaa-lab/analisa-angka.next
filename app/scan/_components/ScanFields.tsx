@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, ReactNode } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
-import { is3DMode, isPositionMode } from "@/lib/shared/scan-mode";
+import { is3DMode, isPositionMode, maxScanDigitCount } from "@/lib/shared/scan-mode";
 import { marketLabel, MODE_OPTIONS } from "../_lib";
 import type { Market } from "../_lib";
 import ThemedSelect, { type ThemedSelectOption } from "./ThemedSelect";
@@ -54,11 +54,13 @@ const TARGET_2D_OPTIONS: ThemedSelectOption[] = [
 ];
 
 export default function ScanFields(props: Props) {
-  const digitMaximum = props.scanMode === "shio" || props.scanMode === "off_shio" ? 12 : 10;
-  const digitOptions = Array.from({ length: digitMaximum }, (_, index) => ({
-    value: String(index + 1),
-    label: `${index + 1} digit`,
-  }));
+  const digitOptions = Array.from(
+    { length: maxScanDigitCount(props.scanMode) },
+    (_, index) => ({
+      value: String(index + 1),
+      label: `${index + 1} digit`,
+    }),
+  );
 
   return (
     <section className="depth-1 rounded-2xl border p-3 sm:p-4">

@@ -3,6 +3,7 @@ import { DEFAULT_DIGIT_COUNT, POSISI } from "./constants";
 import { ALL_FORMULA_SPECS, computeFormula, type FormulaSpec } from "./formulas";
 import { buildDeret, buildDeretShio, clamp, digitOf, isJumlah2DMode, isShioMode, parseHistory, scanCode, scanModeOrDefault, target2DOrDefault, target3DOrDefault, targetDigitsOf, uniqueDigits } from "./helpers";
 import { applyConsensusScores, compressionProfile, dedupeTrekCandidates, digitsFromColumns, selectRankedDisplayItems, type RankedItem } from "./ranking";
+import { maxScanDigitCount } from "../shared/scan-mode";
 
 export { parseHistory } from "./helpers";
 
@@ -77,15 +78,21 @@ export function runEngineFromHistory(historyData: string, config: EngineConfig):
 
 export function runAutoScan(draws: Draw[], config: AutoScanConfig): AutoScanResult {
   const safeL = clamp(config.L, 14, 1, 100);
+  const scanMode = scanModeOrDefault(config.scanMode);
   const safeConfig = {
     L: safeL,
     patah: clamp(config.patah, 0, 0, safeL),
     targetPos: config.targetPos || "K",
     target2D: target2DOrDefault(config.target2D),
     target3D: target3DOrDefault(config.target3D),
-    digitCount: clamp(config.digitCount, DEFAULT_DIGIT_COUNT, 1, 12),
+    digitCount: clamp(
+      config.digitCount,
+      DEFAULT_DIGIT_COUNT,
+      1,
+      maxScanDigitCount(scanMode),
+    ),
     stopScan: clamp(config.stopScan, 3, 1, 200),
-    scanMode: scanModeOrDefault(config.scanMode),
+    scanMode,
   };
 
   const isPositionScan = safeConfig.scanMode === "posisi" || safeConfig.scanMode === "off_posisi";
