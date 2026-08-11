@@ -54,10 +54,13 @@ const TARGET_2D_OPTIONS: ThemedSelectOption[] = [
 ];
 
 export default function ScanFields(props: Props) {
-  const digitOptions = Array.from({ length: maxScanDigitCount(props.scanMode) }, (_, index) => ({
-    value: String(index + 1),
-    label: `${index + 1} digit`,
-  }));
+  const digitOptions = Array.from(
+    { length: maxScanDigitCount(props.scanMode) },
+    (_, index) => ({
+      value: String(index + 1),
+      label: `${index + 1} digit`,
+    }),
+  );
 
   return (
     <section className="depth-1 rounded-2xl border p-3 sm:p-4">
