@@ -26,6 +26,7 @@ Deno.test("jalur label market utama memakai formatter bersama", async () => {
     Deno.readTextFile(new URL("../app/api/batch-scan/route.ts", import.meta.url)),
     Deno.readTextFile(new URL("../components/analysis/AnalysisPageChrome.tsx", import.meta.url)),
     Deno.readTextFile(new URL("../app/share-prediksi/utils.ts", import.meta.url)),
+    Deno.readTextFile(new URL("../components/statistics/StatisticCard.tsx", import.meta.url)),
   ]);
 
   for (const source of files) {
