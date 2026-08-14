@@ -1,5 +1,5 @@
 import type { Target2D } from "@/lib/engine/types";
-import { buildBaselineExperts } from "./experts";
+import { ADAPTIVE_WINDOW_EXPERT_ID, buildBaselineExperts } from "./experts";
 import {
   calculateMarginals,
   combinePairMatrices,
@@ -28,6 +28,7 @@ const PAIR_LOSS_WEIGHT = 0.7;
 const LEFT_LOSS_WEIGHT = 0.15;
 const RIGHT_LOSS_WEIGHT = 0.15;
 const NEW_EXPERT_PRIOR_SHARE = 0.05;
+const LEGACY_ADAPTIVE_WINDOW_PREFIX = `${ADAPTIVE_WINDOW_EXPERT_ID}:`;
 
 interface ReplayResult {
   state: AdaptiveLearningState;
@@ -48,6 +49,22 @@ function baselineWeights(experts: readonly AdaptiveExpertOutput[]): Record<strin
   return normalizeWeights(Object.fromEntries(experts.map((expert) => [expert.id, expert.weight])));
 }
 
+function storedExpertWeight(
+  expertId: string,
+  storedWeights?: Readonly<Record<string, number>> | null,
+): number {
+  const direct = Number(storedWeights?.[expertId] ?? 0);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  if (expertId !== ADAPTIVE_WINDOW_EXPERT_ID || !storedWeights) return 0;
+
+  return Object.entries(storedWeights).reduce((total, [id, value]) => {
+    const legacy = Number(value);
+    return id.startsWith(LEGACY_ADAPTIVE_WINDOW_PREFIX) && Number.isFinite(legacy) && legacy > 0
+      ? total + legacy
+      : total;
+  }, 0);
+}
+
 export function resolveExpertWeights(
   experts: readonly AdaptiveExpertOutput[],
   storedWeights?: Readonly<Record<string, number>> | null,
@@ -55,10 +72,21 @@ export function resolveExpertWeights(
   const baseline = baselineWeights(experts);
   const activeStored = Object.fromEntries(
     experts
-      .map((expert) => [expert.id, Number(storedWeights?.[expert.id] ?? 0)] as const)
+      .map((expert) => [expert.id, storedExpertWeight(expert.id, storedWeights)] as const)
       .filter(([, value]) => Number.isFinite(value) && value > 0),
   );
   if (Object.keys(activeStored).length === 0) return baseline;
+
+  const activeTotal = Object.values(activeStored).reduce((sum, value) => sum + value, 0);
+  if (
+    Object.keys(activeStored).length === experts.length &&
+    Math.abs(activeTotal - 1) <= 1e-12
+  ) {
+    // Pertahankan bit bobot yang sama untuk policy WIN-freeze/noop. Normalisasi
+    // ulang map yang sudah valid menimbulkan drift floating-point kecil.
+    return activeStored;
+  }
+
   return normalizeWeights(Object.fromEntries(experts.map((expert) => [
     expert.id,
     activeStored[expert.id] ?? (baseline[expert.id] ?? 0) * NEW_EXPERT_PRIOR_SHARE,
