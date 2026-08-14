@@ -12,6 +12,8 @@ import type {
 } from "./types.mts";
 import { ADAPTIVE_MAX_HISTORY } from "./types.mts";
 
+export const ADAPTIVE_WINDOW_EXPERT_ID = "adaptive-window";
+
 const SMOOTHING = 1;
 const EPSILON = 1e-9;
 
@@ -509,7 +511,9 @@ export function buildBaselineExperts(draws: readonly string[], target: Target2D)
     expert("momentum:21-85", "momentum", 85, momentumPair(history, target, 21, 85), length, "medium"),
     expert("momentum:42-170", "momentum", 170, momentumPair(history, target, 42, 170), length, "long"),
 
-    expert(`adaptive-window:${adaptive.horizon}`, "regime", adaptive.horizon, adaptive.matrix, length, "adaptive"),
+    // Horizon adalah parameter dinamis, bukan identitas expert. ID harus tetap
+    // stabil agar bobot yang sudah dipelajari tidak terputus saat regime berganti.
+    expert(ADAPTIVE_WINDOW_EXPERT_ID, "regime", adaptive.horizon, adaptive.matrix, length, "adaptive"),
 
     expert("cross-position-conditional:170", "structural", 170, crossPositionConditional(history, target), length, "long"),
     expert("previous-4d-naive-bayes:170", "structural", 170, previous4DNaiveBayes(history, target), length, "long"),
