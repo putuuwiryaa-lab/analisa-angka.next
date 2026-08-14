@@ -6,7 +6,7 @@ Kontrak aktif:
 
 ```text
 engineVersion  = hf-apie-v2-back
-configVersion  = 2026-08-08.1
+configVersion  = 2026-08-15.1
 target         = belakang
 maxHistory     = 170
 replayWarmup   = 28
@@ -173,7 +173,7 @@ normalisasi total = 1
 
 Masing-masing 11 kombinasi `method + digitCount` memiliki calibration state dan expert weights sendiri.
 
-Policy config `2026-08-08.1`:
+Policy config `2026-08-15.1`:
 
 ```text
 WIN
@@ -182,10 +182,14 @@ WIN
   -> calibration weights DIBEKUKAN
 
 MISS
-  -> hitung expert losses
+  -> hitung action loss expert: hit = 0, miss = 1
   -> updateExpertWeights(...)
   -> calibration weights DIREKALIBRASI
 ```
+
+Semua expert dalam satu selection dinilai dengan utility aksi yang sama. Brier
+`estimatedSuccess` tetap disimpan sebagai `calibrationLoss` untuk audit confidence,
+tetapi tidak menjadi credit assignment karena subset digit tiap expert berbeda.
 
 Artinya BBFS7 MISS hanya merecalibrate BBFS7. Jika BBFS8 WIN pada actual yang sama, bobot BBFS8 tidak disentuh. AI selection lain juga memiliki state independen.
 
@@ -217,7 +221,7 @@ pending prediction
   -> global expert update
   -> per-selection:
        WIN  = freeze
-       MISS = recalibrate
+       MISS = recalibrate dengan action loss hit=0/miss=1
   -> publish prediction berikutnya
 ```
 
@@ -258,8 +262,12 @@ Jalankan migration Neon berurutan:
 10. `010_independent_selection_calibration.sql`
 11. `011_adaptive_v2_back_only.sql`
 12. `012_freeze_selection_weights_on_win.sql`
+13. `013_selection_action_credit.sql`
 
-Migration 011 mengaktifkan contract V2 back-only/11-selection. Migration 012 mengaktifkan config `2026-08-08.1`, memisahkan audit dari config sebelumnya, dan menandai policy selection `WIN=freeze`, `MISS=recalibrate`.
+Migration 011 mengaktifkan contract V2 back-only/11-selection. Migration 012
+mengaktifkan policy `WIN=freeze`. Migration 013 mengaktifkan config
+`2026-08-15.1`, memisahkan audit dari policy sebelumnya, dan mengubah credit
+assignment MISS menjadi action loss `expert hit=0`, `expert miss=1`.
 
 ## Endpoint service
 
@@ -319,7 +327,8 @@ Jangan mencampur service dengan config baru dan database yang belum menerima con
 - Prediction yang sudah published adalah immutable evidence untuk settlement berikutnya.
 - `weightsBefore`, expert losses, dan `weightsAfter` disimpan/dapat diaudit pada settlement.
 - Pada selection WIN, `weightsAfter` harus identik dengan `weightsBefore`.
-- Pada selection MISS, recalibration boleh mengubah weights.
+- Pada selection MISS, expert hit harus menerima loss 0 dan expert miss loss 1 sebelum recalibration.
+- Brier `estimatedSuccess` hanya mengukur calibration confidence dan tidak mengubah bobot expert.
 - Global weights tetap boleh berubah pada actual yang sama karena global learning mempunyai objective probabilistik berbeda.
 
 Adaptive adalah statistical online-learning ensemble. Perubahan bobot atau hit historis bukan jaminan adanya predictive edge pada result berikutnya.

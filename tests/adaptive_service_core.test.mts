@@ -17,20 +17,19 @@ function assertNumbersClose(left: readonly number[], right: readonly number[]) {
 }
 
 Deno.test("service-local Adaptive core identik dengan engine aplikasi", () => {
-  for (const target of ["depan", "tengah", "belakang"] as const) {
-    for (const method of ["ai", "bbfs"] as const) {
-      const app = runAppEngine(DRAWS, target, method, 7);
-      const service = runServiceEngine(DRAWS, target, method, 7);
+  for (const method of ["ai", "bbfs"] as const) {
+    const digitCount = method === "ai" ? 6 : 7;
+    const app = runAppEngine(DRAWS, "belakang", method, digitCount);
+    const service = runServiceEngine(DRAWS, "belakang", method, digitCount);
 
-      assert.equal(service.prediction.engineVersion, app.prediction.engineVersion);
-      assert.equal(service.prediction.configVersion, app.prediction.configVersion);
-      assert.deepEqual(service.prediction.selection, app.prediction.selection);
-      assert.deepEqual(service.prediction.replay, app.prediction.replay);
-      assert.deepEqual(service.state, app.state);
-      assertNumbersClose(service.prediction.pairProbabilities, app.prediction.pairProbabilities);
-      assertNumbersClose(service.prediction.leftProbabilities, app.prediction.leftProbabilities);
-      assertNumbersClose(service.prediction.rightProbabilities, app.prediction.rightProbabilities);
-    }
+    assert.equal(service.prediction.engineVersion, app.prediction.engineVersion);
+    assert.equal(service.prediction.configVersion, app.prediction.configVersion);
+    assert.deepEqual(service.prediction.selection, app.prediction.selection);
+    assert.deepEqual(service.prediction.replay, app.prediction.replay);
+    assert.deepEqual(service.state, app.state);
+    assertNumbersClose(service.prediction.pairProbabilities, app.prediction.pairProbabilities);
+    assertNumbersClose(service.prediction.leftProbabilities, app.prediction.leftProbabilities);
+    assertNumbersClose(service.prediction.rightProbabilities, app.prediction.rightProbabilities);
   }
 });
 

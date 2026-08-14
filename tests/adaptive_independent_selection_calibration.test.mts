@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { runAdaptiveOnline } from "../adaptive-service/core/engine.mts";
+import { buildBaselineExperts } from "../adaptive-service/core/experts.mts";
+import { optimizeDigitSelection } from "../adaptive-service/core/optimizer.mts";
 import {
   ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_REPLAY_WARMUP,
@@ -47,6 +49,11 @@ function selection(
 function bbfsHit(digits: readonly number[], left: number, right: number): boolean {
   const selected = new Set(digits);
   return selected.has(left) && selected.has(right);
+}
+
+function aiHit(digits: readonly number[], left: number, right: number): boolean {
+  const selected = new Set(digits);
+  return selected.has(left) || selected.has(right);
 }
 
 function findBbfs8HitBbfs7Miss(
@@ -150,6 +157,63 @@ Deno.test("WIN membekukan selection weights dan MISS saja yang recalibrate", () 
   assert.ok(weightMapsDiffer(nextBbfs7.calibrationWeights, nextBbfs8.calibrationWeights));
 });
 
+Deno.test("MISS memberi credit kepada expert selection yang mengenai actual", () => {
+  const first = runAdaptiveOnline(HISTORY, "belakang", "ai", 1);
+  const published = selection(first.prediction.selections, "ai", 1);
+  const experts = buildBaselineExperts(HISTORY, "belakang");
+  let actual: { left: number; right: number } | null = null;
+
+  for (let left = 0; left < 10 && !actual; left++) {
+    for (let right = 0; right < 10; right++) {
+      if (aiHit(published.digits, left, right)) continue;
+      const outcomes = experts.map((expert) => {
+        const expertSelection = optimizeDigitSelection(expert.pairProbabilities, "ai", 1);
+        return aiHit(expertSelection.digits, left, right);
+      });
+      if (outcomes.some(Boolean) && outcomes.some((hit) => !hit)) {
+        actual = { left, right };
+        break;
+      }
+    }
+  }
+
+  assert.ok(actual, "Pair uji MISS dengan expert hit dan miss tidak ditemukan.");
+  const next = runAdaptiveOnline(
+    [...HISTORY, `00${actual.left}${actual.right}`],
+    "belakang",
+    "ai",
+    1,
+    first.state,
+    pendingFromRun(first),
+  );
+  assert.ok(next.settlement);
+  const update = next.settlement.selectionCalibrationUpdates.find((item) =>
+    item.method === "ai" && item.digitCount === 1
+  );
+  assert.ok(update);
+  assert.equal(update.hit, false);
+
+  let correctExperts = 0;
+  let wrongExperts = 0;
+  for (const expert of experts) {
+    const expertSelection = optimizeDigitSelection(expert.pairProbabilities, "ai", 1);
+    const hit = aiHit(expertSelection.digits, actual.left, actual.right);
+    assert.equal(update.expertLosses[expert.id], hit ? 0 : 1);
+    if (hit) {
+      correctExperts += 1;
+      assert.ok(update.weightsAfter[expert.id] > update.weightsBefore[expert.id]);
+    } else {
+      wrongExperts += 1;
+      assert.ok(update.weightsAfter[expert.id] < update.weightsBefore[expert.id]);
+    }
+  }
+  assert.ok(correctExperts > 0);
+  assert.ok(wrongExperts > 0);
+
+  // Confidence Brier tetap tersedia untuk audit dan terpisah dari action loss.
+  assert.ok(update.calibrationLoss > 0 && update.calibrationLoss < 1);
+});
+
 Deno.test("run tanpa settlement mempertahankan state selection yang sama", () => {
   const first = runAdaptiveOnline(HISTORY, "belakang", "ai", 6);
   const pending = pendingFromRun(first);
@@ -174,18 +238,21 @@ Deno.test("run tanpa settlement mempertahankan state selection yang sama", () =>
   }
 });
 
-Deno.test("migration 011/012 menyimpan contract V2 dan policy WIN-freeze", async () => {
+Deno.test("migration 011/012/013 menyimpan contract V2 dan action-credit policy", async () => {
   const migration011 = await Deno.readTextFile(
     new URL("../sql/neon/011_adaptive_v2_back_only.sql", import.meta.url),
   );
   const migration012 = await Deno.readTextFile(
     new URL("../sql/neon/012_freeze_selection_weights_on_win.sql", import.meta.url),
   );
+  const migration013 = await Deno.readTextFile(
+    new URL("../sql/neon/013_selection_action_credit.sql", import.meta.url),
+  );
   const reconciliation = await Deno.readTextFile(
     new URL("../adaptive-service/reconcile.mts", import.meta.url),
   );
 
-  assert.equal(ADAPTIVE_CONFIG_VERSION, "2026-08-08.1");
+  assert.equal(ADAPTIVE_CONFIG_VERSION, "2026-08-15.1");
   assert.match(migration011, /hf-apie-v2-back/);
   assert.match(migration011, /tepat 11 selection/);
   assert.match(migration011, /selectionCalibrationPublished/);
@@ -195,6 +262,11 @@ Deno.test("migration 011/012 menyimpan contract V2 dan policy WIN-freeze", async
   assert.match(migration012, /selectionWinPolicy', 'freeze'/);
   assert.match(migration012, /selectionLossPolicy', 'recalibrate'/);
   assert.match(migration012, /config_version = '2026-08-07\.1'/);
+  assert.match(migration013, /2026-08-15\.1/);
+  assert.match(migration013, /selectionLossPolicy', 'miss-action-loss'/);
+  assert.match(migration013, /selectionCreditPolicy', 'expert-hit-0-miss-1'/);
+  assert.match(migration013, /confidenceLossPolicy', 'brier-audit-only'/);
+  assert.match(migration013, /config_version = '2026-08-08\.1'/);
   assert.match(reconciliation, /ADAPTIVE_SELECTION_COUNT/);
   assert.match(reconciliation, /Migration 011 belum aktif/);
 });

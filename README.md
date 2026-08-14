@@ -36,7 +36,7 @@ Adaptive production saat ini menggunakan:
 
 ```text
 engineVersion = hf-apie-v2-back
-configVersion = 2026-08-08.1
+configVersion = 2026-08-15.1
 target        = 2D belakang
 maxHistory    = 170
 replayWarmup  = 28
@@ -116,10 +116,14 @@ WIN
   -> tidak tuning selection
 
 MISS
-  -> catat miss + expert losses
+  -> catat miss + action loss expert (hit=0, miss=1)
   -> update selection expert weights
   -> prediction berikutnya memakai bobot hasil recalibration
 ```
+
+`estimatedSuccess` tetap dievaluasi dengan Brier sebagai audit confidence, tetapi
+tidak dipakai untuk menentukan credit antar-expert karena masing-masing expert
+memilih subset digit yang berbeda.
 
 Global expert weights sengaja tetap belajar pada setiap actual result karena lapisan global mengevaluasi distribusi probabilitas 2D secara keseluruhan, bukan status menang/kalah satu selection.
 
@@ -175,9 +179,12 @@ Setiap kombinasi `method + digitCount` mempunyai calibration state dan expert we
 - Supabase adalah source histori market.
 - Neon menyimpan Adaptive state, pending/published prediction, selection, settlement, evaluation, guardrail, reconciliation run, dan audit terkait.
 - Contract V2 dasar berada di `sql/neon/011_adaptive_v2_back_only.sql`.
-- Policy WIN-freeze/MISS-recalibrate berada di `sql/neon/012_freeze_selection_weights_on_win.sql`.
+- Policy WIN-freeze dasar berada di `sql/neon/012_freeze_selection_weights_on_win.sql`.
+- Credit assignment MISS berbasis action loss berada di `sql/neon/013_selection_action_credit.sql`.
 - Migration 011 mempertahankan settled history V1 untuk audit, membatalkan pending V1, dan mengaktifkan contract V2.
 - Migration 012 mengaktifkan config `2026-08-08.1`, membatalkan pending config sebelumnya, dan memisahkan state baru dari rule calibration lama.
+- Migration 013 mengaktifkan config `2026-08-15.1`; expert yang hit menerima loss 0,
+  expert yang miss menerima loss 1, sedangkan Brier confidence menjadi audit-only.
 - Snapshot V2 dianggap lengkap hanya jika membawa tepat 11 selection yang valid.
 
 ## Otomatisasi reconciliation
