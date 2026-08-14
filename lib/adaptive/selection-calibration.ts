@@ -87,13 +87,19 @@ function expertSelectionLosses(
   return Object.fromEntries(experts.map((expert) => {
     const expertSelection = expertSelections.get(expert.id)?.get(key);
     if (!expertSelection) throw new Error(`Selection expert ${expert.id}/${key} tidak tersedia.`);
-    const observed = selectionHit(
+    const hit = selectionHit(
       method,
       expertSelection.digits,
       actualLeft,
       actualRight,
-    ) ? 1 : 0;
-    return [expert.id, Math.pow(expertSelection.estimatedSuccess - observed, 2)];
+    );
+
+    // Semua expert harus dinilai terhadap utility aksi yang sama untuk selection
+    // ini. Brier estimatedSuccess tidak boleh dipakai sebagai credit assignment:
+    // setiap expert memilih subset digit berbeda dan update hanya berjalan ketika
+    // ensemble MISS, sehingga expert yang sebenarnya hit dapat dihukum lebih berat.
+    // Confidence Brier tetap dicatat terpisah sebagai calibrationLoss untuk audit.
+    return [expert.id, hit ? 0 : 1];
   }));
 }
 
