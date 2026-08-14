@@ -7,9 +7,9 @@
   ],
   "nodeModulesDir": "auto",
   "tasks": {
-    "dev": "deno run -A npm:next@16.2.7 dev",
-    "build": "deno run -A npm:next@16.2.7 build --webpack",
-    "start": "deno run -A npm:next@16.2.7 start",
+    "dev": "deno run -A npm:next@16.3.0 dev",
+    "build": "deno run -A npm:next@16.3.0 build --webpack",
+    "start": "deno run -A npm:next@16.3.0 start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "adaptive:check": "deno check adaptive-service/main.mts",
