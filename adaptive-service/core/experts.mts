@@ -16,6 +16,16 @@ export const ADAPTIVE_WINDOW_EXPERT_ID = "adaptive-window";
 
 const SMOOTHING = 1;
 const EPSILON = 1e-9;
+const REGIME_EVIDENCE_THRESHOLD = 30;
+const REGIME_MIN_SEGMENT = 21;
+const REGIME_CANDIDATE_HORIZONS = [21, 42, 85] as const;
+
+type RegimeFeature = "left" | "right" | "sum" | "difference";
+
+interface AdaptiveRegime {
+  horizon: 21 | 42 | 85 | 170;
+  evidence: number;
+}
 
 function historyWindow(draws: readonly string[], horizon = ADAPTIVE_MAX_HISTORY): string[] {
   const bounded = draws.slice(Math.max(0, draws.length - ADAPTIVE_MAX_HISTORY));
@@ -100,12 +110,6 @@ function decayedPairFrequency(
   return normalizePairMatrix(counts);
 }
 
-function totalVariation(left: readonly number[], right: readonly number[]): number {
-  const a = normalizePairMatrix(left);
-  const b = normalizePairMatrix(right);
-  return 0.5 * a.reduce((sum, value, index) => sum + Math.abs(value - b[index]), 0);
-}
-
 function weightedMatrices(entries: readonly { matrix: PairMatrix; weight: number }[]): PairMatrix {
   const combined = Array.from({ length: 100 }, () => 0);
   for (const entry of entries) {
@@ -116,10 +120,18 @@ function weightedMatrices(entries: readonly { matrix: PairMatrix; weight: number
   return normalizePairMatrix(combined);
 }
 
-function adaptiveDecay(draws: readonly string[], target: Target2D): PairMatrix {
-  const recent = directPairFrequency(historyWindow(draws, 21), target);
-  const long = directPairFrequency(historyWindow(draws, 170), target);
-  const drift = Math.max(0, Math.min(1, totalVariation(recent, long)));
+function adaptiveDecay(
+  draws: readonly string[],
+  target: Target2D,
+  regime: AdaptiveRegime,
+): PairMatrix {
+  const drift = regime.horizon === 21
+    ? 1
+    : regime.horizon === 42
+    ? 2 / 3
+    : regime.horizon === 85
+    ? 1 / 3
+    : 0;
   const matrices = [
     { matrix: decayedPairFrequency(draws, target, 0.86), weight: 0.15 + 0.45 * drift },
     { matrix: decayedPairFrequency(draws, target, 0.92), weight: 0.25 + 0.20 * drift },
@@ -269,12 +281,85 @@ function momentumPair(
   }));
 }
 
-function adaptiveWindow(draws: readonly string[], target: Target2D): { matrix: PairMatrix; horizon: number } {
-  const recent = directPairFrequency(historyWindow(draws, 21), target);
-  const long = directPairFrequency(historyWindow(draws, 170), target);
-  const drift = totalVariation(recent, long);
-  const horizon = drift > 0.62 ? 21 : drift > 0.46 ? 42 : drift > 0.30 ? 85 : 170;
-  return { matrix: bayesianPairFrequency(historyWindow(draws, horizon), target, 14), horizon };
+function regimeBucket(draw: string, target: Target2D, feature: RegimeFeature): number {
+  const [left, right] = extractTargetPair(draw, target);
+  if (feature === "left") return left;
+  if (feature === "right") return right;
+  if (feature === "sum") return (left + right) % 10;
+  return (left - right + 10) % 10;
+}
+
+function regimeCounts(
+  draws: readonly string[],
+  target: Target2D,
+  feature: RegimeFeature,
+): number[] {
+  const counts = Array.from({ length: 10 }, () => 0);
+  for (const draw of draws) counts[regimeBucket(draw, target, feature)] += 1;
+  return counts;
+}
+
+function twoSamplePearson(left: readonly number[], right: readonly number[]): number {
+  const leftTotal = left.reduce((sum, value) => sum + value, 0);
+  const rightTotal = right.reduce((sum, value) => sum + value, 0);
+  const total = leftTotal + rightTotal;
+  if (leftTotal <= 0 || rightTotal <= 0 || total <= 0) return 0;
+
+  let statistic = 0;
+  for (let index = 0; index < 10; index++) {
+    const pooled = (left[index] ?? 0) + (right[index] ?? 0);
+    if (pooled <= 0) continue;
+    const expectedLeft = leftTotal * pooled / total;
+    const expectedRight = rightTotal * pooled / total;
+    if (expectedLeft > 0) statistic += Math.pow((left[index] ?? 0) - expectedLeft, 2) / expectedLeft;
+    if (expectedRight > 0) statistic += Math.pow((right[index] ?? 0) - expectedRight, 2) / expectedRight;
+  }
+  return statistic;
+}
+
+function regimeEvidence(
+  draws: readonly string[],
+  target: Target2D,
+  horizon: 21 | 42 | 85,
+): number {
+  const recent = draws.slice(-horizon);
+  const baseline = draws.slice(0, Math.max(0, draws.length - horizon));
+  if (recent.length < REGIME_MIN_SEGMENT || baseline.length < REGIME_MIN_SEGMENT) return 0;
+
+  const features: readonly RegimeFeature[] = ["left", "right", "sum", "difference"];
+  return Math.max(...features.map((feature) =>
+    twoSamplePearson(
+      regimeCounts(recent, target, feature),
+      regimeCounts(baseline, target, feature),
+    )
+  ));
+}
+
+function detectAdaptiveRegime(draws: readonly string[], target: Target2D): AdaptiveRegime {
+  const bounded = historyWindow(draws, ADAPTIVE_MAX_HISTORY);
+  let best: AdaptiveRegime = { horizon: 170, evidence: 0 };
+
+  for (const horizon of REGIME_CANDIDATE_HORIZONS) {
+    const evidence = regimeEvidence(bounded, target, horizon);
+    if (evidence > best.evidence) best = { horizon, evidence };
+  }
+
+  // Ambang konservatif membatasi false regime switch akibat sparsity 21 sampel.
+  // Tanpa bukti kuat, window panjang 170 menjadi default yang stabil.
+  return best.evidence >= REGIME_EVIDENCE_THRESHOLD
+    ? best
+    : { horizon: 170, evidence: best.evidence };
+}
+
+function adaptiveWindow(
+  draws: readonly string[],
+  target: Target2D,
+  regime: AdaptiveRegime,
+): { matrix: PairMatrix; horizon: number } {
+  return {
+    matrix: bayesianPairFrequency(historyWindow(draws, regime.horizon), target, 14),
+    horizon: regime.horizon,
+  };
 }
 
 function fullDigits(draw: string): [number, number, number, number] {
@@ -474,7 +559,8 @@ export function buildBaselineExperts(draws: readonly string[], target: Target2D)
   const direct42 = directPairFrequency(historyWindow(history, 42), target);
   const direct85 = directPairFrequency(historyWindow(history, 85), target);
   const direct170 = directPairFrequency(history, target);
-  const adaptive = adaptiveWindow(history, target);
+  const regime = detectAdaptiveRegime(history, target);
+  const adaptive = adaptiveWindow(history, target, regime);
   const leftContext = variableOrderDigit(history, target, 0);
   const rightContext = variableOrderDigit(history, target, 1);
   const pairContext = variableOrderPair(history, target);
@@ -496,7 +582,7 @@ export function buildBaselineExperts(draws: readonly string[], target: Target2D)
 
     expert("decay-fast:170", "recency", 170, decayedPairFrequency(history, target, 0.90), length, "adaptive"),
     expert("decay-slow:170", "recency", 170, decayedPairFrequency(history, target, 0.975), length, "long"),
-    expert("adaptive-decay:170", "recency", 170, adaptiveDecay(history, target), length, "adaptive"),
+    expert("adaptive-decay:170", "recency", 170, adaptiveDecay(history, target, regime), length, "adaptive"),
 
     expert("hierarchical-pair-transition:170", "transition", 170, hierarchicalPairTransition(history, target), length, "adaptive"),
 

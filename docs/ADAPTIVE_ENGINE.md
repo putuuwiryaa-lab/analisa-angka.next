@@ -6,7 +6,7 @@ Kontrak aktif:
 
 ```text
 engineVersion  = hf-apie-v2-back
-configVersion  = 2026-08-15.1
+configVersion  = 2026-08-15.2
 target         = belakang
 maxHistory     = 170
 replayWarmup   = 28
@@ -143,6 +143,25 @@ Ensemble V2 mencakup family berikut:
 
 Base horizon adalah `21 / 42 / 85 / 170`. History expert tidak boleh melewati reservoir 170.
 
+### Adaptive regime evidence
+
+`adaptive-window` tidak membandingkan raw frequency 21-vs-170 pada 100 pair.
+Perbandingan itu bias oleh sparsity karena 21 sampel tidak cukup mengisi 100
+bucket. Config `2026-08-15.2` memakai evidence Pearson multiscale:
+
+```text
+candidate window = 21 / 42 / 85
+baseline         = bagian histori sebelum candidate window (tidak overlap)
+features         = KEPALA / EKOR / jumlah mod 10 / selisih mod 10
+minimum segment  = 21
+evidence gate    = 30
+fallback         = 170
+```
+
+Window pendek hanya aktif jika salah satu feature membawa bukti perubahan yang
+melewati gate dan skala tersebut mempunyai evidence terkuat. `adaptive-decay`
+memakai hasil regime yang sama agar recency speed tidak tersaturasi oleh noise.
+
 Prior dibuat family-balanced. Null expert dipertahankan sebagai control/baseline.
 
 ## Dua lapis learning
@@ -173,7 +192,7 @@ normalisasi total = 1
 
 Masing-masing 11 kombinasi `method + digitCount` memiliki calibration state dan expert weights sendiri.
 
-Policy config `2026-08-15.1`:
+Policy config `2026-08-15.2`:
 
 ```text
 WIN
@@ -263,11 +282,14 @@ Jalankan migration Neon berurutan:
 11. `011_adaptive_v2_back_only.sql`
 12. `012_freeze_selection_weights_on_win.sql`
 13. `013_selection_action_credit.sql`
+14. `014_adaptive_regime_evidence.sql`
 
 Migration 011 mengaktifkan contract V2 back-only/11-selection. Migration 012
 mengaktifkan policy `WIN=freeze`. Migration 013 mengaktifkan config
 `2026-08-15.1`, memisahkan audit dari policy sebelumnya, dan mengubah credit
-assignment MISS menjadi action loss `expert hit=0`, `expert miss=1`.
+assignment MISS menjadi action loss `expert hit=0`, `expert miss=1`. Migration
+014 mengaktifkan config `2026-08-15.2` dan memisahkan state/pending dari detector
+horizon lama.
 
 ## Endpoint service
 

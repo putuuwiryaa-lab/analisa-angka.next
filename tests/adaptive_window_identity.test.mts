@@ -18,6 +18,29 @@ const DRAWS = [
   "4632",
 ];
 
+function seededDraws(count: number, initialSeed: number, pairRange = 100): string[] {
+  let seed = initialSeed >>> 0;
+  return Array.from({ length: count }, () => {
+    seed = (1664525 * seed + 1013904223) >>> 0;
+    const pair = Math.floor((seed / 0x100000000) * pairRange);
+    return `00${String(pair).padStart(2, "0")}`;
+  });
+}
+
+const STABLE_DRAWS = seededDraws(170, 0x12345678);
+const SHIFT_21_DRAWS = [
+  ...seededDraws(149, 0x11111111),
+  ...seededDraws(21, 0x22222222, 25),
+];
+const SHIFT_42_DRAWS = [
+  ...seededDraws(128, 0x33333333),
+  ...seededDraws(42, 0x44444444, 25),
+];
+const SHIFT_85_DRAWS = [
+  ...seededDraws(85, 0x55555555),
+  ...seededDraws(85, 0x66666666, 25),
+];
+
 function adaptiveExpert(experts: readonly AdaptiveExpertOutput[]): AdaptiveExpertOutput {
   const found = experts.find((expert) => expert.family === "regime");
   assert.ok(found, "expert adaptive-window tidak ditemukan");
@@ -37,10 +60,10 @@ function legacyWeights(
 }
 
 Deno.test("ID adaptive-window tetap stabil ketika horizon berubah", () => {
-  const appBefore = adaptiveExpert(buildAppExperts(DRAWS.slice(0, 30), "belakang"));
-  const appAfter = adaptiveExpert(buildAppExperts(DRAWS, "belakang"));
-  const serviceBefore = adaptiveExpert(buildServiceExperts(DRAWS.slice(0, 30), "belakang"));
-  const serviceAfter = adaptiveExpert(buildServiceExperts(DRAWS, "belakang"));
+  const appBefore = adaptiveExpert(buildAppExperts(STABLE_DRAWS, "belakang"));
+  const appAfter = adaptiveExpert(buildAppExperts(SHIFT_21_DRAWS, "belakang"));
+  const serviceBefore = adaptiveExpert(buildServiceExperts(STABLE_DRAWS, "belakang"));
+  const serviceAfter = adaptiveExpert(buildServiceExperts(SHIFT_21_DRAWS, "belakang"));
 
   assert.equal(APP_ADAPTIVE_WINDOW_EXPERT_ID, "adaptive-window");
   assert.equal(SERVICE_ADAPTIVE_WINDOW_EXPERT_ID, APP_ADAPTIVE_WINDOW_EXPERT_ID);
@@ -51,6 +74,32 @@ Deno.test("ID adaptive-window tetap stabil ketika horizon berubah", () => {
   assert.equal(serviceAfter.id, APP_ADAPTIVE_WINDOW_EXPERT_ID);
   assert.equal(serviceBefore.horizon, appBefore.horizon);
   assert.equal(serviceAfter.horizon, appAfter.horizon);
+});
+
+Deno.test("detektor regime menahan noise dan memilih skala perubahan yang terbukti", () => {
+  const scenarios = [
+    { draws: STABLE_DRAWS, expected: 170 },
+    { draws: SHIFT_21_DRAWS, expected: 21 },
+    { draws: SHIFT_42_DRAWS, expected: 42 },
+    { draws: SHIFT_85_DRAWS, expected: 85 },
+  ];
+
+  for (const scenario of scenarios) {
+    const app = adaptiveExpert(buildAppExperts(scenario.draws, "belakang"));
+    const service = adaptiveExpert(buildServiceExperts(scenario.draws, "belakang"));
+    assert.equal(app.horizon, scenario.expected);
+    assert.equal(service.horizon, scenario.expected);
+    assert.deepEqual(service.pairProbabilities, app.pairProbabilities);
+  }
+
+  let falseShortWindows = 0;
+  for (let trial = 1; trial <= 64; trial++) {
+    const horizon = adaptiveExpert(
+      buildServiceExperts(seededDraws(170, (0x9e3779b9 * trial) >>> 0), "belakang"),
+    ).horizon;
+    if (horizon < 170) falseShortWindows += 1;
+  }
+  assert.ok(falseShortWindows <= 1, `False short-window switches: ${falseShortWindows}/64`);
 });
 
 Deno.test("bobot adaptive-window lama dimigrasikan tanpa reset atau renormalisasi", () => {

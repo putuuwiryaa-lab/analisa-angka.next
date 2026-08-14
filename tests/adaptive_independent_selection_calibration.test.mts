@@ -238,7 +238,7 @@ Deno.test("run tanpa settlement mempertahankan state selection yang sama", () =>
   }
 });
 
-Deno.test("migration 011/012/013 menyimpan contract V2 dan action-credit policy", async () => {
+Deno.test("migration 011-014 menyimpan contract, credit, dan regime policy V2", async () => {
   const migration011 = await Deno.readTextFile(
     new URL("../sql/neon/011_adaptive_v2_back_only.sql", import.meta.url),
   );
@@ -248,11 +248,14 @@ Deno.test("migration 011/012/013 menyimpan contract V2 dan action-credit policy"
   const migration013 = await Deno.readTextFile(
     new URL("../sql/neon/013_selection_action_credit.sql", import.meta.url),
   );
+  const migration014 = await Deno.readTextFile(
+    new URL("../sql/neon/014_adaptive_regime_evidence.sql", import.meta.url),
+  );
   const reconciliation = await Deno.readTextFile(
     new URL("../adaptive-service/reconcile.mts", import.meta.url),
   );
 
-  assert.equal(ADAPTIVE_CONFIG_VERSION, "2026-08-15.1");
+  assert.equal(ADAPTIVE_CONFIG_VERSION, "2026-08-15.2");
   assert.match(migration011, /hf-apie-v2-back/);
   assert.match(migration011, /tepat 11 selection/);
   assert.match(migration011, /selectionCalibrationPublished/);
@@ -267,6 +270,12 @@ Deno.test("migration 011/012/013 menyimpan contract V2 dan action-credit policy"
   assert.match(migration013, /selectionCreditPolicy', 'expert-hit-0-miss-1'/);
   assert.match(migration013, /confidenceLossPolicy', 'brier-audit-only'/);
   assert.match(migration013, /config_version = '2026-08-08\.1'/);
+  assert.match(migration014, /2026-08-15\.2/);
+  assert.match(migration014, /regimeDetectionPolicy', 'pearson-multiscale-evidence-v1'/);
+  assert.match(migration014, /regimeFallbackHorizon', 170/);
+  assert.match(migration014, /regimeEvidenceThreshold', 30/);
+  assert.match(migration014, /adaptiveDecayPolicy', 'shared-regime-scale'/);
+  assert.match(migration014, /config_version = '2026-08-15\.1'/);
   assert.match(reconciliation, /ADAPTIVE_SELECTION_COUNT/);
   assert.match(reconciliation, /Migration 011 belum aktif/);
 });
