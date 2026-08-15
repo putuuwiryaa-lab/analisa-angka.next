@@ -36,7 +36,7 @@ Adaptive production saat ini menggunakan:
 
 ```text
 engineVersion = hf-apie-v2-back
-configVersion = 2026-08-15.1
+configVersion = 2026-08-15.2
 target        = 2D belakang
 maxHistory    = 170
 replayWarmup  = 28
@@ -149,6 +149,13 @@ Family utama mencakup:
 
 Base horizon V2 adalah `21 / 42 / 85 / 170`, tetapi tidak semua expert diwajibkan memakai keempat horizon. Expert recurrence, structural, context, recency, dan regime dapat memakai reservoir atau effective window sesuai karakter modelnya.
 
+`adaptive-window` menguji perubahan pada skala `21 / 42 / 85` terhadap baseline
+yang tidak overlap. Bukti dihitung pada proyeksi KEPALA, EKOR, jumlah modulo 10,
+dan selisih modulo 10. Jika evidence Pearson tidak melewati ambang konservatif
+`30`, horizon `170` dipakai sebagai fallback. Detector yang sama mengatur
+`adaptive-decay`, sehingga sparsity 21 result tidak lagi otomatis dianggap regime
+shift.
+
 Bobot awal tetap family-balanced agar family dengan lebih banyak varian tidak otomatis mendominasi hanya karena jumlah expert-nya lebih banyak. Null expert dipertahankan sebagai control/baseline.
 
 ### Output production
@@ -181,10 +188,13 @@ Setiap kombinasi `method + digitCount` mempunyai calibration state dan expert we
 - Contract V2 dasar berada di `sql/neon/011_adaptive_v2_back_only.sql`.
 - Policy WIN-freeze dasar berada di `sql/neon/012_freeze_selection_weights_on_win.sql`.
 - Credit assignment MISS berbasis action loss berada di `sql/neon/013_selection_action_credit.sql`.
+- Evidence gate adaptive regime berada di `sql/neon/014_adaptive_regime_evidence.sql`.
 - Migration 011 mempertahankan settled history V1 untuk audit, membatalkan pending V1, dan mengaktifkan contract V2.
 - Migration 012 mengaktifkan config `2026-08-08.1`, membatalkan pending config sebelumnya, dan memisahkan state baru dari rule calibration lama.
 - Migration 013 mengaktifkan config `2026-08-15.1`; expert yang hit menerima loss 0,
   expert yang miss menerima loss 1, sedangkan Brier confidence menjadi audit-only.
+- Migration 014 mengaktifkan config `2026-08-15.2`, membatalkan pending config
+  sebelumnya, dan mengganti drift sparse 100-pair dengan multiscale evidence gate.
 - Snapshot V2 dianggap lengkap hanya jika membawa tepat 11 selection yang valid.
 
 ## Otomatisasi reconciliation
