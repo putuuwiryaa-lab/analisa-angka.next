@@ -41,13 +41,50 @@ function decimal(value: number | null, digits = 4): string {
   return value.toFixed(digits);
 }
 
-function compactExpertName(value: string): string {
-  const family = value.split(":")[0].replace(/-h\d+$/, "");
-  if (family === "positional-frequency") return "Positional Signal";
-  if (family === "direct-pair-frequency") return "Pair Signal";
-  if (family === "decayed-pair-frequency") return "Momentum Signal";
-  if (family === "pair-transition") return "Transition Signal";
-  return "Adaptive Signal";
+const EXPERT_LABELS: Readonly<Record<string, string>> = {
+  "uniform-null": "Baseline Acak",
+  "positional-frequency": "Frekuensi Posisi",
+  "direct-pair-frequency": "Frekuensi Pair",
+  "bayesian-pair": "Bayesian Pair",
+  "decay-fast": "Recency Cepat",
+  "decay-slow": "Recency Lambat",
+  "adaptive-decay": "Recency Adaptif",
+  "decayed-pair-frequency": "Recency",
+  "hierarchical-pair-transition": "Transisi Pair",
+  "pair-transition": "Transisi Pair",
+  "position-markov-self": "Markov Posisi",
+  "position-markov-cross": "Markov Silang",
+  "position-markov-lag2": "Markov Lag-2",
+  "digit-gap-hazard": "Jeda Digit",
+  "pair-gap-hazard": "Jeda Pair",
+  "repeat-switch": "Pola Ulang/Ganti",
+  momentum: "Momentum",
+  "adaptive-window": "Jendela Adaptif",
+  "cross-position-conditional": "Relasi Silang",
+  "previous-4d-naive-bayes": "Naive Bayes 4D",
+  "lagged-position-interaction": "Interaksi Posisi",
+  "variable-order-left": "Konteks Kiri",
+  "variable-order-right": "Konteks Kanan",
+  "variable-order-pair": "Konteks Pair",
+  pair: "Pair",
+  transition: "Transisi",
+};
+
+function humanizeExpertId(value: string): string {
+  return value
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function expertDisplayName(value: string): string {
+  const [rawId, ...scopeParts] = value.split(":");
+  const legacy = rawId.match(/^(.*)-h(\d+)$/);
+  const expertId = legacy?.[1] ?? rawId;
+  const scope = scopeParts.length > 0 ? scopeParts.join(":") : (legacy?.[2] ?? "");
+  const label = EXPERT_LABELS[expertId] ?? humanizeExpertId(expertId);
+  return scope ? `${label} · ${scope.replace(/-/g, "–")}` : label;
 }
 
 function driftLabel(value: string): string {
@@ -301,14 +338,22 @@ export default function AdaptiveEvaluationPanel({
           {dashboard.expertPerformance.length > 0 && (
             <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-black uppercase tracking-wide text-text">Top Signals</p>
+                <p className="text-[10px] font-black uppercase tracking-wide text-text">Performa Expert</p>
                 <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">{selectionLabel}</span>
               </div>
+              <p className="mt-2 text-[9px] leading-relaxed text-text-muted">
+                Loss lebih kecil lebih baik. Loss 0 berarti expert tepat pada seluruh sampel yang tersedia.
+              </p>
               <div className="mt-3 space-y-2">
                 {dashboard.expertPerformance.slice(0, 5).map((expert, index) => (
                   <div key={expert.expertId} className="flex items-center justify-between gap-3 text-[10px]">
-                    <span className="min-w-0 truncate text-text-muted">#{index + 1} {compactExpertName(expert.expertId)}</span>
-                    <span className="shrink-0 font-black text-text">{decimal(expert.meanLoss)}</span>
+                    <span className="min-w-0 truncate text-text-muted">
+                      #{index + 1} {expertDisplayName(expert.expertId)}
+                    </span>
+                    <div className="shrink-0 text-right">
+                      <p className="font-black text-text">loss {decimal(expert.meanLoss)}</p>
+                      <p className="text-[8px] text-text-muted">n={expert.samples}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -337,7 +382,7 @@ export default function AdaptiveEvaluationPanel({
                 <div className="mt-3 space-y-2">
                   {dashboard.weightChanges.slice(0, 5).map((change) => (
                     <div key={change.expertId} className="flex items-center justify-between gap-3 text-[10px]">
-                      <span className="min-w-0 truncate text-text-muted">{compactExpertName(change.expertId)}</span>
+                      <span className="min-w-0 truncate text-text-muted">{expertDisplayName(change.expertId)}</span>
                       <span className={`shrink-0 font-black ${change.delta >= 0 ? "text-emerald-300" : "text-amber-300"}`}>
                         {change.delta >= 0 ? "+" : ""}{percentage(change.delta, 2)}
                       </span>
