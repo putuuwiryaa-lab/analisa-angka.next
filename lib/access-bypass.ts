@@ -1,4 +1,4 @@
-export const TEMPORARY_PIN_BYPASS_UNTIL = Date.parse("2026-08-07T09:08:00.000Z");
+export const TEMPORARY_PIN_BYPASS_UNTIL = Date.parse("2026-09-29T12:06:00.000Z");
 
 export function isDenoDeployRuntime() {
   return process.env.DENO_DEPLOY === "true" || Boolean(process.env.DENO_DEPLOY_APP_ID);
