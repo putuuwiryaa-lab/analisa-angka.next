@@ -99,12 +99,12 @@ function buildRekapBadgeBlock(row: ShareRow) {
     [`${section.label} (${section.lines.length} line)`, section.lines.join("*")].join("\n"),
   ).join("\n\n");
 
-  return [marketLabel(row), "", body].join("\n");
+  return [`◈ ${marketLabel(row)}`, "", body].join("\n");
 }
 
 export function buildShareText(option: ShareOption | null, rows: ShareRow[], separator = SEPARATOR) {
   if (!option || rows.length === 0) return "";
-  if (isRekapBadge(option)) return rows.map(buildRekapBadgeBlock).filter(Boolean).join("\n\n────────────\n\n");
+  if (isRekapBadge(option)) return rows.map(buildRekapBadgeBlock).filter(Boolean).join("\n\n");
   return rows.map((row) => `${marketLabel(row)} ${separator} ${rowResultText(option, row)}`).join("\n");
 }
 
@@ -113,7 +113,7 @@ export function buildPreviewText(option: ShareOption | null, rows: ShareRow[], s
   if (isRekapBadge(option)) {
     const visibleRows = rows.slice(0, 2);
     const hiddenCount = Math.max(rows.length - visibleRows.length, 0);
-    return `${visibleRows.map(buildRekapBadgeBlock).filter(Boolean).join("\n\n────────────\n\n")}${hiddenCount > 0 ? `\n\n...dan ${hiddenCount} pasaran lainnya` : ""}`;
+    return `${visibleRows.map(buildRekapBadgeBlock).filter(Boolean).join("\n\n")}${hiddenCount > 0 ? `\n\n...dan ${hiddenCount} pasaran lainnya` : ""}`;
   }
   const visibleRows = rows.slice(0, 5);
   const hiddenCount = Math.max(rows.length - visibleRows.length, 0);
