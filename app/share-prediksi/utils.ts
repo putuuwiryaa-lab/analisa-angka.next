@@ -97,9 +97,9 @@ function buildRekapBadgeBlock(row: ShareRow) {
 
   const body = sections.map((section) =>
     [`${section.label} (${section.lines.length} line)`, section.lines.join("*")].join("\n"),
-  ).join("\n");
+  ).join("\n\n");
 
-  return [`◈ ${marketLabel(row)}`, body].join("\n");
+  return [`◈ ${marketLabel(row)}`, "", body].join("\n");
 }
 
 export function buildShareText(option: ShareOption | null, rows: ShareRow[], separator = SEPARATOR) {
