@@ -94,8 +94,13 @@ function rowResultText(option: ShareOption, row: ShareRow) {
 function buildRekapBadgeBlock(row: ShareRow) {
   const sections = (row.sections || []).filter((section) => section.lines?.length);
   if (!sections.length) return "";
-  const body = sections.flatMap((section) => [`${section.label} (${section.lines.length} line)`, section.lines.join("*"), ""]);
-  return [`- ${marketLabel(row)}`, "", ...body].join("\n").trimEnd();
+
+  const divider = "━━━━━━━━━━━━━━━━━━━━";
+  const body = sections.map((section) =>
+    [`◈ *${section.label.toUpperCase()}* · ${section.lines.length} line`, section.lines.join("*")].join("\n"),
+  ).join("\n\n");
+
+  return [divider, `*${marketLabel(row)}*`, divider, "", body].join("\n");
 }
 
 export function buildShareText(option: ShareOption | null, rows: ShareRow[], separator = SEPARATOR) {
