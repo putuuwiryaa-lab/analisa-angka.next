@@ -129,6 +129,7 @@ function ModeButton({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={cn(
         "pressable flex min-h-[78px] items-center gap-3 rounded-2xl border px-3 py-3 text-left",
@@ -177,6 +178,7 @@ function ChoiceButton({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={cn(
         "pressable flex min-h-[62px] items-center justify-center gap-2 rounded-2xl border px-2.5 py-2.5 text-center",

@@ -54,6 +54,8 @@ export function StatisticTable({
             return (
               <tr
                 key={item.id || item.market_id}
+                data-desktop-reveal="fade"
+                data-motion-key={`${filterLabel}:${item.wins_15}:${item.wins_last_5}`}
                 className={`border-b border-border-soft last:border-0 hover:bg-white/[0.04] ${index === 0 ? "accent-bg-soft" : ""}`}
               >
                 <td className="num px-2 py-3 text-center font-black text-text-muted">

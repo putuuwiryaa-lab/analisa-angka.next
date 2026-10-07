@@ -348,6 +348,7 @@ export default function RekomendasiPage() {
               <button
                 key={item.key}
                 type="button"
+                aria-pressed={active}
                 onClick={() => {
                   setPair(item.key);
                   setSearch("");
@@ -475,8 +476,9 @@ function InvestLiteCard({
 
   return (
     <article
+      data-desktop-reveal="rise"
       aria-busy={state.loading}
-      className="animate-soft-pop depth-1 rounded-2xl border p-3.5"
+      className="desktop-hover-card animate-soft-pop depth-1 rounded-2xl border p-3.5"
       style={{ animationDelay: `${Math.min(index, 10) * 22}ms` }}
     >
       <div className="flex items-start justify-between gap-3">
@@ -514,6 +516,8 @@ function InvestLiteCard({
 
       {hasLines ? (
         <div
+          data-desktop-reveal="fade"
+          data-motion-key={lineText(lines)}
           className={`num accent-text mt-3 max-h-[150px] overflow-y-auto rounded-xl border border-border-soft bg-black/25 p-3 text-[13px] font-black leading-7 transition-opacity ${
             state.loading ? "opacity-45" : "opacity-100"
           }`}
@@ -545,6 +549,7 @@ function InvestLiteCard({
         <button
           type="button"
           onClick={onCopy}
+          data-motion-feedback={state.copied ? "success" : undefined}
           disabled={!hasLines || state.loading}
           className="pressable accent-bg-soft accent-text flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 text-[11px] lg:text-[13px] font-black uppercase tracking-wide disabled:opacity-45"
         >

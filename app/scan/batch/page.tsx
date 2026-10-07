@@ -434,6 +434,7 @@ export default function BatchScanPage() {
               <button
                 type="button"
                 onClick={copyOutput}
+                data-motion-feedback={copied ? "success" : undefined}
                 className="pressable flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 text-[9px] lg:text-xs font-black uppercase tracking-wide text-primary-soft"
               >
                 {copied ? <Check size={13} /> : <Clipboard size={13} />}

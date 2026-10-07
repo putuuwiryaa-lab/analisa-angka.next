@@ -19,6 +19,7 @@ export function DetailToggle({ open, onClick }: { open: boolean; onClick: () => 
     <button
       type="button"
       onClick={onClick}
+      aria-expanded={open}
       className="pressable depth-3 accent-text inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide hover:border-border hover:bg-white/[0.06]"
       aria-label={open ? "Tutup" : "Buka"}
     >

@@ -168,6 +168,7 @@ export function EvaluationHistory({
           return (
             <div
               key={row.id}
+              data-desktop-reveal="rise"
               className="animate-soft-pop depth-2 min-w-0 rounded-2xl border px-1.5 py-2 text-center sm:p-2"
               style={{ animationDelay: `${Math.min(index, 12) * 20}ms` }}
             >

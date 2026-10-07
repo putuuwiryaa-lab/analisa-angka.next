@@ -11,8 +11,9 @@ export function WorkspacePlaceholder({
 }) {
   return (
     <div
-      className="hidden min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-white/[0.025] p-8 text-center lg:flex"
+      className="desktop-status-enter hidden min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-white/[0.025] p-8 text-center lg:flex"
       role={busy ? "status" : undefined}
+      aria-busy={busy}
     >
       {busy ? (
         <Loader2 size={28} className="mb-4 animate-spin text-primary-soft" />

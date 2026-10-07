@@ -121,17 +121,20 @@ function ActionButton({
   primary,
   disabled,
   onClick,
+  feedback,
 }: {
   children: ReactNode;
   primary?: boolean;
   disabled?: boolean;
   onClick: () => void;
+  feedback?: "success";
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
+      data-motion-feedback={feedback}
       className={`pressable flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-[11px] lg:text-[13px] font-black uppercase tracking-wide disabled:pointer-events-none disabled:opacity-45 ${
         primary
           ? "depth-accent accent-border accent-text"
@@ -157,6 +160,7 @@ function ChoiceChip({
   return (
     <button
       type="button"
+      aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
       className={`pressable min-h-11 rounded-2xl border px-3 text-[10px] lg:text-xs font-black uppercase tracking-wide disabled:pointer-events-none disabled:opacity-25 ${
@@ -793,7 +797,7 @@ export function RekapAngkaJadiClient({
           </pre>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <ActionButton onClick={() => void copyText()} disabled={!shareText || loadingRows}>
+            <ActionButton feedback={copied ? "success" : undefined} onClick={() => void copyText()} disabled={!shareText || loadingRows}>
               {copied ? <Check size={16} /> : <ClipboardCopy size={16} />}
               {copied ? "Tersalin" : "Copy"}
             </ActionButton>
