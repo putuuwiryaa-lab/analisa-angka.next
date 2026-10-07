@@ -7,35 +7,51 @@ import { BarChart3, Coins, ScanSearch } from "lucide-react";
 import { AccessGuard } from "@/components/access/AccessGuard";
 import { InstallAppBanner } from "@/components/install/InstallAppBanner";
 import { Logo } from "@/components/ui/Logo";
+import { DesktopSidebar } from "./DesktopSidebar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const isStandaloneMenu = pathname === "/rekomendasi" || pathname === "/pantauan-rekap" || pathname === "/share-prediksi" || pathname === "/invest";
+  const isStandaloneMenu =
+    pathname === "/rekomendasi" ||
+    pathname === "/pantauan-rekap" ||
+    pathname === "/share-prediksi" ||
+    pathname === "/invest";
   const isAccessRoute = pathname === "/pin" || pathname.startsWith("/admin");
   const isAdminRoute = pathname.startsWith("/admin");
   const isScanRoute = pathname === "/scan" || pathname.startsWith("/scan/");
 
-  const hideHeader = isAccessRoute || pathname.startsWith("/analyze/") || isStandaloneMenu || isScanRoute;
+  const hideHeader =
+    isAccessRoute || pathname.startsWith("/analyze/") || isStandaloneMenu || isScanRoute;
   const showBottomNav = isHome && !isAccessRoute;
 
   return (
     <div className={cnPad(hideHeader, showBottomNav, isAccessRoute, isAdminRoute)}>
       {!isAccessRoute && <AccessGuard />}
-      {!hideHeader && <HeroHeader />}
-      <main className="min-w-0 flex-1">{children}</main>
-      {showBottomNav && <BottomNav />}
-      {!hideHeader && <InstallAppBanner />}
+      {!isAccessRoute && <DesktopSidebar />}
+      <div className="min-w-0 flex-1">
+        {!hideHeader && <HeroHeader />}
+        <main id="main-content" className="min-w-0 flex-1">
+          {children}
+        </main>
+        {showBottomNav && <BottomNav />}
+        {!hideHeader && <InstallAppBanner />}
+      </div>
     </div>
   );
 }
 
-function cnPad(hideHeader: boolean, showBottomNav: boolean, isAccessRoute: boolean, isAdminRoute: boolean) {
+function cnPad(
+  hideHeader: boolean,
+  showBottomNav: boolean,
+  isAccessRoute: boolean,
+  isAdminRoute: boolean,
+) {
   if (isAdminRoute) return "admin-route relative min-h-screen w-full";
   if (isAccessRoute) return "relative min-h-screen w-full";
 
   return [
-    "relative mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 sm:px-6",
+    "app-shell relative mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 sm:px-6 lg:max-w-[1600px] lg:flex-row lg:items-start lg:gap-6 lg:px-6 lg:py-6 xl:gap-8 xl:px-8",
     hideHeader ? "pb-6 pt-4" : showBottomNav ? "pb-32 pt-4" : "pb-6 pt-4",
   ].join(" ");
 }
@@ -44,8 +60,12 @@ function HeroHeader() {
   return (
     <header className="animate-fade-in mb-5 flex items-start justify-between gap-2 pt-3 sm:mb-6 sm:items-center sm:gap-4 sm:pt-4">
       <div className="min-w-0 flex-1 pr-1">
-        <h1 className="display max-w-[11.5ch] whitespace-normal break-words text-[2.1rem] uppercase leading-[0.98] text-text sm:max-w-none sm:text-4xl">ANALISA ANGKA</h1>
-        <p className="mt-2 text-sm font-medium leading-snug text-text-soft sm:text-base">Prediksi berbasis matematis</p>
+        <h1 className="display max-w-[11.5ch] whitespace-normal break-words text-[2.1rem] uppercase leading-[0.98] text-text sm:max-w-none sm:text-4xl">
+          ANALISA ANGKA
+        </h1>
+        <p className="mt-2 text-sm font-medium leading-snug text-text-soft sm:text-base">
+          Prediksi berbasis matematis
+        </p>
       </div>
       <div className="animate-soft-pop relative mr-3 mt-1 flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-[1.7rem] border border-primary/45 bg-primary/18 shadow-[0_0_34px_rgba(124,58,237,0.30),0_0_54px_rgba(40,215,255,0.10)] sm:mr-0 sm:mt-0 sm:h-20 sm:w-20">
         <div className="pointer-events-none absolute inset-[-0.45rem] rounded-[2rem] bg-primary/10 blur-xl" />
@@ -56,12 +76,13 @@ function HeroHeader() {
 }
 
 function BottomNav() {
-  const pill = "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl border px-2 hover:border-border hover:bg-white/[0.075]";
+  const pill =
+    "pressable accent-bg-soft accent-text accent-border relative flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl border px-2 hover:border-border hover:bg-white/[0.075]";
   const softGlow = "0 0 24px color-mix(in srgb, var(--accent) 14%, transparent)";
   const scanStyle = { "--accent": "#6e9bff", boxShadow: softGlow } as CSSProperties;
 
   return (
-    <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl">
+    <nav className="animate-fade-in fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-bg-deep/90 backdrop-blur-xl lg:hidden">
       <div className="mx-auto grid max-w-3xl grid-cols-[3fr_4fr_3fr] items-end gap-2 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-3 sm:gap-3">
         <Link
           data-mode="statistics"
@@ -72,7 +93,9 @@ function BottomNav() {
           aria-label="Statistik Pasaran"
         >
           <BarChart3 size={19} />
-          <span className="text-[11px] font-black uppercase tracking-wide sm:text-sm">Statistik</span>
+          <span className="text-[11px] font-black uppercase tracking-wide sm:text-sm">
+            Statistik
+          </span>
         </Link>
 
         <Link

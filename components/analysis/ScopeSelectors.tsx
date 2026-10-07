@@ -124,7 +124,7 @@ function SelectorButton({
       </span>
       <span className="min-w-0 flex-1">
         <span className="display block text-[15px]">{option.title}</span>
-        <span className="mt-1.5 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
+        <span className="mt-1.5 block text-[11px] lg:text-[13px] font-bold uppercase tracking-wide text-text-muted">
           {option.subtitle}
         </span>
       </span>

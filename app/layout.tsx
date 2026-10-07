@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 import "./accessibility.css";
+import "./desktop.css";
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });

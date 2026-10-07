@@ -23,7 +23,7 @@ function NavigationLinks({
   batchActive: boolean;
 }) {
   return (
-    <div className="mx-auto grid max-w-3xl grid-cols-[7fr_7fr_6fr] gap-2 px-3 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-2 sm:px-5">
+    <div className="mx-auto grid max-w-3xl grid-cols-[7fr_7fr_6fr] gap-2 px-3 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-2 sm:px-5 lg:mx-0 lg:max-w-xl lg:p-2">
       <Link
         href="/scan"
         prefetch={false}

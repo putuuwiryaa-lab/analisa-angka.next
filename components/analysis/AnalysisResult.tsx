@@ -15,7 +15,7 @@ type ResultData = Record<string, any>;
 function StatsList({ stats }: { stats: any[] }) {
   if (!stats.length)
     return (
-      <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] font-bold uppercase tracking-wide text-text-muted">
+      <div className="depth-2 rounded-2xl border p-4 text-center text-[11px] lg:text-[13px] font-bold uppercase tracking-wide text-text-muted">
         Belum ada statistik aktif
       </div>
     );
@@ -29,11 +29,11 @@ function StatsList({ stats }: { stats: any[] }) {
             key={i}
             className="animate-soft-pop depth-2 grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border p-3"
           >
-            <span className="accent-border accent-text rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wide">
+            <span className="accent-border accent-text rounded-full border px-2 py-1 text-[9px] lg:text-xs font-black uppercase tracking-wide">
               {s.fallback ? "Fallback" : "Elite"}
             </span>
             <div className="min-w-0">
-              <div className="truncate text-[11px] font-semibold uppercase tracking-wide text-text opacity-90">
+              <div className="truncate text-[11px] lg:text-[13px] font-semibold uppercase tracking-wide text-text opacity-90">
                 {s.name || `Rumus ${i + 1}`}
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
@@ -43,7 +43,9 @@ function StatsList({ stats }: { stats: any[] }) {
                 />
               </div>
             </div>
-            <span className="num accent-text text-[11px] font-black">{score}/14</span>
+            <span className="num accent-text text-[11px] lg:text-[13px] font-black">
+              {score}/14
+            </span>
           </div>
         );
       })}
@@ -97,10 +99,20 @@ function cnPill(singleLine: boolean, compact: boolean) {
   return `depth-accent display flex shrink-0 items-center justify-center rounded-2xl border text-text ${size}`;
 }
 
-function ResultRow({ label, values, shio = false }: { label: string; values: any; shio?: boolean }) {
+function ResultRow({
+  label,
+  values,
+  shio = false,
+}: {
+  label: string;
+  values: any;
+  shio?: boolean;
+}) {
   return (
     <div className="animate-soft-pop depth-2 flex min-h-[68px] items-center justify-between gap-3 rounded-2xl border p-4">
-      <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-text-soft">{label}</span>
+      <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-text-soft">
+        {label}
+      </span>
       <div className="min-w-0 flex-1">
         {shio ? (
           <div className="flex flex-wrap justify-end gap-2">
@@ -135,11 +147,11 @@ function MainResultCard({
     <div className="animate-soft-pop depth-accent relative overflow-hidden rounded-3xl border p-4">
       <div className="accent-bg-soft absolute -right-16 -top-16 h-44 w-44 rounded-full blur-3xl" />
       <div className="relative mb-3 flex items-center justify-between gap-3">
-        <div className="depth-3 accent-text inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide">
+        <div className="depth-3 accent-text inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] lg:text-xs font-black uppercase tracking-wide">
           <Trophy size={12} /> Hasil Utama
         </div>
         {badge && (
-          <span className="depth-3 accent-text rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide">
+          <span className="depth-3 accent-text rounded-full border px-3 py-1 text-[10px] lg:text-xs font-black uppercase tracking-wide">
             {badge}
           </span>
         )}
@@ -178,7 +190,7 @@ function DetailValidationHeader({
     <div className="flex items-center justify-between gap-3">
       <SectionTitle title="Detail Validasi" />
       <div className="flex shrink-0 items-center gap-2">
-        <span className="depth-3 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-text-muted">
+        <span className="depth-3 rounded-full border px-3 py-1.5 text-[10px] lg:text-xs font-black uppercase tracking-wide text-text-muted">
           {activeLabel}
         </span>
         <DetailToggle open={open} onClick={onToggle} />
@@ -201,7 +213,9 @@ function MatiEvaluationTabs({ marketId, param }: { marketId: string; param: numb
     <div className="animate-rise depth-1 space-y-3 rounded-3xl border p-4">
       <div className="flex items-center justify-between px-1">
         <span className="display text-xs text-text">Riwayat Evaluasi</span>
-        <span className="text-[11px] font-bold uppercase tracking-wide text-text-soft">Per Posisi</span>
+        <span className="text-[11px] lg:text-[13px] font-bold uppercase tracking-wide text-text-soft">
+          Per Posisi
+        </span>
       </div>
       <div className="grid grid-cols-4 gap-2">
         {tabs.map((tab) => {
@@ -213,8 +227,8 @@ function MatiEvaluationTabs({ marketId, param }: { marketId: string; param: numb
               onClick={() => setActivePosition(tab.key)}
               className={
                 active
-                  ? "pressable depth-accent accent-text rounded-2xl border px-2 py-3 text-[11px] font-black uppercase tracking-wide"
-                  : "pressable depth-3 rounded-2xl border px-2 py-3 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
+                  ? "pressable depth-accent accent-text rounded-2xl border px-2 py-3 text-[11px] lg:text-[13px] font-black uppercase tracking-wide"
+                  : "pressable depth-3 rounded-2xl border px-2 py-3 text-[11px] lg:text-[13px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.06]"
               }
             >
               {tab.label}
@@ -262,7 +276,7 @@ export function AnalysisResult({
     const totalActive = POS.reduce((acc, p) => acc + statsFrom(result[p]).length, 0);
     return (
       <div className="animate-rise space-y-4">
-        <div className="depth-1 space-y-3 rounded-3xl border p-4">
+        <div className="depth-1 space-y-3 rounded-3xl border p-4 xl:grid xl:grid-cols-2 xl:gap-3 xl:space-y-0">
           {POS.map((p) => (
             <ResultRow key={p} label={`OFF ${p}`} values={result[p]?.result} />
           ))}
@@ -278,14 +292,19 @@ export function AnalysisResult({
               <section key={p} className="animate-rise space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="h-px flex-1 bg-white/10" />
-                  <span className="display accent-text text-[11px]">{p}</span>
+                  <span className="display accent-text text-[11px] lg:text-[13px]">{p}</span>
                   <div className="h-px flex-1 bg-white/10" />
                 </div>
                 <StatsList stats={statsFrom(result[p])} />
               </section>
             ))}
         </div>
-        <AngkaJadiPanel type={type} result={result} open={angkaJadiOpen} setOpen={setAngkaJadiOpen} />
+        <AngkaJadiPanel
+          type={type}
+          result={result}
+          open={angkaJadiOpen}
+          setOpen={setAngkaJadiOpen}
+        />
         {param !== 0 && <MatiEvaluationTabs marketId={marketId} param={param || 1} />}
       </div>
     );
@@ -296,8 +315,11 @@ export function AnalysisResult({
   const active = result.elitCount ?? result.eliteTotal ?? stats.length;
   const effectiveMode = result.evaluationMode || type;
   const effectiveParam = result.evaluationParam || param || 1;
-  const effectiveAnalysisScope = (result.analysis_scope || analysisScope || "default") as AnalysisScope;
-  const formulaTotal = type === "ai" || type === "bbfs" ? 45 : type === "jumlah" ? 56 : type === "shio" ? 60 : 50;
+  const effectiveAnalysisScope = (result.analysis_scope ||
+    analysisScope ||
+    "default") as AnalysisScope;
+  const formulaTotal =
+    type === "ai" || type === "bbfs" ? 45 : type === "jumlah" ? 56 : type === "shio" ? 60 : 50;
   const isBBFSResult = type === "bbfs";
   const isAIResult = type === "ai";
   const isBbfsGgbkResult = isBBFSResult && effectiveParam === 10 && Boolean(result.bbfsGgbk);

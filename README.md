@@ -2,6 +2,10 @@
 
 Analisa Angka adalah aplikasi web/PWA berbasis Next.js untuk dashboard pasaran, analisa angka, Scan, statistik, evaluasi, rekomendasi Invest 2D, Angka Jadi, dan Adaptive Learning.
 
+## Tampilan desktop
+
+Pada lebar layar mulai 1024 px, aplikasi menggunakan sidebar dan panel pengaturan/hasil yang berdampingan. Navigasi Scan berada di atas area kerja. Mulai 1280 px, Share Prediksi menampilkan format, pasaran, dan pratinjau dalam tiga panel. Tampilan HP tetap memakai navigasi bawah dan alur Share bertahap; perubahan ukuran layar menggunakan state yang sama.
+
 ## Stack
 
 | Area | Teknologi |

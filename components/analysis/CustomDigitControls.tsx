@@ -52,7 +52,12 @@ export function CustomDigitOptionButton({
       <span className="depth-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-[1.05]">
         <Icon size={15} strokeWidth={1.9} />
       </span>
-      <span className={cn("display min-w-0", numericLabel ? "text-lg leading-none" : "text-[12px] leading-4")}>
+      <span
+        className={cn(
+          "display min-w-0",
+          numericLabel ? "text-lg leading-none" : "text-[12px] leading-4",
+        )}
+      >
         {label}
       </span>
     </button>

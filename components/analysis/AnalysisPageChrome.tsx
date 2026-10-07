@@ -10,7 +10,15 @@ import { PageTopBar } from "@/components/layout/PageTopBar";
 import { Button } from "@/components/ui/Button";
 import { formatMarketName } from "@/lib/markets/format";
 
-function SelectionChip({ label, value, onReset }: { label: string; value: string; onReset: () => void }) {
+function SelectionChip({
+  label,
+  value,
+  onReset,
+}: {
+  label: string;
+  value: string;
+  onReset: () => void;
+}) {
   return (
     <button
       type="button"
@@ -19,8 +27,12 @@ function SelectionChip({ label, value, onReset }: { label: string; value: string
       aria-label={`Ganti ${label}`}
     >
       <span className="min-w-0 flex-1">
-        <span className="block text-[9px] font-black uppercase tracking-wide text-text-soft">{label}</span>
-        <span className="accent-text block truncate text-[10px] font-black uppercase tracking-wide">{value}</span>
+        <span className="block text-[9px] lg:text-xs font-black uppercase tracking-wide text-text-soft">
+          {label}
+        </span>
+        <span className="accent-text block truncate text-[10px] lg:text-xs font-black uppercase tracking-wide">
+          {value}
+        </span>
       </span>
       <RotateCcw size={13} className="shrink-0 text-text-soft" />
     </button>
@@ -86,11 +98,13 @@ export function AnalysisPageChrome({
             <Icon size={22} strokeWidth={1.9} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="accent-text text-[9px] font-black uppercase tracking-[0.18em]">Pasaran Analisa</div>
+            <div className="accent-text text-[9px] lg:text-xs font-black uppercase tracking-[0.18em]">
+              Pasaran Analisa
+            </div>
             <h1 className="display mt-1 break-words text-[2rem] leading-none text-text sm:text-[2.25rem]">
               {formatMarketName(marketId)}
             </h1>
-            <div className="depth-3 accent-text mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
+            <div className="depth-3 accent-text mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] lg:text-xs font-black uppercase tracking-wide">
               <Sparkles size={10} /> {title}
             </div>
           </div>
@@ -99,13 +113,25 @@ export function AnalysisPageChrome({
         {hasSelection ? (
           <div className="relative mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {isAI && analysisScope ? (
-              <SelectionChip label="AI" value={analysisScopeLabel(analysisScope)} onReset={onAIScopeReset} />
+              <SelectionChip
+                label="AI"
+                value={analysisScopeLabel(analysisScope)}
+                onReset={onAIScopeReset}
+              />
             ) : null}
             {needsTargetPair && targetPair ? (
-              <SelectionChip label="Fokus" value={targetPairLabel(targetPair)} onReset={onTargetPairReset} />
+              <SelectionChip
+                label="Fokus"
+                value={targetPairLabel(targetPair)}
+                onReset={onTargetPairReset}
+              />
             ) : null}
             {isBBFS && analysisScope && analysisScope !== "default" ? (
-              <SelectionChip label="BBFS" value={analysisScopeLabel(analysisScope)} onReset={onBBFSScopeReset} />
+              <SelectionChip
+                label="BBFS"
+                value={analysisScopeLabel(analysisScope)}
+                onReset={onBBFSScopeReset}
+              />
             ) : null}
             {isRekapCustom && customFocus ? (
               <SelectionChip
@@ -118,8 +144,14 @@ export function AnalysisPageChrome({
         ) : null}
       </section>
 
-      {(canStartAnalyze || loading) ? (
-        <Button variant="accent" size="lg" className="mb-4 w-full" onClick={onStartAnalyze} disabled={loading}>
+      {canStartAnalyze || loading ? (
+        <Button
+          variant="accent"
+          size="lg"
+          className="mb-4 w-full"
+          onClick={onStartAnalyze}
+          disabled={loading}
+        >
           <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
           {loading ? "Memproses..." : "Mulai Analisa"}
         </Button>

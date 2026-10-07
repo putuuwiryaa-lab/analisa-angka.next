@@ -214,7 +214,9 @@ export default function RekomendasiPage() {
       .filter((row) => {
         if (!row) return false;
         if (!query) return true;
-        return row.marketId.toLowerCase().includes(query) || row.marketName.toLowerCase().includes(query);
+        return (
+          row.marketId.toLowerCase().includes(query) || row.marketName.toLowerCase().includes(query)
+        );
       })
       .sort((a, b) => {
         if (!a || !b) return 0;
@@ -269,7 +271,10 @@ export default function RekomendasiPage() {
         [key]: {
           ...previous[key],
           loading: false,
-          error: requestError instanceof Error ? requestError.message : "Angka jadi belum bisa ditampilkan.",
+          error:
+            requestError instanceof Error
+              ? requestError.message
+              : "Angka jadi belum bisa ditampilkan.",
         },
       }));
     }
@@ -325,9 +330,11 @@ export default function RekomendasiPage() {
             <Coins size={21} strokeWidth={1.9} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="accent-text text-[9px] font-black uppercase tracking-[0.18em]">Rekomendasi Invest</p>
+            <p className="accent-text text-[9px] lg:text-xs font-black uppercase tracking-[0.18em]">
+              Rekomendasi Invest
+            </p>
             <h1 className="display mt-1 text-xl text-text">Invest 2D &amp; 3D</h1>
-            <p className="mt-1 text-[10px] font-semibold leading-4 text-text-soft">
+            <p className="mt-1 text-[10px] lg:text-xs font-semibold leading-4 text-text-soft">
               Pilih posisi lalu lihat kombinasi terbaik setiap pasaran.
             </p>
           </div>
@@ -345,20 +352,24 @@ export default function RekomendasiPage() {
                   setPair(item.key);
                   setSearch("");
                 }}
-                className={`pressable flex min-h-[60px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 text-center text-[9px] font-black uppercase tracking-wide ${
+                className={`pressable flex min-h-[60px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 text-center text-[9px] lg:text-xs font-black uppercase tracking-wide ${
                   active
                     ? "accent-bg-soft accent-border text-text"
                     : "depth-3 border-border-soft text-text-muted hover:border-border"
                 }`}
               >
-                <Icon size={17} strokeWidth={1.9} className={active ? "text-accent" : "text-text-soft"} />
+                <Icon
+                  size={17}
+                  strokeWidth={1.9}
+                  className={active ? "text-accent" : "text-text-soft"}
+                />
                 {item.short}
               </button>
             );
           })}
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-3 px-1 text-[10px] font-black uppercase tracking-wide text-text-soft">
+        <div className="mt-3 flex items-center justify-between gap-3 px-1 text-[10px] lg:text-xs font-black uppercase tracking-wide text-text-soft">
           <span>{activePairLabel}</span>
           <span>{rows.length} pasaran</span>
         </div>
@@ -367,7 +378,10 @@ export default function RekomendasiPage() {
       {errorMessage ? <StateBox text={errorMessage} tone="error" /> : null}
 
       <div className="relative">
-        <Search size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
+        <Search
+          size={17}
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft"
+        />
         <Input
           type="text"
           placeholder="Cari pasaran…"
@@ -391,16 +405,24 @@ export default function RekomendasiPage() {
         <div className="mb-3 flex items-end justify-between gap-3 px-1">
           <div>
             <p className="display text-sm text-text">Ranking Pasaran</p>
-            <p className="mt-1 text-[10px] font-semibold text-text-soft">Urut berdasarkan riwayat terbaik</p>
+            <p className="mt-1 text-[10px] lg:text-xs font-semibold text-text-soft">
+              Urut berdasarkan riwayat terbaik
+            </p>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-wide text-text-soft">{rows.length} hasil</span>
+          <span className="text-[10px] lg:text-xs font-black uppercase tracking-wide text-text-soft">
+            {rows.length} hasil
+          </span>
         </div>
 
-        <div className="space-y-2.5">
+        <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
           {showSkeleton ? (
-            Array.from({ length: 8 }).map((_, index) => <Skeleton key={index} className="h-[124px] rounded-2xl" />)
+            Array.from({ length: 8 }).map((_, index) => (
+              <Skeleton key={index} className="h-[124px] rounded-2xl" />
+            ))
           ) : rows.length === 0 ? (
-            <StateBox text={search ? "Pasaran tidak ditemukan." : "Belum ada rekomendasi untuk posisi ini."} />
+            <StateBox
+              text={search ? "Pasaran tidak ditemukan." : "Belum ada rekomendasi untuk posisi ini."}
+            />
           ) : (
             rows.map((row, index) => (
               <InvestLiteCard
@@ -460,11 +482,11 @@ function InvestLiteCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="display truncate text-base text-text">{row.marketName}</h2>
-          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-text-muted">
+          <p className="mt-1 line-clamp-2 text-[11px] lg:text-[13px] font-semibold leading-snug text-text-muted">
             {shortComboLabel(row.combo.label)}
           </p>
         </div>
-        <span className="accent-bg-soft accent-text shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
+        <span className="accent-bg-soft accent-text shrink-0 rounded-full px-2.5 py-1 text-[10px] lg:text-xs font-black uppercase tracking-wide">
           {formatWins15(row.combo.avgWins15)}/15
         </span>
       </div>
@@ -505,9 +527,13 @@ function InvestLiteCard({
           type="button"
           onClick={onGenerate}
           disabled={state.loading}
-          className="pressable depth-3 flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-[11px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
+          className="pressable depth-3 flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-[11px] lg:text-[13px] font-black uppercase tracking-wide text-text-muted disabled:opacity-45"
         >
-          {generated ? <RefreshCw size={15} className={state.loading ? "animate-spin" : ""} /> : <Eye size={15} />}
+          {generated ? (
+            <RefreshCw size={15} className={state.loading ? "animate-spin" : ""} />
+          ) : (
+            <Eye size={15} />
+          )}
           {state.loading
             ? generated
               ? "Memperbarui…"
@@ -520,14 +546,18 @@ function InvestLiteCard({
           type="button"
           onClick={onCopy}
           disabled={!hasLines || state.loading}
-          className="pressable accent-bg-soft accent-text flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 text-[11px] font-black uppercase tracking-wide disabled:opacity-45"
+          className="pressable accent-bg-soft accent-text flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 text-[11px] lg:text-[13px] font-black uppercase tracking-wide disabled:opacity-45"
         >
           {state.copied ? <Check size={15} /> : <ClipboardCopy size={15} />}
           {state.copied ? "Tersalin" : "Copy"}
         </button>
       </div>
 
-      {state.copyError ? <p className="mt-2 text-center text-[10px] font-bold text-danger">{state.copyError}</p> : null}
+      {state.copyError ? (
+        <p className="mt-2 text-center text-[10px] lg:text-xs font-bold text-danger">
+          {state.copyError}
+        </p>
+      ) : null}
     </article>
   );
 }
@@ -552,7 +582,9 @@ function MetricChip({
   const valueClass = tone === "neutral" ? "text-text-muted" : "text-text";
 
   return (
-    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-colors ${toneClass}`}>
+    <span
+      className={`rounded-full border px-2.5 py-1 text-[10px] lg:text-xs font-black uppercase tracking-wide transition-colors ${toneClass}`}
+    >
       {label} <span className={valueClass}>{value}</span>
     </span>
   );

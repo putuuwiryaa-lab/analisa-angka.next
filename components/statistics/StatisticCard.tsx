@@ -43,8 +43,8 @@ export function StatisticCard({
           <div
             className={
               topRank
-                ? "display flex h-10 w-10 items-center justify-center rounded-2xl text-[11px] shadow-sm sm:h-12 sm:w-12 sm:text-[13px]"
-                : "display accent-text depth-3 flex h-10 w-10 items-center justify-center rounded-2xl border text-[11px] sm:h-12 sm:w-12 sm:text-[13px]"
+                ? "display flex h-10 w-10 items-center justify-center rounded-2xl text-[11px] lg:text-[13px] shadow-sm sm:h-12 sm:w-12 sm:text-[13px]"
+                : "display accent-text depth-3 flex h-10 w-10 items-center justify-center rounded-2xl border text-[11px] lg:text-[13px] sm:h-12 sm:w-12 sm:text-[13px]"
             }
             style={topRank ? solidAccentStyle : undefined}
           >
@@ -52,8 +52,13 @@ export function StatisticCard({
           </div>
           {movement && (
             <span
-              className="display mt-1 flex min-h-6 min-w-10 items-center justify-center rounded-xl border px-2 py-1 text-[10px] leading-none sm:min-h-7 sm:min-w-14 sm:px-3 sm:py-1.5 sm:text-xs"
-              style={{ color: tone.text, backgroundColor: tone.bg, borderColor: tone.border, boxShadow: tone.shadow }}
+              className="display mt-1 flex min-h-6 min-w-10 items-center justify-center rounded-xl border px-2 py-1 text-[10px] lg:text-xs leading-none sm:min-h-7 sm:min-w-14 sm:px-3 sm:py-1.5 sm:text-xs"
+              style={{
+                color: tone.text,
+                backgroundColor: tone.bg,
+                borderColor: tone.border,
+                boxShadow: tone.shadow,
+              }}
             >
               {movement}
             </span>
@@ -62,17 +67,19 @@ export function StatisticCard({
 
         <div className="min-w-0 flex-1">
           <div className="min-w-0">
-            <p className="display break-words text-[1.05rem] leading-tight text-text sm:text-base">{marketName}</p>
-            <p className="accent-text mt-1 break-words text-[10px] font-black uppercase leading-4 tracking-wide sm:text-[11px]">
+            <p className="display break-words text-[1.05rem] leading-tight text-text sm:text-base">
+              {marketName}
+            </p>
+            <p className="accent-text mt-1 break-words text-[10px] lg:text-xs font-black uppercase leading-4 tracking-wide sm:text-[11px]">
               {statTitle(item)}
             </p>
             {item.group_key === "off_digit" && (
-              <p className="mt-1 text-[10px] font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
+              <p className="mt-1 text-[10px] lg:text-xs font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
                 {matiPositionSubtitle(item.position)}
               </p>
             )}
             {item.group_key === "bbfs" && (
-              <p className="mt-1 text-[10px] font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
+              <p className="mt-1 text-[10px] lg:text-xs font-black uppercase leading-4 tracking-wide text-text-muted sm:text-[11px]">
                 {bbfsScopeSubtitle(item.analysis_scope)}
               </p>
             )}
@@ -80,23 +87,23 @@ export function StatisticCard({
 
           <div className="mt-3 grid grid-cols-2 gap-2 text-center">
             <div className="depth-2 min-w-0 rounded-2xl border p-2">
-              <p className="text-[9px] font-black uppercase tracking-wide text-text-muted sm:text-[10px]">Riwayat</p>
-              <p className="display accent-text text-[13px] sm:text-sm">
-                {item.wins_15}/15
+              <p className="text-[9px] lg:text-xs font-black uppercase tracking-wide text-text-muted sm:text-[10px]">
+                Riwayat
               </p>
+              <p className="display accent-text text-[13px] sm:text-sm">{item.wins_15}/15</p>
             </div>
             <div className="depth-2 min-w-0 rounded-2xl border p-2">
-              <p className="text-[9px] font-black uppercase tracking-wide text-text-muted sm:text-[10px]">Terbaru</p>
-              <p className="display accent-text text-[13px] sm:text-sm">
-                {item.wins_last_5}/5
+              <p className="text-[9px] lg:text-xs font-black uppercase tracking-wide text-text-muted sm:text-[10px]">
+                Terbaru
               </p>
+              <p className="display accent-text text-[13px] sm:text-sm">{item.wins_last_5}/5</p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={() => onOpen(marketUrl(item))}
-            className="pressable accent-bg-soft accent-text accent-border mt-3 min-h-11 w-full rounded-2xl border px-4 py-2.5 text-[11px] font-black uppercase tracking-wide hover:bg-white/[0.06]"
+            className="pressable accent-bg-soft accent-text accent-border mt-3 min-h-11 w-full rounded-2xl border px-4 py-2.5 text-[11px] lg:text-[13px] font-black uppercase tracking-wide hover:bg-white/[0.06]"
             style={topRank ? solidAccentStyle : undefined}
           >
             Buka Pasaran
