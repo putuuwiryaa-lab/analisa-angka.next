@@ -307,7 +307,8 @@ export default function AdaptivePageClient() {
               {result.digits.map((digit, index) => (
                 <div
                   key={`${digit}-${index}`}
-                  className="flex aspect-square min-w-0 max-w-12 flex-1 items-center justify-center rounded-lg border border-primary/45 bg-primary/20 text-base font-black text-primary-soft shadow-lg shadow-black/10 sm:rounded-xl sm:text-xl"
+                  className="desktop-digit-enter flex aspect-square min-w-0 max-w-12 flex-1 items-center justify-center rounded-lg border border-primary/45 bg-primary/20 text-base font-black text-primary-soft shadow-lg shadow-black/10 sm:rounded-xl sm:text-xl"
+                  style={{ animationDelay: `${Math.min(index, 9) * 24}ms` }}
                 >
                   {digit}
                 </div>

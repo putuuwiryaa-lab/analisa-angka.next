@@ -38,7 +38,7 @@ function StatsList({ stats }: { stats: any[] }) {
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                 <div
-                  className="h-full rounded-full bg-[var(--accent)] transition-[width]"
+                  className="desktop-progress-fill h-full rounded-full bg-[var(--accent)] transition-[width]"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -71,7 +71,7 @@ function DigitPills({
         style={{ gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))` }}
       >
         {items.map((item, i) => (
-          <div key={i} className={cnPill(true, compact)}>
+          <div key={i} className={cnPill(true, compact)} style={{ animationDelay: `${Math.min(i, 9) * 24}ms` }}>
             {item}
           </div>
         ))}
@@ -82,7 +82,7 @@ function DigitPills({
   return (
     <div className={`flex flex-wrap ${center ? "justify-center" : "justify-end"} gap-2`}>
       {items.map((item, i) => (
-        <div key={i} className={cnPill(false, compact)}>
+        <div key={i} className={cnPill(false, compact)} style={{ animationDelay: `${Math.min(i, 9) * 24}ms` }}>
           {item}
         </div>
       ))}
@@ -96,7 +96,7 @@ function cnPill(singleLine: boolean, compact: boolean) {
     : compact
       ? "h-10 min-w-10 px-3 text-base"
       : "h-14 min-w-14 px-4 text-3xl";
-  return `depth-accent display flex shrink-0 items-center justify-center rounded-2xl border text-text ${size}`;
+  return `desktop-digit-enter depth-accent display flex shrink-0 items-center justify-center rounded-2xl border text-text ${size}`;
 }
 
 function ResultRow({

@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { BarChart3, Coins, ScanSearch } from "lucide-react";
@@ -8,9 +8,11 @@ import { AccessGuard } from "@/components/access/AccessGuard";
 import { InstallAppBanner } from "@/components/install/InstallAppBanner";
 import { Logo } from "@/components/ui/Logo";
 import { DesktopSidebar } from "./DesktopSidebar";
+import { DesktopMotion } from "./DesktopMotion";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const mainRef = useRef<HTMLElement>(null);
   const isHome = pathname === "/";
   const isStandaloneMenu =
     pathname === "/rekomendasi" ||
@@ -31,12 +33,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       {!isAccessRoute && <DesktopSidebar />}
       <div className="min-w-0 flex-1">
         {!hideHeader && <HeroHeader />}
-        <main id="main-content" className="min-w-0 flex-1">
+        <main ref={mainRef} id="main-content" className="min-w-0 flex-1">
           {children}
         </main>
         {showBottomNav && <BottomNav />}
         {!hideHeader && <InstallAppBanner />}
       </div>
+      <DesktopMotion targetRef={mainRef} pathname={pathname} enabled={!isAccessRoute} />
     </div>
   );
 }

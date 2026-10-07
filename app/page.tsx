@@ -102,9 +102,11 @@ export default function DashboardPage() {
             {filteredMarkets.map((m) => (
               <Link
                 key={m.id}
+                data-desktop-reveal="rise"
+                data-motion-key={m.lastResult}
                 href={`/analyze/${encodeURIComponent(m.id)}`}
                 prefetch={false}
-                className="pressable depth-1 flex h-[112px] flex-col overflow-hidden rounded-3xl border text-center hover:border-border hover:bg-surface-2 lg:h-32"
+                className="desktop-hover-card pressable depth-1 flex h-[112px] flex-col overflow-hidden rounded-3xl border text-center hover:border-border hover:bg-surface-2 lg:h-32"
               >
                 <div className="depth-2 flex min-h-[48px] items-center justify-center border-b border-border-soft px-3">
                   <span className="display line-clamp-2 text-[12px] leading-4 text-text lg:text-sm lg:leading-5">

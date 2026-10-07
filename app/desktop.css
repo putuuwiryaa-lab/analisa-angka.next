@@ -224,8 +224,8 @@
   .app-shell .desktop-workspace,
   .app-shell .share-step,
   .desktop-sidebar,
-  .desktop-controls,
-  .desktop-results {
+  .app-shell .desktop-controls,
+  .app-shell .desktop-results {
     animation: desktop-fade 240ms var(--ease-desktop) backwards;
   }
 
@@ -322,4 +322,108 @@
 @keyframes desktop-popover-enter {
   from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
+}
+
+/* Shared motion for the complete desktop workflow. */
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  /* The observer reveals only visible items, including rows in scroll panels. */
+  .app-shell [data-desktop-reveal] {
+    animation: none;
+  }
+
+  .desktop-hover-card {
+    transition: transform 180ms var(--ease-desktop), border-color 180ms ease-out, background-color 180ms ease-out;
+  }
+
+  .app-shell :is(input, textarea, select, button[aria-haspopup]) {
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-desktop);
+  }
+
+  .app-shell button[aria-expanded="true"][aria-haspopup] {
+    border-color: var(--color-primary);
+  }
+
+  .app-shell button[aria-pressed="true"] svg,
+  .app-shell [data-motion-feedback="success"] > svg,
+  .desktop-popover [aria-selected="true"] > svg {
+    animation: desktop-confirm 180ms var(--ease-desktop, ease-out) backwards;
+  }
+
+  .desktop-digit-enter {
+    animation: desktop-digit 240ms var(--ease-desktop) backwards;
+  }
+
+  .desktop-status-enter {
+    animation: desktop-fade 200ms var(--ease-desktop) backwards;
+  }
+
+  .desktop-progress-fill {
+    transform-origin: left;
+    animation: desktop-bar 400ms var(--ease-desktop) backwards;
+    transition-property: none;
+  }
+
+  .app-shell [aria-busy="true"]:not(button) > svg:not(.animate-spin) {
+    animation: desktop-confirm 200ms var(--ease-desktop) backwards;
+  }
+
+  .desktop-sidebar nav a[aria-current="page"] > svg,
+  .scan-layout nav a[aria-current="page"] > svg {
+    animation: desktop-confirm 180ms var(--ease-desktop) backwards;
+  }
+
+  .desktop-detail-dialog[open][data-closing="true"] > section {
+    animation: desktop-dialog-exit 150ms ease-in forwards;
+  }
+
+  .desktop-detail-dialog[open][data-closing="true"]::backdrop {
+    animation: desktop-opacity-exit 150ms ease-in forwards;
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .app-shell .desktop-hover-card:not(:disabled):hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--accent, var(--color-primary)) 45%, var(--color-border-soft));
+  }
+
+  .app-shell tbody tr {
+    transition: background-color 160ms ease-out;
+  }
+
+  .desktop-popover [role="option"] {
+    transition: background-color 140ms ease-out, color 140ms ease-out;
+  }
+}
+
+@keyframes desktop-confirm {
+  from { opacity: 0.6; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes desktop-digit {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes desktop-dialog-exit {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(6px); }
+}
+
+@keyframes desktop-opacity-exit {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes desktop-bar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .app-shell :is(.animate-rise, .animate-soft-pop, .animate-page-enter, .animate-slide-up-soft, .animate-mobile-card) {
+    animation-delay: 0s !important;
+  }
 }

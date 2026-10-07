@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Check, Clipboard, X } from "lucide-react";
 import type { DetailData } from "../_lib";
@@ -6,6 +6,29 @@ import styles from "../ScanTheme.module.css";
 
 export default function TrekDetailModal({ data, copied, onCopy, onClose }: { data: DetailData; copied: boolean; onCopy: () => void; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [closing, setClosing] = useState(false);
+
+  function requestClose() {
+    if (window.matchMedia("(min-width: 1024px) and (prefers-reduced-motion: no-preference)").matches) {
+      setClosing(true);
+    } else {
+      onClose();
+    }
+  }
+
+  useEffect(() => {
+    if (!closing) return;
+    // Finish even if the animation is interrupted or the preference changes.
+    const timeout = window.setTimeout(onClose, 180);
+    const preference = window.matchMedia("(min-width: 1024px) and (prefers-reduced-motion: no-preference)");
+    const finish = () => { if (!preference.matches) onClose(); };
+    finish();
+    preference.addEventListener("change", finish);
+    return () => {
+      clearTimeout(timeout);
+      preference.removeEventListener("change", finish);
+    };
+  }, [closing, onClose]);
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
@@ -41,12 +64,13 @@ export default function TrekDetailModal({ data, copied, onCopy, onClose }: { dat
     <dialog
       ref={dialogRef}
       aria-label={`Detail trek ${data.title}`}
+      data-closing={closing}
       onKeyDown={keepFocusInside}
-      onCancel={(event) => { event.preventDefault(); onClose(); }}
-      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      onCancel={(event) => { event.preventDefault(); requestClose(); }}
+      onClick={(event) => { if (event.target === event.currentTarget) requestClose(); }}
       className={`${styles.theme} desktop-detail-dialog fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none items-end justify-center border-0 bg-transparent p-0 text-text backdrop:bg-black/80 backdrop:backdrop-blur-[2px] open:flex sm:items-center sm:p-5`}
     >
-      <section className="relative flex max-h-[92svh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[1.75rem] border border-border-soft bg-bg-deep shadow-2xl sm:rounded-[1.75rem]">
+      <section onAnimationEnd={(event) => { if (event.target === event.currentTarget && event.animationName === "desktop-dialog-exit") onClose(); }} className="relative flex max-h-[92svh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[1.75rem] border border-border-soft bg-bg-deep shadow-2xl sm:rounded-[1.75rem]">
         <header className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-border-soft bg-surface/95 p-4 sm:p-5">
           <div className="min-w-0">
             <h2 className="display truncate text-2xl text-text">{data.title}</h2>
@@ -56,7 +80,7 @@ export default function TrekDetailModal({ data, copied, onCopy, onClose }: { dat
             <button type="button" onClick={onCopy} className="pressable flex h-11 items-center gap-2 rounded-xl border border-border-soft bg-white/[0.05] px-3 text-xs font-black text-text-muted sm:h-12">
               {copied ? <Check size={16} /> : <Clipboard size={16} />}{copied ? "Tersalin" : "Salin"}
             </button>
-            <button type="button" onClick={onClose} className="pressable flex h-11 w-11 items-center justify-center rounded-xl border border-border-soft bg-white/[0.05] text-text sm:h-12 sm:w-12" aria-label="Tutup"><X size={22} /></button>
+            <button type="button" onClick={requestClose} className="pressable flex h-11 w-11 items-center justify-center rounded-xl border border-border-soft bg-white/[0.05] text-text sm:h-12 sm:w-12" aria-label="Tutup"><X size={22} /></button>
           </div>
         </header>
         <div className="overscroll-contain overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
