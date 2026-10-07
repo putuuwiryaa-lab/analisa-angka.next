@@ -1,7 +1,16 @@
 "use client";
 
+import { WorkspacePlaceholder } from "@/components/layout/WorkspacePlaceholder";
+
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AutoScanItem, AutoScanResult, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
+import type {
+  AutoScanItem,
+  AutoScanResult,
+  Posisi,
+  ScanMode,
+  Target2D,
+  Target3D,
+} from "@/lib/engine/types";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 import ScanFields from "./_components/ScanFields";
 import ScanResultSection, { trekId } from "./_components/ScanResultSection";
@@ -80,7 +89,8 @@ export default function ScanPageClient() {
 
   useEffect(() => {
     if (marketId || markets.length === 0) return;
-    const defaultMarket = markets.find((market) => /singapore|sgp/i.test(`${market.id} ${market.name}`)) ?? markets[0];
+    const defaultMarket =
+      markets.find((market) => /singapore|sgp/i.test(`${market.id} ${market.name}`)) ?? markets[0];
     if (defaultMarket) setMarketId(defaultMarket.id);
   }, [marketId, markets]);
 
@@ -117,11 +127,19 @@ export default function ScanPageClient() {
   );
   const result = completedScan?.result ?? null;
   const title = useMemo(
-    () => String(completedScan?.marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran").toUpperCase(),
+    () =>
+      String(
+        completedScan?.marketName || selectedMarket?.name || selectedMarket?.id || "Pasaran",
+      ).toUpperCase(),
     [completedScan?.marketName, selectedMarket?.id, selectedMarket?.name],
   );
   const savedGroups = useMemo(() => buildSavedGroups(savedTreks), [savedTreks]);
-  const marketsError = marketsQueryError instanceof Error ? marketsQueryError.message : marketsQueryError ? "Gagal memuat pasaran." : "";
+  const marketsError =
+    marketsQueryError instanceof Error
+      ? marketsQueryError.message
+      : marketsQueryError
+        ? "Gagal memuat pasaran."
+        : "";
   const visibleError = error || marketsError;
 
   const invalidateScanOutput = useCallback(() => {
@@ -134,61 +152,88 @@ export default function ScanPageClient() {
     setLoading(false);
   }, []);
 
-  const changeMarket = useCallback((value: string) => {
-    if (value === marketId) return;
-    invalidateScanOutput();
-    setMarketId(value);
-  }, [invalidateScanOutput, marketId]);
+  const changeMarket = useCallback(
+    (value: string) => {
+      if (value === marketId) return;
+      invalidateScanOutput();
+      setMarketId(value);
+    },
+    [invalidateScanOutput, marketId],
+  );
 
-  const changeMode = useCallback((mode: ScanMode) => {
-    if (mode === scanMode) return;
-    invalidateScanOutput();
-    setScanMode(mode);
-    setDigitCount(MODE_OPTIONS.find((item) => item.value === mode)?.digits ?? 7);
-  }, [invalidateScanOutput, scanMode]);
+  const changeMode = useCallback(
+    (mode: ScanMode) => {
+      if (mode === scanMode) return;
+      invalidateScanOutput();
+      setScanMode(mode);
+      setDigitCount(MODE_OPTIONS.find((item) => item.value === mode)?.digits ?? 7);
+    },
+    [invalidateScanOutput, scanMode],
+  );
 
-  const changeRounds = useCallback((value: number) => {
-    if (value === rounds) return;
-    invalidateScanOutput();
-    setRounds(value);
-    setPatah((current) => Math.min(current, value));
-  }, [invalidateScanOutput, rounds]);
+  const changeRounds = useCallback(
+    (value: number) => {
+      if (value === rounds) return;
+      invalidateScanOutput();
+      setRounds(value);
+      setPatah((current) => Math.min(current, value));
+    },
+    [invalidateScanOutput, rounds],
+  );
 
-  const changePatah = useCallback((value: number) => {
-    if (value === patah) return;
-    invalidateScanOutput();
-    setPatah(value);
-  }, [invalidateScanOutput, patah]);
+  const changePatah = useCallback(
+    (value: number) => {
+      if (value === patah) return;
+      invalidateScanOutput();
+      setPatah(value);
+    },
+    [invalidateScanOutput, patah],
+  );
 
-  const changeTargetPos = useCallback((value: Posisi) => {
-    if (value === targetPos) return;
-    invalidateScanOutput();
-    setTargetPos(value);
-  }, [invalidateScanOutput, targetPos]);
+  const changeTargetPos = useCallback(
+    (value: Posisi) => {
+      if (value === targetPos) return;
+      invalidateScanOutput();
+      setTargetPos(value);
+    },
+    [invalidateScanOutput, targetPos],
+  );
 
-  const changeTarget2D = useCallback((value: Target2D) => {
-    if (value === target2D) return;
-    invalidateScanOutput();
-    setTarget2D(value);
-  }, [invalidateScanOutput, target2D]);
+  const changeTarget2D = useCallback(
+    (value: Target2D) => {
+      if (value === target2D) return;
+      invalidateScanOutput();
+      setTarget2D(value);
+    },
+    [invalidateScanOutput, target2D],
+  );
 
-  const changeTarget3D = useCallback((value: Target3D) => {
-    if (value === target3D) return;
-    invalidateScanOutput();
-    setTarget3D(value);
-  }, [invalidateScanOutput, target3D]);
+  const changeTarget3D = useCallback(
+    (value: Target3D) => {
+      if (value === target3D) return;
+      invalidateScanOutput();
+      setTarget3D(value);
+    },
+    [invalidateScanOutput, target3D],
+  );
 
-  const changeDigitCount = useCallback((value: number) => {
-    if (value === digitCount) return;
-    invalidateScanOutput();
-    setDigitCount(value);
-  }, [digitCount, invalidateScanOutput]);
+  const changeDigitCount = useCallback(
+    (value: number) => {
+      if (value === digitCount) return;
+      invalidateScanOutput();
+      setDigitCount(value);
+    },
+    [digitCount, invalidateScanOutput],
+  );
 
-  const changeStopScan = useCallback((value: number) => {
-    if (value === stopScan) return;
-    invalidateScanOutput();
-    setStopScan(value);
-  }, [invalidateScanOutput, stopScan]);
+  const changeStopScan = useCallback(
+    (value: number) => {
+      if (value === stopScan) return;
+      invalidateScanOutput();
+      setStopScan(value);
+    },
+    [invalidateScanOutput, stopScan],
+  );
 
   const runScan = useCallback(async () => {
     if (!marketId) {
@@ -248,48 +293,65 @@ export default function ScanPageClient() {
     } finally {
       if (requestVersion === scanVersionRef.current) setLoading(false);
     }
-  }, [digitCount, marketId, patah, rounds, scanMode, selectedMarket, stopScan, target2D, target3D, targetPos]);
+  }, [
+    digitCount,
+    marketId,
+    patah,
+    rounds,
+    scanMode,
+    selectedMarket,
+    stopScan,
+    target2D,
+    target3D,
+    targetPos,
+  ]);
 
-  const saveTrek = useCallback((item: AutoScanItem) => {
-    if (!completedScan) return;
+  const saveTrek = useCallback(
+    (item: AutoScanItem) => {
+      if (!completedScan) return;
 
-    const completedMarketId = completedScan.marketId;
-    const completedMarketName = completedScan.marketName.toUpperCase();
-    const completedResult = completedScan.result;
-    const id = trekId(completedMarketId, item);
-    const saved: SavedTrek = {
-      version: 2,
-      id,
-      savedAt: new Date().toISOString(),
-      marketId: completedMarketId,
-      marketName: completedMarketName,
-      scanMode: item.scanMode,
-      targetPos: item.targetPos,
-      target2D: item.target2D,
-      target3D: item.target3D,
-      digitCount: completedResult.config.digitCount,
-      L: completedResult.config.L,
-      patah: completedResult.config.patah,
-      formula: item.formula,
-      code: item.code,
-      kolomHidup: [...item.kolomHidup],
-      activeColumns: item.activeColumns,
-      predictionValues: predictionValues(item),
-      snapshotRows: item.result.rows.map((row) => ({
-        ...row,
-        deret: [...row.deret],
-        targetDigits: Array.isArray(row.targetDigits) && row.targetDigits.length ? [...row.targetDigits] : [row.targetDigit],
-      })),
-      savedLatestDraw: item.result.latestDraw,
-    };
-    setSavedTreks((current) => [saved, ...current.filter((trek) => trek.id !== id)].slice(0, 50));
-    setSavedId(id);
-    window.setTimeout(() => setSavedId(""), 1400);
-  }, [completedScan]);
+      const completedMarketId = completedScan.marketId;
+      const completedMarketName = completedScan.marketName.toUpperCase();
+      const completedResult = completedScan.result;
+      const id = trekId(completedMarketId, item);
+      const saved: SavedTrek = {
+        version: 2,
+        id,
+        savedAt: new Date().toISOString(),
+        marketId: completedMarketId,
+        marketName: completedMarketName,
+        scanMode: item.scanMode,
+        targetPos: item.targetPos,
+        target2D: item.target2D,
+        target3D: item.target3D,
+        digitCount: completedResult.config.digitCount,
+        L: completedResult.config.L,
+        patah: completedResult.config.patah,
+        formula: item.formula,
+        code: item.code,
+        kolomHidup: [...item.kolomHidup],
+        activeColumns: item.activeColumns,
+        predictionValues: predictionValues(item),
+        snapshotRows: item.result.rows.map((row) => ({
+          ...row,
+          deret: [...row.deret],
+          targetDigits:
+            Array.isArray(row.targetDigits) && row.targetDigits.length
+              ? [...row.targetDigits]
+              : [row.targetDigit],
+        })),
+        savedLatestDraw: item.result.latestDraw,
+      };
+      setSavedTreks((current) => [saved, ...current.filter((trek) => trek.id !== id)].slice(0, 50));
+      setSavedId(id);
+      window.setTimeout(() => setSavedId(""), 1400);
+    },
+    [completedScan],
+  );
 
   const deleteTrek = useCallback((id: string) => {
     setSavedTreks((current) => current.filter((item) => item.id !== id));
-    setViewSaved((current) => current?.id === id ? null : current);
+    setViewSaved((current) => (current?.id === id ? null : current));
   }, []);
 
   const copyDetail = useCallback(async (detail: DetailData, id: string) => {
@@ -313,10 +375,10 @@ export default function ScanPageClient() {
 
   const liveDigitCount = result?.config.digitCount ?? digitCount;
   const live = useMemo(
-    () => viewItem ? liveDetail(viewItem, title, liveDigitCount) : null,
+    () => (viewItem ? liveDetail(viewItem, title, liveDigitCount) : null),
     [liveDigitCount, title, viewItem],
   );
-  const saved = useMemo(() => viewSaved ? savedDetail(viewSaved) : null, [viewSaved]);
+  const saved = useMemo(() => (viewSaved ? savedDetail(viewSaved) : null), [viewSaved]);
 
   const copyLiveDetail = useCallback(() => {
     if (!live) return;
@@ -329,51 +391,79 @@ export default function ScanPageClient() {
   }, [copyDetail, saved, viewSaved]);
 
   return (
-    <div className="animate-fade-in space-y-4">
-      <MemoScanFields
-        markets={markets}
-        marketId={marketId}
-        selectedMarket={selectedMarket}
-        marketsLoading={marketsLoading}
-        rounds={rounds}
-        patah={patah}
-        scanMode={scanMode}
-        targetPos={targetPos}
-        target2D={target2D}
-        target3D={target3D}
-        digitCount={digitCount}
-        stopScan={stopScan}
-        loading={loading}
-        onMarketChange={changeMarket}
-        onRoundsChange={changeRounds}
-        onPatahChange={changePatah}
-        onModeChange={changeMode}
-        onTargetPosChange={changeTargetPos}
-        onTarget2DChange={changeTarget2D}
-        onTarget3DChange={changeTarget3D}
-        onDigitCountChange={changeDigitCount}
-        onStopScanChange={changeStopScan}
-        onScan={runScan}
-      />
-      {visibleError ? <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">{visibleError}</div> : null}
-      {completedScan ? (
-        <MemoScanResultSection
-          result={completedScan.result}
-          marketTitle={title}
-          marketId={completedScan.marketId}
-          savedId={savedId}
-          onSave={saveTrek}
-          onView={viewLiveItem}
+    <div className="animate-fade-in desktop-workspace space-y-4">
+      <div className="desktop-controls space-y-4">
+        <MemoScanFields
+          markets={markets}
+          marketId={marketId}
+          selectedMarket={selectedMarket}
+          marketsLoading={marketsLoading}
+          rounds={rounds}
+          patah={patah}
+          scanMode={scanMode}
+          targetPos={targetPos}
+          target2D={target2D}
+          target3D={target3D}
+          digitCount={digitCount}
+          stopScan={stopScan}
+          loading={loading}
+          onMarketChange={changeMarket}
+          onRoundsChange={changeRounds}
+          onPatahChange={changePatah}
+          onModeChange={changeMode}
+          onTargetPosChange={changeTargetPos}
+          onTarget2DChange={changeTarget2D}
+          onTarget3DChange={changeTarget3D}
+          onDigitCountChange={changeDigitCount}
+          onStopScanChange={changeStopScan}
+          onScan={runScan}
+        />
+        {visibleError ? (
+          <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm font-bold text-danger">
+            {visibleError}
+          </div>
+        ) : null}
+      </div>
+      <div className="desktop-results space-y-4">
+        {completedScan ? (
+          <MemoScanResultSection
+            result={completedScan.result}
+            marketTitle={title}
+            marketId={completedScan.marketId}
+            savedId={savedId}
+            onSave={saveTrek}
+            onView={viewLiveItem}
+          />
+        ) : (
+          <WorkspacePlaceholder
+            title="Hasil Scan"
+            description="Atur parameter di panel kiri lalu jalankan Scan. Hasil rumus dan trek tersimpan akan tampil di sini."
+            busy={loading}
+          />
+        )}
+        <MemoSavedTreksSection
+          total={savedTreks.length}
+          groups={savedGroups}
+          onView={viewSavedTrek}
+          onDelete={deleteTrek}
+        />
+      </div>
+      {live ? (
+        <TrekDetailModal
+          data={live}
+          copied={copiedId === viewItem?.code}
+          onCopy={copyLiveDetail}
+          onClose={closeLiveItem}
         />
       ) : null}
-      <MemoSavedTreksSection
-        total={savedTreks.length}
-        groups={savedGroups}
-        onView={viewSavedTrek}
-        onDelete={deleteTrek}
-      />
-      {live ? <TrekDetailModal data={live} copied={copiedId === viewItem?.code} onCopy={copyLiveDetail} onClose={closeLiveItem} /> : null}
-      {saved && viewSaved ? <TrekDetailModal data={saved} copied={copiedId === viewSaved.id} onCopy={copySavedDetail} onClose={closeSavedTrek} /> : null}
+      {saved && viewSaved ? (
+        <TrekDetailModal
+          data={saved}
+          copied={copiedId === viewSaved.id}
+          onCopy={copySavedDetail}
+          onClose={closeSavedTrek}
+        />
+      ) : null}
     </div>
   );
 }

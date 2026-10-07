@@ -18,6 +18,7 @@ import {
   Grid3X3,
   Hash,
   Layers3,
+  Layers2,
   ListChecks,
   Loader2,
   MoveHorizontal,
@@ -191,14 +192,16 @@ function StepButton({
       }`}
     >
       <span
-        className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-black ${
-          active || complete ? "accent-bg-soft accent-border accent-text" : "border-border-soft text-text-soft"
+        className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full border text-[10px] lg:text-xs font-black ${
+          active || complete
+            ? "accent-bg-soft accent-border accent-text"
+            : "border-border-soft text-text-soft"
         }`}
       >
         {complete && !active ? <Check size={12} strokeWidth={3} /> : number}
       </span>
       <span
-        className={`mt-1.5 block truncate text-[9px] font-black uppercase tracking-wide ${
+        className={`mt-1.5 block truncate text-[9px] lg:text-xs font-black uppercase tracking-wide ${
           active ? "text-text" : "text-text-soft"
         }`}
       >
@@ -208,7 +211,15 @@ function StepButton({
   );
 }
 
-function SectionHeading({ number, title, subtitle }: { number: Step; title: string; subtitle: string }) {
+function SectionHeading({
+  number,
+  title,
+  subtitle,
+}: {
+  number: Step;
+  title: string;
+  subtitle: string;
+}) {
   return (
     <div className="mb-4 flex items-start gap-3">
       <span className="accent-bg-soft accent-border accent-text flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-black">
@@ -216,7 +227,9 @@ function SectionHeading({ number, title, subtitle }: { number: Step; title: stri
       </span>
       <div className="min-w-0">
         <h2 className="display text-sm text-text">{title}</h2>
-        <p className="mt-1 text-[10px] font-semibold leading-4 text-text-soft">{subtitle}</p>
+        <p className="mt-1 text-[10px] lg:text-xs font-semibold leading-4 text-text-soft">
+          {subtitle}
+        </p>
       </div>
     </div>
   );
@@ -238,7 +251,7 @@ function ActionButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`pressable flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-[11px] font-black uppercase tracking-wide disabled:pointer-events-none disabled:opacity-45 ${
+      className={`pressable flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-[11px] lg:text-[13px] font-black uppercase tracking-wide disabled:pointer-events-none disabled:opacity-45 ${
         primary
           ? "depth-accent accent-border accent-text"
           : "depth-3 border-border-soft text-text-muted hover:border-border"
@@ -249,7 +262,7 @@ function ActionButton({
   );
 }
 
-export function SharePrediksiClient() {
+export function SharePrediksiClient({ onOpenAngkaJadi }: { onOpenAngkaJadi?: () => void }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [markets, setMarkets] = useState<ShareRow[]>([]);
@@ -286,7 +299,9 @@ export function SharePrediksiClient() {
 
   const selectedMarketRows = useMemo(() => {
     const byKey = new Map(markets.map((row) => [marketKey(row), row]));
-    return Array.from(selected).map((key) => byKey.get(key)).filter(Boolean) as ShareRow[];
+    return Array.from(selected)
+      .map((key) => byKey.get(key))
+      .filter(Boolean) as ShareRow[];
   }, [markets, selected]);
 
   const selectedIds = useMemo(
@@ -297,7 +312,13 @@ export function SharePrediksiClient() {
   const marketChoices = useMemo(() => {
     if (!investSelected) return markets;
     const availableIds = availableInvestShareMarketIds(investOverview, activeInvestPair);
-    return markets.filter((row) => availableIds.has(String(row.marketId || "").trim().toLowerCase()));
+    return markets.filter((row) =>
+      availableIds.has(
+        String(row.marketId || "")
+          .trim()
+          .toLowerCase(),
+      ),
+    );
   }, [activeInvestPair, investOverview, investSelected, markets]);
 
   const filteredMarkets = useMemo(() => {
@@ -419,7 +440,8 @@ export function SharePrediksiClient() {
         if (active) setInvestOverview(data);
       })
       .catch((err) => {
-        if (active) setError(err instanceof Error ? err.message : "Gagal memuat rekomendasi INVEST.");
+        if (active)
+          setError(err instanceof Error ? err.message : "Gagal memuat rekomendasi INVEST.");
       })
       .finally(() => {
         if (active) setLoadingInvestOverview(false);
@@ -559,7 +581,10 @@ export function SharePrediksiClient() {
     if (!lines.length) throw new Error("Angka jadi INVEST kosong.");
 
     const sourceRow = selectedMarketRows.find(
-      (row) => String(row.marketId || "").trim().toLowerCase() === marketId.trim().toLowerCase(),
+      (row) =>
+        String(row.marketId || "")
+          .trim()
+          .toLowerCase() === marketId.trim().toLowerCase(),
     );
 
     return {
@@ -589,10 +614,15 @@ export function SharePrediksiClient() {
         generatedRows.push(await generateInvestMarket(marketId));
       } catch {
         const sourceRow = selectedMarketRows.find(
-          (row) => String(row.marketId || "").trim().toLowerCase() === marketId.trim().toLowerCase(),
+          (row) =>
+            String(row.marketId || "")
+              .trim()
+              .toLowerCase() === marketId.trim().toLowerCase(),
         );
         failedMarkets.push(
-          marketLabel(sourceRow || { marketId, marketName: marketId, updatedAt: null, order: null }),
+          marketLabel(
+            sourceRow || { marketId, marketName: marketId, updatedAt: null, order: null },
+          ),
         );
       }
     }
@@ -677,7 +707,11 @@ export function SharePrediksiClient() {
   }
 
   const selectedTitle = selectedOption
-    ? [optionLabelMode(selectedOption), optionTargetLabel(selectedOption), optionOutputLabel(selectedOption)]
+    ? [
+        optionLabelMode(selectedOption),
+        optionTargetLabel(selectedOption),
+        optionOutputLabel(selectedOption),
+      ]
         .filter(Boolean)
         .join(" · ")
     : "Pilih prediksi";
@@ -720,7 +754,7 @@ export function SharePrediksiClient() {
 
     return (
       <div className="mb-4 last:mb-0">
-        <div className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.18em] text-text-soft">
+        <div className="mb-2 px-1 text-[10px] lg:text-xs font-black uppercase tracking-[0.18em] text-text-soft">
           {label}
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -732,7 +766,7 @@ export function SharePrediksiClient() {
                 key={item.key}
                 type="button"
                 onClick={() => onPick(item.key)}
-                className={`pressable flex min-h-[58px] items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-center text-[11px] font-black uppercase tracking-wide ${
+                className={`pressable flex min-h-[58px] items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-center text-[11px] lg:text-[13px] font-black uppercase tracking-wide ${
                   active
                     ? "accent-bg-soft accent-border text-text"
                     : "depth-3 border-border-soft text-text-muted hover:border-border"
@@ -747,6 +781,16 @@ export function SharePrediksiClient() {
               </button>
             );
           })}
+          {label === "Jenis" && onOpenAngkaJadi ? (
+            <button
+              type="button"
+              onClick={onOpenAngkaJadi}
+              className="pressable depth-3 flex min-h-[58px] items-center justify-center gap-2 rounded-2xl border border-border-soft px-3 py-2 text-center text-[11px] lg:text-[13px] font-black uppercase tracking-wide text-text-muted hover:border-border"
+            >
+              <Layers2 size={15} strokeWidth={1.9} className="text-text-soft" />
+              <span>Rekap Angka Jadi</span>
+            </button>
+          ) : null}
         </div>
       </div>
     );
@@ -755,7 +799,7 @@ export function SharePrediksiClient() {
   function renderSeparatorInput() {
     return (
       <div className="mb-4 last:mb-0">
-        <div className="mb-2 flex items-center gap-1.5 px-1 text-[10px] font-black uppercase tracking-[0.18em] text-text-soft">
+        <div className="mb-2 flex items-center gap-1.5 px-1 text-[10px] lg:text-xs font-black uppercase tracking-[0.18em] text-text-soft">
           <TextCursorInput size={13} /> Separator
         </div>
         <input
@@ -767,7 +811,7 @@ export function SharePrediksiClient() {
           className="depth-3 min-h-12 w-full rounded-2xl border bg-transparent px-4 text-center text-sm font-black text-text outline-none transition-colors placeholder:text-text-soft focus:border-border-strong focus-visible:ring-2 focus-visible:ring-primary/40"
           aria-label="Separator share prediksi"
         />
-        <p className="mt-2 px-1 text-center text-[10px] font-bold text-text-soft">
+        <p className="mt-2 px-1 text-center text-[10px] lg:text-xs font-bold text-text-soft">
           Bisa memakai simbol, emoji, koma, titik, slash, atau teks pendek.
         </p>
       </div>
@@ -775,7 +819,7 @@ export function SharePrediksiClient() {
   }
 
   return (
-    <div className="animate-rise pb-24">
+    <div className="animate-rise pb-24 lg:pb-0">
       <div className="mb-3 flex items-center justify-between gap-3">
         <button
           type="button"
@@ -784,7 +828,7 @@ export function SharePrediksiClient() {
         >
           <ArrowLeft size={15} /> Beranda
         </button>
-        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-text-soft">
+        <span className="text-[10px] lg:text-xs font-black uppercase tracking-[0.18em] text-text-soft">
           Share Prediksi
         </span>
       </div>
@@ -796,11 +840,13 @@ export function SharePrediksiClient() {
           </span>
           <div className="min-w-0 flex-1">
             <h1 className="display text-xl text-text">Buat & Bagikan</h1>
-            <p className="mt-1 text-[10px] font-semibold leading-4 text-text-soft">{description}</p>
+            <p className="mt-1 text-[10px] lg:text-xs font-semibold leading-4 text-text-soft">
+              {description}
+            </p>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-4 grid grid-cols-3 gap-2 lg:hidden">
           <StepButton
             number={1}
             title="Prediksi"
@@ -839,140 +885,157 @@ export function SharePrediksiClient() {
         </div>
       ) : null}
 
-      {step === 1 ? (
-        <section className="animate-soft-pop depth-1 rounded-3xl border p-4">
-          <SectionHeading
-            number={1}
-            title="Pilih Prediksi"
-            subtitle="Tentukan jenis, target, dan output yang akan dibagikan."
-          />
-
-          {loadingOptions ? (
-            <div className="depth-3 flex min-h-24 items-center justify-center rounded-2xl border text-text-soft">
-              <Loader2 size={18} className="animate-spin" />
-            </div>
-          ) : (
-            <>
-              {renderPicker("Jenis", jenisItems, selectedMode, chooseJenis)}
-              {renderPicker("Target", targetItems, selectedTarget, chooseTarget)}
-              {renderPicker("Output", outputItems, selectedOutput, chooseOutput)}
-              {rekapBadgeSelected || investSelected ? null : renderSeparatorInput()}
-            </>
-          )}
-
-          <div className="accent-bg-soft accent-border mt-4 rounded-2xl border px-3 py-3 text-center">
-            <p className="text-[9px] font-black uppercase tracking-wide text-text-soft">Pilihan aktif</p>
-            <p className="accent-text mt-1 text-[11px] font-black uppercase tracking-wide">
-              {selectedTitle}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={openMarketsStep}
-            disabled={!selectedOption || loadingOptions || (investSelected && loadingInvestOverview)}
-            className="pressable depth-accent accent-border accent-text mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-black uppercase tracking-wide disabled:opacity-45"
-          >
-            {investSelected && loadingInvestOverview ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : null}
-            Lanjut Pilih Pasaran <ChevronRight size={16} />
-          </button>
-        </section>
-      ) : null}
-
-      {step === 2 ? (
-        <>
-          <section className="animate-soft-pop depth-1 rounded-3xl border p-4">
+      <div className="share-workspace">
+        <section
+          data-active={step === 1}
+          className="share-step share-settings animate-soft-pop depth-1 rounded-3xl border p-4"
+        >
+          <fieldset disabled={loadingRows} className="min-w-0">
             <SectionHeading
-              number={2}
-              title="Pilih Pasaran"
-              subtitle={`${selectedTitle} · ${countLabel} dipilih`}
+              number={1}
+              title="Pilih Prediksi"
+              subtitle="Tentukan jenis, target, dan output yang akan dibagikan."
             />
 
-            <div className="relative mb-3">
-              <Search
-                size={17}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft"
-              />
-              <input
-                type="text"
-                value={marketSearch}
-                onChange={(event) => setMarketSearch(event.target.value)}
-                placeholder="Cari pasaran…"
-                className="depth-3 h-12 w-full rounded-2xl border bg-transparent pl-11 pr-11 text-sm font-bold text-text outline-none placeholder:text-text-soft focus:border-border-strong focus-visible:ring-2 focus-visible:ring-primary/40"
-              />
-              {marketSearch ? (
-                <button
-                  type="button"
-                  onClick={() => setMarketSearch("")}
-                  className="pressable absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-soft hover:bg-white/[0.06]"
-                  aria-label="Hapus pencarian pasaran"
-                >
-                  <X size={16} />
-                </button>
-              ) : null}
-            </div>
-
-            <div className="mb-3 grid grid-cols-2 gap-2">
-              <ActionButton
-                onClick={selectQuick}
-                disabled={loadingMarketChoices || filteredMarkets.length === 0}
-              >
-                <ListChecks size={15} /> {quickLabel}
-              </ActionButton>
-              <ActionButton onClick={clearAll} disabled={selected.size === 0}>
-                <Eraser size={15} /> Kosongkan
-              </ActionButton>
-            </div>
-
-            {loadingMarketChoices ? (
-              <div className="depth-3 flex min-h-32 items-center justify-center rounded-2xl border text-text-soft">
+            {loadingOptions ? (
+              <div className="depth-3 flex min-h-24 items-center justify-center rounded-2xl border text-text-soft">
                 <Loader2 size={18} className="animate-spin" />
               </div>
-            ) : filteredMarkets.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border-soft px-4 py-10 text-center text-xs font-bold text-text-muted">
-                {emptyMarketText}
-              </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {filteredMarkets.map((row) => {
-                  const key = marketKey(row);
-                  const active = selected.has(key);
-                  return (
-                    <button
-                      key={key || marketLabel(row)}
-                      type="button"
-                      onClick={() => toggle(row)}
-                      className={`pressable relative flex min-h-[60px] items-center justify-center rounded-2xl border px-3 py-2.5 text-center ${
-                        active
-                          ? "accent-bg-soft accent-border"
-                          : "depth-3 border-border-soft hover:border-border"
-                      }`}
-                    >
-                      {active ? (
-                        <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white">
-                          <Check size={10} strokeWidth={3.2} />
-                        </span>
-                      ) : null}
-                      <span className="line-clamp-2 text-[10px] font-black leading-4 tracking-wide text-text">
-                        {marketLabel(row)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <>
+                {renderPicker("Jenis", jenisItems, selectedMode, chooseJenis)}
+                {renderPicker("Target", targetItems, selectedTarget, chooseTarget)}
+                {renderPicker("Output", outputItems, selectedOutput, chooseOutput)}
+                {rekapBadgeSelected || investSelected ? null : renderSeparatorInput()}
+              </>
             )}
+
+            <div className="accent-bg-soft accent-border mt-4 rounded-2xl border px-3 py-3 text-center">
+              <p className="text-[9px] lg:text-xs font-black uppercase tracking-wide text-text-soft">
+                Pilihan aktif
+              </p>
+              <p className="accent-text mt-1 text-[11px] lg:text-[13px] font-black uppercase tracking-wide">
+                {selectedTitle}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={openMarketsStep}
+              disabled={
+                !selectedOption || loadingOptions || (investSelected && loadingInvestOverview)
+              }
+              className="pressable depth-accent accent-border accent-text mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-black uppercase tracking-wide disabled:opacity-45 lg:hidden"
+            >
+              {investSelected && loadingInvestOverview ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : null}
+              Lanjut Pilih Pasaran <ChevronRight size={16} />
+            </button>
+          </fieldset>
+        </section>
+
+        <div data-active={step === 2} className="share-step share-markets">
+          <section className="animate-soft-pop depth-1 rounded-3xl border p-4">
+            <fieldset disabled={loadingRows} className="min-w-0">
+              <SectionHeading
+                number={2}
+                title="Pilih Pasaran"
+                subtitle={`${selectedTitle} · ${countLabel} dipilih`}
+              />
+
+              <div className="relative mb-3">
+                <Search
+                  size={17}
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft"
+                />
+                <input
+                  type="text"
+                  value={marketSearch}
+                  onChange={(event) => setMarketSearch(event.target.value)}
+                  placeholder="Cari pasaran…"
+                  className="depth-3 h-12 w-full rounded-2xl border bg-transparent pl-11 pr-11 text-sm font-bold text-text outline-none placeholder:text-text-soft focus:border-border-strong focus-visible:ring-2 focus-visible:ring-primary/40"
+                />
+                {marketSearch ? (
+                  <button
+                    type="button"
+                    onClick={() => setMarketSearch("")}
+                    className="pressable absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-soft hover:bg-white/[0.06]"
+                    aria-label="Hapus pencarian pasaran"
+                  >
+                    <X size={16} />
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                <ActionButton
+                  onClick={selectQuick}
+                  disabled={loadingMarketChoices || filteredMarkets.length === 0}
+                >
+                  <ListChecks size={15} /> {quickLabel}
+                </ActionButton>
+                <ActionButton onClick={clearAll} disabled={selected.size === 0}>
+                  <Eraser size={15} /> Kosongkan
+                </ActionButton>
+              </div>
+
+              {loadingMarketChoices ? (
+                <div className="depth-3 flex min-h-32 items-center justify-center rounded-2xl border text-text-soft">
+                  <Loader2 size={18} className="animate-spin" />
+                </div>
+              ) : filteredMarkets.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border-soft px-4 py-10 text-center text-xs font-bold text-text-muted">
+                  {emptyMarketText}
+                </div>
+              ) : (
+                <div className="share-market-list grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {filteredMarkets.map((row) => {
+                    const key = marketKey(row);
+                    const active = selected.has(key);
+                    return (
+                      <button
+                        key={key || marketLabel(row)}
+                        type="button"
+                        onClick={() => toggle(row)}
+                        className={`pressable relative flex min-h-[60px] items-center justify-center rounded-2xl border px-3 py-2.5 text-center ${
+                          active
+                            ? "accent-bg-soft accent-border"
+                            : "depth-3 border-border-soft hover:border-border"
+                        }`}
+                      >
+                        {active ? (
+                          <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white">
+                            <Check size={10} strokeWidth={3.2} />
+                          </span>
+                        ) : null}
+                        <span className="line-clamp-2 text-[10px] lg:text-xs font-black leading-4 tracking-wide text-text">
+                          {marketLabel(row)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </fieldset>
           </section>
 
-          <div className="sticky bottom-3 z-30 mt-3 grid grid-cols-[0.8fr_1.2fr] gap-2 rounded-3xl border border-border-soft bg-bg-deep/90 p-2.5 shadow-2xl backdrop-blur-xl">
-            <ActionButton onClick={() => setStep(1)}>
-              <ArrowLeft size={15} /> Ubah
-            </ActionButton>
+          <div className="sticky bottom-3 z-30 mt-3 grid grid-cols-[0.8fr_1.2fr] gap-2 rounded-3xl border border-border-soft bg-bg-deep/90 p-2.5 shadow-2xl backdrop-blur-xl lg:grid-cols-1">
+            <div className="lg:hidden">
+              <ActionButton onClick={() => setStep(1)}>
+                <ArrowLeft size={15} /> Ubah
+              </ActionButton>
+            </div>
             <ActionButton
               primary
               onClick={() => void generate()}
-              disabled={loadingRows || selected.size === 0}
+              disabled={
+                loadingRows ||
+                selected.size === 0 ||
+                !selectedOption ||
+                loadingOptions ||
+                loadingMarketChoices
+              }
             >
               {loadingRows ? (
                 <Loader2 size={15} className="animate-spin" />
@@ -982,11 +1045,13 @@ export function SharePrediksiClient() {
               {loadingRows ? "Membuat…" : `Generate (${selected.size})`}
             </ActionButton>
           </div>
-        </>
-      ) : null}
+        </div>
 
-      {step === 3 ? (
-        <section className="animate-soft-pop depth-1 rounded-3xl border p-4">
+        <section
+          data-active={step === 3}
+          aria-busy={loadingRows}
+          className="share-step share-preview animate-soft-pop depth-1 rounded-3xl border p-4"
+        >
           <SectionHeading
             number={3}
             title="Hasil & Bagikan"
@@ -1002,7 +1067,11 @@ export function SharePrediksiClient() {
               {copied ? <Check size={16} /> : <ClipboardCopy size={16} />}
               {copied ? "Tersalin" : "Copy"}
             </ActionButton>
-            <ActionButton primary onClick={() => void shareNow()} disabled={!shareText || loadingRows}>
+            <ActionButton
+              primary
+              onClick={() => void shareNow()}
+              disabled={!shareText || loadingRows}
+            >
               <Share2 size={16} /> Share
             </ActionButton>
           </div>
@@ -1010,12 +1079,12 @@ export function SharePrediksiClient() {
           <button
             type="button"
             onClick={() => setStep(2)}
-            className="pressable mt-3 min-h-10 w-full rounded-2xl text-[10px] font-black uppercase tracking-wide text-text-soft hover:bg-white/[0.04] hover:text-text"
+            className="pressable mt-3 min-h-10 w-full rounded-2xl text-[10px] lg:text-xs font-black uppercase tracking-wide text-text-soft hover:bg-white/[0.04] hover:text-text lg:hidden"
           >
             Ubah Pilihan Pasaran
           </button>
         </section>
-      ) : null}
+      </div>
     </div>
   );
 }

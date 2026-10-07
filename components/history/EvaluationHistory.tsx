@@ -71,14 +71,22 @@ async function fetchEvaluations(
   return json;
 }
 
-function StateBox({ text, tone = "neutral" }: { text: string; tone?: "neutral" | "error" | "loading" }) {
+function StateBox({
+  text,
+  tone = "neutral",
+}: {
+  text: string;
+  tone?: "neutral" | "error" | "loading";
+}) {
   return (
     <div
       className={`animate-soft-pop rounded-3xl border p-4 text-center text-[11px] font-black uppercase tracking-wide ${
         tone === "error" ? "border-danger/25 bg-danger/10 text-danger" : "depth-2 text-text-muted"
       }`}
     >
-      {tone === "loading" && <div className="mx-auto mb-3 h-2 w-16 animate-pulse rounded-full bg-white/10" />}
+      {tone === "loading" && (
+        <div className="mx-auto mb-3 h-2 w-16 animate-pulse rounded-full bg-white/10" />
+      )}
       {text}
     </div>
   );
@@ -111,7 +119,8 @@ export function EvaluationHistory({
     error,
   } = useQuery({
     queryKey: ["evaluations", normalizedMarketId, mode, param, position, targetPair, analysisScope],
-    queryFn: () => fetchEvaluations(normalizedMarketId, mode, param, position, targetPair, analysisScope),
+    queryFn: () =>
+      fetchEvaluations(normalizedMarketId, mode, param, position, targetPair, analysisScope),
     enabled: Boolean(normalizedMarketId && mode && param),
     staleTime: EVALUATIONS_STALE_TIME,
     gcTime: EVALUATIONS_GC_TIME,
@@ -121,7 +130,13 @@ export function EvaluationHistory({
   const hasRows = rows.length > 0;
 
   if (isPending && !hasRows) return <StateBox text="Memuat riwayat…" tone="loading" />;
-  if (error && !hasRows) return <StateBox text={error instanceof Error ? error.message : "Gagal memuat riwayat evaluasi"} tone="error" />;
+  if (error && !hasRows)
+    return (
+      <StateBox
+        text={error instanceof Error ? error.message : "Gagal memuat riwayat evaluasi"}
+        tone="error"
+      />
+    );
   if (!hasRows) return <StateBox text="Riwayat evaluasi belum ada" />;
 
   return (
@@ -141,11 +156,12 @@ export function EvaluationHistory({
 
       {showAi2DigitNote && (
         <div className="animate-soft-pop rounded-2xl border border-mode-ai/20 bg-mode-ai/[0.08] px-3 py-2 text-[11px] font-bold leading-relaxed text-mode-ai">
-          Catatan: jika AI 2 digit terlalu sering ZONK, lebih bijak jadikan hasilnya sebagai OFF 2 digit.
+          Catatan: jika AI 2 digit terlalu sering ZONK, lebih bijak jadikan hasilnya sebagai OFF 2
+          digit.
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 xl:grid-cols-4 2xl:grid-cols-5">
         {rows.map((row: any, index: number) => {
           const label = displayLabel(row, mode);
           const isSuccess = label !== "ZONK";

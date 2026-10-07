@@ -112,7 +112,17 @@ function parameterHint(category: string, value: number) {
   return "Ketat";
 }
 
-function ModeButton({ option, active, full, onClick }: { option: ModeOption; active: boolean; full?: boolean; onClick: () => void }) {
+function ModeButton({
+  option,
+  active,
+  full,
+  onClick,
+}: {
+  option: ModeOption;
+  active: boolean;
+  full?: boolean;
+  onClick: () => void;
+}) {
   const { Icon } = option;
 
   return (
@@ -122,7 +132,9 @@ function ModeButton({ option, active, full, onClick }: { option: ModeOption; act
       className={cn(
         "pressable flex min-h-[78px] items-center gap-3 rounded-2xl border px-3 py-3 text-left",
         full && "col-span-2",
-        active ? "depth-accent accent-border" : "depth-3 hover:border-border hover:bg-white/[0.055]",
+        active
+          ? "depth-accent accent-border"
+          : "depth-3 hover:border-border hover:bg-white/[0.055]",
       )}
     >
       <span
@@ -134,8 +146,12 @@ function ModeButton({ option, active, full, onClick }: { option: ModeOption; act
         <Icon size={18} strokeWidth={1.9} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className={cn("display block text-[12px]", active ? "accent-text" : "text-text")}>{option.title}</span>
-        <span className="mt-1 block text-[10px] font-semibold leading-4 text-text-soft">{option.subtitle}</span>
+        <span className={cn("display block text-[12px]", active ? "accent-text" : "text-text")}>
+          {option.title}
+        </span>
+        <span className="mt-1 block text-[10px] lg:text-xs font-semibold leading-4 text-text-soft">
+          {option.subtitle}
+        </span>
       </span>
       {active ? <Check size={16} className="shrink-0 text-accent" strokeWidth={2.4} /> : null}
     </button>
@@ -164,27 +180,43 @@ function ChoiceButton({
       className={cn(
         "pressable flex min-h-[62px] items-center justify-center gap-2 rounded-2xl border px-2.5 py-2.5 text-center",
         full && "col-span-full",
-        active ? "accent-bg-soft accent-border text-text" : "depth-3 text-text-muted hover:border-border hover:bg-white/[0.055]",
+        active
+          ? "accent-bg-soft accent-border text-text"
+          : "depth-3 text-text-muted hover:border-border hover:bg-white/[0.055]",
       )}
     >
       <Icon size={16} strokeWidth={1.9} className={active ? "text-accent" : "text-text-soft"} />
       <span className="min-w-0">
-        <span className="display block text-[11px] leading-4">{title}</span>
-        {subtitle ? <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-wide text-text-soft">{subtitle}</span> : null}
+        <span className="display block text-[11px] lg:text-[13px] leading-4">{title}</span>
+        {subtitle ? (
+          <span className="mt-0.5 block text-[9px] lg:text-xs font-bold uppercase tracking-wide text-text-soft">
+            {subtitle}
+          </span>
+        ) : null}
       </span>
     </button>
   );
 }
 
-function StepHeader({ number, title, subtitle }: { number: number; title: string; subtitle: string }) {
+function StepHeader({
+  number,
+  title,
+  subtitle,
+}: {
+  number: number;
+  title: string;
+  subtitle: string;
+}) {
   return (
     <div className="mb-3 flex items-start gap-3">
-      <span className="accent-bg-soft accent-border accent-text flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-black">
+      <span className="accent-bg-soft accent-border accent-text flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] lg:text-[13px] font-black">
         {number}
       </span>
       <div className="min-w-0">
         <p className="display text-[12px] text-text">{title}</p>
-        <p className="mt-1 text-[10px] font-semibold leading-4 text-text-soft">{subtitle}</p>
+        <p className="mt-1 text-[10px] lg:text-xs font-semibold leading-4 text-text-soft">
+          {subtitle}
+        </p>
       </div>
     </div>
   );
@@ -249,9 +281,11 @@ export default function StatisticsPage() {
             <BarChart3 size={21} strokeWidth={1.9} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="accent-text text-[10px] font-black uppercase tracking-[0.18em]">Statistik Pasaran</p>
+            <p className="accent-text text-[10px] lg:text-xs font-black uppercase tracking-[0.18em]">
+              Statistik Pasaran
+            </p>
             <h1 className="display mt-1 text-2xl text-text">Ranking Performa</h1>
-            <p className="mt-1.5 text-[11px] font-semibold leading-5 text-text-muted">
+            <p className="mt-1.5 text-[11px] lg:text-[13px] font-semibold leading-5 text-text-muted">
               Bandingkan pasaran berdasarkan riwayat 15 hasil terakhir.
             </p>
           </div>
@@ -260,207 +294,238 @@ export default function StatisticsPage() {
         <div className="depth-2 mt-4 flex items-center gap-3 rounded-2xl border px-3 py-3">
           <SlidersHorizontal size={16} className="shrink-0 text-accent" />
           <div className="min-w-0 flex-1">
-            <p className="text-[9px] font-black uppercase tracking-wide text-text-soft">Ranking aktif</p>
-            <p className="mt-1 truncate text-[11px] font-black uppercase tracking-wide text-text">{filterLabel}</p>
+            <p className="text-[9px] lg:text-xs font-black uppercase tracking-wide text-text-soft">
+              Ranking aktif
+            </p>
+            <p className="mt-1 truncate text-[11px] lg:text-[13px] font-black uppercase tracking-wide text-text">
+              {filterLabel}
+            </p>
           </div>
-          <span className="shrink-0 text-[9px] font-bold text-text-soft">{formatUpdatedAt(latestUpdate)}</span>
+          <span className="shrink-0 text-[9px] lg:text-xs font-bold text-text-soft">
+            {formatUpdatedAt(latestUpdate)}
+          </span>
         </div>
       </section>
 
-      <section className="animate-soft-pop depth-1 rounded-3xl border p-4">
-        <StepHeader number={1} title="Pilih metode" subtitle="Tentukan jenis analisa yang ingin dibandingkan." />
-        <div className="grid grid-cols-2 gap-2">
-          {MODE_OPTIONS.map((item) => (
-            <ModeButton
-              key={item.key}
-              option={item}
-              active={item.key === s.category}
-              full={item.key === "off_digit"}
-              onClick={() => s.setCategory(item.key)}
-            />
-          ))}
-        </div>
+      <div className="desktop-workspace">
+        <section className="desktop-controls animate-soft-pop depth-1 rounded-3xl border p-4">
+          <StepHeader
+            number={1}
+            title="Pilih metode"
+            subtitle="Tentukan jenis analisa yang ingin dibandingkan."
+          />
+          <div className="grid grid-cols-2 gap-2">
+            {MODE_OPTIONS.map((item) => (
+              <ModeButton
+                key={item.key}
+                option={item}
+                active={item.key === s.category}
+                full={item.key === "off_digit"}
+                onClick={() => s.setCategory(item.key)}
+              />
+            ))}
+          </div>
 
-        <div className="my-4 h-px bg-white/10" />
+          <div className="my-4 h-px bg-white/10" />
 
-        <StepHeader
-          number={2}
-          title={isAiFamily || isBBFS ? "Pilih target" : isOffDigit ? "Pilih posisi" : "Pilih posisi 2D"}
-          subtitle={
-            isAiFamily || isBBFS
-              ? "Tentukan cakupan angka yang dinilai."
-              : isOffDigit
-                ? "Tentukan posisi digit yang ingin diranking."
-                : "Tentukan bagian hasil yang ingin dibandingkan."
-          }
-        />
+          <StepHeader
+            number={2}
+            title={
+              isAiFamily || isBBFS
+                ? "Pilih target"
+                : isOffDigit
+                  ? "Pilih posisi"
+                  : "Pilih posisi 2D"
+            }
+            subtitle={
+              isAiFamily || isBBFS
+                ? "Tentukan cakupan angka yang dinilai."
+                : isOffDigit
+                  ? "Tentukan posisi digit yang ingin diranking."
+                  : "Tentukan bagian hasil yang ingin dibandingkan."
+            }
+          />
 
-        {isAiFamily ? (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              {aiScopes.map((item) => (
-                <ChoiceButton
-                  key={item.key}
-                  active={s.aiScope === item.key}
-                  title={item.label}
-                  Icon={scopeIcon(item.key)}
-                  full={item.key === "2d_belakang"}
-                  onClick={() => s.setAiScope(item.key)}
-                />
-              ))}
-            </div>
-            <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
-              {selectedAI.subtitle}
-            </p>
-          </>
-        ) : isBBFS ? (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              {bbfsScopes.map((item) => (
-                <ChoiceButton
-                  key={item.key}
-                  active={s.bbfsScope === item.key}
-                  title={item.label}
-                  Icon={scopeIcon(item.key)}
-                  full={item.key === "2d_belakang"}
-                  onClick={() => s.setBbfsScope(item.key)}
-                />
-              ))}
-            </div>
-            <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
-              {selectedBBFS.subtitle}
-            </p>
-          </>
-        ) : isOffDigit ? (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              {matiPositions.map((item) => (
-                <ChoiceButton
-                  key={item.key}
-                  active={s.matiPosition === item.key}
-                  title={item.label}
-                  subtitle={item.subtitle}
-                  Icon={matiPositionIcon(item.key)}
-                  onClick={() => s.setMatiPosition(item.key)}
-                />
-              ))}
-            </div>
-            <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
-              {matiPositionLabel(s.matiPosition)} · {matiPositionSubtitle(s.matiPosition)}
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-3 gap-2">
-              {targetPairs.map((item) => (
-                <ChoiceButton
-                  key={item.key}
-                  active={s.targetPair === item.key}
-                  title={item.label}
-                  Icon={scopeIcon(item.key)}
-                  onClick={() => s.setTargetPair(item.key)}
-                />
-              ))}
-            </div>
-            <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-text-soft">
-              {positionPairSubtitle(s.targetPair)}
-            </p>
-          </>
-        )}
+          {isAiFamily ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {aiScopes.map((item) => (
+                  <ChoiceButton
+                    key={item.key}
+                    active={s.aiScope === item.key}
+                    title={item.label}
+                    Icon={scopeIcon(item.key)}
+                    full={item.key === "2d_belakang"}
+                    onClick={() => s.setAiScope(item.key)}
+                  />
+                ))}
+              </div>
+              <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] lg:text-xs font-bold uppercase tracking-wide text-text-soft">
+                {selectedAI.subtitle}
+              </p>
+            </>
+          ) : isBBFS ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {bbfsScopes.map((item) => (
+                  <ChoiceButton
+                    key={item.key}
+                    active={s.bbfsScope === item.key}
+                    title={item.label}
+                    Icon={scopeIcon(item.key)}
+                    full={item.key === "2d_belakang"}
+                    onClick={() => s.setBbfsScope(item.key)}
+                  />
+                ))}
+              </div>
+              <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] lg:text-xs font-bold uppercase tracking-wide text-text-soft">
+                {selectedBBFS.subtitle}
+              </p>
+            </>
+          ) : isOffDigit ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {matiPositions.map((item) => (
+                  <ChoiceButton
+                    key={item.key}
+                    active={s.matiPosition === item.key}
+                    title={item.label}
+                    subtitle={item.subtitle}
+                    Icon={matiPositionIcon(item.key)}
+                    onClick={() => s.setMatiPosition(item.key)}
+                  />
+                ))}
+              </div>
+              <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] lg:text-xs font-bold uppercase tracking-wide text-text-soft">
+                {matiPositionLabel(s.matiPosition)} · {matiPositionSubtitle(s.matiPosition)}
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                {targetPairs.map((item) => (
+                  <ChoiceButton
+                    key={item.key}
+                    active={s.targetPair === item.key}
+                    title={item.label}
+                    Icon={scopeIcon(item.key)}
+                    onClick={() => s.setTargetPair(item.key)}
+                  />
+                ))}
+              </div>
+              <p className="mt-2 rounded-2xl bg-white/[0.035] px-3 py-2 text-center text-[10px] lg:text-xs font-bold uppercase tracking-wide text-text-soft">
+                {positionPairSubtitle(s.targetPair)}
+              </p>
+            </>
+          )}
 
-        <div className="my-4 h-px bg-white/10" />
+          <div className="my-4 h-px bg-white/10" />
 
-        <StepHeader
-          number={3}
-          title={isAiFamily || isBBFS ? "Pilih output" : "Pilih tingkat OFF"}
-          subtitle={isAiFamily || isBBFS ? "Tentukan jumlah atau jenis digit yang diranking." : "Semakin tinggi, semakin ketat filternya."}
-        />
-        <div className="grid grid-cols-3 gap-2">
-          {paramOptions.map((value) => (
-            <ChoiceButton
-              key={value}
-              active={s.param === value}
-              title={parameterLabel(s.category, value)}
-              subtitle={parameterHint(s.category, value)}
-              Icon={parameterIcon(s.category, value)}
-              full={(isAiFamily && value >= 7) || (isBBFS && value === 10)}
-              onClick={() => s.setParam(value)}
-            />
-          ))}
-        </div>
+          <StepHeader
+            number={3}
+            title={isAiFamily || isBBFS ? "Pilih output" : "Pilih tingkat OFF"}
+            subtitle={
+              isAiFamily || isBBFS
+                ? "Tentukan jumlah atau jenis digit yang diranking."
+                : "Semakin tinggi, semakin ketat filternya."
+            }
+          />
+          <div className="grid grid-cols-3 gap-2">
+            {paramOptions.map((value) => (
+              <ChoiceButton
+                key={value}
+                active={s.param === value}
+                title={parameterLabel(s.category, value)}
+                subtitle={parameterHint(s.category, value)}
+                Icon={parameterIcon(s.category, value)}
+                full={(isAiFamily && value >= 7) || (isBBFS && value === 10)}
+                onClick={() => s.setParam(value)}
+              />
+            ))}
+          </div>
 
-        <div className="accent-bg-soft accent-border mt-4 flex items-center gap-2 rounded-2xl border px-3 py-2.5">
-          <Check size={15} className="shrink-0 text-accent" strokeWidth={2.4} />
-          <p className="min-w-0 truncate text-[10px] font-black uppercase tracking-wide text-text">{filterLabel}</p>
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-3 flex items-end justify-between gap-3 px-1">
-          <div>
-            <p className="display text-sm text-text">Ranking Pasaran</p>
-            <p className="mt-1 text-[10px] font-semibold text-text-soft">
-              {s.isFetching ? "Memperbarui data…" : `${allItems.length} pasaran ditemukan`}
+          <div className="accent-bg-soft accent-border mt-4 flex items-center gap-2 rounded-2xl border px-3 py-2.5">
+            <Check size={15} className="shrink-0 text-accent" strokeWidth={2.4} />
+            <p className="min-w-0 truncate text-[10px] lg:text-xs font-black uppercase tracking-wide text-text">
+              {filterLabel}
             </p>
           </div>
-          {allItems.length > 0 ? (
-            <span className="text-[10px] font-black uppercase tracking-wide text-text-soft">
-              {topItems.length}/{allItems.length}
-            </span>
-          ) : null}
-        </div>
+        </section>
 
-        {s.loading ? (
-          <div className="grid gap-3">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-3xl" />)}
+        <section className="desktop-results">
+          <div className="mb-3 flex items-end justify-between gap-3 px-1">
+            <div>
+              <p className="display text-sm text-text">Ranking Pasaran</p>
+              <p className="mt-1 text-[10px] lg:text-xs font-semibold text-text-soft">
+                {s.isFetching ? "Memperbarui data…" : `${allItems.length} pasaran ditemukan`}
+              </p>
+            </div>
+            {allItems.length > 0 ? (
+              <span className="text-[10px] lg:text-xs font-black uppercase tracking-wide text-text-soft">
+                {topItems.length}/{allItems.length}
+              </span>
+            ) : null}
           </div>
-        ) : topItems.length ? (
-          <>
+
+          {s.loading ? (
             <div className="grid gap-3">
-              {topItems.map((item, index) => (
-                <StatisticCard
-                  key={item.id || `${item.market_id}-${item.group_key}-${item.param}-${item.position}-${item.target_pair}-${item.analysis_scope}`}
-                  item={item}
-                  index={index}
-                  relatedStats={s.relatedStats}
-                  onOpen={(url) => router.push(url)}
-                />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-32 rounded-3xl" />
               ))}
             </div>
+          ) : topItems.length ? (
+            <>
+              <div className="grid gap-3 xl:grid-cols-2">
+                {topItems.map((item, index) => (
+                  <StatisticCard
+                    key={
+                      item.id ||
+                      `${item.market_id}-${item.group_key}-${item.param}-${item.position}-${item.target_pair}-${item.analysis_scope}`
+                    }
+                    item={item}
+                    index={index}
+                    relatedStats={s.relatedStats}
+                    onOpen={(url) => router.push(url)}
+                  />
+                ))}
+              </div>
 
-            {hasMore ? (
-              <button
-                type="button"
-                onClick={() => setVisibleCount((current) => Math.min(current + 20, allItems.length))}
-                className="pressable depth-3 mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-[11px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.055]"
-              >
-                <ChevronDown size={16} /> Tampilkan Berikutnya
-              </button>
-            ) : null}
-          </>
-        ) : (
-          <div className="animate-soft-pop depth-1 rounded-3xl border p-7 text-center">
-            <div className="depth-2 mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border text-text-soft">
-              {isLockedStatistic ? <Lock /> : <BarChart3 />}
+              {hasMore ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleCount((current) => Math.min(current + 20, allItems.length))
+                  }
+                  className="pressable depth-3 mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-[11px] lg:text-[13px] font-black uppercase tracking-wide text-text-muted hover:border-border hover:bg-white/[0.055]"
+                >
+                  <ChevronDown size={16} /> Tampilkan Berikutnya
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <div className="animate-soft-pop depth-1 rounded-3xl border p-7 text-center">
+              <div className="depth-2 mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border text-text-soft">
+                {isLockedStatistic ? <Lock /> : <BarChart3 />}
+              </div>
+              <p className="display text-sm text-text">
+                {isLockedStatistic ? "Statistik Lanjutan VIP" : "Belum ada ranking"}
+              </p>
+              <p className="mx-auto mt-3 max-w-sm text-xs leading-5 text-text-muted">
+                {isLockedStatistic
+                  ? "Fitur analisa ini sudah tersedia gratis. Statistik performa mendalam tetap menjadi bagian dari akses VIP untuk evaluasi metode yang lebih lengkap."
+                  : s.error
+                    ? s.error
+                    : `Belum ada pasaran yang masuk kriteria ${filterLabel}.`}
+              </p>
+              {!isLockedStatistic ? (
+                <Button variant="ghost" className="mt-5" onClick={() => s.refetch()}>
+                  Muat Ulang
+                </Button>
+              ) : null}
             </div>
-            <p className="display text-sm text-text">
-              {isLockedStatistic ? "Statistik Lanjutan VIP" : "Belum ada ranking"}
-            </p>
-            <p className="mx-auto mt-3 max-w-sm text-xs leading-5 text-text-muted">
-              {isLockedStatistic
-                ? "Fitur analisa ini sudah tersedia gratis. Statistik performa mendalam tetap menjadi bagian dari akses VIP untuk evaluasi metode yang lebih lengkap."
-                : s.error
-                  ? s.error
-                  : `Belum ada pasaran yang masuk kriteria ${filterLabel}.`}
-            </p>
-            {!isLockedStatistic ? (
-              <Button variant="ghost" className="mt-5" onClick={() => s.refetch()}>
-                Muat Ulang
-              </Button>
-            ) : null}
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

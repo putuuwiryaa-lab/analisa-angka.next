@@ -14,7 +14,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 function isStandaloneDisplay() {
   if (typeof window === "undefined") return false;
-  return window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as any).standalone === true
+  );
 }
 
 function shouldHideBanner() {
@@ -87,7 +90,7 @@ export function InstallAppBanner() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-[5.25rem] z-50 mx-auto w-full max-w-3xl px-4 pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed inset-x-0 bottom-[5.25rem] z-50 mx-auto w-full max-w-3xl px-4 pb-[env(safe-area-inset-bottom)] lg:inset-x-auto lg:bottom-6 lg:right-6 lg:max-w-xl">
       <div className="animate-soft-pop depth-1 flex items-center gap-3 rounded-3xl border border-primary/30 bg-surface/95 p-3 shadow-2xl shadow-black/30 backdrop-blur-xl">
         <div className="depth-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-primary-soft">
           <Download size={18} />

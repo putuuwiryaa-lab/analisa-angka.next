@@ -76,7 +76,7 @@ export function PageTopBar({
           <ArrowLeft size={15} /> {backLabel}
         </button>
 
-        <p className="truncate text-center text-[10px] font-black uppercase tracking-[0.18em] text-text-soft">
+        <p className="truncate text-center text-[10px] lg:text-xs font-black uppercase tracking-[0.18em] text-text-soft">
           {title}
         </p>
 
@@ -97,14 +97,16 @@ export function PageTopBar({
 
       {isInvestPage ? (
         <section className="depth-1 rounded-2xl border border-border-soft px-3.5 py-3">
-          <p className="text-[11px] font-semibold leading-5 text-text-muted">
-            Setiap pasaran memakai kombinasi metode terbaiknya sendiri, dipilih berdasarkan riwayat performa,
-            kestabilan hasil, dan efisiensi jumlah line.
+          <p className="text-[11px] lg:text-[13px] font-semibold leading-5 text-text-muted">
+            Setiap pasaran memakai kombinasi metode terbaiknya sendiri, dipilih berdasarkan riwayat
+            performa, kestabilan hasil, dan efisiensi jumlah line.
           </p>
-          <div className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide text-text-soft">
+          <div className="mt-2 flex items-center gap-1.5 text-[10px] lg:text-xs font-black uppercase tracking-wide text-text-soft">
             <Clock3 size={13} strokeWidth={2} />
             <span>
-              {investStatusLoading ? "Memuat waktu update…" : `Update data: ${formatInvestUpdatedAt(investUpdatedAt)}`}
+              {investStatusLoading
+                ? "Memuat waktu update…"
+                : `Update data: ${formatInvestUpdatedAt(investUpdatedAt)}`}
             </span>
           </div>
         </section>

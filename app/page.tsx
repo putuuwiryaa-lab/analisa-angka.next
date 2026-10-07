@@ -10,19 +10,11 @@ import { formatMarketName } from "@/lib/markets/format";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
 
 const WA_NUMBER = "6285119341538";
-const APP_LINKS = [
-  { name: "Angka Pro", href: "https://angkapro.online", Icon: Zap },
-];
+const APP_LINKS = [{ name: "Angka Pro", href: "https://angkapro.online", Icon: Zap }];
 
 export default function DashboardPage() {
   const [search, setSearch] = useState("");
-  const {
-    data: markets = [],
-    isPending,
-    error,
-    refetch,
-    isFetching,
-  } = useMarketsQuery();
+  const { data: markets = [], isPending, error, refetch, isFetching } = useMarketsQuery();
 
   const requestMarketUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
     "Halo, saya ingin request penambahan pasaran.",
@@ -47,8 +39,8 @@ export default function DashboardPage() {
   const showInitialSkeleton = isPending && markets.length === 0;
 
   return (
-    <div className="animate-fade-in">
-      <div className="depth-1 mb-4 rounded-3xl border p-3">
+    <div className="animate-fade-in lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:gap-x-6">
+      <div className="depth-1 mb-4 rounded-3xl border p-3 lg:col-start-2 lg:row-start-1">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-accent">
@@ -71,13 +63,16 @@ export default function DashboardPage() {
       </div>
 
       {errorMessage && (
-        <div className="animate-fade-in mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger">
+        <div className="animate-fade-in mb-4 rounded-2xl border border-danger/30 bg-danger/10 p-4 text-center text-xs font-bold text-danger lg:col-span-2">
           {errorMessage}
         </div>
       )}
 
-      <div className="relative mb-4">
-        <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft" />
+      <div className="relative mb-4 lg:col-start-1 lg:row-start-1 lg:self-center">
+        <Search
+          size={20}
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft"
+        />
         <Input
           type="text"
           placeholder="Cari pasaran…"
@@ -97,9 +92,11 @@ export default function DashboardPage() {
         ) : null}
       </div>
 
-      <div className="grid min-h-[calc(100svh-21rem)] grid-cols-2 content-start gap-3 pb-6 sm:grid-cols-3">
+      <div className="grid min-h-[calc(100svh-21rem)] grid-cols-2 content-start gap-3 pb-6 sm:grid-cols-3 lg:col-span-2 lg:grid-cols-4 lg:gap-4 2xl:grid-cols-5">
         {showInitialSkeleton ? (
-          Array.from({ length: 14 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-3xl" />)
+          Array.from({ length: 14 }).map((_, i) => (
+            <Skeleton key={i} className="h-[110px] rounded-3xl" />
+          ))
         ) : (
           <>
             {filteredMarkets.map((m) => (
@@ -107,15 +104,17 @@ export default function DashboardPage() {
                 key={m.id}
                 href={`/analyze/${encodeURIComponent(m.id)}`}
                 prefetch={false}
-                className="pressable depth-1 flex h-[112px] flex-col overflow-hidden rounded-3xl border text-center hover:border-border hover:bg-surface-2"
+                className="pressable depth-1 flex h-[112px] flex-col overflow-hidden rounded-3xl border text-center hover:border-border hover:bg-surface-2 lg:h-32"
               >
                 <div className="depth-2 flex min-h-[48px] items-center justify-center border-b border-border-soft px-3">
-                  <span className="display line-clamp-2 text-[12px] leading-4 text-text">
+                  <span className="display line-clamp-2 text-[12px] leading-4 text-text lg:text-sm lg:leading-5">
                     {formatMarketName(m.name, m.id)}
                   </span>
                 </div>
                 <div className="flex flex-1 items-center justify-center">
-                  <span className="num text-2xl font-black tracking-[0.08em] text-accent">{m.lastResult || "----"}</span>
+                  <span className="num text-2xl font-black tracking-[0.08em] text-accent">
+                    {m.lastResult || "----"}
+                  </span>
                 </div>
               </Link>
             ))}
@@ -124,7 +123,7 @@ export default function DashboardPage() {
               href={requestMarketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="pressable depth-2 flex h-[112px] flex-col items-center justify-center rounded-3xl border border-dashed text-center hover:border-border hover:bg-surface"
+              className="pressable depth-2 flex h-[112px] flex-col items-center justify-center rounded-3xl border border-dashed text-center hover:border-border hover:bg-surface lg:h-32"
               aria-label="Request penambahan pasaran via WhatsApp"
             >
               <div className="depth-3 flex h-10 w-10 items-center justify-center rounded-2xl border text-primary-soft">
@@ -137,9 +136,11 @@ export default function DashboardPage() {
             </a>
 
             {filteredMarkets.length === 0 && (
-              <div className="animate-fade-in depth-1 col-span-2 rounded-3xl border border-dashed py-12 text-center sm:col-span-3">
+              <div className="animate-fade-in depth-1 col-span-full rounded-3xl border border-dashed py-12 text-center">
                 <Database className="mx-auto mb-3 text-text-soft" />
-                <p className="text-xs uppercase tracking-wide text-text-muted">Pasaran tidak ditemukan</p>
+                <p className="text-xs uppercase tracking-wide text-text-muted">
+                  Pasaran tidak ditemukan
+                </p>
               </div>
             )}
           </>
@@ -154,10 +155,12 @@ export default function DashboardPage() {
 function CrossAppBanner() {
   return (
     <section
-      className="mb-4 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-border-soft bg-white/[0.035] px-3 py-2"
+      className="mb-4 flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-border-soft bg-white/[0.035] px-3 py-2 lg:col-span-2"
       aria-label="Tools tambahan"
     >
-      <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.14em] text-text-soft">Tools tambahan</span>
+      <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.14em] text-text-soft">
+        Tools tambahan
+      </span>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
         {APP_LINKS.map((app) => {
           const { Icon } = app;

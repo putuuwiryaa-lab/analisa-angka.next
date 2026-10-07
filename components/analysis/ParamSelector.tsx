@@ -66,9 +66,21 @@ export function ParamSelector({
       labels: { 10: "GENAP GANJIL × BESAR KECIL" },
       hints: { 10: "8 DIGIT" },
     },
-    mati: { title: "Pilih Jumlah Digit OFF", values: [1, 2, 3], hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" } },
-    jumlah: { title: "Pilih Jumlah OFF", values: [1, 2, 3], hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" } },
-    shio: { title: "Pilih Jumlah Shio Mati", values: [1, 2, 3], hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" } },
+    mati: {
+      title: "Pilih Jumlah Digit OFF",
+      values: [1, 2, 3],
+      hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" },
+    },
+    jumlah: {
+      title: "Pilih Jumlah OFF",
+      values: [1, 2, 3],
+      hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" },
+    },
+    shio: {
+      title: "Pilih Jumlah Shio Mati",
+      values: [1, 2, 3],
+      hints: { 1: "RINGAN", 2: "SEIMBANG", 3: "KETAT" },
+    },
   };
 
   const cfg = options[type] || options.ai;
@@ -79,7 +91,9 @@ export function ParamSelector({
     <div className="animate-soft-pop depth-1 mt-4 rounded-3xl border p-4">
       <div className="mb-4 text-center">
         <div className="display accent-text text-sm">{cfg.title}</div>
-        <p className="mt-1.5 text-xs font-medium text-text-muted">Pilih parameter untuk memulai analisa.</p>
+        <p className="mt-1.5 text-xs font-medium text-text-muted">
+          Pilih parameter untuk memulai analisa.
+        </p>
       </div>
 
       <div className="grid grid-cols-3 gap-2.5">
@@ -118,10 +132,14 @@ export function ParamSelector({
                   {label}
                 </span>
                 {showDigitHint ? (
-                  <span className="mt-1 block text-[9px] font-bold uppercase tracking-wide text-text-muted">DIGIT</span>
+                  <span className="mt-1 block text-[9px] lg:text-xs font-bold uppercase tracking-wide text-text-muted">
+                    DIGIT
+                  </span>
                 ) : null}
                 {hint ? (
-                  <span className="mt-1 block text-[9px] font-bold uppercase tracking-wide text-text-muted">{hint}</span>
+                  <span className="mt-1 block text-[9px] lg:text-xs font-bold uppercase tracking-wide text-text-muted">
+                    {hint}
+                  </span>
                 ) : null}
               </span>
             </button>

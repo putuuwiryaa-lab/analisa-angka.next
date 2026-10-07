@@ -54,13 +54,10 @@ const TARGET_2D_OPTIONS: ThemedSelectOption[] = [
 ];
 
 export default function ScanFields(props: Props) {
-  const digitOptions = Array.from(
-    { length: maxScanDigitCount(props.scanMode) },
-    (_, index) => ({
-      value: String(index + 1),
-      label: `${index + 1} digit`,
-    }),
-  );
+  const digitOptions = Array.from({ length: maxScanDigitCount(props.scanMode) }, (_, index) => ({
+    value: String(index + 1),
+    label: `${index + 1} digit`,
+  }));
 
   return (
     <section className="depth-1 rounded-2xl border p-3 sm:p-4">
@@ -74,8 +71,22 @@ export default function ScanFields(props: Props) {
         />
 
         <div className="grid grid-cols-2 gap-2.5">
-          <NumberField label="Data uji" value={props.rounds} min={1} max={100} hint="maks. 100" onChange={props.onRoundsChange} />
-          <NumberField label="Patah" value={props.patah} min={0} max={props.rounds} hint={`maks. ${props.rounds}`} onChange={props.onPatahChange} />
+          <NumberField
+            label="Data uji"
+            value={props.rounds}
+            min={1}
+            max={100}
+            hint="maks. 100"
+            onChange={props.onRoundsChange}
+          />
+          <NumberField
+            label="Patah"
+            value={props.patah}
+            min={0}
+            max={props.rounds}
+            hint={`maks. ${props.rounds}`}
+            onChange={props.onPatahChange}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
@@ -117,7 +128,13 @@ export default function ScanFields(props: Props) {
             options={digitOptions}
             onChange={(value) => props.onDigitCountChange(Number(value))}
           />
-          <NumberField label="Batas hasil" value={props.stopScan} min={1} hint="saran ≤20" onChange={props.onStopScanChange} />
+          <NumberField
+            label="Batas hasil"
+            value={props.stopScan}
+            min={1}
+            hint="saran ≤20"
+            onChange={props.onStopScanChange}
+          />
         </div>
       </div>
 
@@ -134,7 +151,11 @@ export default function ScanFields(props: Props) {
 }
 
 function FieldLabel({ children }: { children: ReactNode }) {
-  return <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted">{children}</span>;
+  return (
+    <span className="mb-1.5 block text-[10px] lg:text-xs font-black uppercase tracking-[0.11em] text-text-muted">
+      {children}
+    </span>
+  );
 }
 
 function MarketSelectField({
@@ -156,7 +177,11 @@ function MarketSelectField({
   const searchRef = useRef<HTMLInputElement>(null);
   const normalizedQuery = query.trim().toLocaleLowerCase("id-ID");
   const filteredMarkets = normalizedQuery
-    ? markets.filter((market) => `${marketLabel(market)} ${market.lastResult || ""}`.toLocaleLowerCase("id-ID").includes(normalizedQuery))
+    ? markets.filter((market) =>
+        `${marketLabel(market)} ${market.lastResult || ""}`
+          .toLocaleLowerCase("id-ID")
+          .includes(normalizedQuery),
+      )
     : markets;
 
   useEffect(() => {
@@ -198,12 +223,19 @@ function MarketSelectField({
       >
         <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_4px_rgba(124,77,255,0.14)]" />
         <span className="min-w-0 flex-1 truncate text-sm font-black text-text">
-          {selectedMarket ? marketLabel(selectedMarket) : disabled ? "MEMUAT PASARAN…" : "PILIH PASARAN"}
+          {selectedMarket
+            ? marketLabel(selectedMarket)
+            : disabled
+              ? "MEMUAT PASARAN…"
+              : "PILIH PASARAN"}
         </span>
         <span className="num shrink-0 rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-sm font-black tracking-[0.06em] text-accent">
           {selectedMarket?.lastResult || "----"}
         </span>
-        <ChevronDown size={16} className={`shrink-0 text-text-soft transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          size={16}
+          className={`shrink-0 text-text-soft transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open ? (
@@ -221,7 +253,11 @@ function MarketSelectField({
             </div>
           </div>
 
-          <div role="listbox" aria-label="Daftar pasaran" className="max-h-[min(18rem,52vh)] overflow-y-auto p-1.5">
+          <div
+            role="listbox"
+            aria-label="Daftar pasaran"
+            className="max-h-[min(18rem,52vh)] overflow-y-auto p-1.5"
+          >
             {filteredMarkets.length ? (
               filteredMarkets.map((market) => {
                 const selected = market.id === value;
@@ -233,11 +269,17 @@ function MarketSelectField({
                     aria-selected={selected}
                     onClick={() => selectMarket(market.id)}
                     className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors ${
-                      selected ? "bg-primary/16 text-text" : "text-text-muted hover:bg-white/[0.06] hover:text-text"
+                      selected
+                        ? "bg-primary/16 text-text"
+                        : "text-text-muted hover:bg-white/[0.06] hover:text-text"
                     }`}
                   >
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${selected ? "bg-primary" : "bg-text-faint"}`} />
-                    <span className="min-w-0 flex-1 truncate text-sm font-black">{marketLabel(market)}</span>
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${selected ? "bg-primary" : "bg-text-faint"}`}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm font-black">
+                      {marketLabel(market)}
+                    </span>
                     <span className="num shrink-0 rounded-lg border border-accent/25 bg-accent/10 px-2 py-1 text-xs font-black text-accent">
                       {market.lastResult || "----"}
                     </span>
@@ -246,7 +288,9 @@ function MarketSelectField({
                 );
               })
             ) : (
-              <div className="px-3 py-8 text-center text-xs font-bold text-text-soft">Pasaran tidak ditemukan</div>
+              <div className="px-3 py-8 text-center text-xs font-bold text-text-soft">
+                Pasaran tidak ditemukan
+              </div>
             )}
           </div>
         </div>
@@ -327,7 +371,11 @@ function NumberField({
           }}
           className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:opacity-55"
         />
-        {hint ? <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-soft/55">{hint}</span> : null}
+        {hint ? (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] lg:text-xs font-black text-text-soft/55">
+            {hint}
+          </span>
+        ) : null}
       </div>
     </label>
   );
