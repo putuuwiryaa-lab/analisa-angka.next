@@ -15,7 +15,7 @@ export function StatisticTable({
   filterLabel: string;
 }) {
   return (
-    <div className="depth-1 hidden overflow-hidden rounded-2xl border lg:block">
+    <div className="desktop-result-enter depth-1 hidden overflow-hidden rounded-2xl border lg:block">
       <table className="w-full table-fixed text-left text-sm">
         <caption className="sr-only">
           Ranking Pasaran — {filterLabel}. Riwayat dari 15 hasil dan terbaru dari 5 hasil terakhir.

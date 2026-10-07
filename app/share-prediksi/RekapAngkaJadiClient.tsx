@@ -441,7 +441,7 @@ export function RekapAngkaJadiClient({
   const selectedSummary = methods.length ? methods.join(" + ") : "Belum ada metode";
 
   return (
-    <div className="animate-rise pb-24 lg:pb-0">
+    <div className="desktop-page-enter animate-rise pb-24 lg:pb-0">
       {!hideBackNavigation && (
         <div className="mb-3 flex items-center justify-between gap-3">
           <button

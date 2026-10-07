@@ -47,7 +47,7 @@ export default function ScanResultSection({
   const unit = isShioMode(result.config.scanMode) ? "shio" : "digit";
 
   return (
-    <section className="depth-1 rounded-2xl border p-3 sm:p-4">
+    <section className="desktop-result-enter depth-1 rounded-2xl border p-3 sm:p-4">
       <div className="mb-3">
         <h2 className="truncate text-base font-black text-text">{marketTitle}</h2>
         <p className="mt-0.5 text-[11px] lg:text-[13px] font-bold text-text-soft">

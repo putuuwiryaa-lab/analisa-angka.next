@@ -820,7 +820,7 @@ export function SharePrediksiClient({ onOpenAngkaJadi }: { onOpenAngkaJadi?: () 
   }
 
   return (
-    <div className="animate-rise pb-24 lg:pb-0">
+    <div className="desktop-page-enter animate-rise pb-24 lg:pb-0">
       <div className="mb-3 flex items-center justify-between gap-3">
         <button
           type="button"

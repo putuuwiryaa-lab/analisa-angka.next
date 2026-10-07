@@ -154,10 +154,6 @@
     scroll-margin-block: 24px;
   }
 
-  .desktop-workspace .pressable:active,
-  .share-workspace .pressable:active {
-    transform: translateY(1px) !important;
-  }
 }
 
 @media (min-width: 1280px) {
@@ -208,4 +204,122 @@
     grid-column: 3;
     grid-row: 1;
   }
+}
+
+/* Desktop motion is opt-in by viewport and the user's motion preference. */
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .app-shell {
+    --ease-desktop: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .app-shell .animate-rise,
+  .app-shell .animate-soft-pop,
+  .desktop-result-enter {
+    animation: desktop-reveal 260ms var(--ease-desktop, ease-out) backwards;
+  }
+
+  /* Keep sticky panels and their ancestors free of animated transforms. */
+  .app-shell main > .animate-rise,
+  .app-shell .desktop-page-enter,
+  .app-shell .desktop-workspace,
+  .app-shell .share-step,
+  .desktop-sidebar,
+  .desktop-controls,
+  .desktop-results {
+    animation: desktop-fade 240ms var(--ease-desktop) backwards;
+  }
+
+  .desktop-controls,
+  .app-shell .share-settings {
+    animation-delay: 40ms;
+  }
+
+  .desktop-results,
+  .app-shell .share-markets {
+    animation-delay: 80ms;
+  }
+
+  .app-shell .share-preview {
+    animation-delay: 120ms;
+  }
+
+  .share-preview[aria-busy="false"] > pre {
+    animation: desktop-fade 200ms var(--ease-desktop) backwards;
+  }
+
+  .desktop-sidebar nav a {
+    transition-property: transform, background-color, border-color, color;
+    transition-duration: 180ms;
+    transition-timing-function: var(--ease-desktop);
+  }
+
+  .desktop-popover {
+    animation: desktop-popover-enter 140ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    transform-origin: top;
+  }
+
+  .desktop-popover[data-side="top"] {
+    transform-origin: bottom;
+  }
+
+  .desktop-detail-dialog[open] > section {
+    animation: desktop-reveal 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+
+  .desktop-detail-dialog[open]::backdrop {
+    animation: desktop-fade 180ms ease-out backwards;
+  }
+
+}
+
+/* Important press transforms belong to the same layer as the base utility. */
+@layer utilities {
+  @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+    :is(.app-shell, .desktop-popover, .desktop-detail-dialog) .pressable:not(:disabled):active {
+      transform: translateY(1px) !important;
+      filter: none;
+    }
+
+    :is(.app-shell, .desktop-popover, .desktop-detail-dialog) .pressable:disabled {
+      transform: none !important;
+      filter: none;
+    }
+  }
+
+  @media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+    :is(.app-shell, .desktop-popover, .desktop-detail-dialog) .pressable,
+    :is(.app-shell, .desktop-popover, .desktop-detail-dialog) .pressable:hover,
+    :is(.app-shell, .desktop-popover, .desktop-detail-dialog) .pressable:active,
+    :is(.app-shell, .desktop-popover, .desktop-detail-dialog) .pressable:hover:active {
+      transform: none !important;
+      filter: none !important;
+    }
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .app-shell .pressable:not(:disabled):hover,
+  .desktop-popover .pressable:not(:disabled):hover,
+  .desktop-detail-dialog .pressable:not(:disabled):hover {
+    transform: translateY(-2px);
+  }
+
+  .desktop-sidebar nav a:hover {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes desktop-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes desktop-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes desktop-popover-enter {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
