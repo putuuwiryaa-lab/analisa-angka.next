@@ -39,14 +39,18 @@ export function ParamSelector({
   type,
   param,
   analysisScope = "default",
+  persistent = false,
+  loading = false,
   onAnalyze,
 }: {
   type: string;
   param: number | null;
   analysisScope?: string;
+  persistent?: boolean;
+  loading?: boolean;
   onAnalyze: (param: number) => void;
 }) {
-  if (type === "rekap" || param !== 0) return null;
+  if (type === "rekap" || (param !== 0 && !persistent)) return null;
 
   const aiValues =
     analysisScope === "3d" ? [1, 3, 5, 7, 8] : analysisScope === "4d" ? [1, 2, 4] : [2, 4, 6, 7, 8];
@@ -88,11 +92,11 @@ export function ParamSelector({
   const isBBFSMode = type === "bbfs";
 
   return (
-    <div className="animate-soft-pop depth-1 mt-4 rounded-3xl border p-4">
+    <div className={cn("animate-soft-pop depth-1 mt-4 rounded-3xl border p-4", param !== 0 && "hidden lg:block")} aria-busy={loading}>
       <div className="mb-4 text-center">
         <div className="display accent-text text-sm">{cfg.title}</div>
         <p className="mt-1.5 text-xs font-medium text-text-muted">
-          Pilih parameter untuk memulai analisa.
+          {param ? "Pilih output lain untuk membandingkan hasil." : "Pilih parameter untuk memulai analisa."}
         </p>
       </div>
 
@@ -109,16 +113,19 @@ export function ParamSelector({
             <button
               key={value}
               type="button"
+              aria-pressed={param === value}
+              disabled={loading}
               onClick={() => onAnalyze(value)}
               className={cn(
-                "pressable animate-soft-pop depth-3 accent-text group relative flex items-center rounded-2xl border text-left hover:border-border hover:bg-white/[0.06]",
+                "pressable animate-soft-pop depth-3 accent-text group relative flex items-center rounded-2xl border text-left hover:border-border hover:bg-white/[0.06] disabled:cursor-wait disabled:opacity-60",
+                param === value && "accent-bg-soft accent-border ring-1 ring-[var(--accent)]",
                 isSpecial
                   ? "col-span-3 min-h-[76px] justify-start gap-3 px-4 py-3"
                   : "min-h-[76px] justify-center gap-2 px-2.5 py-3",
               )}
               style={{ animationDelay: `${Math.min(index, 6) * 28}ms` }}
             >
-              <span className="depth-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-[1.05]">
+              <span className={cn("depth-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-[1.05]", !isSpecial && "lg:hidden")}>
                 <Icon size={17} strokeWidth={1.9} />
               </span>
 

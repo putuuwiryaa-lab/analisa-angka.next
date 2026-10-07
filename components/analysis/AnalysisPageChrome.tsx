@@ -14,23 +14,26 @@ function SelectionChip({
   label,
   value,
   onReset,
+  disabled,
 }: {
   label: string;
   value: string;
   onReset: () => void;
+  disabled: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onReset}
-      className="pressable depth-3 flex min-h-10 min-w-0 items-center gap-2 rounded-2xl border px-3 text-left hover:border-border"
+      disabled={disabled}
+      className="pressable depth-3 flex min-h-10 min-w-0 items-center gap-2 rounded-2xl border px-3 py-2 text-left hover:border-border disabled:cursor-wait disabled:opacity-60"
       aria-label={`Ganti ${label}`}
     >
       <span className="min-w-0 flex-1">
         <span className="block text-[9px] lg:text-xs font-black uppercase tracking-wide text-text-soft">
           {label}
         </span>
-        <span className="accent-text block truncate text-[10px] lg:text-xs font-black uppercase tracking-wide">
+        <span className="accent-text block break-words text-[10px] lg:text-xs font-black uppercase tracking-wide">
           {value}
         </span>
       </span>
@@ -111,12 +114,13 @@ export function AnalysisPageChrome({
         </div>
 
         {hasSelection ? (
-          <div className="relative mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="relative mt-4 grid grid-cols-1 gap-2">
             {isAI && analysisScope ? (
               <SelectionChip
                 label="AI"
                 value={analysisScopeLabel(analysisScope)}
                 onReset={onAIScopeReset}
+                disabled={loading}
               />
             ) : null}
             {needsTargetPair && targetPair ? (
@@ -124,6 +128,7 @@ export function AnalysisPageChrome({
                 label="Fokus"
                 value={targetPairLabel(targetPair)}
                 onReset={onTargetPairReset}
+                disabled={loading}
               />
             ) : null}
             {isBBFS && analysisScope && analysisScope !== "default" ? (
@@ -131,6 +136,7 @@ export function AnalysisPageChrome({
                 label="BBFS"
                 value={analysisScopeLabel(analysisScope)}
                 onReset={onBBFSScopeReset}
+                disabled={loading}
               />
             ) : null}
             {isRekapCustom && customFocus ? (
@@ -138,6 +144,7 @@ export function AnalysisPageChrome({
                 label="Rekap"
                 value={`${customFocusLabel(customFocus)} · ${customFocusSubtitle(customFocus)}`}
                 onReset={onCustomFocusReset}
+                disabled={loading}
               />
             ) : null}
           </div>

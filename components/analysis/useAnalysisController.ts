@@ -130,6 +130,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
 
   const resetBeforeAnalyze = useCallback(() => {
     setLoading(true);
+    setResult(null);
     setError("");
     setDetailValidationOpen(false);
     setAngkaJadiOpen(false);
@@ -220,6 +221,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
 
   const handleAnalyze = useCallback(
     async (selectedParam: number, selectedTargetPair?: TargetPair) => {
+      if (loading) return;
       const selectedScope = analysisScope || "default";
       if (isAI && !analysisScope) return setError("Pilih jenis Angka Ikut dulu.");
       if (isBBFS && selectedScope === "default") return setError("Pilih jenis BBFS dulu.");
@@ -288,6 +290,7 @@ export function useAnalysisController({ type, marketId }: { type: string; market
       postAnalyze,
       pushFlowUrl,
       resetBeforeAnalyze,
+      loading,
       result,
       targetPair,
       type,

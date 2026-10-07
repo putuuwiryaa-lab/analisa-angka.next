@@ -229,7 +229,8 @@ export default function BatchScanPage() {
 
   return (
     <div className="animate-fade-in desktop-workspace space-y-3">
-      <div className="desktop-controls space-y-3">
+      <div className="desktop-controls batch-controls space-y-3">
+        <fieldset disabled={loading} className="batch-control-scroll min-w-0 space-y-3">
         <section className="depth-1 rounded-2xl border p-3 sm:p-4">
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2.5">
@@ -362,6 +363,8 @@ export default function BatchScanPage() {
               size={16}
             />
             <input
+              aria-label="Cari pasaran Batch"
+              name="batch-market-search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cari pasaran"
@@ -378,13 +381,15 @@ export default function BatchScanPage() {
             Pilih semua hasil pencarian
           </button>
 
-          <div className="grid max-h-[22rem] grid-cols-3 gap-1.5 overflow-y-auto pr-1">
+          <div className="batch-market-list grid max-h-[22rem] grid-cols-3 gap-1.5 overflow-y-auto pr-1">
             {filteredMarkets.map((market) => {
               const active = selectedSet.has(market.id);
               return (
                 <button
                   key={market.id}
                   type="button"
+                  aria-pressed={active}
+                  title={market.name || market.id}
                   onClick={() => toggleMarket(market.id)}
                   className={`render-lazy-row pressable flex min-h-12 items-center justify-between gap-1 rounded-xl border px-2 py-2 text-left shadow-inner shadow-black/10 ${active ? "border-primary/45 bg-primary/15" : "border-border-soft bg-surface"}`}
                 >
@@ -405,15 +410,21 @@ export default function BatchScanPage() {
             </div>
           ) : null}
 
+        </section>
+        </fieldset>
+        <div className="batch-actions rounded-2xl border border-border-soft bg-bg-deep/95 p-2.5">
+          <p className="mb-2 text-center text-xs font-semibold text-text-muted" aria-live="polite">
+            {selected.length ? `${selected.length} pasaran dipilih` : "Pilih minimal satu pasaran."}
+          </p>
           <button
             type="button"
             onClick={runBatch}
             disabled={loading || marketsLoading || !selected.length}
-            className="pressable mt-4 flex h-[3.25rem] w-full items-center justify-center rounded-xl border border-primary/70 bg-primary px-4 text-sm font-black text-bg-deep shadow-[0_10px_24px_rgba(105,151,255,0.16)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
+            className="pressable flex h-[3.25rem] w-full items-center justify-center rounded-xl border border-primary/70 bg-primary px-4 text-sm font-black text-bg-deep shadow-[0_10px_24px_rgba(105,151,255,0.16)] transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? `Memproses ${selected.length} pasaran…` : "Batch Scan Sekarang"}
           </button>
-        </section>
+        </div>
       </div>
       <div className="desktop-results">
         {result ? (

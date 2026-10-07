@@ -1,14 +1,52 @@
+import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Check, Clipboard, X } from "lucide-react";
 import type { DetailData } from "../_lib";
 import styles from "../ScanTheme.module.css";
 
 export default function TrekDetailModal({ data, copied, onCopy, onClose }: { data: DetailData; copied: boolean; onCopy: () => void; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, []);
+
+  function keepFocusInside(event: KeyboardEvent<HTMLDialogElement>) {
+    if (event.key !== "Tab") return;
+    const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
+    const first = buttons[0];
+    const last = buttons[buttons.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div className={`${styles.theme} fixed inset-0 z-[200] isolate flex items-end justify-center p-0 sm:items-center sm:p-5`}>
-      <button type="button" aria-label="Tutup detail trek" onClick={onClose} className="absolute inset-0 z-0 bg-black/80 backdrop-blur-[2px]" />
-      <section role="dialog" aria-modal="true" aria-label={`Detail trek ${data.title}`} className="relative z-10 flex max-h-[92svh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[1.75rem] border border-border-soft bg-bg-deep shadow-2xl sm:rounded-[1.75rem]">
+    <dialog
+      ref={dialogRef}
+      aria-label={`Detail trek ${data.title}`}
+      onKeyDown={keepFocusInside}
+      onCancel={(event) => { event.preventDefault(); onClose(); }}
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      className={`${styles.theme} fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none items-end justify-center border-0 bg-transparent p-0 text-text backdrop:bg-black/80 backdrop:backdrop-blur-[2px] open:flex sm:items-center sm:p-5`}
+    >
+      <section className="relative flex max-h-[92svh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[1.75rem] border border-border-soft bg-bg-deep shadow-2xl sm:rounded-[1.75rem]">
         <header className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-border-soft bg-surface/95 p-4 sm:p-5">
           <div className="min-w-0">
             <h2 className="display truncate text-2xl text-text">{data.title}</h2>
@@ -40,7 +78,7 @@ export default function TrekDetailModal({ data, copied, onCopy, onClose }: { dat
           </div>
         </div>
       </section>
-    </div>,
+    </dialog>,
     document.body,
   );
 }

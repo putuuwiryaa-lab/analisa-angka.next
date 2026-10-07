@@ -757,7 +757,7 @@ export function SharePrediksiClient({ onOpenAngkaJadi }: { onOpenAngkaJadi?: () 
         <div className="mb-2 px-1 text-[10px] lg:text-xs font-black uppercase tracking-[0.18em] text-text-soft">
           {label}
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="share-picker grid grid-cols-2 gap-2 sm:grid-cols-3">
           {items.map((item) => {
             const active = item.key === activeKey;
             const Icon = pickerIcon(label, item);
@@ -766,6 +766,7 @@ export function SharePrediksiClient({ onOpenAngkaJadi }: { onOpenAngkaJadi?: () 
                 key={item.key}
                 type="button"
                 onClick={() => onPick(item.key)}
+                aria-pressed={active}
                 className={`pressable flex min-h-[58px] items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-center text-[11px] lg:text-[13px] font-black uppercase tracking-wide ${
                   active
                     ? "accent-bg-soft accent-border text-text"
@@ -998,17 +999,20 @@ export function SharePrediksiClient({ onOpenAngkaJadi }: { onOpenAngkaJadi?: () 
                         key={key || marketLabel(row)}
                         type="button"
                         onClick={() => toggle(row)}
+                        aria-pressed={active}
+                        title={marketLabel(row)}
                         className={`pressable relative flex min-h-[60px] items-center justify-center rounded-2xl border px-3 py-2.5 text-center ${
                           active
                             ? "accent-bg-soft accent-border"
                             : "depth-3 border-border-soft hover:border-border"
                         }`}
                       >
-                        {active ? (
-                          <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white">
-                            <Check size={10} strokeWidth={3.2} />
-                          </span>
-                        ) : null}
+                        <span
+                          aria-hidden="true"
+                          className={`share-market-check h-4 w-4 items-center justify-center rounded-full ${active ? "absolute right-1.5 top-1.5 flex bg-primary text-white" : "hidden border border-border lg:flex"}`}
+                        >
+                          {active ? <Check size={10} strokeWidth={3.2} /> : null}
+                        </span>
                         <span className="line-clamp-2 text-[10px] lg:text-xs font-black leading-4 tracking-wide text-text">
                           {marketLabel(row)}
                         </span>
