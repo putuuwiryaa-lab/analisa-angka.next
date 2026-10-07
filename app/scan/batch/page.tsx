@@ -428,7 +428,7 @@ export default function BatchScanPage() {
       </div>
       <div className="desktop-results">
         {result ? (
-          <section className="depth-1 rounded-2xl border p-3 sm:p-4">
+          <section className="desktop-result-enter depth-1 rounded-2xl border p-3 sm:p-4">
             <div className="mb-2.5 flex items-center justify-between gap-2">
               <FieldLabel>Hasil siap copy</FieldLabel>
               <button

@@ -61,6 +61,8 @@ export default function DropdownPopover({
       const height = Math.min(maxHeight, preferAbove ? above : below);
       const left = align === "end" ? anchor.right - width : anchor.left;
 
+      menu.dataset.side = preferAbove ? "top" : "bottom";
+
       Object.assign(menu.style, {
         left: `${Math.min(Math.max(left, leftEdge), rightEdge - width)}px`,
         width: `${width}px`,
@@ -153,7 +155,7 @@ export default function DropdownPopover({
         role={role}
         tabIndex={role === "listbox" ? 0 : undefined}
         aria-labelledby={labelId}
-        className={`fixed z-[60] overflow-y-auto overscroll-contain ${className}`}
+        className={`desktop-popover fixed z-[60] overflow-y-auto overscroll-contain ${className}`}
         onKeyDown={handleKeyDown}
       >
         {children}

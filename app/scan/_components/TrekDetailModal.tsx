@@ -44,7 +44,7 @@ export default function TrekDetailModal({ data, copied, onCopy, onClose }: { dat
       onKeyDown={keepFocusInside}
       onCancel={(event) => { event.preventDefault(); onClose(); }}
       onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
-      className={`${styles.theme} fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none items-end justify-center border-0 bg-transparent p-0 text-text backdrop:bg-black/80 backdrop:backdrop-blur-[2px] open:flex sm:items-center sm:p-5`}
+      className={`${styles.theme} desktop-detail-dialog fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none items-end justify-center border-0 bg-transparent p-0 text-text backdrop:bg-black/80 backdrop:backdrop-blur-[2px] open:flex sm:items-center sm:p-5`}
     >
       <section className="relative flex max-h-[92svh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[1.75rem] border border-border-soft bg-bg-deep shadow-2xl sm:rounded-[1.75rem]">
         <header className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-border-soft bg-surface/95 p-4 sm:p-5">

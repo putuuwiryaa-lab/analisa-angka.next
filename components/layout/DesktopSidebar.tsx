@@ -17,7 +17,7 @@ export function DesktopSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-6 z-20 hidden h-[calc(100dvh-3rem)] w-52 shrink-0 flex-col rounded-3xl border border-border-soft bg-bg-deep/75 p-4 lg:flex xl:w-56">
+    <aside className="desktop-sidebar sticky top-6 z-20 hidden h-[calc(100dvh-3rem)] w-52 shrink-0 flex-col rounded-3xl border border-border-soft bg-bg-deep/75 p-4 lg:flex xl:w-56">
       <Link
         href="/"
         className="mb-8 flex items-center gap-3 rounded-2xl px-1 py-2"
