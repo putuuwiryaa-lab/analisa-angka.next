@@ -104,23 +104,6 @@ export default function ScanPageClient() {
     }
   }, [savedTreks, storageReady]);
 
-  useEffect(() => {
-    if (!viewItem && !viewSaved) return;
-    const previousOverflow = document.body.style.overflow;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setViewItem(null);
-        setViewSaved(null);
-      }
-    };
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [viewItem, viewSaved]);
-
   const selectedMarket = useMemo(
     () => markets.find((market) => market.id === marketId) ?? null,
     [marketId, markets],

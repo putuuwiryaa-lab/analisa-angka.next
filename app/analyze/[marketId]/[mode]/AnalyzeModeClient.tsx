@@ -64,11 +64,13 @@ function StandardAnalyzeModePage({ marketId, type }: { marketId: string; type: M
           <RekapFocusSelector onSelect={handlers.selectCustomFocus} />
         )}
 
-        {flags.showParamSelector && !flags.autoMode && (
+        {flags.showParamSelector && (!flags.autoMode || Boolean(param)) && (
           <ParamSelector
             type={type}
             param={param}
             analysisScope={analysisScope || "default"}
+            persistent
+            loading={loading}
             onAnalyze={handlers.handleAnalyze}
           />
         )}

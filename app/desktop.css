@@ -75,8 +75,78 @@
     scrollbar-width: thin;
   }
 
+  .share-market-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .share-market-list > button {
+    min-height: 44px;
+    justify-content: flex-start;
+    gap: 10px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    text-align: left;
+  }
+
+  .share-market-list .share-market-check {
+    position: static;
+    flex-shrink: 0;
+  }
+
   .share-market-list .line-clamp-2 {
-    overflow-wrap: anywhere;
+    display: block;
+    overflow: visible;
+    overflow-wrap: break-word;
+    -webkit-line-clamp: unset;
+  }
+
+  .share-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .share-picker > button {
+    min-height: 52px;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .share-picker svg {
+    flex-shrink: 0;
+  }
+
+  .batch-controls {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 210px);
+    min-height: 220px;
+    overflow: visible;
+  }
+
+  .batch-control-scroll {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scroll-padding-block: 12px;
+  }
+
+  .batch-actions {
+    flex-shrink: 0;
+  }
+
+  .batch-market-list {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .batch-market-list .line-clamp-2 {
+    display: block;
+    overflow: visible;
+    overflow-wrap: break-word;
+    -webkit-line-clamp: unset;
   }
 
   .desktop-workspace button,
@@ -104,11 +174,34 @@
     scrollbar-width: thin;
   }
 
-  .share-markets {
+  .share-step.share-markets {
     grid-column: 2;
     grid-row: 1;
     position: sticky;
     top: 24px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 198px);
+    min-height: 220px;
+  }
+
+  .share-markets > section {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scroll-padding-block: 12px;
+  }
+
+  .share-markets .share-market-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .share-markets > div:last-child {
+    position: static;
+    flex-shrink: 0;
   }
 
   .share-step.share-preview {

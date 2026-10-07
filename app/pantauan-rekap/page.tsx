@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { PageTopBar } from "@/components/layout/PageTopBar";
 import { StatisticCard } from "@/components/statistics/StatisticCard";
+import { StatisticTable } from "@/components/statistics/StatisticTable";
 import { useMarketStatistics, aiParamOptions } from "@/components/statistics/useMarketStatistics";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -475,7 +476,8 @@ export default function StatisticsPage() {
             </div>
           ) : topItems.length ? (
             <>
-              <div className="grid gap-3 xl:grid-cols-2">
+              <StatisticTable items={topItems} filterLabel={filterLabel} />
+              <div className="grid gap-3 lg:hidden">
                 {topItems.map((item, index) => (
                   <StatisticCard
                     key={

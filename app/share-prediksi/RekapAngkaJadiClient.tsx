@@ -725,17 +725,20 @@ export function RekapAngkaJadiClient({
                         key={key || marketLabel(row)}
                         type="button"
                         onClick={() => toggleMarket(row)}
+                        aria-pressed={active}
+                        title={marketLabel(row)}
                         className={`pressable relative flex min-h-[60px] items-center justify-center rounded-2xl border px-3 py-2.5 text-center ${
                           active
                             ? "accent-bg-soft accent-border"
                             : "depth-3 border-border-soft hover:border-border"
                         }`}
                       >
-                        {active ? (
-                          <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white">
-                            <Check size={10} strokeWidth={3.2} />
-                          </span>
-                        ) : null}
+                        <span
+                          aria-hidden="true"
+                          className={`share-market-check h-4 w-4 items-center justify-center rounded-full ${active ? "absolute right-1.5 top-1.5 flex bg-primary text-white" : "hidden border border-border lg:flex"}`}
+                        >
+                          {active ? <Check size={10} strokeWidth={3.2} /> : null}
+                        </span>
                         <span className="line-clamp-2 text-[10px] lg:text-xs font-black leading-4 tracking-wide text-text">
                           {marketLabel(row)}
                         </span>
