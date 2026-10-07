@@ -532,7 +532,7 @@ function NumberField({
           className="h-12 w-full rounded-xl border border-border-soft bg-surface px-3 pr-16 text-sm font-black text-text outline-none shadow-inner shadow-black/10 focus:border-primary/50 disabled:cursor-not-allowed disabled:text-text-soft"
         />
         {hint ? (
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] lg:text-xs font-black text-text-soft/55">
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] lg:text-xs font-black text-text-soft">
             {hint}
           </span>
         ) : null}

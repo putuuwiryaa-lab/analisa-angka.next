@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Activity, Database, RefreshCw } from "lucide-react";
 import AdaptiveEvaluationPanel from "./AdaptiveEvaluationPanel";
 import AdaptiveMarketSelect, {
@@ -67,6 +67,7 @@ function publishedAtLabel(value: string): string {
 }
 
 export default function AdaptivePageClient() {
+  const digitCountId = useId();
   const {
     data: sharedMarkets = [],
     isPending: marketsPending,
@@ -217,14 +218,19 @@ export default function AdaptivePageClient() {
 
             <div>
               <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-[10px] lg:text-xs font-black uppercase tracking-[0.13em] text-text-muted">
+                <label
+                  htmlFor={digitCountId}
+                  className="text-[10px] lg:text-xs font-black uppercase tracking-[0.13em] text-text-muted"
+                >
                   Jumlah Digit
-                </span>
+                </label>
                 <span className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary-soft">
                   {digitCount}
                 </span>
               </div>
               <input
+                id={digitCountId}
+                name="digitCount"
                 type="range"
                 min={range.min}
                 max={range.max}

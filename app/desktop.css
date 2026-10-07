@@ -46,16 +46,26 @@
     grid-column: 1;
   }
 
-  .share-preview {
+  .share-step.share-preview {
     grid-column: 2;
     grid-row: 1 / span 2;
     position: sticky;
     top: 24px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
 
   .share-preview pre {
-    min-height: 320px;
-    max-height: calc(100dvh - 240px);
+    min-height: min(320px, max(120px, calc(100dvh - 280px)));
+    max-height: max(120px, calc(100dvh - 240px));
+    flex: 1 1 auto;
+  }
+
+  .share-preview > :not(pre) {
+    flex-shrink: 0;
   }
 
   .share-market-list {
@@ -63,6 +73,10 @@
     overflow-y: auto;
     scrollbar-gutter: stable;
     scrollbar-width: thin;
+  }
+
+  .share-market-list .line-clamp-2 {
+    overflow-wrap: anywhere;
   }
 
   .desktop-workspace button,
@@ -97,7 +111,7 @@
     top: 24px;
   }
 
-  .share-preview {
+  .share-step.share-preview {
     grid-column: 3;
     grid-row: 1;
   }

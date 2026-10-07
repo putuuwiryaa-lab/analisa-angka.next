@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
+import DropdownPopover from "./DropdownPopover";
 
 export type ThemedSelectOption = {
   value: string;
@@ -26,41 +27,23 @@ export default function ThemedSelect({
   wide?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const id = useId();
   const labelId = `${id}-label`;
   const valueId = `${id}-value`;
   const listboxId = `${id}-listbox`;
-  const selectedOption =
-    options.find((option) => option.value === value) ?? options[0];
-
-  useEffect(() => {
-    if (!open) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  const selectedOption = options.find((option) => option.value === value) ?? options[0];
 
   return (
-    <div ref={rootRef} className={`relative min-w-0 ${open ? "z-40" : "z-0"}`}>
+    <div className="relative min-w-0">
       <span
         id={labelId}
-        className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.11em] text-text-muted"
+        className="mb-1.5 block text-[10px] lg:text-xs font-black uppercase tracking-[0.11em] text-text-muted"
       >
         {label}
       </span>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         aria-haspopup="listbox"
@@ -68,25 +51,34 @@ export default function ThemedSelect({
         aria-controls={open ? listboxId : undefined}
         aria-labelledby={`${labelId} ${valueId}`}
         onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
         className="flex h-12 w-full items-center rounded-xl border border-border-soft bg-surface px-3 text-left text-sm font-black text-text shadow-inner shadow-black/10 outline-none transition-colors hover:border-border-strong focus:border-primary/60 focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-55"
       >
         <span id={valueId} className="min-w-0 flex-1 truncate">
           {selectedOption?.label || "Pilih"}
         </span>
         <ChevronDown
+          aria-hidden="true"
           size={16}
           className={`ml-2 shrink-0 text-text-soft transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open ? (
-        <div
+        <DropdownPopover
+          triggerRef={triggerRef}
+          onClose={() => setOpen(false)}
           id={listboxId}
           role="listbox"
-          aria-labelledby={labelId}
-          className={`absolute top-full mt-2 max-h-56 overflow-y-auto rounded-xl border border-border-strong bg-surface-2 p-1.5 shadow-[0_20px_55px_rgba(0,0,0,0.5)] ring-1 ring-white/5 ${
-            align === "end" ? "left-auto right-0" : "left-0 right-auto"
-          } ${wide ? "w-[min(20rem,calc(100vw-2rem))]" : "w-full"}`}
+          labelId={labelId}
+          align={align}
+          wide={wide}
+          className="rounded-xl border border-border-strong bg-surface-2 p-1.5 shadow-[0_20px_55px_rgba(0,0,0,0.5)] ring-1 ring-white/5"
         >
           {options.map((option) => {
             const selected = option.value === value;
@@ -95,10 +87,12 @@ export default function ThemedSelect({
                 key={option.value}
                 type="button"
                 role="option"
+                tabIndex={-1}
                 aria-selected={selected}
                 onClick={() => {
                   onChange(option.value);
                   setOpen(false);
+                  triggerRef.current?.focus({ preventScroll: true });
                 }}
                 className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-black transition-colors ${
                   selected
@@ -108,13 +102,14 @@ export default function ThemedSelect({
               >
                 <span className="min-w-0 flex-1 truncate">{option.label}</span>
                 <Check
+                  aria-hidden="true"
                   size={14}
                   className={selected ? "text-primary-soft" : "invisible"}
                 />
               </button>
             );
           })}
-        </div>
+        </DropdownPopover>
       ) : null}
     </div>
   );
