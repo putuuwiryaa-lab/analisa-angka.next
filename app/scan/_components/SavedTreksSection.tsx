@@ -1,6 +1,6 @@
-import { Trash2 } from "lucide-react";
+import { RefreshCw, Trash2 } from "lucide-react";
 import { isShioMode } from "@/lib/shared/scan-mode";
-import { analysisTitle, displayDigits } from "../_lib";
+import { analysisTitle, displayDigits, savedDetail } from "../_lib";
 import type { SavedGroup, SavedTrek } from "../_lib";
 
 type Props = {
@@ -8,9 +8,20 @@ type Props = {
   groups: SavedGroup[];
   onView: (saved: SavedTrek) => void;
   onDelete: (id: string) => void;
+  refreshing: boolean;
+  refreshError: string;
+  onRefresh: () => void;
 };
 
-export default function SavedTreksSection({ total, groups, onView, onDelete }: Props) {
+export default function SavedTreksSection({
+  total,
+  groups,
+  onView,
+  onDelete,
+  refreshing,
+  refreshError,
+  onRefresh,
+}: Props) {
   if (!total) return null;
   return (
     <section className="space-y-3" aria-label="Trek tersimpan">
@@ -22,6 +33,28 @@ export default function SavedTreksSection({ total, groups, onView, onDelete }: P
         </span>
         <span className="h-px flex-1 bg-border-soft" />
       </div>
+      <div className="flex items-center justify-between gap-3 px-1">
+        <p className="text-[11px] font-bold text-text-soft">
+          Rumus tetap · otomatis mengikuti result terbaru
+        </p>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="pressable flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border-soft px-2.5 text-xs font-bold text-text-muted disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+          {refreshing ? "Memperbarui…" : "Perbarui"}
+        </button>
+      </div>
+      {refreshError ? (
+        <p
+          role="status"
+          className="rounded-xl border border-danger/30 bg-danger/10 p-3 text-xs font-bold text-danger"
+        >
+          {refreshError}
+        </p>
+      ) : null}
       {groups.map((group) => (
         <div key={group.key} className="depth-1 rounded-3xl border p-4">
           <p className="mb-3 text-xs font-bold leading-relaxed text-text-soft">
@@ -30,7 +63,7 @@ export default function SavedTreksSection({ total, groups, onView, onDelete }: P
             <strong className="text-text">
               {analysisTitle(group.scanMode, group.targetPos, group.target2D, group.target3D)}
             </strong>
-            {` · ${group.digitCount} ${isShioMode(group.scanMode) ? "shio" : "digit"} · ${group.L || "-"} data · patah ${group.patah} · ${group.items.length} hasil`}
+            {` · ${group.digitCount} ${isShioMode(group.scanMode) ? "shio" : "digit"} · uji awal ${group.L || "-"} data, patah ${group.patah} · ${group.items.length} rumus`}
           </p>
           <div className="space-y-2">
             {group.items.map((saved) => (
@@ -65,10 +98,21 @@ export default function SavedTreksSection({ total, groups, onView, onDelete }: P
                     </button>
                   </div>
                 </div>
+                {!saved.legacy ? (
+                  <p className="mt-2 text-[11px] font-bold text-text-soft">
+                    {saved.snapshotRows.length} evaluasi · result {saved.savedLatestDraw} · terakhir{" "}
+                    {savedDetail(saved).rows.at(-1)?.status || "—"}
+                  </p>
+                ) : null}
+                {saved.trackingError ? (
+                  <p role="status" className="mt-2 text-xs font-bold text-danger">
+                    {saved.trackingError}
+                  </p>
+                ) : null}
                 {saved.legacy ? (
                   <p className="mt-2 text-[10px] lg:text-xs font-bold text-text-soft">
-                    Trek lama: detail histori belum tersedia. Simpan ulang hasil scan untuk snapshot
-                    lengkap.
+                    Trek lama belum memiliki rumus dan histori lengkap. Simpan ulang rumus dari Scan
+                    untuk mengikuti result terbaru.
                   </p>
                 ) : null}
               </article>

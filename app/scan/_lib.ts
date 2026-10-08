@@ -1,5 +1,6 @@
 import { KOLOM, SHIO_KOLOM } from "@/lib/engine/types";
 import { formatMarketName } from "@/lib/markets/format";
+import { scanRowSucceeded } from "@/lib/shared/saved-scan";
 import type {
   AutoScanItem,
   AutoScanResult,
@@ -10,13 +11,7 @@ import type {
   Target2D,
   Target3D,
 } from "@/lib/engine/types";
-import {
-  is3DMode,
-  isJumlah2DMode,
-  isOffMode,
-  isPositionMode,
-  isShioMode,
-} from "@/lib/shared/scan-mode";
+import { is3DMode, isJumlah2DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
 
 export type Market = {
   id: string;
@@ -45,6 +40,9 @@ export type SavedTrek = {
   predictionValues: number[];
   snapshotRows: BacktestRow[];
   savedLatestDraw: string;
+  historyTail?: string[];
+  historyLength?: number;
+  trackingError?: string;
   legacy?: boolean;
 };
 
@@ -114,7 +112,12 @@ function capitalized(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-export function analysisTitle(mode: ScanMode, targetPos: Posisi, target2D: Target2D, target3D: Target3D) {
+export function analysisTitle(
+  mode: ScanMode,
+  targetPos: Posisi,
+  target2D: Target2D,
+  target3D: Target3D,
+) {
   const label = modeLabel(mode);
   if (isShioMode(mode)) return label;
   if (isPositionMode(mode)) return `${label} ${POSITION_LABEL[targetPos]}`;
@@ -129,7 +132,7 @@ export function scanDescription(item: AutoScanItem, count: number) {
 
 export function savedDescription(saved: SavedTrek) {
   const unit = isShioMode(saved.scanMode) ? "shio" : "digit";
-  return `${analysisTitle(saved.scanMode, saved.targetPos, saved.target2D, saved.target3D)} ${saved.digitCount} ${unit} · ${saved.L} data · patah ${saved.patah}`;
+  return `${analysisTitle(saved.scanMode, saved.targetPos, saved.target2D, saved.target3D)} ${saved.digitCount} ${unit}`;
 }
 
 export function labelValue(value: number, mode: ScanMode) {
@@ -161,13 +164,7 @@ function valuesForColumns(columns: Kolom[], row: BacktestRow) {
 }
 
 function statusFor(mode: ScanMode, targets: number[], values: number[]) {
-  const hitCount = targets.filter((digit) => values.includes(digit)).length;
-  if (isOffMode(mode)) return values.some((digit) => targets.includes(digit)) ? "❌" : "✅";
-  if (mode === "bbfs_2d_belakang" || mode === "bbfs_3d") {
-    return targets.every((digit) => values.includes(digit)) ? "✅" : "❌";
-  }
-  if (mode === "ai_3d") return hitCount >= Math.min(2, targets.length) ? "✅" : "❌";
-  return values.some((digit) => targets.includes(digit)) ? "✅" : "❌";
+  return scanRowSucceeded(mode, targets, values) ? "✅" : "❌";
 }
 
 export function predictionValues(item: AutoScanItem) {
@@ -191,21 +188,31 @@ export function buildFrequencyRows(result: AutoScanResult) {
 export function buildSavedGroups(savedTreks: SavedTrek[]) {
   const groups: SavedGroup[] = [];
   for (const item of savedTreks) {
-    const key = [item.marketName, item.scanMode, item.targetPos, item.target2D, item.target3D, item.digitCount, item.L, item.patah].join(":");
+    const key = [
+      item.marketName,
+      item.scanMode,
+      item.targetPos,
+      item.target2D,
+      item.target3D,
+      item.digitCount,
+      item.L,
+      item.patah,
+    ].join(":");
     const current = groups.find((group) => group.key === key);
     if (current) current.items.push(item);
-    else groups.push({
-      key,
-      marketName: item.marketName,
-      scanMode: item.scanMode,
-      targetPos: item.targetPos,
-      target2D: item.target2D,
-      target3D: item.target3D,
-      digitCount: item.digitCount,
-      L: item.L,
-      patah: item.patah,
-      items: [item],
-    });
+    else
+      groups.push({
+        key,
+        marketName: item.marketName,
+        scanMode: item.scanMode,
+        targetPos: item.targetPos,
+        target2D: item.target2D,
+        target3D: item.target3D,
+        digitCount: item.digitCount,
+        L: item.L,
+        patah: item.patah,
+        items: [item],
+      });
   }
   return groups;
 }
@@ -227,20 +234,30 @@ export function normalizeStoredTrek(value: unknown): SavedTrek | null {
   const scanMode = rawMode as ScanMode;
   const id = typeof value.id === "string" ? value.id : `${Date.now()}-${Math.random()}`;
   const marketId = typeof value.marketId === "string" ? value.marketId : "";
-  const marketName = typeof value.marketName === "string" ? value.marketName : marketId || "Pasaran";
+  const marketName =
+    typeof value.marketName === "string" ? value.marketName : marketId || "Pasaran";
   const prediction = numberArray(value.predictionValues ?? value.digits);
-  const rows = Array.isArray(value.snapshotRows) ? value.snapshotRows as BacktestRow[] : [];
-  const columns = Array.isArray(value.kolomHidup) ? value.kolomHidup as Kolom[] : [];
+  const rows = Array.isArray(value.snapshotRows) ? (value.snapshotRows as BacktestRow[]) : [];
+  const columns = Array.isArray(value.kolomHidup) ? (value.kolomHidup as Kolom[]) : [];
 
   return {
     version: 2,
     id,
-    savedAt: typeof value.savedAt === "string" ? value.savedAt : typeof value.createdAt === "string" ? value.createdAt : new Date().toISOString(),
+    savedAt:
+      typeof value.savedAt === "string"
+        ? value.savedAt
+        : typeof value.createdAt === "string"
+          ? value.createdAt
+          : new Date().toISOString(),
     marketId,
     marketName,
     scanMode,
-    targetPos: value.targetPos === "A" || value.targetPos === "C" || value.targetPos === "E" ? value.targetPos : "K",
-    target2D: value.target2D === "depan" || value.target2D === "tengah" ? value.target2D : "belakang",
+    targetPos:
+      value.targetPos === "A" || value.targetPos === "C" || value.targetPos === "E"
+        ? value.targetPos
+        : "K",
+    target2D:
+      value.target2D === "depan" || value.target2D === "tengah" ? value.target2D : "belakang",
     target3D: value.target3D === "depan" ? "depan" : "belakang",
     digitCount: typeof value.digitCount === "number" ? value.digitCount : prediction.length,
     L: typeof value.L === "number" ? value.L : 0,
@@ -252,16 +269,33 @@ export function normalizeStoredTrek(value: unknown): SavedTrek | null {
     predictionValues: prediction,
     snapshotRows: rows,
     savedLatestDraw: typeof value.savedLatestDraw === "string" ? value.savedLatestDraw : "----",
+    historyTail:
+      Array.isArray(value.historyTail) &&
+      value.historyTail.length <= 10 &&
+      value.historyTail.every((draw) => typeof draw === "string" && /^\d{4}$/.test(draw))
+        ? (value.historyTail as string[])
+        : undefined,
+    historyLength:
+      typeof value.historyLength === "number" &&
+      Number.isSafeInteger(value.historyLength) &&
+      value.historyLength > 0
+        ? value.historyLength
+        : undefined,
+    trackingError: typeof value.trackingError === "string" ? value.trackingError : undefined,
     legacy: columns.length === 0 || rows.length === 0,
   };
 }
 
 export function readStoredTreks() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY) ?? "[]";
+    const raw =
+      localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY) ?? "[]";
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeStoredTrek).filter((item): item is SavedTrek => Boolean(item)).slice(0, 50);
+    return parsed
+      .map(normalizeStoredTrek)
+      .filter((item): item is SavedTrek => Boolean(item))
+      .slice(0, 50);
   } catch {
     return [];
   }
@@ -276,7 +310,11 @@ export function liveDetail(item: AutoScanItem, marketName: string, digitCount: n
       return {
         draw: row.displayDraw,
         values: values.map(({ digit, hit }) => ({ label: labelValue(digit, item.scanMode), hit })),
-        status: statusFor(item.scanMode, targetDigits(row), values.map(({ digit }) => digit)),
+        status: statusFor(
+          item.scanMode,
+          targetDigits(row),
+          values.map(({ digit }) => digit),
+        ),
       };
     }),
     pendingDraw: item.result.latestDraw,
@@ -293,7 +331,11 @@ export function savedDetail(saved: SavedTrek): DetailData {
       return {
         draw: row.displayDraw,
         values: values.map(({ digit, hit }) => ({ label: labelValue(digit, saved.scanMode), hit })),
-        status: statusFor(saved.scanMode, targetDigits(row), values.map(({ digit }) => digit)),
+        status: statusFor(
+          saved.scanMode,
+          targetDigits(row),
+          values.map(({ digit }) => digit),
+        ),
       };
     }),
     pendingDraw: saved.savedLatestDraw,
@@ -302,6 +344,14 @@ export function savedDetail(saved: SavedTrek): DetailData {
 }
 
 export function detailCopyText(detail: DetailData) {
-  const history = detail.rows.map((row) => `${row.draw} ➜ ${row.values.map((value) => value.label).join(" ")} ${row.status}`);
-  return [`*${detail.title}*`, detail.description, "", ...history, `${detail.pendingDraw} ➜ ${detail.pendingValues.join(" ")} ??`].join("\n");
+  const history = detail.rows.map(
+    (row) => `${row.draw} ➜ ${row.values.map((value) => value.label).join(" ")} ${row.status}`,
+  );
+  return [
+    `*${detail.title}*`,
+    detail.description,
+    "",
+    ...history,
+    `${detail.pendingDraw} ➜ ${detail.pendingValues.join(" ")} ??`,
+  ].join("\n");
 }

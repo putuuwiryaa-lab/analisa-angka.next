@@ -16,6 +16,7 @@ import ScanFields from "./_components/ScanFields";
 import ScanResultSection, { trekId } from "./_components/ScanResultSection";
 import SavedTreksSection from "./_components/SavedTreksSection";
 import TrekDetailModal from "./_components/TrekDetailModal";
+import { useSavedScanTracking } from "./useSavedScanTracking";
 import {
   buildSavedGroups,
   detailCopyText,
@@ -81,6 +82,15 @@ export default function ScanPageClient() {
   const [copiedId, setCopiedId] = useState("");
   const [savedId, setSavedId] = useState("");
   const scanVersionRef = useRef(0);
+  const marketRevision = JSON.stringify(
+    markets.map((market) => [market.id, market.lastResult, market.updated_at]),
+  );
+  const savedTracking = useSavedScanTracking(
+    savedTreks,
+    setSavedTreks,
+    storageReady,
+    marketRevision,
+  );
 
   useEffect(() => {
     setSavedTreks(readStoredTreks());
@@ -324,6 +334,13 @@ export default function ScanPageClient() {
               : [row.targetDigit],
         })),
         savedLatestDraw: item.result.latestDraw,
+        historyLength: item.result.jumlahData,
+        historyTail: [
+          item.result.rows[0]?.displayDraw,
+          ...item.result.rows.map((row) => row.targetDraw),
+        ]
+          .filter((draw): draw is string => typeof draw === "string")
+          .slice(-10),
       };
       setSavedTreks((current) => [saved, ...current.filter((trek) => trek.id !== id)].slice(0, 50));
       setSavedId(id);
@@ -361,7 +378,10 @@ export default function ScanPageClient() {
     () => (viewItem ? liveDetail(viewItem, title, liveDigitCount) : null),
     [liveDigitCount, title, viewItem],
   );
-  const saved = useMemo(() => (viewSaved ? savedDetail(viewSaved) : null), [viewSaved]);
+  const currentSaved = viewSaved
+    ? (savedTreks.find((trek) => trek.id === viewSaved.id) ?? null)
+    : null;
+  const saved = useMemo(() => (currentSaved ? savedDetail(currentSaved) : null), [currentSaved]);
 
   const copyLiveDetail = useCallback(() => {
     if (!live) return;
@@ -429,6 +449,9 @@ export default function ScanPageClient() {
           groups={savedGroups}
           onView={viewSavedTrek}
           onDelete={deleteTrek}
+          refreshing={savedTracking.refreshing}
+          refreshError={savedTracking.refreshError}
+          onRefresh={savedTracking.refresh}
         />
       </div>
       {live ? (
