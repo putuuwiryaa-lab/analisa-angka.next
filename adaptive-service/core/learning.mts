@@ -55,7 +55,7 @@ function rollingState(
   draws: readonly string[],
   target2D: Target2D,
   options: AdaptiveRunOptions,
-): state is AdaptiveLearningState {
+): boolean {
   if (!options.rollingWindowAdvance || !state) return false;
   if (state.engineVersion !== ADAPTIVE_ENGINE_VERSION || state.configVersion !== ADAPTIVE_CONFIG_VERSION) return false;
   if (state.target2D !== target2D) return false;
@@ -134,7 +134,7 @@ export function replayAdaptiveHistory(
 ) {
   validateDraws(draws);
 
-  if (rollingState(initialState, draws, target2D, options)) {
+  if (initialState && rollingState(initialState, draws, target2D, options)) {
     return replayRollingWindow(draws, target2D, initialState, options);
   }
 
