@@ -1,8 +1,8 @@
 import type { ScanMode } from "../shared/scan-mode";
-import { KOLOM, SHIO_KOLOM } from "../shared/columns";
+import { JALUR_KOLOM, KOLOM, SHIO_KOLOM } from "../shared/columns";
 
 export type { ScanMode } from "../shared/scan-mode";
-export { KOLOM, SHIO_KOLOM } from "../shared/columns";
+export { JALUR_KOLOM, KOLOM, SHIO_KOLOM } from "../shared/columns";
 
 export type Posisi = "A" | "C" | "K" | "E";
 export type Draw = string;
@@ -11,7 +11,8 @@ export type Target3D = "depan" | "belakang";
 
 export type DigitKolom = (typeof KOLOM)[number];
 export type ShioKolom = (typeof SHIO_KOLOM)[number];
-export type Kolom = DigitKolom | ShioKolom;
+export type JalurKolom = (typeof JALUR_KOLOM)[number];
+export type Kolom = DigitKolom | ShioKolom | JalurKolom;
 
 export const POS_INDEX: Record<Posisi, number> = { A: 0, C: 1, K: 2, E: 3 };
 
