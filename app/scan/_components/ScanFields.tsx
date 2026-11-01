@@ -5,7 +5,7 @@ import type { ChangeEvent, ReactNode } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
 import DropdownPopover from "./DropdownPopover";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
-import { is3DMode, isPositionMode, maxScanDigitCount } from "@/lib/shared/scan-mode";
+import { is3DMode, isJalurMode, isPositionMode, maxScanDigitCount } from "@/lib/shared/scan-mode";
 import { marketLabel, MODE_OPTIONS } from "../_lib";
 import type { Market } from "../_lib";
 import ThemedSelect, { type ThemedSelectOption } from "./ThemedSelect";
@@ -57,7 +57,7 @@ const TARGET_2D_OPTIONS: ThemedSelectOption[] = [
 export default function ScanFields(props: Props) {
   const digitOptions = Array.from({ length: maxScanDigitCount(props.scanMode) }, (_, index) => ({
     value: String(index + 1),
-    label: `${index + 1} digit`,
+    label: `${index + 1} ${isJalurMode(props.scanMode) ? "jalur" : "digit"}`,
   }));
 
   return (
@@ -124,7 +124,7 @@ export default function ScanFields(props: Props) {
 
         <div className="grid grid-cols-2 gap-2.5">
           <ThemedSelect
-            label="Jumlah digit"
+            label={isJalurMode(props.scanMode) ? "Jumlah jalur" : "Jumlah digit"}
             value={String(props.digitCount)}
             options={digitOptions}
             onChange={(value) => props.onDigitCountChange(Number(value))}
