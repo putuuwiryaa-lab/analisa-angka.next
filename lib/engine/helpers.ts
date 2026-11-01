@@ -1,7 +1,8 @@
-import { is3DMode, isJumlah2DMode, isOffMode, isScanMode, isShioMode } from "../shared/scan-mode";
-import { KOLOM, POS_INDEX, SHIO_KOLOM, type BacktestRow, type Draw, type Kolom, type Posisi, type ScanMode, type Target2D, type Target3D } from "./types";
+import { is3DMode, isJumlah2DMode, isJalurMode, isOffMode, isScanMode, isShioMode } from "../shared/scan-mode";
+import { buildJalurDeret, twoDigitJalur } from "./jalur";
+import { JALUR_KOLOM, KOLOM, POS_INDEX, SHIO_KOLOM, type BacktestRow, type Draw, type Kolom, type Posisi, type ScanMode, type Target2D, type Target3D } from "./types";
 
-export { is3DMode, isAi3DMode, isBbfs3DMode, isJumlah2DMode, isOff3DMode, isOffMode, isPositionMode, isScanMode, isShioMode } from "../shared/scan-mode";
+export { is3DMode, isAi3DMode, isBbfs3DMode, isJalurMode, isJumlah2DMode, isOff3DMode, isOffMode, isPositionMode, isScanMode, isShioMode } from "../shared/scan-mode";
 
 export const SHIO_NAMES = ["Kuda", "Ular", "Naga", "Kelinci", "Harimau", "Kerbau", "Tikus", "Babi", "Anjing", "Ayam", "Monyet", "Kambing"] as const;
 
@@ -23,6 +24,10 @@ export function buildDeret(start: number): number[] {
 
 export function buildDeretShio(start: number): number[] {
   return Array.from({ length: 12 }, (_, i) => (start + i) % 12);
+}
+
+export function buildDeretJalur(start: number): number[] {
+  return buildJalurDeret(start);
 }
 
 export function clamp(value: unknown, fallback: number, min: number, max: number): number {
@@ -51,6 +56,7 @@ export function is2DMode(mode: ScanMode): boolean {
   return mode === "ai_2d_belakang" ||
     mode === "bbfs_2d_belakang" ||
     isJumlah2DMode(mode) ||
+    isJalurMode(mode) ||
     mode === "off_2d_belakang" ||
     isShioMode(mode);
 }
@@ -90,6 +96,7 @@ export function targetShioIndexOf(draw: Draw, target2D: Target2D = "belakang"): 
 }
 
 export function targetDigitsOf(draw: Draw, mode: ScanMode, targetPos: Posisi, target2D: Target2D = "belakang", target3D: Target3D = "belakang"): number[] {
+  if (isJalurMode(mode)) return [twoDigitJalur(draw, target2D)];
   if (isShioMode(mode)) return [targetShioIndexOf(draw, target2D)];
   if (is3DMode(mode)) {
     const positions = target3DPositions(target3D);
@@ -126,6 +133,7 @@ export function scanCode(target: Posisi, formula: string, L: number, columns: st
     mode === "off_2d_belakang" ? `off2d${area}` :
     mode === "off_jumlah_2d_belakang" ? `offjml2d${area}` :
     mode === "off_3d" ? `off3d${area3D}` :
+    mode === "jalur_2d" ? `jalur2d${area}` :
     mode === "shio" ? `shio${area}` :
     mode === "off_shio" ? `offshio${area}` :
     target.toLowerCase();
@@ -134,7 +142,7 @@ export function scanCode(target: Posisi, formula: string, L: number, columns: st
 }
 
 function columnsForDeret(deret: number[]): readonly Kolom[] {
-  return deret.length === 12 ? SHIO_KOLOM : KOLOM;
+  return deret.length === 12 ? SHIO_KOLOM : deret.length === 3 ? JALUR_KOLOM : KOLOM;
 }
 
 export function digitsFromDeretColumns(deret: number[], columns: Kolom[]): number[] {
