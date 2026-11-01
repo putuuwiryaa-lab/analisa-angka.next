@@ -17,7 +17,7 @@ Deno.test(
     assert.match(batchPage, /label="Jenis"[\s\S]*?options=\{MODES\}/);
     assert.match(
       batchPage,
-      /label="Jumlah digit"[\s\S]*?options=\{digitOptions\}/,
+      /label=\{isJalurMode\(scanMode as ScanMode\) \? "Jumlah jalur" : "Jumlah digit"\}[\s\S]*?options=\{digitOptions\}/,
     );
     assert.match(batchPage, /POSITION_OPTIONS/);
     assert.match(batchPage, /TARGET_2D_OPTIONS/);
