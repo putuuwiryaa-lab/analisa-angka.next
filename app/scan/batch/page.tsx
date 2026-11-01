@@ -302,7 +302,7 @@ export default function BatchScanPage() {
 
             <div className="grid grid-cols-2 gap-2.5">
               <ThemedSelect
-                label="Jumlah digit"
+                label={isJalurMode(scanMode as ScanMode) ? "Jumlah jalur" : "Jumlah digit"}
                 value={String(digitCount)}
                 options={digitOptions}
                 onChange={(value) => setDigitCount(Number(value))}
