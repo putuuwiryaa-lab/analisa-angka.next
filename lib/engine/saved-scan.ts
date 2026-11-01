@@ -3,12 +3,14 @@ import "./acke-engine";
 import { ALL_FORMULA_SPECS, computeFormula } from "./formulas";
 import {
   buildDeret,
+  buildDeretJalur,
   buildDeretShio,
   digitsFromDeretColumns,
+  isJalurMode,
   isShioMode,
   targetDigitsOf,
 } from "./helpers";
-import { KOLOM, SHIO_KOLOM, type BacktestRow, type Draw } from "./types";
+import { JALUR_KOLOM, KOLOM, SHIO_KOLOM, type BacktestRow, type Draw } from "./types";
 import {
   savedScanRevision,
   type SavedScanFormula,
@@ -45,10 +47,10 @@ export function replaySavedScan(draws: Draw[], request: SavedScanFormula): Saved
   if (draws.length < spec.patokanN)
     throw new Error("Data pasaran belum cukup untuk rumus tersimpan.");
   const end = anchorEnd(draws, request);
-  const columns = isShioMode(request.scanMode) ? SHIO_KOLOM : KOLOM;
+  const columns = isJalurMode(request.scanMode) ? JALUR_KOLOM : isShioMode(request.scanMode) ? SHIO_KOLOM : KOLOM;
   const deretAt = (targetIndex: number) => {
     const start = computeFormula(spec, draws, targetIndex);
-    return isShioMode(request.scanMode) ? buildDeretShio(start) : buildDeret(start);
+    return isJalurMode(request.scanMode) ? buildDeretJalur(start) : isShioMode(request.scanMode) ? buildDeretShio(start) : buildDeret(start);
   };
   const rows: BacktestRow[] = [];
   for (let t = end + 1; t < draws.length; t += 1) {
