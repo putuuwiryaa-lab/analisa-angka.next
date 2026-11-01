@@ -108,7 +108,7 @@ function coreColumnsForAi(result: EngineResult, digitCount: number, scanMode: Sc
 }
 
 function coreColumns(result: EngineResult, digitCount: number, scanMode: ScanMode, patah: number): Kolom[] {
-  if (scanMode === "ai_2d_belakang" || scanMode === "ai_3d") {
+  if (scanMode === "ai_2d_belakang" || scanMode === "ai_3d" || scanMode === "jalur_2d") {
     return coreColumnsForAi(result, digitCount, scanMode, patah);
   }
 
