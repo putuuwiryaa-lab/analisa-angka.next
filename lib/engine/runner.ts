@@ -1,22 +1,22 @@
-import { KOLOM, SHIO_KOLOM, type AutoScanConfig, type AutoScanResult, type BacktestRow, type Draw, type EngineConfig, type EngineResult, type Kolom, type KolomStat, type Posisi, type ScanMode, type Target2D, type Target3D } from "./types";
+import { JALUR_KOLOM, KOLOM, SHIO_KOLOM, type AutoScanConfig, type AutoScanResult, type BacktestRow, type Draw, type EngineConfig, type EngineResult, type Kolom, type KolomStat, type Posisi, type ScanMode, type Target2D, type Target3D } from "./types";
 import { DEFAULT_DIGIT_COUNT, POSISI } from "./constants";
 import { ALL_FORMULA_SPECS, computeFormula, type FormulaSpec } from "./formulas";
-import { buildDeret, buildDeretShio, clamp, digitOf, isJumlah2DMode, isShioMode, parseHistory, scanCode, scanModeOrDefault, target2DOrDefault, target3DOrDefault, targetDigitsOf, uniqueDigits } from "./helpers";
+import { buildDeret, buildDeretJalur, buildDeretShio, clamp, digitOf, isJalurMode, isJumlah2DMode, isShioMode, parseHistory, scanCode, scanModeOrDefault, target2DOrDefault, target3DOrDefault, targetDigitsOf, uniqueDigits } from "./helpers";
 import { applyConsensusScores, compressionProfile, dedupeTrekCandidates, digitsFromColumns, selectRankedDisplayItems, type RankedItem } from "./ranking";
 import { maxScanDigitCount } from "../shared/scan-mode";
 
 export { parseHistory } from "./helpers";
 
 function columnsForMode(scanMode: ScanMode): readonly Kolom[] {
-  return isShioMode(scanMode) ? SHIO_KOLOM : KOLOM;
+  return isJalurMode(scanMode) ? JALUR_KOLOM : isShioMode(scanMode) ? SHIO_KOLOM : KOLOM;
 }
 
 function deretForMode(start: number, scanMode: ScanMode): number[] {
-  return isShioMode(scanMode) ? buildDeretShio(start) : buildDeret(start);
+  return isJalurMode(scanMode) ? buildDeretJalur(start) : isShioMode(scanMode) ? buildDeretShio(start) : buildDeret(start);
 }
 
 function activeColumnsText(columns: Kolom[], scanMode: ScanMode): string {
-  return isShioMode(scanMode) ? columns.join(",") : columns.join("");
+  return isShioMode(scanMode) || isJalurMode(scanMode) ? columns.join(",") : columns.join("");
 }
 
 function runFormulaEngine(draws: Draw[], spec: FormulaSpec, targetPos: Posisi, L: number, scanMode: ScanMode, target2D: Target2D, target3D: Target3D): EngineResult {
