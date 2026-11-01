@@ -2,6 +2,7 @@ export const SCAN_MODES = [
   "posisi",
   "ai_2d_belakang",
   "bbfs_2d_belakang",
+  "jalur_2d",
   "jumlah_2d_belakang",
   "ai_3d",
   "bbfs_3d",
@@ -50,12 +51,16 @@ export function isOff3DMode(mode: ScanMode) {
   return mode === "off_3d";
 }
 
+export function isJalurMode(mode: ScanMode) {
+  return mode === "jalur_2d";
+}
+
 export function isShioMode(mode: ScanMode) {
   return mode === "shio" || mode === "off_shio";
 }
 
 export function maxScanDigitCount(mode: ScanMode): number {
-  return isShioMode(mode) ? MAX_SCAN_SHIO_DIGITS : MAX_SCAN_NUMBER_DIGITS;
+  return isJalurMode(mode) ? 1 : isShioMode(mode) ? MAX_SCAN_SHIO_DIGITS : MAX_SCAN_NUMBER_DIGITS;
 }
 
 export function isValidScanDigitCount(mode: ScanMode, value: unknown): value is number {

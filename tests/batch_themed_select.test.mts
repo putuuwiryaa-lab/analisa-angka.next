@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 Deno.test(
   "Batch memakai dropdown bertema bersama tanpa select native",
   async () => {
-    const [batchPage, scanFields, themedSelect] = await Promise.all([
+    const [batchPage, scanFields, themedSelect, dropdownPopover] = await Promise.all([
       Deno.readTextFile(new URL("../app/scan/batch/page.tsx", import.meta.url)),
       Deno.readTextFile(
         new URL("../app/scan/_components/ScanFields.tsx", import.meta.url),
@@ -11,13 +11,16 @@ Deno.test(
       Deno.readTextFile(
         new URL("../app/scan/_components/ThemedSelect.tsx", import.meta.url),
       ),
+      Deno.readTextFile(
+        new URL("../app/scan/_components/DropdownPopover.tsx", import.meta.url),
+      ),
     ]);
 
     assert.match(batchPage, /import ThemedSelect/);
     assert.match(batchPage, /label="Jenis"[\s\S]*?options=\{MODES\}/);
     assert.match(
       batchPage,
-      /label="Jumlah digit"[\s\S]*?options=\{digitOptions\}/,
+      /label=\{isJalurMode\(scanMode as ScanMode\) \? "Jumlah jalur" : "Jumlah digit"\}[\s\S]*?options=\{digitOptions\}/,
     );
     assert.match(batchPage, /POSITION_OPTIONS/);
     assert.match(batchPage, /TARGET_2D_OPTIONS/);
@@ -34,7 +37,7 @@ Deno.test(
     assert.match(themedSelect, /role="listbox"/);
     assert.match(themedSelect, /role="option"/);
     assert.match(themedSelect, /aria-selected=\{selected\}/);
-    assert.match(themedSelect, /event\.key === "Escape"/);
+    assert.match(dropdownPopover, /event\.key === "Escape"/);
     assert.match(themedSelect, /bg-surface-2/);
     assert.match(themedSelect, /border-border-strong/);
   },

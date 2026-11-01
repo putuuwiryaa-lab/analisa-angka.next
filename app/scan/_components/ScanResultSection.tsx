@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Bookmark, Eye } from "lucide-react";
 import type { AutoScanItem, AutoScanResult } from "@/lib/engine/types";
-import { isShioMode } from "@/lib/shared/scan-mode";
+import { isJalurMode, isShioMode } from "@/lib/shared/scan-mode";
 import { analysisTitle, buildFrequencyRows, labelsFromValues } from "../_lib";
 
 const ROLE = [
@@ -44,7 +44,7 @@ export default function ScanResultSection({
   onView,
 }: Props) {
   const frequencyRows = useMemo(() => buildFrequencyRows(result), [result]);
-  const unit = isShioMode(result.config.scanMode) ? "shio" : "digit";
+  const unit = isJalurMode(result.config.scanMode) ? "jalur" : isShioMode(result.config.scanMode) ? "shio" : "digit";
 
   return (
     <section className="desktop-result-enter depth-1 rounded-2xl border p-3 sm:p-4">
@@ -125,7 +125,7 @@ export default function ScanResultSection({
       {result.items.length ? (
         <details className="mt-3 rounded-xl border border-border-soft bg-surface/75">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-black text-text [&::-webkit-details-marker]:hidden">
-            <span>Frekuensi {isShioMode(result.config.scanMode) ? "Shio" : "Digit"}</span>
+            <span>Frekuensi {isJalurMode(result.config.scanMode) ? "Jalur" : isShioMode(result.config.scanMode) ? "Shio" : "Digit"}</span>
             <span className="rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-[10px] lg:text-xs font-black text-primary-soft">
               {result.items.length} hasil
             </span>
@@ -136,7 +136,7 @@ export default function ScanResultSection({
                 key={row.value}
                 className={`flex h-9 items-center rounded-lg border border-accent/20 bg-bg-deep/25 px-2.5 ${row.count === 0 ? "opacity-25" : ""}`}
               >
-                <b className="num w-8 text-lg text-accent">{row.label}</b>
+                <b className={`num text-lg text-accent ${isJalurMode(result.config.scanMode) ? "w-20" : "w-8"}`}>{row.label}</b>
                 <span className="mr-1.5 text-xs font-black text-text-soft">×</span>
                 <span className="text-[11px] lg:text-[13px] font-bold text-text">{row.count}</span>
               </div>

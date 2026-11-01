@@ -1,5 +1,5 @@
 import { RefreshCw, Trash2 } from "lucide-react";
-import { isShioMode } from "@/lib/shared/scan-mode";
+import { isJalurMode, isShioMode } from "@/lib/shared/scan-mode";
 import { analysisTitle, displayDigits, savedDetail } from "../_lib";
 import type { SavedGroup, SavedTrek } from "../_lib";
 
@@ -63,7 +63,7 @@ export default function SavedTreksSection({
             <strong className="text-text">
               {analysisTitle(group.scanMode, group.targetPos, group.target2D, group.target3D)}
             </strong>
-            {` · ${group.digitCount} ${isShioMode(group.scanMode) ? "shio" : "digit"} · uji awal ${group.L || "-"} data, patah ${group.patah} · ${group.items.length} rumus`}
+            {` · ${group.digitCount} ${isJalurMode(group.scanMode) ? "jalur" : isShioMode(group.scanMode) ? "shio" : "digit"} · uji awal ${group.L || "-"} data, patah ${group.patah} · ${group.items.length} rumus`}
           </p>
           <div className="space-y-2">
             {group.items.map((saved) => (

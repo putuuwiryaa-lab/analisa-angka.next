@@ -14,7 +14,7 @@ import {
   latestStrictHistoryResult,
   parseStrictHistory,
 } from "@/lib/engine/history";
-import { isScanMode, isShioMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
+import { isJalurMode, isScanMode, isShioMode, isTarget2D, isTarget3D } from "@/lib/engine/helpers";
 import type { Draw, Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { formatMarketName } from "@/lib/markets/format";
 import { isValidScanDigitCount, maxScanDigitCount } from "@/lib/shared/scan-mode";
@@ -140,6 +140,7 @@ function groupByFour(value: string): string {
 
 function formatCandidates(values: number[], scanMode: ScanMode, digitCount: number): string {
   if (!values.length) return "-";
+  if (isJalurMode(scanMode)) return values.map((value) => `Jalur ${value}`).join(" | ");
   if (isShioMode(scanMode)) return values.map(shioLabel).join("-");
   const raw = values.join("");
   return scanMode === "ai_3d" && digitCount === 8 ? groupByFour(raw) : raw;

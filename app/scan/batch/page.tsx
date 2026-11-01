@@ -11,7 +11,7 @@ import {
 } from "@/lib/adaptive/types";
 import type { Posisi, ScanMode, Target2D, Target3D } from "@/lib/engine/types";
 import { useMarketsQuery } from "@/lib/markets/useMarketsQuery";
-import { is3DMode, isPositionMode, maxScanDigitCount } from "@/lib/shared/scan-mode";
+import { is3DMode, isJalurMode, isPositionMode, maxScanDigitCount } from "@/lib/shared/scan-mode";
 import ThemedSelect, { type ThemedSelectOption } from "../_components/ThemedSelect";
 
 type Market = { id: string; name?: string | null; lastResult?: string };
@@ -27,6 +27,7 @@ const MODES: { value: BatchMode; label: string; digits: number }[] = [
   { value: "posisi", label: "Posisi", digits: 7 },
   { value: "ai_2d_belakang", label: "AI 2D", digits: 4 },
   { value: "bbfs_2d_belakang", label: "BBFS 2D", digits: 7 },
+  { value: "jalur_2d", label: "Jalur 2D", digits: 1 },
   { value: "adaptive_bbfs", label: "Adaptive BBFS", digits: 7 },
   { value: "adaptive_ai", label: "Adaptive Angka Ikut (AI)", digits: 4 },
   { value: "jumlah_2d_belakang", label: "Jumlah 2D", digits: 4 },
@@ -224,7 +225,7 @@ export default function BatchScanPage() {
     : Array.from({ length: maxScanDigitCount(scanMode) }, (_, index) => index + 1);
   const digitOptions: ThemedSelectOption[] = digitValues.map((digit) => ({
     value: String(digit),
-    label: `${digit} digit`,
+    label: `${digit} ${isJalurMode(scanMode as ScanMode) ? "jalur" : "digit"}`,
   }));
 
   return (
@@ -301,7 +302,7 @@ export default function BatchScanPage() {
 
             <div className="grid grid-cols-2 gap-2.5">
               <ThemedSelect
-                label="Jumlah digit"
+                label={isJalurMode(scanMode as ScanMode) ? "Jumlah jalur" : "Jumlah digit"}
                 value={String(digitCount)}
                 options={digitOptions}
                 onChange={(value) => setDigitCount(Number(value))}

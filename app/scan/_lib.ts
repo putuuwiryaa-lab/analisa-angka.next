@@ -1,4 +1,4 @@
-import { KOLOM, SHIO_KOLOM } from "@/lib/engine/types";
+import { JALUR_KOLOM, KOLOM, SHIO_KOLOM } from "@/lib/engine/types";
 import { formatMarketName } from "@/lib/markets/format";
 import { scanRowSucceeded } from "@/lib/shared/saved-scan";
 import type {
@@ -11,7 +11,7 @@ import type {
   Target2D,
   Target3D,
 } from "@/lib/engine/types";
-import { is3DMode, isJumlah2DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
+import { is3DMode, isJalurMode, isJumlah2DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
 
 export type Market = {
   id: string;
@@ -87,6 +87,7 @@ export const MODE_OPTIONS: { value: ScanMode; label: string; digits: number }[] 
   { value: "posisi", label: "Posisi", digits: 7 },
   { value: "ai_2d_belakang", label: "AI 2D", digits: 4 },
   { value: "bbfs_2d_belakang", label: "BBFS 2D", digits: 7 },
+  { value: "jalur_2d", label: "Jalur 2D", digits: 1 },
   { value: "jumlah_2d_belakang", label: "Jumlah 2D", digits: 4 },
   { value: "ai_3d", label: "AI 3D", digits: 8 },
   { value: "bbfs_3d", label: "BBFS 3D", digits: 8 },
@@ -126,17 +127,17 @@ export function analysisTitle(
 }
 
 export function scanDescription(item: AutoScanItem, count: number) {
-  const unit = isShioMode(item.scanMode) ? "shio" : "digit";
+  const unit = isJalurMode(item.scanMode) ? "jalur" : isShioMode(item.scanMode) ? "shio" : "digit";
   return `${analysisTitle(item.scanMode, item.targetPos, item.target2D, item.target3D)} ${count} ${unit}`;
 }
 
 export function savedDescription(saved: SavedTrek) {
-  const unit = isShioMode(saved.scanMode) ? "shio" : "digit";
+  const unit = isJalurMode(saved.scanMode) ? "jalur" : isShioMode(saved.scanMode) ? "shio" : "digit";
   return `${analysisTitle(saved.scanMode, saved.targetPos, saved.target2D, saved.target3D)} ${saved.digitCount} ${unit}`;
 }
 
 export function labelValue(value: number, mode: ScanMode) {
-  return isShioMode(mode) ? String(value + 1).padStart(2, "0") : String(value);
+  return isJalurMode(mode) ? `Jalur ${value}` : isShioMode(mode) ? String(value + 1).padStart(2, "0") : String(value);
 }
 
 export function labelsFromValues(values: number[], mode: ScanMode) {
@@ -148,7 +149,7 @@ export function displayDigits(values: number[], mode: ScanMode) {
 }
 
 export function pickColumns(columns: Kolom[], deret: number[]) {
-  const source: readonly string[] = deret.length === 12 ? SHIO_KOLOM : KOLOM;
+  const source: readonly string[] = deret.length === 12 ? SHIO_KOLOM : deret.length === 3 ? JALUR_KOLOM : KOLOM;
   return columns
     .map((column) => deret[source.indexOf(column)])
     .filter((digit): digit is number => Number.isFinite(digit));
@@ -173,7 +174,8 @@ export function predictionValues(item: AutoScanItem) {
 }
 
 export function buildFrequencyRows(result: AutoScanResult) {
-  const maximum = isShioMode(result.config.scanMode) ? 12 : 10;
+  const jalur = isJalurMode(result.config.scanMode);
+  const maximum = jalur ? 4 : isShioMode(result.config.scanMode) ? 12 : 10;
   const counts = Array.from({ length: maximum }, () => 0);
   for (const item of result.items) {
     for (const value of item.angkaHidup) {
@@ -182,6 +184,7 @@ export function buildFrequencyRows(result: AutoScanResult) {
   }
   return counts
     .map((count, value) => ({ value, label: labelValue(value, result.config.scanMode), count }))
+    .filter((row) => !jalur || row.value > 0)
     .sort((left, right) => right.count - left.count || left.value - right.value);
 }
 
