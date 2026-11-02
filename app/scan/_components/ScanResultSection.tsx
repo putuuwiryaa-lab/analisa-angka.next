@@ -3,6 +3,7 @@ import { Bookmark, Eye } from "lucide-react";
 import type { AutoScanItem, AutoScanResult } from "@/lib/engine/types";
 import { isJalurMode, isShioMode } from "@/lib/shared/scan-mode";
 import { analysisTitle, buildFrequencyRows, labelsFromValues } from "../_lib";
+import JalurReferencePanel from "./JalurReferencePanel";
 
 const ROLE = [
   { row: "border-accent/55 bg-accent/[0.09]", badge: "border-accent/55 bg-accent text-bg-deep" },
@@ -144,6 +145,8 @@ export default function ScanResultSection({
           </div>
         </details>
       ) : null}
+
+      {isJalurMode(result.config.scanMode) ? <JalurReferencePanel /> : null}
     </section>
   );
 }
