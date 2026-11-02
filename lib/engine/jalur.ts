@@ -23,3 +23,10 @@ export function twoDigitJalur(draw: string, target: "depan" | "tengah" | "belaka
   const start = target === "depan" ? 0 : target === "tengah" ? 1 : 2;
   return jalurFrom2D(Number(draw.slice(start, start + 2)));
 }
+
+/** Reference numbers (00–99) belonging to a Jalur, in ascending order. */
+export function numbersForJalur(jalur: Jalur): number[] {
+  return Array.from({ length: 100 }, (_, number) => number).filter(
+    (number) => jalurFrom2D(number) === jalur,
+  );
+}
