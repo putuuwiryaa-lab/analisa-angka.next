@@ -42,14 +42,20 @@ export default function JalurReferencePanel() {
       setCopyError("");
     } catch {
       // Match the Scan page's fallback for browsers without Clipboard API permission.
+      let success = false;
       const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      const success = document.execCommand("copy");
-      textarea.remove();
+      try {
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        success = document.execCommand("copy");
+      } catch {
+        success = false;
+      } finally {
+        textarea.remove();
+      }
       if (success) {
         setCopied(true);
         setCopyError("");
@@ -77,7 +83,7 @@ export default function JalurReferencePanel() {
         <button
           type="button"
           aria-expanded={open}
-          aria-controls={panelId}
+          aria-controls={open ? panelId : undefined}
           onClick={toggle}
           className="pressable flex min-h-10 shrink-0 items-center gap-1 rounded-lg border border-border-strong bg-primary/10 px-3 py-1.5 text-xs font-black text-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
