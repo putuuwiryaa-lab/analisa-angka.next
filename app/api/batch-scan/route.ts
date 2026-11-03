@@ -322,7 +322,7 @@ export async function POST(req: Request) {
 
     const title = typeof body.outputTitle === "string" && body.outputTitle.trim()
       ? body.outputTitle.trim().slice(0, 80)
-      : `Batch Scan ${primary.digitCount} Digit`;
+      : `Batch Scan ${primary.digitCount} ${isJalurMode(primary.scanMode) ? "Jalur" : "Digit"}`;
     const results: BatchLine[] = [];
 
     for (const id of marketIds) {
