@@ -1,9 +1,33 @@
-import { useMemo } from "react";
-import { Bookmark, Eye } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Bookmark, Check, Copy, Eye } from "lucide-react";
 import type { AutoScanItem, AutoScanResult } from "@/lib/engine/types";
 import { isJalurMode, isShioMode } from "@/lib/shared/scan-mode";
+import { formatScanCopyAll, formatScanCopyValues } from "@/lib/shared/scan-copy";
 import { analysisTitle, buildFrequencyRows, labelsFromValues } from "../_lib";
 import JalurReferencePanel from "./JalurReferencePanel";
+
+async function copyPlainText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall back for browsers that deny clipboard access.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  try {
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    if (!document.execCommand("copy")) throw new Error("Clipboard tidak tersedia.");
+  } finally {
+    textarea.remove();
+  }
+}
 
 const ROLE = [
   { row: "border-accent/55 bg-accent/[0.09]", badge: "border-accent/55 bg-accent text-bg-deep" },
@@ -45,12 +69,45 @@ export default function ScanResultSection({
   onView,
 }: Props) {
   const frequencyRows = useMemo(() => buildFrequencyRows(result), [result]);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState("");
+
+  useEffect(() => {
+    if (!copiedKey) return;
+    const timer = window.setTimeout(() => setCopiedKey(null), 1600);
+    return () => window.clearTimeout(timer);
+  }, [copiedKey]);
+
+  async function copyResult(text: string, key: string) {
+    try {
+      await copyPlainText(text);
+      setCopiedKey(key);
+      setCopyError("");
+    } catch {
+      setCopiedKey(null);
+      setCopyError("Gagal menyalin hasil. Periksa izin clipboard browser.");
+    }
+  }
   const unit = isJalurMode(result.config.scanMode) ? "jalur" : isShioMode(result.config.scanMode) ? "shio" : "digit";
 
   return (
     <section className="desktop-result-enter depth-1 rounded-2xl border p-3 sm:p-4">
       <div className="mb-3">
-        <h2 className="truncate text-base font-black text-text">{marketTitle}</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="min-w-0 truncate text-base font-black text-text">{marketTitle}</h2>
+          {result.items.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => void copyResult(formatScanCopyAll(result.items), "all")}
+              className="pressable flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 text-[11px] font-black text-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              aria-label="Salin semua hasil Scan"
+              title="Salin semua hasil Scan"
+            >
+              {copiedKey === "all" ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+              {copiedKey === "all" ? "Tersalin" : "Salin Semua"}
+            </button>
+          ) : null}
+        </div>
         <p className="mt-0.5 text-[11px] lg:text-[13px] font-bold text-text-soft">
           {analysisTitle(
             result.config.scanMode,
@@ -65,6 +122,9 @@ export default function ScanResultSection({
         </p>
       </div>
 
+      {copyError ? <p role="alert" className="mb-3 text-xs font-bold text-danger">{copyError}</p> : null}
+      <span role="status" className="sr-only">{copiedKey ? "Hasil berhasil disalin." : ""}</span>
+
       <div className="space-y-2">
         {result.items.length ? (
           result.items.map((item, index) => {
@@ -77,7 +137,7 @@ export default function ScanResultSection({
                 key={`${item.code}-${index}`}
                 className={`render-lazy-row rounded-xl border px-2.5 py-2 ${style.row}`}
               >
-                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-1.5">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-1 sm:gap-1.5">
                   <span
                     className={`max-w-[5.2rem] truncate rounded-md border px-1.5 py-1 text-[9px] lg:text-xs font-black ${style.badge}`}
                     title={item.formula}
@@ -85,7 +145,7 @@ export default function ScanResultSection({
                     {item.formula}
                   </span>
 
-                  <div className="num min-w-0 truncate text-center text-[0.95rem] font-black tracking-[0.16em] text-accent sm:text-lg">
+                  <div className="num min-w-0 truncate text-center text-[0.9rem] font-black tracking-[0.08em] text-accent sm:text-lg sm:tracking-[0.16em]">
                     {labels.join(" ")}
                   </div>
 
@@ -97,6 +157,16 @@ export default function ScanResultSection({
                     title="Lihat"
                   >
                     <Eye size={14} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void copyResult(formatScanCopyValues(item.angkaHidup, item.scanMode), `row:${index}`)}
+                    className="pressable flex h-7 w-7 items-center justify-center rounded-md border border-primary/35 bg-primary/10 text-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    aria-label={`Salin hasil ${index + 1}`}
+                    title={copiedKey === `row:${index}` ? "Tersalin" : "Salin hasil"}
+                  >
+                    {copiedKey === `row:${index}` ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
                   </button>
 
                   <button

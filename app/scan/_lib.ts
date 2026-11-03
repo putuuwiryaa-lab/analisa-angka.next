@@ -12,6 +12,7 @@ import type {
   Target3D,
 } from "@/lib/engine/types";
 import { is3DMode, isJalurMode, isJumlah2DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
+import { formatScanCopyValues } from "@/lib/shared/scan-copy";
 
 export type Market = {
   id: string;
@@ -145,7 +146,7 @@ export function labelsFromValues(values: number[], mode: ScanMode) {
 }
 
 export function displayDigits(values: number[], mode: ScanMode) {
-  return labelsFromValues(values, mode).join(isShioMode(mode) ? "-" : isJalurMode(mode) ? " " : "");
+  return formatScanCopyValues(values, mode);
 }
 
 export function pickColumns(columns: Kolom[], deret: number[]) {
