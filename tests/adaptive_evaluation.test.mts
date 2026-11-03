@@ -106,6 +106,41 @@ Deno.test("hit rate, estimasi, baseline, dan calibration bucket dihitung per sel
   assert.equal(dashboard.readiness.enoughForCalibration, false);
 });
 
+Deno.test("audit kesalahan menunjukkan actual, digit terbit, dan perubahan bobot setelah MISS", () => {
+  const rows = Array.from({ length: 20 }, (_, index) =>
+    evaluation(index, {
+      hit: index >= 10,
+      estimated: index === 0 ? 0.89 : 0.7,
+      selectionWeightDelta: index === 0 ? 0.08 : 0,
+      selectionPairLoss: index === 0 ? 0 : 1,
+    }),
+  );
+  rows[0].selections[0].digits = [1, 2, 3, 4, 5, 6, 7];
+  const dashboard = buildAdaptiveEvaluationDashboard(rows, BASE_OPTIONS);
+  const mistakes = dashboard.missAnalysis;
+
+  assert.equal(mistakes.recentSamples, 10);
+  assert.equal(mistakes.recentMisses, 10);
+  assert.equal(mistakes.previousSamples, 10);
+  assert.equal(mistakes.previousMisses, 0);
+  assert.ok(mistakes.latestMiss);
+  assert.equal(mistakes.latestMiss.actualPair, "00");
+  assert.deepEqual(mistakes.latestMiss.digits, [1, 2, 3, 4, 5, 6, 7]);
+  assert.equal(mistakes.latestMiss.estimatedSuccess, 0.89);
+  assert.equal(mistakes.latestMiss.expertsHit, 1);
+  assert.equal(mistakes.latestMiss.expertsEvaluated, 2);
+  assert.ok(Math.abs((mistakes.latestMiss.weightShift ?? 0) - 0.08) < 1e-10);
+});
+
+Deno.test("tanpa MISS tidak membuat contoh kesalahan palsu", () => {
+  const rows = [evaluation(0, { hit: true }), evaluation(1, { hit: true })];
+  const result = buildAdaptiveEvaluationDashboard(rows, BASE_OPTIONS);
+  assert.equal(result.missAnalysis.recentSamples, 2);
+  assert.equal(result.missAnalysis.recentMisses, 0);
+  assert.equal(result.missAnalysis.previousSamples, 0);
+  assert.equal(result.missAnalysis.latestMiss, null);
+});
+
 Deno.test("trend loss memakai calibration loss selection aktif", () => {
   const rows = Array.from({ length: 20 }, (_, index) =>
     evaluation(index, {
