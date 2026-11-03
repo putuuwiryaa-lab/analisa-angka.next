@@ -31,6 +31,22 @@ export interface AdaptiveEvaluationDashboard {
     recent10Loss: number;
     lossTrend: number | null;
   };
+  missAnalysis: {
+    recentSamples: number;
+    recentMisses: number;
+    previousSamples: number;
+    previousMisses: number;
+    latestMiss: null | {
+      actualPair: string;
+      digits: number[];
+      estimatedSuccess: number;
+      baselineSuccess: number;
+      expertsHit: number;
+      expertsEvaluated: number;
+      weightShift: number | null;
+      createdAt: string;
+    };
+  };
   selectionOverview: {
     samples: number;
     meanCalibrationLoss: number | null;
