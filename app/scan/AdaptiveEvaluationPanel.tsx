@@ -356,6 +356,7 @@ export default function AdaptiveEvaluationPanel({
               </p>
             )}
           </div>
+          )}
 
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
             <div className="flex items-center justify-between gap-3">
