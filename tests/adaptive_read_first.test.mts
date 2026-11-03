@@ -87,7 +87,7 @@ Deno.test("snapshot dengan histori berbeda tetapi latest draw dan length sama di
 });
 
 Deno.test("snapshot tanpa cutoff identitas histori ditolak secara fail-closed", () => {
-  const { history_cutoff_key: _unused, ...missingCutoff } = completeSnapshot;
+  const missingCutoff = { ...completeSnapshot, history_cutoff_key: undefined };
   const result = validateAdaptivePublishedSnapshot(missingCutoff, expected);
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.issue, "stale");
