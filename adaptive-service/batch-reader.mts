@@ -43,6 +43,7 @@ export async function adaptiveBatchReader(request: Request): Promise<Response> {
       p.target_2d,
       p.latest_draw,
       p.history_length,
+      p.history_cutoff_key,
       p.engine_version,
       p.config_version,
       p.signal_strength,

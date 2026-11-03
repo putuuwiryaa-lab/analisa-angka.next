@@ -8,6 +8,7 @@ export interface EvaluationSelectionSample {
   baselineSuccess: number;
   lift: number;
   hit: boolean;
+  digits?: number[];
   calibrationLoss: number | null;
   calibrationExpertLosses: Record<string, number>;
   calibrationWeightsBefore: Record<string, number>;
@@ -161,6 +162,47 @@ export function buildAdaptiveEvaluationDashboard(
     ? mean(selectedRecentTen) - mean(selectedPreviousTen)
     : null;
 
+  // Diagnostics use only settled, published selections; never invent a learning
+  // success metric from weight movement alone.
+  const recentSelections = selectedSamples.slice(0, 10);
+  const previousSelections = selectedSamples.slice(10, 20);
+  const latestMissRow = rows.find((row) => row.selections.some((selection) =>
+    selection.method === options.method && selection.digitCount === options.digitCount && !selection.hit
+  ));
+  const latestMissSelection = latestMissRow?.selections.find((selection) =>
+    selection.method === options.method && selection.digitCount === options.digitCount && !selection.hit
+  ) ?? null;
+  const mistakeExpertLosses = normalizedRecord(latestMissSelection?.calibrationExpertLosses);
+  const mistakeWeightBefore = normalizedRecord(latestMissSelection?.calibrationWeightsBefore);
+  const mistakeWeightAfter = normalizedRecord(latestMissSelection?.calibrationWeightsAfter);
+  const mistakeWeightIds = new Set([
+    ...Object.keys(mistakeWeightBefore),
+    ...Object.keys(mistakeWeightAfter),
+  ]);
+  const weightShift = Object.keys(mistakeWeightBefore).length > 0 &&
+      Object.keys(mistakeWeightAfter).length > 0
+    ? [...mistakeWeightIds].reduce((sum, id) =>
+      sum + Math.abs((mistakeWeightAfter[id] ?? 0) - (mistakeWeightBefore[id] ?? 0)), 0) / 2
+    : null;
+  const missAnalysis = {
+    recentSamples: recentSelections.length,
+    recentMisses: recentSelections.filter((sample) => !sample.hit).length,
+    previousSamples: previousSelections.length,
+    previousMisses: previousSelections.filter((sample) => !sample.hit).length,
+    latestMiss: latestMissRow && latestMissSelection
+      ? {
+        actualPair: String(Math.max(0, Math.min(99, Math.trunc(latestMissRow.actualPair)))).padStart(2, "0"),
+        digits: latestMissSelection.digits ?? [],
+        estimatedSuccess: latestMissSelection.estimatedSuccess,
+        baselineSuccess: latestMissSelection.baselineSuccess,
+        expertsHit: Object.values(mistakeExpertLosses).filter((loss) => loss === 0).length,
+        expertsEvaluated: Object.keys(mistakeExpertLosses).length,
+        weightShift,
+        createdAt: latestMissRow.createdAt,
+      }
+      : null,
+  };
+
   const expertLossGroups = new Map<string, number[]>();
   for (const sample of selectedSamples) {
     for (const [expertId, loss] of Object.entries(normalizedRecord(sample.calibrationExpertLosses))) {
@@ -228,6 +270,7 @@ export function buildAdaptiveEvaluationDashboard(
       recent10Loss: mean(globalRecentTen),
       lossTrend: globalLossTrend,
     },
+    missAnalysis,
     selectionOverview: {
       samples: selectedSamples.length,
       meanCalibrationLoss: selectedLosses.length > 0 ? mean(selectedLosses) : null,
