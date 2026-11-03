@@ -137,7 +137,7 @@ export function savedDescription(saved: SavedTrek) {
 }
 
 export function labelValue(value: number, mode: ScanMode) {
-  return isJalurMode(mode) ? `Jalur ${value}` : isShioMode(mode) ? String(value + 1).padStart(2, "0") : String(value);
+  return isShioMode(mode) ? String(value + 1).padStart(2, "0") : String(value);
 }
 
 export function labelsFromValues(values: number[], mode: ScanMode) {
@@ -145,7 +145,7 @@ export function labelsFromValues(values: number[], mode: ScanMode) {
 }
 
 export function displayDigits(values: number[], mode: ScanMode) {
-  return labelsFromValues(values, mode).join(isShioMode(mode) ? "-" : "");
+  return labelsFromValues(values, mode).join(isShioMode(mode) ? "-" : isJalurMode(mode) ? " " : "");
 }
 
 export function pickColumns(columns: Kolom[], deret: number[]) {

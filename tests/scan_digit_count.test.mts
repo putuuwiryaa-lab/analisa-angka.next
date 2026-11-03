@@ -35,6 +35,15 @@ Deno.test("scan Shio tetap menerima 1 sampai 12 pilihan", () => {
   }
 });
 
+Deno.test("Scan Jalur 2D menerima tepat 1 atau 2 jalur", () => {
+  assert.equal(maxScanDigitCount("jalur_2d"), 2);
+  assert.equal(isValidScanDigitCount("jalur_2d", 1), true);
+  assert.equal(isValidScanDigitCount("jalur_2d", 2), true);
+  for (const count of [0, 3, 2.5, "2", null]) {
+    assert.equal(isValidScanDigitCount("jalur_2d", count), false);
+  }
+});
+
 Deno.test("jumlah digit harus berupa bilangan bulat positif", () => {
   assert.equal(isValidScanDigitCount("bbfs_2d_belakang", 0), false);
   assert.equal(isValidScanDigitCount("bbfs_2d_belakang", 7.5), false);

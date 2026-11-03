@@ -137,7 +137,7 @@ export default function ScanResultSection({
                 key={row.value}
                 className={`flex h-9 items-center rounded-lg border border-accent/20 bg-bg-deep/25 px-2.5 ${row.count === 0 ? "opacity-25" : ""}`}
               >
-                <b className={`num text-lg text-accent ${isJalurMode(result.config.scanMode) ? "w-20" : "w-8"}`}>{row.label}</b>
+                <b className="num w-8 text-lg text-accent">{row.label}</b>
                 <span className="mr-1.5 text-xs font-black text-text-soft">×</span>
                 <span className="text-[11px] lg:text-[13px] font-bold text-text">{row.count}</span>
               </div>

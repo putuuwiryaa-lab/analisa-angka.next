@@ -140,7 +140,7 @@ function groupByFour(value: string): string {
 
 function formatCandidates(values: number[], scanMode: ScanMode, digitCount: number): string {
   if (!values.length) return "-";
-  if (isJalurMode(scanMode)) return values.map((value) => `Jalur ${value}`).join(" | ");
+  if (isJalurMode(scanMode)) return values.join(" ");
   if (isShioMode(scanMode)) return values.map(shioLabel).join("-");
   const raw = values.join("");
   return scanMode === "ai_3d" && digitCount === 8 ? groupByFour(raw) : raw;
@@ -322,7 +322,7 @@ export async function POST(req: Request) {
 
     const title = typeof body.outputTitle === "string" && body.outputTitle.trim()
       ? body.outputTitle.trim().slice(0, 80)
-      : `Batch Scan ${primary.digitCount} Digit`;
+      : `Batch Scan ${primary.digitCount} ${isJalurMode(primary.scanMode) ? "Jalur" : "Digit"}`;
     const results: BatchLine[] = [];
 
     for (const id of marketIds) {
