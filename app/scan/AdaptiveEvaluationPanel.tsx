@@ -295,6 +295,7 @@ export default function AdaptiveEvaluationPanel({
             )}
           </div>
 
+          {dashboard.missAnalysis && (
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[10px] font-black uppercase tracking-wide text-text">Analisis Kesalahan</p>
