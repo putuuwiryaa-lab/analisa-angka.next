@@ -86,6 +86,13 @@ Deno.test("snapshot dengan histori berbeda tetapi latest draw dan length sama di
   if (!stale.ok) assert.equal(stale.issue, "stale");
 });
 
+Deno.test("snapshot tanpa cutoff identitas histori ditolak secara fail-closed", () => {
+  const { history_cutoff_key: _unused, ...missingCutoff } = completeSnapshot;
+  const result = validateAdaptivePublishedSnapshot(missingCutoff, expected);
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.issue, "stale");
+});
+
 Deno.test("pembaca menghitung cutoff identik dengan engine Deno", () => {
   const input = Array.from({ length: 30 }, (_, index) => String((index * 109 + 1234) % 10000).padStart(4, "0"));
   const result = runAdaptiveOnline(input, "belakang", "bbfs", 7);
