@@ -60,7 +60,7 @@ export function isShioMode(mode: ScanMode) {
 }
 
 export function maxScanDigitCount(mode: ScanMode): number {
-  return isJalurMode(mode) ? 1 : isShioMode(mode) ? MAX_SCAN_SHIO_DIGITS : MAX_SCAN_NUMBER_DIGITS;
+  return isJalurMode(mode) ? 2 : isShioMode(mode) ? MAX_SCAN_SHIO_DIGITS : MAX_SCAN_NUMBER_DIGITS;
 }
 
 export function isValidScanDigitCount(mode: ScanMode, value: unknown): value is number {
