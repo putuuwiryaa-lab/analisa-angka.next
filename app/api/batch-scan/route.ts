@@ -140,7 +140,7 @@ function groupByFour(value: string): string {
 
 function formatCandidates(values: number[], scanMode: ScanMode, digitCount: number): string {
   if (!values.length) return "-";
-  if (isJalurMode(scanMode)) return values.map((value) => `Jalur ${value}`).join(" | ");
+  if (isJalurMode(scanMode)) return values.join(" ");
   if (isShioMode(scanMode)) return values.map(shioLabel).join("-");
   const raw = values.join("");
   return scanMode === "ai_3d" && digitCount === 8 ? groupByFour(raw) : raw;
