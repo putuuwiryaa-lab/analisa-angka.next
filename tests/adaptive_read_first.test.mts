@@ -8,7 +8,10 @@ import {
   ADAPTIVE_SELECTION_COUNT,
 } from "../lib/adaptive/types.ts";
 
-const history = ["1234", "5678", "9012", "4353"];
+const history = [
+  ...Array.from({ length: 169 }, (_, index) => String((index * 107 + 1234) % 10000).padStart(4, "0")),
+  "4353",
+];
 const expected = {
   marketId: "sgp",
   target2D: "belakang" as const,
