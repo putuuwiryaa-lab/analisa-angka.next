@@ -76,6 +76,9 @@ function normalizeSelections(value: unknown): EvaluationSelectionSample[] {
       baselineSuccess: finite(row.baselineSuccess),
       lift: finite(row.lift),
       hit: row.hit === true || row.hit === "true",
+      digits: arrayValue(row.digits).map(Number).filter((digit) =>
+        Number.isInteger(digit) && digit >= 0 && digit <= 9
+      ),
       calibrationLoss: nullableFinite(row.calibrationLoss),
       calibrationExpertLosses: numberRecord(row.calibrationExpertLosses),
       calibrationWeightsBefore: numberRecord(row.calibrationWeightsBefore),
@@ -129,6 +132,7 @@ export async function loadAdaptiveEvaluationDashboard(
               'estimatedSuccess', s.estimated_success,
               'baselineSuccess', s.baseline_success,
               'lift', s.lift,
+              'digits', s.digits,
               'hit', coalesce(selection_evaluation.hit, case
                   when s.method = 'ai'
                     then coalesce((e.ai_results ->> s.digit_count::text)::boolean, false)
