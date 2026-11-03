@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { validateAdaptivePublishedSnapshot } from "../lib/adaptive/published-snapshot.ts";
+import { adaptiveHistoryCutoffKey } from "../lib/adaptive/history-cutoff.ts";
+import { runAdaptiveOnline } from "../adaptive-service/core/engine.mts";
 import {
   ADAPTIVE_CONFIG_VERSION,
   ADAPTIVE_ENGINE_VERSION,
   ADAPTIVE_SELECTION_COUNT,
 } from "../lib/adaptive/types.ts";
 
+const history = ["1234", "5678", "9012", "4353"];
 const expected = {
   marketId: "sgp",
   target2D: "belakang" as const,
@@ -13,6 +16,7 @@ const expected = {
   digitCount: 7,
   latestDraw: "4353",
   historyLength: 170,
+  historyCutoffKey: adaptiveHistoryCutoffKey(history),
 };
 
 const completeSnapshot = {
@@ -22,6 +26,7 @@ const completeSnapshot = {
   target_2d: "belakang",
   latest_draw: "4353",
   history_length: 170,
+  history_cutoff_key: expected.historyCutoffKey,
   engine_version: ADAPTIVE_ENGINE_VERSION,
   config_version: ADAPTIVE_CONFIG_VERSION,
   signal_strength: "high",
@@ -47,6 +52,7 @@ Deno.test("snapshot publikasi lengkap dinormalisasi untuk UI read-first", () => 
   assert.equal(result.value.signalStrength, "high");
   assert.deepEqual(result.value.digits, completeSnapshot.digits);
   assert.equal(result.value.stateRevision, 12);
+  assert.equal(result.value.historyCutoffKey, expected.historyCutoffKey);
 });
 
 Deno.test("snapshot dengan cutoff atau panjang histori lama ditolak sebagai stale", () => {
@@ -65,6 +71,22 @@ Deno.test("snapshot dengan cutoff atau panjang histori lama ditolak sebagai stal
     error: "Snapshot Adaptive belum mengikuti result terbaru.",
   });
   assert.deepEqual(staleLength, staleDraw);
+});
+
+Deno.test("snapshot dengan histori berbeda tetapi latest draw dan length sama ditolak", () => {
+  const changedHistory = ["1244", ...history.slice(1)];
+  const stale = validateAdaptivePublishedSnapshot({
+    ...completeSnapshot,
+    history_cutoff_key: adaptiveHistoryCutoffKey(changedHistory),
+  }, expected);
+  assert.equal(stale.ok, false);
+  if (!stale.ok) assert.equal(stale.issue, "stale");
+});
+
+Deno.test("pembaca menghitung cutoff identik dengan engine Deno", () => {
+  const input = Array.from({ length: 30 }, (_, index) => String((index * 109 + 1234) % 10000).padStart(4, "0"));
+  const result = runAdaptiveOnline(input, "belakang", "bbfs", 7);
+  assert.equal(result.prediction.historyCutoffKey, adaptiveHistoryCutoffKey(input));
 });
 
 Deno.test("snapshot versi lama dan publication tidak lengkap ditolak", () => {
