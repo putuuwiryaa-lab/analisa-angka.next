@@ -25,3 +25,10 @@ Deno.test("extract requested target 2D from 4D", () => {
   assert.equal(twoDigitJalur("1234", "tengah"), jalurFrom2D(23));
   assert.equal(twoDigitJalur("1234", "belakang"), jalurFrom2D(34));
 });
+
+Deno.test("every pair of Jalur groups covers 66 or 67 of 100 2D numbers", () => {
+  const pairs = [[1, 2], [1, 3], [2, 3]];
+  const counts = pairs.map((pair) => Array.from({ length: 100 }, (_, number) => number)
+    .filter((number) => pair.includes(jalurFrom2D(number))).length);
+  assert.deepEqual(counts, [67, 67, 66]);
+});
