@@ -1,7 +1,34 @@
-import { RefreshCw, Trash2 } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Check, Copy, RefreshCw, Trash2 } from "lucide-react";
 import { isJalurMode, isShioMode } from "@/lib/shared/scan-mode";
+import { formatSavedTrekCopyAll, formatScanCopyValues } from "@/lib/shared/scan-copy";
 import { analysisTitle, displayDigits, savedDetail } from "../_lib";
 import type { SavedGroup, SavedTrek } from "../_lib";
+
+async function copyToClipboard(value: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Use the browser fallback when clipboard permissions are denied.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  try {
+    textarea.value = value;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    if (!document.execCommand("copy")) throw new Error("Clipboard tidak tersedia.");
+  } finally {
+    textarea.remove();
+  }
+}
 
 type Props = {
   total: number;
@@ -22,6 +49,28 @@ export default function SavedTreksSection({
   refreshError,
   onRefresh,
 }: Props) {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState("");
+  const allText = formatSavedTrekCopyAll(groups);
+
+  useEffect(() => {
+    if (!copiedKey) return;
+    const timer = window.setTimeout(() => setCopiedKey(null), 1600);
+    return () => window.clearTimeout(timer);
+  }, [copiedKey]);
+
+  async function copyResult(value: string, key: string) {
+    if (!value) return;
+    try {
+      await copyToClipboard(value);
+      setCopiedKey(key);
+      setCopyError("");
+    } catch {
+      setCopiedKey(null);
+      setCopyError("Gagal menyalin trek. Periksa izin clipboard browser.");
+    }
+  }
+
   if (!total) return null;
   return (
     <section className="space-y-3" aria-label="Trek tersimpan">
@@ -33,19 +82,32 @@ export default function SavedTreksSection({
         </span>
         <span className="h-px flex-1 bg-border-soft" />
       </div>
-      <div className="flex items-center justify-between gap-3 px-1">
-        <p className="text-[11px] font-bold text-text-soft">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <p className="min-w-0 flex-1 text-[11px] font-bold text-text-soft">
           Rumus tetap · otomatis mengikuti result terbaru
         </p>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="pressable flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border-soft px-2.5 text-xs font-bold text-text-muted disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
-          {refreshing ? "Memperbarui…" : "Perbarui"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void copyResult(allText, "all")}
+            disabled={!allText}
+            aria-label="Salin semua Trek Tersimpan yang ditampilkan"
+            title="Salin semua Trek Tersimpan yang ditampilkan"
+            className="pressable flex h-9 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 text-xs font-black text-primary-soft disabled:opacity-50"
+          >
+            {copiedKey === "all" ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
+            {copiedKey === "all" ? "Tersalin" : "Salin Semua"}
+          </button>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="pressable flex h-9 items-center gap-1.5 rounded-lg border border-border-soft px-2.5 text-xs font-bold text-text-muted disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+            {refreshing ? "Memperbarui…" : "Perbarui"}
+          </button>
+        </div>
       </div>
       {refreshError ? (
         <p
@@ -55,6 +117,8 @@ export default function SavedTreksSection({
           {refreshError}
         </p>
       ) : null}
+      {copyError ? <p role="alert" className="px-1 text-xs font-bold text-danger">{copyError}</p> : null}
+      <span role="status" className="sr-only">{copiedKey ? "Trek berhasil disalin." : ""}</span>
       {groups.map((group) => (
         <div key={group.key} className="depth-1 rounded-3xl border p-4">
           <p className="mb-3 text-xs font-bold leading-relaxed text-text-soft">
@@ -71,7 +135,7 @@ export default function SavedTreksSection({
                 key={saved.id}
                 className="render-lazy-card rounded-2xl border border-border-soft bg-white/[0.025] p-3"
               >
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="max-w-[7.5rem] shrink-0 truncate rounded-xl border border-border bg-white/[0.08] px-3 py-2 text-sm font-black text-text-muted">
                       {saved.formula}
@@ -80,13 +144,23 @@ export default function SavedTreksSection({
                       {displayDigits(saved.predictionValues, saved.scanMode) || "—"}
                     </p>
                   </div>
-                  <div className="flex shrink-0 gap-2">
+                  <div className="flex shrink-0 gap-1.5">
                     <button
                       type="button"
                       onClick={() => onView(saved)}
-                      className="pressable h-11 rounded-xl border border-primary/40 bg-primary/10 px-3 text-xs font-black text-primary-soft"
+                      className="pressable h-11 rounded-xl border border-primary/40 bg-primary/10 px-2.5 text-xs font-black text-primary-soft"
                     >
                       Lihat
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyResult(formatScanCopyValues(saved.predictionValues, saved.scanMode), `trek:${saved.id}`)}
+                      disabled={!saved.predictionValues.length}
+                      aria-label={`Salin trek ${saved.formula}`}
+                      title={copiedKey === `trek:${saved.id}` ? "Tersalin" : "Salin hasil trek"}
+                      className="pressable flex h-11 w-11 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 text-primary-soft disabled:opacity-50"
+                    >
+                      {copiedKey === `trek:${saved.id}` ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
                     </button>
                     <button
                       type="button"
