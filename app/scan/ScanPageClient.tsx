@@ -17,6 +17,7 @@ import ScanResultSection, { trekId } from "./_components/ScanResultSection";
 import SavedTreksSection from "./_components/SavedTreksSection";
 import TrekDetailModal from "./_components/TrekDetailModal";
 import { useSavedScanTracking } from "./useSavedScanTracking";
+import { visibleSavedTreksForScan } from "@/lib/shared/saved-scan";
 import {
   buildSavedGroups,
   detailCopyText,
@@ -126,7 +127,11 @@ export default function ScanPageClient() {
       ).toUpperCase(),
     [completedScan?.marketName, selectedMarket?.id, selectedMarket?.name],
   );
-  const savedGroups = useMemo(() => buildSavedGroups(savedTreks), [savedTreks]);
+  const visibleSavedTreks = useMemo(
+    () => visibleSavedTreksForScan(savedTreks, marketId, scanMode),
+    [savedTreks, marketId, scanMode],
+  );
+  const savedGroups = useMemo(() => buildSavedGroups(visibleSavedTreks), [visibleSavedTreks]);
   const marketsError =
     marketsQueryError instanceof Error
       ? marketsQueryError.message
@@ -445,7 +450,7 @@ export default function ScanPageClient() {
           />
         )}
         <MemoSavedTreksSection
-          total={savedTreks.length}
+          total={visibleSavedTreks.length}
           groups={savedGroups}
           onView={viewSavedTrek}
           onDelete={deleteTrek}

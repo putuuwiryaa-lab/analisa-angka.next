@@ -62,3 +62,15 @@ export function scanRowSucceeded(mode: ScanMode, targets: number[], values: numb
   if (mode === "ai_3d") return hits >= Math.min(2, uniqueTargets.length);
   return hits > 0;
 }
+
+/** Select only treks relevant to the currently chosen pasaran and Scan jenis.
+ * Hidden treks remain persisted and tracked; this controls presentation only.
+ */
+export function visibleSavedTreksForScan<T extends { marketId: string; scanMode: ScanMode }>(
+  treks: readonly T[],
+  marketId: string,
+  scanMode: ScanMode,
+): T[] {
+  if (!marketId) return [];
+  return treks.filter((trek) => trek.marketId === marketId && trek.scanMode === scanMode);
+}
