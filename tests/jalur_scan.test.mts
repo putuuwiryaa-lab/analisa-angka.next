@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { runEngine, runAutoScan } from "../lib/engine/acke-engine.ts";
 import { compressionProfile, digitsFromColumns } from "../lib/engine/ranking.ts";
 import { scanRowSucceeded } from "../lib/shared/saved-scan.ts";
+import { formatScanCopyValues } from "../lib/shared/scan-copy.ts";
 
 Deno.test("Jalur Scan evaluates 2D target as one of three rotating columns", () => {
   const draws = ["1428", "1234", "5678"];
@@ -100,7 +101,8 @@ Deno.test("Jalur Scan UI shows bare separated numbers in Scan, saved Trek, and B
     Deno.readTextFile(new URL("../app/api/batch-scan/route.ts", import.meta.url)),
   ]);
   assert.match(shared, /isJalurMode\(mode\) \? 2/);
-  assert.match(mainUi, /return isShioMode\(mode\) \? String\(value \+ 1\)\.padStart\(2, "0"\) : String\(value\)/);
-  assert.match(mainUi, /isJalurMode\(mode\) \? " " : ""/);
+  assert.match(mainUi, /return formatScanCopyValues\(values, mode\)/);
+  assert.equal(formatScanCopyValues([1], "jalur_2d"), "1");
+  assert.equal(formatScanCopyValues([1, 3], "jalur_2d"), "1 3");
   assert.match(batchApi, /if \(isJalurMode\(scanMode\)\) return values\.join\(" "\)/);
 });
