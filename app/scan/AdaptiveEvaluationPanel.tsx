@@ -297,6 +297,67 @@ export default function AdaptiveEvaluationPanel({
 
           <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
             <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-black uppercase tracking-wide text-text">Analisis Kesalahan</p>
+              <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">{selectionLabel}</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <AuditMetric
+                label="MISS 10 terbaru"
+                value={`${dashboard.missAnalysis.recentMisses}/${dashboard.missAnalysis.recentSamples}`}
+              />
+              <AuditMetric
+                label="MISS 10 sebelumnya"
+                value={dashboard.missAnalysis.previousSamples === 10
+                  ? `${dashboard.missAnalysis.previousMisses}/10`
+                  : "Data belum cukup"}
+              />
+            </div>
+            {dashboard.missAnalysis.latestMiss ? (
+              <div className="mt-3 space-y-2 rounded-lg border border-border-soft bg-surface/40 p-3 text-[10px] leading-relaxed text-text-muted">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-black text-text">MISS terakhir · aktual {dashboard.missAnalysis.latestMiss.actualPair}</span>
+                  <span className="shrink-0">{formatTime(dashboard.missAnalysis.latestMiss.createdAt)}</span>
+                </div>
+                <p>
+                  Digit terbit: <span className="font-black text-text">
+                    {dashboard.missAnalysis.latestMiss.digits.length > 0
+                      ? dashboard.missAnalysis.latestMiss.digits.join(" ")
+                      : "Tidak tersedia"}
+                  </span>
+                </p>
+                <p>
+                  Confidence {percentage(dashboard.missAnalysis.latestMiss.estimatedSuccess)}
+                  {" "}· baseline {percentage(dashboard.missAnalysis.latestMiss.baselineSuccess)}
+                </p>
+                <p>
+                  Expert yang sebenarnya mencakup aktual:{" "}
+                  <span className="font-black text-text">
+                    {dashboard.missAnalysis.latestMiss.expertsEvaluated > 0
+                      ? `${dashboard.missAnalysis.latestMiss.expertsHit}/${dashboard.missAnalysis.latestMiss.expertsEvaluated}`
+                      : "Audit belum tersedia"}
+                  </span>
+                </p>
+                <p>
+                  Pergeseran bobot setelah MISS:{" "}
+                  <span className="font-black text-text">
+                    {dashboard.missAnalysis.latestMiss.weightShift === null
+                      ? "Audit belum tersedia"
+                      : percentage(dashboard.missAnalysis.latestMiss.weightShift, 2)}
+                  </span>
+                </p>
+                <p className="text-[9px] opacity-80">
+                  Pergeseran bobot menunjukkan pembelajaran berjalan, bukan bukti akurasi berikutnya meningkat.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-3 text-[10px] leading-relaxed text-text-muted">
+                Belum ada MISS untuk selection ini di rentang evaluasi.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border-soft bg-bg-deep/45 p-3">
+            <div className="flex items-center justify-between gap-3">
               <p className="text-[10px] font-black uppercase tracking-wide text-text">Performance Trend</p>
               <span className="text-[9px] font-bold uppercase tracking-wide text-text-muted">{selectionLabel}</span>
             </div>
