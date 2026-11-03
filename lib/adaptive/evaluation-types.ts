@@ -31,7 +31,7 @@ export interface AdaptiveEvaluationDashboard {
     recent10Loss: number;
     lossTrend: number | null;
   };
-  missAnalysis: {
+  missAnalysis?: {
     recentSamples: number;
     recentMisses: number;
     previousSamples: number;
