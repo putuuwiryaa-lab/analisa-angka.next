@@ -454,8 +454,7 @@ export default function ScanPageClient() {
           groups={savedGroups}
           onView={viewSavedTrek}
           onDelete={deleteTrek}
-          refreshing={savedTracking.refreshing}
-          refreshError={savedTracking.refreshError}
+          syncInfo={savedTracking.syncInfo}
           onRefresh={savedTracking.refresh}
         />
       </div>
