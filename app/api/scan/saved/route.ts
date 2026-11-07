@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { replaySavedScan } from "@/lib/engine/saved-scan";
 import { parseStrictHistory } from "@/lib/engine/history";
 import { isTarget2D, isTarget3D } from "@/lib/engine/helpers";
-import { KOLOM, SHIO_KOLOM, type Draw } from "@/lib/engine/types";
-import { isScanMode, isShioMode } from "@/lib/shared/scan-mode";
+import { JALUR_KOLOM, KOLOM, SHIO_KOLOM, type Draw } from "@/lib/engine/types";
+import { isJalurMode, isScanMode, isShioMode } from "@/lib/shared/scan-mode";
 import {
   savedScanRevision,
   type SavedScanFormula,
@@ -33,7 +33,11 @@ function validFormula(value: unknown): value is SavedScanFormula {
     !isTarget3D(item.target3D)
   )
     return false;
-  const columns: readonly string[] = isShioMode(item.scanMode) ? SHIO_KOLOM : KOLOM;
+  const columns: readonly string[] = isJalurMode(item.scanMode)
+    ? JALUR_KOLOM
+    : isShioMode(item.scanMode)
+      ? SHIO_KOLOM
+      : KOLOM;
   return (
     Array.isArray(item.kolomHidup) &&
     item.kolomHidup.length > 0 &&
