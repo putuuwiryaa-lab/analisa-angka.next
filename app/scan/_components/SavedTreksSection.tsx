@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, RefreshCw, Trash2 } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, Clock3, Copy, RefreshCw, Trash2 } from "lucide-react";
+import {
+  overallSavedScanSyncStatus,
+  savedTrekSyncStatus,
+  type SavedScanSyncInfo,
+} from "@/lib/shared/saved-scan-sync";
 import { isJalurMode, isShioMode } from "@/lib/shared/scan-mode";
 import { formatSavedTrekCopyAll, formatScanCopyValues } from "@/lib/shared/scan-copy";
 import { analysisTitle, displayDigits, savedDetail } from "../_lib";
@@ -35,8 +40,7 @@ type Props = {
   groups: SavedGroup[];
   onView: (saved: SavedTrek) => void;
   onDelete: (id: string) => void;
-  refreshing: boolean;
-  refreshError: string;
+  syncInfo: SavedScanSyncInfo;
   onRefresh: () => void;
 };
 
@@ -45,13 +49,30 @@ export default function SavedTreksSection({
   groups,
   onView,
   onDelete,
-  refreshing,
-  refreshError,
+  syncInfo,
   onRefresh,
 }: Props) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [copyError, setCopyError] = useState("");
   const allText = formatSavedTrekCopyAll(groups);
+  const { refreshing, refreshError } = syncInfo;
+  const overallStatus = overallSavedScanSyncStatus(
+    groups.flatMap((group) => group.items),
+    syncInfo,
+  );
+  const overallLabel = {
+    syncing: "Memperbarui…",
+    synced: "Sudah Terbaru",
+    unchecked: "Belum Diperiksa",
+    failed: "Gagal Memperbarui",
+    legacy: "Perlu Simpan Ulang",
+  }[overallStatus];
+  const checkedTime = syncInfo.checkedAt
+    ? new Date(syncInfo.checkedAt).toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
 
   useEffect(() => {
     if (!copiedKey) return;
@@ -83,8 +104,25 @@ export default function SavedTreksSection({
         <span className="h-px flex-1 bg-border-soft" />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        <p className="min-w-0 flex-1 text-[11px] font-bold text-text-soft">
-          Rumus tetap · otomatis mengikuti result terbaru
+        <p
+          role="status"
+          aria-live="polite"
+          className={`flex min-w-0 flex-1 items-center gap-1.5 text-[11px] font-bold ${
+            overallStatus === "synced"
+              ? "text-emerald-400"
+              : overallStatus === "failed"
+                ? "text-danger"
+                : "text-text-soft"
+          }`}
+        >
+          {overallStatus === "synced" ? (
+            <CheckCircle2 size={14} className="shrink-0" aria-hidden="true" />
+          ) : overallStatus === "failed" || overallStatus === "legacy" ? (
+            <AlertCircle size={14} className="shrink-0" aria-hidden="true" />
+          ) : (
+            <Clock3 size={14} className="shrink-0" aria-hidden="true" />
+          )}
+          <span>{overallLabel}{checkedTime && !refreshing ? ` · Dicek ${checkedTime}` : ""}</span>
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -130,7 +168,9 @@ export default function SavedTreksSection({
             {` · ${group.digitCount} ${isJalurMode(group.scanMode) ? "jalur" : isShioMode(group.scanMode) ? "shio" : "digit"} · uji awal ${group.L || "-"} data, patah ${group.patah} · ${group.items.length} rumus`}
           </p>
           <div className="space-y-2">
-            {group.items.map((saved) => (
+            {group.items.map((saved) => {
+              const status = savedTrekSyncStatus(saved, syncInfo);
+              return (
               <article
                 key={saved.id}
                 className="render-lazy-card rounded-2xl border border-border-soft bg-white/[0.025] p-3"
@@ -183,14 +223,40 @@ export default function SavedTreksSection({
                     {saved.trackingError}
                   </p>
                 ) : null}
-                {saved.legacy ? (
-                  <p className="mt-2 text-[10px] lg:text-xs font-bold text-text-soft">
-                    Trek lama belum memiliki rumus dan histori lengkap. Simpan ulang rumus dari Scan
-                    untuk mengikuti result terbaru.
+                <p
+                  className={`mt-2 flex items-center gap-1.5 text-[11px] font-bold ${
+                    status === "synced"
+                      ? "text-emerald-400"
+                      : status === "failed"
+                        ? "text-danger"
+                        : "text-text-soft"
+                  }`}
+                >
+                  {status === "synced" ? (
+                    <CheckCircle2 size={13} aria-hidden="true" />
+                  ) : status === "failed" || status === "legacy" ? (
+                    <AlertCircle size={13} aria-hidden="true" />
+                  ) : (
+                    <Clock3 size={13} aria-hidden="true" />
+                  )}
+                  {status === "synced"
+                    ? "Sudah Terbaru"
+                    : status === "syncing"
+                      ? "Memperbarui…"
+                      : status === "failed"
+                        ? "Gagal Memperbarui"
+                        : status === "legacy"
+                          ? "Perlu Simpan Ulang: histori trek tidak lengkap"
+                          : "Belum Diperiksa"}
+                </p>
+                {status === "legacy" ? (
+                  <p className="mt-1 text-[10px] lg:text-xs font-bold text-text-soft">
+                    Simpan ulang rumus dari Scan agar dapat mengikuti result terbaru.
                   </p>
                 ) : null}
               </article>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}
