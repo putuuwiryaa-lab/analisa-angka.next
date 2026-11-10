@@ -94,7 +94,7 @@ Deno.test("two Jalur columns cover either group with the same exact Patah rule",
   }
 });
 
-Deno.test("Jalur Scan UI shows bare separated numbers in Scan, saved Trek, and Batch", async () => {
+Deno.test("Jalur Scan copy is compact while Batch display keeps separated labels", async () => {
   const [shared, mainUi, batchApi] = await Promise.all([
     Deno.readTextFile(new URL("../lib/shared/scan-mode.ts", import.meta.url)),
     Deno.readTextFile(new URL("../app/scan/_lib.ts", import.meta.url)),
@@ -103,6 +103,6 @@ Deno.test("Jalur Scan UI shows bare separated numbers in Scan, saved Trek, and B
   assert.match(shared, /isJalurMode\(mode\) \? 2/);
   assert.match(mainUi, /return formatScanCopyValues\(values, mode\)/);
   assert.equal(formatScanCopyValues([1], "jalur_2d"), "1");
-  assert.equal(formatScanCopyValues([1, 3], "jalur_2d"), "1 3");
+  assert.equal(formatScanCopyValues([1, 3], "jalur_2d"), "13");
   assert.match(batchApi, /if \(isJalurMode\(scanMode\)\) return values\.join\(" "\)/);
 });
