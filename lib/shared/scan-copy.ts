@@ -1,10 +1,16 @@
-import { isJalurMode, isShioMode, type ScanMode } from "./scan-mode";
+import { isShioMode, type ScanMode } from "./scan-mode";
+
+/** Join Scan labels without digit-separating spaces, keeping Shio readable. */
+export function formatScanCopyLabels(labels: readonly string[], mode: ScanMode): string {
+  return labels.join(isShioMode(mode) ? "-" : "");
+}
 
 /** Copy the displayed Scan values, without formula names or market metadata. */
 export function formatScanCopyValues(values: readonly number[], mode: ScanMode): string {
-  if (isShioMode(mode)) return values.map((value) => String(value + 1).padStart(2, "0")).join("-");
-  if (isJalurMode(mode)) return values.join(" ");
-  return values.join("");
+  const labels = isShioMode(mode)
+    ? values.map((value) => String(value + 1).padStart(2, "0"))
+    : values.map(String);
+  return formatScanCopyLabels(labels, mode);
 }
 
 export function formatScanCopyAll(
