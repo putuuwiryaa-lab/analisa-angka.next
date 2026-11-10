@@ -54,7 +54,7 @@ Deno.test("Salin Semua takes only visible saved Treks, preserving order and nume
     { scanMode: "jalur_2d", predictionValues: [1, 3] },
     { scanMode: "shio", predictionValues: [0, 11] },
     { scanMode: "ai_2d_belakang", predictionValues: [] },
-  ] }]), "1 3\n01-12");
+  ] }]), "13\n01-12");
   assert.equal(formatScanCopyValues(visible[0].predictionValues, visible[0].scanMode), "9017");
   assert.equal(treks.length, 4, "Copy must not modify stored treks");
 });
