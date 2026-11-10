@@ -12,7 +12,7 @@ import type {
   Target3D,
 } from "@/lib/engine/types";
 import { is3DMode, isJalurMode, isJumlah2DMode, isPositionMode, isShioMode } from "@/lib/shared/scan-mode";
-import { formatScanCopyValues } from "@/lib/shared/scan-copy";
+import { formatScanCopyLabels, formatScanCopyValues } from "@/lib/shared/scan-copy";
 
 export type Market = {
   id: string;
@@ -67,6 +67,7 @@ export type DetailRow = {
 };
 
 export type DetailData = {
+  scanMode: ScanMode;
   title: string;
   description: string;
   rows: DetailRow[];
@@ -307,6 +308,7 @@ export function readStoredTreks() {
 
 export function liveDetail(item: AutoScanItem, marketName: string, digitCount: number): DetailData {
   return {
+    scanMode: item.scanMode,
     title: marketName.toUpperCase(),
     description: scanDescription(item, digitCount),
     rows: item.result.rows.map((row) => {
@@ -328,6 +330,7 @@ export function liveDetail(item: AutoScanItem, marketName: string, digitCount: n
 
 export function savedDetail(saved: SavedTrek): DetailData {
   return {
+    scanMode: saved.scanMode,
     title: saved.marketName.toUpperCase(),
     description: savedDescription(saved),
     rows: saved.snapshotRows.map((row) => {
@@ -349,13 +352,13 @@ export function savedDetail(saved: SavedTrek): DetailData {
 
 export function detailCopyText(detail: DetailData) {
   const history = detail.rows.map(
-    (row) => `${row.draw} ➜ ${row.values.map((value) => value.label).join(" ")} ${row.status}`,
+    (row) => `${row.draw} ➜ ${formatScanCopyLabels(row.values.map((value) => value.label), detail.scanMode)} ${row.status}`,
   );
   return [
     `*${detail.title}*`,
     detail.description,
     "",
     ...history,
-    `${detail.pendingDraw} ➜ ${detail.pendingValues.join(" ")} ??`,
+    `${detail.pendingDraw} ➜ ${formatScanCopyLabels(detail.pendingValues, detail.scanMode)} ??`,
   ].join("\n");
 }
