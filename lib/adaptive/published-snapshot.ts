@@ -14,6 +14,7 @@ export interface AdaptivePublishedSnapshot {
   target2D: Target2D;
   latestDraw: string;
   historyLength: number;
+  historyCutoffKey: string;
   engineVersion: string;
   configVersion: string;
   predictionCreatedAt: string;
@@ -65,6 +66,7 @@ export function validateAdaptivePublishedSnapshot(
     digitCount: number;
     latestDraw: string;
     historyLength: number;
+    historyCutoffKey: string;
   },
 ): AdaptivePublishedSnapshotResult {
   const row = record(input);
@@ -127,7 +129,12 @@ export function validateAdaptivePublishedSnapshot(
 
   const latestDraw = String(row.latest_draw ?? "");
   const historyLength = Number(row.history_length);
-  if (latestDraw !== expected.latestDraw || historyLength !== expected.historyLength) {
+  const historyCutoffKey = String(row.history_cutoff_key ?? "");
+  if (
+    latestDraw !== expected.latestDraw ||
+    historyLength !== expected.historyLength ||
+    historyCutoffKey !== expected.historyCutoffKey
+  ) {
     return {
       ok: false,
       issue: "stale",
@@ -160,6 +167,7 @@ export function validateAdaptivePublishedSnapshot(
       target2D: expected.target2D,
       latestDraw,
       historyLength,
+      historyCutoffKey,
       engineVersion: String(row.engine_version),
       configVersion: String(row.config_version),
       predictionCreatedAt: String(row.prediction_created_at ?? ""),

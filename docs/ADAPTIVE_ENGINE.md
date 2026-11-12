@@ -354,3 +354,18 @@ Jangan mencampur service dengan config baru dan database yang belum menerima con
 - Global weights tetap boleh berubah pada actual yang sama karena global learning mempunyai objective probabilistik berbeda.
 
 Adaptive adalah statistical online-learning ensemble. Perubahan bobot atau hit historis bukan jaminan adanya predictive edge pada result berikutnya.
+
+## Audit MISS dan validasi snapshot penuh (perbaikan read-first)
+
+Dashboard evaluasi sekarang menyertakan `missAnalysis` untuk selection aktif:
+
+- jumlah MISS pada 10 evaluasi terakhir dan 10 evaluasi sebelumnya;
+- prediksi digit yang diterbitkan sebelum MISS terakhir dan pair aktualnya;
+- jumlah expert yang sebetulnya berhasil mencakup pair tersebut;
+- total pergeseran bobot setelah MISS (setengah jumlah perubahan absolut bobot).
+
+Ini adalah **audit pembelajaran**, bukan bukti bahwa akurasi setelah koreksi meningkat. Efektivitas algoritma baru harus diuji dengan walk-forward backtest pada data yang belum pernah dipakai memilih parameter.
+
+Next.js kini membandingkan `history_cutoff_key` snapshot terhadap identitas **seluruh** histori Supabase, bukan hanya jumlah result dan result terakhir. Cutoff ini disimpan di tabel `adaptive.predictions` yang sudah ada; query snapshot pada Deno service harus mengembalikan kolom tersebut. Kasus koreksi atau rolling 170 result dengan digit terakhir sama akan ditolak sebagai stale.
+
+Untuk rollout perbaikan ini, deploy **adaptive-engine-service terlebih dahulu**, kemudian **Next.js UI/API** dari commit sama. Tidak memerlukan migration Neon ataupun replay model, karena kontrak algoritma `2026-08-15.2` tidak berubah.

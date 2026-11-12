@@ -6,6 +6,7 @@ import {
   reconcileAdaptiveMarkets,
 } from "@/lib/adaptive/persistence";
 import { validateAdaptivePublishedSnapshot } from "@/lib/adaptive/published-snapshot";
+import { adaptiveHistoryCutoffKey } from "@/lib/adaptive/history-cutoff";
 import {
   ADAPTIVE_SELECTION_COUNT,
   isAdaptiveMethod,
@@ -198,6 +199,7 @@ export async function POST(req: Request) {
         digitCount,
         latestDraw: draws[draws.length - 1],
         historyLength: draws.length,
+        historyCutoffKey: adaptiveHistoryCutoffKey(draws),
       });
 
       if (!snapshot.ok) {
